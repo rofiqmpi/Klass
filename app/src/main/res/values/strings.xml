@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Klass</string>
+    <string name="splash_tagline">Smart Classroom &amp; Learning Hub</string>
+    <string name="welcome_1_title">Smart Classroom</string>
+    <string name="welcome_1_title_bn">ক্লাসে স্বাগতম</string>
+    <string name="welcome_1_desc">Experience seamless interactive learning, study materials, and real-time class updates all in one place.</string>
+    <string name="welcome_1_desc_bn">একটি আধুনিক প্ল্যাটফর্মে আপনার ক্লাস, পাঠ্যবিষয় এবং প্রয়োজনীয় শিক্ষা উপকরণ সহজে পরিচালনা করুন।</string>
+
+    <string name="welcome_2_title">Routine &amp; Attendance</string>
+    <string name="welcome_2_title_bn">রুটিন ও উপস্থিতি</string>
+    <string name="welcome_2_desc">Keep track of your daily class schedule, exam timetables, and monitor attendance automatically.</string>
+    <string name="welcome_2_desc_bn">দৈনন্দিন ক্লাসের সময়সূচি, পরীক্ষার রুটিন এবং উপস্থিতির হিসাব রাখুন সহজে ও নিখুঁতভাবে।</string>
+
+    <string name="welcome_3_title">Connect &amp; Collaborate</string>
+    <string name="welcome_3_title_bn">সহযোগিতা ও যোগাযোগ</string>
+    <string name="welcome_3_desc">Collaborate with fellow classmates, connect with teachers, and share assignments instantly.</string>
+    <string name="welcome_3_desc_bn">শিক্ষক ও সহপাঠীদের সাথে সার্বক্ষণিক যোগাযোগ রাখুন, অ্যাসাইনমেন্ট ও ফলাফল শেয়ার করুন।</string>
+
+    <string name="action_skip">Skip</string>
+    <string name="action_next">Next</string>
+    <string name="action_get_started">Get Started</string>
+</resources>
+

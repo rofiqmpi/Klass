@@ -1,0 +1,7 @@
+{
+  "name": "Klass",
+  "description": "Klass - Modern smart classroom and learning management platform with splash and interactive onboarding.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
