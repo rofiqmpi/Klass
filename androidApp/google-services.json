@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "931767497129",
+    "firebase_url": "https://klass-5549e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "klass-5549e",
+    "storage_bucket": "klass-5549e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:931767497129:android:fcb622412b2f37c4e054b8",
+        "android_client_info": {
+          "package_name": "com.mpi.klass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBniDLwvqS--zBCNs1RXWIPTQaDtgicloE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
