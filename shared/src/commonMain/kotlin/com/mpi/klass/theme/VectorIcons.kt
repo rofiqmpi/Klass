@@ -242,3 +242,38 @@ val MenuIcon: ImageVector
             horizontalLineTo(21f)
         }
     }.build()
+
+val LogoutIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Logout",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            // Arrow pointing out to the right
+            moveTo(17f, 7f)
+            lineTo(15.59f, 8.41f)
+            lineTo(18.17f, 11f)
+            lineTo(8f, 11f)
+            verticalLineTo(13f)
+            lineTo(18.17f, 13f)
+            lineTo(15.59f, 15.59f)
+            lineTo(17f, 17f)
+            lineTo(22f, 12f)
+            close()
+            // Open door frame on the left
+            moveTo(4f, 5f)
+            horizontalLineTo(12f)
+            verticalLineTo(3f)
+            horizontalLineTo(4f)
+            curveTo(2.9f, 3f, 2f, 3.9f, 2f, 5f)
+            verticalLineTo(19f)
+            curveTo(2f, 20.1f, 2.9f, 21f, 4f, 21f)
+            horizontalLineTo(12f)
+            verticalLineTo(19f)
+            horizontalLineTo(4f)
+            close()
+        }
+    }.build()

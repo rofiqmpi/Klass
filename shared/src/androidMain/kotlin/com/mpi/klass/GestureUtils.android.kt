@@ -32,7 +32,7 @@ actual fun getDisplayBottomCornerRadiusDp(): Float {
             val bottomLeft = insets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)
             val bottomRight = insets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)
             val radiusPx = bottomLeft?.radius ?: bottomRight?.radius
-            if (radiusPx != null && radiusPx > 0) {
+            if ((radiusPx != null) && (radiusPx > 0)) {
                 val dp = radiusPx / density
                 return (dp - 6f).coerceIn(12f, 30f)
             }

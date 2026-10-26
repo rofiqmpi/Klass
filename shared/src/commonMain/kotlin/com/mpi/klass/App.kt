@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,26 +67,32 @@ import com.mpi.klass.theme.saveThemeMode
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.time.Duration.Companion.milliseconds
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.error404
 import klass.shared.generated.resources.timeouterror
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 sealed interface AppScreen {
-    object Welcome : AppScreen
-    object GuestHome : AppScreen
-    data class AdminHome(
-        val adminEmail: String,
-        val adminName: String,
+    data object Welcome : AppScreen
+    data object GuestHome : AppScreen
+    data class RoleHome(
+        val role: UserRole,
+        val email: String,
+        val name: String,
     ) : AppScreen
 }
 
 enum class ErrorImageType {
     NO_INTERNET,      // error404.webp (No Internet / Network Error)
     GENERAL_ERROR,   // timeouterror.webp (Auth failure, wrong email, timeout, or server error)
+    CONFIGURATION_ERROR,
+}
+
+private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exceptionMessage) {
+    "NO_INTERNET" -> ErrorImageType.NO_INTERNET
+    "WEB_FIREBASE_CONFIG_MISSING" -> ErrorImageType.CONFIGURATION_ERROR
+    else -> ErrorImageType.GENERAL_ERROR
 }
 
 @Composable
@@ -93,6 +100,7 @@ fun App(
     onLaunchGoogleSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
     onSignOutGoogle: () -> Unit = {},
     onCloseApp: () -> Unit = {},
+    isBackendConfigured: Boolean = true,
 ) {
     var themeMode by remember { mutableStateOf(loadThemeMode()) }
     val systemInDark = isSystemInDarkTheme()
@@ -102,19 +110,146 @@ fun App(
         ThemeMode.DEFAULT -> systemInDark
     }
 
-    val initialScreen = remember {
-        val savedSession = loadUserSession()
-        when (savedSession?.role) {
-            "ADMIN" -> AppScreen.AdminHome(adminEmail = savedSession.email, adminName = savedSession.name)
-            "GUEST" -> AppScreen.GuestHome
-            else -> AppScreen.Welcome
-        }
+    var currentScreen by remember {
+        mutableStateOf<AppScreen>(
+            try {
+                val session = loadUserSession()
+                when {
+                    session == null -> AppScreen.Welcome
+                    session.role.trim().uppercase() == "GUEST" -> AppScreen.GuestHome
+                    else -> {
+                        val role = UserRole.fromRaw(session.role)
+                        if (role != null) AppScreen.RoleHome(role = role, email = session.email, name = session.name)
+                        else AppScreen.Welcome
+                    }
+                }
+            } catch (_: Exception) {
+                AppScreen.Welcome
+            }
+        )
     }
-    var currentScreen by remember { mutableStateOf(initialScreen) }
     var activeErrorType by remember { mutableStateOf<ErrorImageType?>(null) }
+    var lastErrorType by remember { mutableStateOf(ErrorImageType.GENERAL_ERROR) }
     var isLoadingOverlay by remember { mutableStateOf(value = false) }
 
     val coroutineScope = rememberCoroutineScope()
+
+    fun showError(type: ErrorImageType) {
+        lastErrorType = type
+        activeErrorType = type
+    }
+
+    // Verify saved session in background silently without blocking or logging out on network failure
+    LaunchedEffect(Unit) {
+        val session = loadUserSession() ?: return@LaunchedEffect
+        if (session.role.trim().uppercase() == "GUEST") return@LaunchedEffect
+
+        val role = UserRole.fromRaw(session.role) ?: return@LaunchedEffect
+
+        try {
+            val result = RoleConfig.verifyRoleInFirebase(session.email, role)
+            result.onSuccess { isVerified ->
+                if (isVerified == false) {
+                    clearUserSession()
+                    currentScreen = AppScreen.Welcome
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    fun launchGuestMode() {
+        if (!isBackendConfigured) {
+            showError(ErrorImageType.CONFIGURATION_ERROR)
+            return
+        }
+
+        isLoadingOverlay = true
+        coroutineScope.launch {
+            if (!isNetworkAvailable()) {
+                isLoadingOverlay = false
+                showError(ErrorImageType.NO_INTERNET)
+            } else {
+                val result = GuestConfig.fetchGuestConfig()
+                if (result.isFailure) {
+                    isLoadingOverlay = false
+                    showError(errorTypeFor(result.exceptionOrNull()?.message))
+                } else {
+                    saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
+                    currentScreen = AppScreen.GuestHome
+                    isLoadingOverlay = false
+                }
+            }
+        }
+    }
+
+    fun launchRoleSignIn(role: UserRole) {
+        if (!isBackendConfigured) {
+            showError(ErrorImageType.CONFIGURATION_ERROR)
+            return
+        }
+
+        isLoadingOverlay = true
+        coroutineScope.launch {
+            if (!isNetworkAvailable()) {
+                isLoadingOverlay = false
+                showError(ErrorImageType.NO_INTERNET)
+            } else {
+                onLaunchGoogleSignIn { email, name, _, errorMsg ->
+                    when {
+                        errorMsg != null -> {
+                            // A sign-in failure is not necessarily "no internet"
+                            // (it can be a server/internal error), so the generic
+                            // error popup is shown.
+                            isLoadingOverlay = false
+                            onSignOutGoogle()
+                            showError(ErrorImageType.GENERAL_ERROR)
+                        }
+
+                        email != null -> {
+                            coroutineScope.launch {
+                                var result = RoleConfig.verifyRoleInFirebase(email, role)
+                                // Teachers/students self-register on their first
+                                // sign-in; admins must already exist in the console.
+                                if ((result.getOrNull() == false) && (role != UserRole.ADMIN)) {
+                                    result = RoleConfig.registerRoleMember(email, role, name).map { true }
+                                }
+                                isLoadingOverlay = false
+                                result.onSuccess { isVerified ->
+                                    if (isVerified) {
+                                        val userName = name ?: role.defaultName
+                                        saveUserSession(UserSession(role = role.name, email = email, name = userName))
+                                        currentScreen = AppScreen.RoleHome(
+                                            role = role,
+                                            email = email,
+                                            name = userName,
+                                        )
+                                    } else {
+                                        onSignOutGoogle()
+                                        showError(ErrorImageType.GENERAL_ERROR)
+                                    }
+                                }.onFailure { exception ->
+                                    onSignOutGoogle()
+                                    showError(errorTypeFor(exception.message))
+                                }
+                            }
+                        }
+
+                        else -> {
+                            // User cancelled the account picker — no error popup.
+                            isLoadingOverlay = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Signing out is a purely local action; it must not require internet.
+    fun signOutAndReturnToWelcome() {
+        clearUserSession()
+        onSignOutGoogle()
+        currentScreen = AppScreen.Welcome
+    }
 
     AppTheme(themeMode = themeMode) {
         Surface(
@@ -125,128 +260,42 @@ fun App(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val screen = currentScreen) {
-                    is AppScreen.Welcome -> {
+                    AppScreen.Welcome -> {
                         WelcomeScreen(
                             currentThemeMode = themeMode,
                             onThemeModeChange = { newMode ->
                                 themeMode = newMode
                                 saveThemeMode(newMode)
                             },
-                            onGuestClick = {
-                                isLoadingOverlay = true
-                                coroutineScope.launch {
-                                    val isOnline = isNetworkAvailable()
-                                    if (!isOnline) {
-                                        isLoadingOverlay = false
-                                        activeErrorType = ErrorImageType.NO_INTERNET
-                                    } else {
-                                        GuestConfig.fetchGuestConfig()
-                                        saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
-                                        currentScreen = AppScreen.GuestHome
-                                        isLoadingOverlay = false
-                                    }
-                                }
-                            },
-                            onAdminClick = {
-                                isLoadingOverlay = true
-                                coroutineScope.launch {
-                                    val isOnline = isNetworkAvailable()
-                                    if (!isOnline) {
-                                        isLoadingOverlay = false
-                                        activeErrorType = ErrorImageType.NO_INTERNET
-                                    } else {
-                                        onLaunchGoogleSignIn { email, name, _, errorMsg ->
-                                            if (errorMsg != null) {
-                                                isLoadingOverlay = false
-                                                onSignOutGoogle()
-                                                activeErrorType = ErrorImageType.NO_INTERNET
-                                            } else if (email != null) {
-                                                coroutineScope.launch {
-                                                    val result = AdminConfig.verifyAdminInFirebase(email)
-                                                    isLoadingOverlay = false
-                                                    result.onSuccess { isVerified ->
-                                                        if (isVerified) {
-                                                            val adminName = name ?: "এডমিনিস্ট্রেটর"
-                                                            saveUserSession(UserSession(role = "ADMIN", email = email, name = adminName))
-                                                            currentScreen = AppScreen.AdminHome(
-                                                                adminEmail = email,
-                                                                adminName = adminName,
-                                                            )
-                                                        } else {
-                                                            onSignOutGoogle()
-                                                            activeErrorType = ErrorImageType.GENERAL_ERROR
-                                                        }
-                                                    }.onFailure { exception ->
-                                                        onSignOutGoogle()
-                                                        activeErrorType = if (exception.message == "NO_INTERNET") {
-                                                            ErrorImageType.NO_INTERNET
-                                                        } else {
-                                                            ErrorImageType.GENERAL_ERROR
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                isLoadingOverlay = false
-                                            }
-                                        }
-                                    }
-                                }
-                            },
+                            onGuestClick = { launchGuestMode() },
+                            onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
+                            onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
+                            onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
                             onCloseApp = onCloseApp,
                         )
                     }
 
-                    is AppScreen.GuestHome -> {
+                    AppScreen.GuestHome -> {
                         GuestHomeScreen(
                             currentThemeMode = themeMode,
                             onThemeModeChange = { newMode ->
                                 themeMode = newMode
                                 saveThemeMode(newMode)
                             },
-                            onSwitchToLogin = {
-                                isLoadingOverlay = true
-                                coroutineScope.launch {
-                                    val isOnline = isNetworkAvailable()
-                                    if (!isOnline) {
-                                        isLoadingOverlay = false
-                                        activeErrorType = ErrorImageType.NO_INTERNET
-                                    } else {
-                                        clearUserSession()
-                                        onSignOutGoogle()
-                                        delay(300.milliseconds)
-                                        currentScreen = AppScreen.Welcome
-                                        isLoadingOverlay = false
-                                    }
-                                }
-                            },
+                            onSwitchToLogin = { signOutAndReturnToWelcome() },
                         )
                     }
 
-                    is AppScreen.AdminHome -> {
-                        AdminHomeScreen(
-                            adminEmail = screen.adminEmail,
-                            adminName = screen.adminName,
+                    is AppScreen.RoleHome -> {
+                        RoleHomeScreen(
+                            role = screen.role,
+                            userName = screen.name,
                             currentThemeMode = themeMode,
                             onThemeModeChange = { newMode ->
                                 themeMode = newMode
                                 saveThemeMode(newMode)
                             },
-                            onSignOut = {
-                                isLoadingOverlay = true
-                                coroutineScope.launch {
-                                    val isOnline = isNetworkAvailable()
-                                    if (!isOnline) {
-                                        isLoadingOverlay = false
-                                        activeErrorType = ErrorImageType.NO_INTERNET
-                                    } else {
-                                        clearUserSession()
-                                        onSignOutGoogle()
-                                        delay(300.milliseconds)
-                                        currentScreen = AppScreen.Welcome
-                                        isLoadingOverlay = false
-                                    }
-                                }
-                            },
+                            onSignOut = { signOutAndReturnToWelcome() },
                         )
                     }
                 }
@@ -262,11 +311,13 @@ fun App(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.65f))
+                            // Enabled-but-empty click consumes touches so the dimmed
+                            // UI underneath cannot be tapped while loading.
                             .clickable(
-                                enabled = false,
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                            ) {},
+                                onClick = {},
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         Surface(
@@ -289,19 +340,19 @@ fun App(
                 }
 
                 // Error Image Popup Overlay with Theme-Aware Card & Floating Close Button
-                activeErrorType?.let { currentError ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300)),
-                        exit = fadeOut(animationSpec = tween(300)),
-                        modifier = Modifier.zIndex(100f),
-                    ) {
-                        ErrorImagePopup(
-                            errorType = currentError,
-                            isDark = isDark,
-                            onDismiss = { activeErrorType = null },
-                        )
-                    }
+                AnimatedVisibility(
+                    visible = activeErrorType != null,
+                    enter = fadeIn(animationSpec = tween(300)),
+                    exit = fadeOut(animationSpec = tween(300)),
+                    modifier = Modifier.zIndex(100f),
+                ) {
+                    // lastErrorType is kept so the popup can play its exit animation
+                    // even after activeErrorType has become null.
+                    ErrorImagePopup(
+                        errorType = activeErrorType ?: lastErrorType,
+                        isDark = isDark,
+                        onDismiss = { activeErrorType = null },
+                    )
                 }
             }
         }
@@ -317,26 +368,34 @@ fun ErrorImagePopup(
     val drawableRes = when (errorType) {
         ErrorImageType.NO_INTERNET -> Res.drawable.error404
         ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
+        ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror
     }
 
     val title = when (errorType) {
         ErrorImageType.NO_INTERNET -> "ইন্টারনেট সংযোগ নেই!"
-        ErrorImageType.GENERAL_ERROR -> "অনুরোধ সম্পূর্ণ করা যায়নি!"
+        ErrorImageType.GENERAL_ERROR -> "অনুরোধ সম্পূর্ণ করা যায়নি!"
+        ErrorImageType.CONFIGURATION_ERROR -> "ওয়েব সেটআপ সম্পূর্ণ হয়নি"
     }
 
     val description = when (errorType) {
-        ErrorImageType.NO_INTERNET -> "আপনার ডিভাইসে সক্রিয় ইন্টারনেট সংযোগ পাওয়া যায়নি। অ্যাপটির সমস্ত সুবিধা পেতে ইন্টারনেট কানেকশন প্রয়োজন।"
-        ErrorImageType.GENERAL_ERROR -> "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
+        ErrorImageType.NO_INTERNET -> "আপনার ডিভাইসে সক্রিয় ইন্টারনেট সংযোগ পাওয়া যায়নি। অ্যাপটির সমস্ত সুবিধা পেতে ইন্টারনেট কানেকশন প্রয়োজন।"
+        ErrorImageType.GENERAL_ERROR -> "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
+        ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
     }
 
     val steps = when (errorType) {
         ErrorImageType.NO_INTERNET -> listOf(
             "আপনার ডিভাইসের Wi-Fi অথবা মোবাইল ডাটা চালু আছে কিনা চেক করুন।",
-            "ইন্টারনেট সংযোগ সক্রিয় করে পুনরায় চেষ্টা করুন।",
+            "ইন্টারনেট সংযোগ সক্রিয় করে পুনরায় চেষ্টা করুন।",
         )
         ErrorImageType.GENERAL_ERROR -> listOf(
             "আপনার জিমেইল অ্যাকাউন্টটি সঠিক এবং নিবন্ধিত কিনা নিশ্চিত করুন।",
-            "নেটওয়ার্ক সংযোগ পরীক্ষা করে কিছুক্ষণ পর পুনরায় চেষ্টা করুন।",
+            "নেটওয়ার্ক সংযোগ পরীক্ষা করে কিছুক্ষণ পর পুনরায় চেষ্টা করুন।",
+        )
+        ErrorImageType.CONFIGURATION_ERROR -> listOf(
+            "Firebase Project settings থেকে Web App config কপি করুন।",
+            "Authentication-এ Google provider এবং Hosting domain অনুমোদন করুন।",
+            "পরিবর্তনের পর ওয়েব অ্যাপটি আবার build ও deploy করুন।",
         )
     }
 
@@ -587,8 +646,10 @@ private fun DrawScope.drawSmartGear(
             0, 1 -> radius
             else -> innerRadius
         }
-        if (i == 0) path.moveTo(x = center.x + r * cos(angleRad), y = center.y + r * sin(angleRad))
-        else path.lineTo(x = center.x + r * cos(angleRad), y = center.y + r * sin(angleRad))
+        val px = center.x + (r * cos(angleRad))
+        val py = center.y + (r * sin(angleRad))
+        if (i == 0) path.moveTo(x = px, y = py)
+        else path.lineTo(x = px, y = py)
     }
     path.close()
 
@@ -622,9 +683,9 @@ private fun DrawScope.drawSmartGear(
     val holeDistance = (innerRadius + holeRadius) / 2f
     val weightHoleRadius = (innerRadius - holeRadius) / 2.6f
     for (h in 0 until holeCount) {
-        val holeAngleRad = ((rotationDegrees + (h * 360f / holeCount) + 45f) * PI / 180.0).toFloat()
-        val hx = center.x + holeDistance * cos(holeAngleRad)
-        val hy = center.y + holeDistance * sin(holeAngleRad)
+        val holeAngleRad = (((((rotationDegrees + ((h * 360f) / holeCount) + 45f) * PI)) / 180.0)).toFloat()
+        val hx = center.x + (holeDistance * cos(holeAngleRad))
+        val hy = center.y + (holeDistance * sin(holeAngleRad))
         drawCircle(
             color = cutoutColor,
             radius = weightHoleRadius,

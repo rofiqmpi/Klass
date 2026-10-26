@@ -27,10 +27,9 @@ actual fun loadUserSession(): UserSession? {
     return UserSession(role = role, email = email, name = name)
 }
 
-@Suppress("ApplySharedPref")
 actual fun clearUserSession() {
     getAppContext()?.getSharedPreferences("klass_session", Context.MODE_PRIVATE)
         ?.edit()
         ?.clear()
-        ?.commit()
+        ?.apply()
 }

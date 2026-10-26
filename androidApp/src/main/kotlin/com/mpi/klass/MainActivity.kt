@@ -29,17 +29,21 @@ class MainActivity : ComponentActivity() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
+        // Capture and clear first so a crashed flow can never double-deliver.
+        val callback = onAuthResult
+        onAuthResult = null
+
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account: GoogleSignInAccount = task.getResult(ApiException::class.java)
-            onAuthResult?.invoke(account.email, account.displayName, account.photoUrl?.toString(), null)
+            callback?.invoke(account.email, account.displayName, account.photoUrl?.toString(), null)
         } catch (e: Exception) {
             val errorMsg = if ((e is ApiException) && (e.statusCode == 12501)) {
                 null // User canceled sign in dialog
             } else {
-                e.localizedMessage ?: "সাইন-ইন বিফল হয়েছে"
+                e.localizedMessage ?: "সাইন-ইন বিফল হয়েছে"
             }
-            onAuthResult?.invoke(null, null, null, errorMsg)
+            callback?.invoke(null, null, null, errorMsg)
         }
     }
 
@@ -66,20 +70,21 @@ class MainActivity : ComponentActivity() {
                 onLaunchGoogleSignIn = { callback ->
                     onAuthResult = callback
                     try {
+                        // Clear any cached account so the account picker is always
+                        // shown. revokeAccess is deliberately NOT called here — it
+                        // deauthorizes the app on every attempt and its failure
+                        // path used to leave the loader hanging.
                         googleSignInClient.signOut().addOnCompleteListener {
                             try {
-                                googleSignInClient.revokeAccess().addOnCompleteListener {
-                                    val intent = googleSignInClient.signInIntent
-                                    googleSignInLauncher.launch(intent)
-                                }
-                            } catch (_: Exception) {
-                                val intent = googleSignInClient.signInIntent
-                                googleSignInLauncher.launch(intent)
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            } catch (e: Exception) {
+                                onAuthResult = null
+                                callback(null, null, null, e.localizedMessage ?: "সাইন-ইন শুরু করা যায়নি")
                             }
                         }
-                    } catch (_: Exception) {
-                        val intent = googleSignInClient.signInIntent
-                        googleSignInLauncher.launch(intent)
+                    } catch (e: Exception) {
+                        onAuthResult = null
+                        callback(null, null, null, e.localizedMessage ?: "সাইন-ইন শুরু করা যায়নি")
                     }
                 },
                 onSignOutGoogle = {

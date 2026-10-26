@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- TODO: After creating the iOS OAuth client in the Firebase console
+	     (Authentication -> Sign-in method -> Google), add the keys:
+	     CLIENT_ID (string) and REVERSED_CLIENT_ID (string) from the downloaded
+	     plist. REVERSED_CLIENT_ID must also be placed in
+	     iosApp/Configuration/Config.xcconfig as REVERSED_CLIENT_ID=. -->
 	<key>API_KEY</key>
 	<string>AIzaSyA9bKaPtsgGsGWtZKkn1XP7RlhioXUhqpQ</string>
 	<key>GCM_SENDER_ID</key>

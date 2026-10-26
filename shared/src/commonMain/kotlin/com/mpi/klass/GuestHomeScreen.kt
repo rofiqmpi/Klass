@@ -43,6 +43,7 @@ import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.DarkModeIcon
 import com.mpi.klass.theme.HomeIcon
 import com.mpi.klass.theme.LightModeIcon
+import com.mpi.klass.theme.LogoutIcon
 import com.mpi.klass.theme.MenuIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
@@ -50,7 +51,6 @@ import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.welcome
 import org.jetbrains.compose.resources.painterResource
 
-@Suppress("UNUSED_PARAMETER")
 @Composable
 fun GuestHomeScreen(
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
@@ -106,12 +106,12 @@ fun GuestHomeScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "ময়মনসিংহ সরকারি পলিটেকনিক",
+                            text = "ময়মনসিংহ সরকারি পলিটেকনিক",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
@@ -124,6 +124,28 @@ fun GuestHomeScreen(
                             fontFamily = hindSiliguri,
                             color = textColor,
                         )
+                    }
+
+                    // Logout / Switch to Login Button
+                    Surface(
+                        onClick = onSwitchToLogin,
+                        shape = CircleShape,
+                        color = cardBg,
+                        border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                        modifier = Modifier.size(40.dp),
+                        shadowElevation = 2.dp,
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = LogoutIcon,
+                                contentDescription = "লগ আউট",
+                                tint = textColor,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
 
                     Surface(

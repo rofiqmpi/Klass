@@ -43,6 +43,7 @@ import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.DarkModeIcon
 import com.mpi.klass.theme.HomeIcon
 import com.mpi.klass.theme.LightModeIcon
+import com.mpi.klass.theme.LogoutIcon
 import com.mpi.klass.theme.MenuIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
@@ -50,11 +51,10 @@ import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.welcome
 import org.jetbrains.compose.resources.painterResource
 
-@Suppress("UNUSED_PARAMETER")
 @Composable
-fun AdminHomeScreen(
-    adminEmail: String,
-    adminName: String = "এডমিনিস্ট্রেটর",
+fun RoleHomeScreen(
+    role: UserRole,
+    userName: String,
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
     onSignOut: () -> Unit = {},
@@ -99,7 +99,7 @@ fun AdminHomeScreen(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Top Bar: Header & Theme Toggle
+            // Top Bar: Header, Logout & Theme Toggle
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,24 +108,53 @@ fun AdminHomeScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "ময়মনসিংহ সরকারি পলিটেকনিক",
+                            text = "ময়মনসিংহ সরকারি পলিটেকনিক",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
                             color = subTextColor,
                         )
                         Text(
-                            text = "এডমিন ড্যাশবোর্ড",
+                            text = role.dashboardTitle,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = hindSiliguri,
                             color = textColor,
                         )
+                        Text(
+                            text = "স্বাগতম, $userName",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = hindSiliguri,
+                            color = subTextColor,
+                        )
+                    }
+
+                    // Logout Button
+                    Surface(
+                        onClick = onSignOut,
+                        shape = CircleShape,
+                        color = cardBg,
+                        border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                        modifier = Modifier.size(40.dp),
+                        shadowElevation = 2.dp,
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = LogoutIcon,
+                                contentDescription = "লগ আউট",
+                                tint = textColor,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
 
                     // Theme Toggle Button

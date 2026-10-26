@@ -4,7 +4,7 @@ import platform.Foundation.NSUserDefaults
 
 actual fun saveUserSession(session: UserSession) {
     val defaults = NSUserDefaults.standardUserDefaults
-    defaults.setBool(true, forKey = "is_logged_in")
+    defaults.setBool(value = true, forKey = "is_logged_in")
     defaults.setObject(session.role, forKey = "user_role")
     defaults.setObject(session.email, forKey = "user_email")
     defaults.setObject(session.name, forKey = "user_name")

@@ -7,22 +7,33 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 object GuestConfig {
 
+    private sealed interface FetchOutcome {
+        data class Found(val configMap: Map<String, Any>) : FetchOutcome
+        data object Missing : FetchOutcome
+    }
+
     /**
      * Fetches Guest Mode settings from Firebase Firestore "guests" collection.
-     * Returns failure if offline or network connection fails.
+     *
+     *  - Result.success(map)  -> config document found
+     *  - Result.success(null) -> document not configured (guest mode still allowed)
+     *  - Result.failure("NO_INTERNET" / "NETWORK_TIMEOUT") -> caller must NOT enter guest mode
      */
     suspend fun fetchGuestConfig(): Result<Map<String, Any>?> {
-        var networkError: Exception? = null
-
         return try {
-            val configMap = withTimeoutOrNull(5.seconds) {
+            var networkError: Exception? = null
+
+            val outcome = withTimeoutOrNull(5.seconds) {
                 try {
-                    val firestoreDb = Firebase.firestore
-                    val doc = firestoreDb.collection("guests").document("config").get()
+                    val doc = Firebase.firestore.collection("guests").document("config").get()
                     if (doc.exists) {
-                        doc.data<Map<String, Any>>()
+                        try {
+                            FetchOutcome.Found(doc.data<Map<String, Any>>())
+                        } catch (_: Exception) {
+                            FetchOutcome.Missing
+                        }
                     } else {
-                        null
+                        FetchOutcome.Missing
                     }
                 } catch (e: Exception) {
                     networkError = e
@@ -30,16 +41,19 @@ object GuestConfig {
                 }
             }
 
-            if (configMap != null) {
-                Result.success(configMap)
-            } else if (networkError != null) {
-                Result.failure(Exception("NO_INTERNET"))
-            } else {
-                // If doc doesn't exist or timed out without exception
-                Result.success(null)
+            when (outcome) {
+                is FetchOutcome.Found -> Result.success(outcome.configMap)
+                is FetchOutcome.Missing -> Result.success(null)
+                null -> Result.failure(Exception(networkErrorMessage(networkError)))
             }
         } catch (_: Exception) {
-            Result.failure(Exception("NO_INTERNET"))
+            Result.failure(Exception(networkErrorMessage(null)))
         }
+    }
+
+    private suspend fun networkErrorMessage(caught: Exception?): String {
+        // A real network failure and a silent timeout are both reported
+        // precisely so the caller can pick the right error popup.
+        return if ((caught != null) || !isNetworkAvailable()) "NO_INTERNET" else "NETWORK_TIMEOUT"
     }
 }

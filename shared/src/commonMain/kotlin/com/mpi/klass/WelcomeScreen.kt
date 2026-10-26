@@ -95,6 +95,8 @@ fun WelcomeScreen(
     onThemeModeChange: (ThemeMode) -> Unit = {},
     onGuestClick: () -> Unit = {},
     onAdminClick: () -> Unit = {},
+    onTeacherClick: () -> Unit = {},
+    onStudentClick: () -> Unit = {},
     onCloseApp: () -> Unit = {},
 ) {
     val systemInDark = isSystemInDarkTheme()
@@ -393,7 +395,7 @@ fun WelcomeScreen(
                                     ),
                                 ) {
                                     Text(
-                                        text = "রেজিষ্ট্রেশন",
+                                        text = "রেজিস্ট্রেশন",
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = hindSiliguri,
@@ -477,14 +479,14 @@ fun WelcomeScreen(
                                     icon = Res.drawable.teacher,
                                     isDark = isDark,
                                     fontFamily = hindSiliguri,
-                                    onClick = {},
+                                    onClick = onTeacherClick,
                                 )
                                 RoleButton(
                                     text = "শিক্ষার্থী",
                                     icon = Res.drawable.student,
                                     isDark = isDark,
                                     fontFamily = hindSiliguri,
-                                    onClick = {},
+                                    onClick = onStudentClick,
                                 )
                             }
 
@@ -846,7 +848,7 @@ fun WelcomeScreen(
                                     // 3. Points items
                                     val points = listOf(
                                         "ডাটা সিকিউরিটি ও প্রাইভেসি" to "আপনার ডাটা ব্যাকএন্ডে এনক্রিপ্ট করে সংরক্ষিত হয় এবং কোনো থার্ড-পার্টির নিকট হস্তান্তরযোগ্য নয়।",
-                                        "রিয়েলটাইম অথেনটিকেশন" to "আপনার একাউন্টের নিরাপত্তা সর্বোচ্চ। আপনার ব্যক্তিগত তথ্য সংগ্রহ বা সংরক্ষণ করা হয় না।",
+                                        "রিয়েলটাইম অথেনটিকেশন" to "আপনার অ্যাকাউন্টের নিরাপত্তা সর্বোচ্চ। আপনার ব্যক্তিগত তথ্য সংগ্রহ বা সংরক্ষণ করা হয় না।",
                                         "এআই মডেল ট্রেনিং" to "সার্ভিস অপটিমাইজেশন, এআই লার্নিং ও এলএলএম (LLM) ফাইন-টিউনিংয়ের জন্য ব্যবহারকারীর অ্যানোনিমাস (Anonymous) ডায়ালগ ও ইন্টারেকশন ডাটা ব্যবহৃত হতে পারে।",
                                         "অ্যালগরিদমিক ডিসক্লেইমার" to "এআই অ্যাসিস্ট্যান্ট বা অটো-জেনারেটেড রুটিন সহায়তামূলক ইনফারেন্স মাত্র; যেকোনো চূড়ান্ত তথ্যের জন্য প্রাতিষ্ঠানিক নোটিশই প্রামাণিক।",
                                         "সিস্টেম ইন্টিগ্রিটি" to "কোনো প্রকার রিভার্স ইঞ্জিনিয়ারিং, এপিআই এক্সপ্লয়েট, বা অননুমোদিত অ্যাকসেসের চেষ্টা করা হলে সিস্টেম থেকে স্থায়ীভাবে ব্লক করা হবে।",
