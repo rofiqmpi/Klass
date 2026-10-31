@@ -8,6 +8,7 @@ actual fun saveUserSession(session: UserSession) {
     defaults.setObject(session.role, forKey = "user_role")
     defaults.setObject(session.email, forKey = "user_email")
     defaults.setObject(session.name, forKey = "user_name")
+    defaults.setObject(session.photoUrl, forKey = "user_photo")
 }
 
 actual fun loadUserSession(): UserSession? {
@@ -18,9 +19,10 @@ actual fun loadUserSession(): UserSession? {
     val role = defaults.stringForKey("user_role") ?: ""
     val email = defaults.stringForKey("user_email") ?: ""
     val name = defaults.stringForKey("user_name") ?: ""
+    val photoUrl = defaults.stringForKey("user_photo")
 
     if (role.isBlank() || email.isBlank()) return null
-    return UserSession(role = role, email = email, name = name)
+    return UserSession(role = role, email = email, name = name, photoUrl = photoUrl)
 }
 
 actual fun clearUserSession() {
@@ -29,5 +31,6 @@ actual fun clearUserSession() {
     defaults.removeObjectForKey("user_role")
     defaults.removeObjectForKey("user_email")
     defaults.removeObjectForKey("user_name")
+    defaults.removeObjectForKey("user_photo")
     defaults.synchronize()
 }

@@ -10,6 +10,7 @@ actual fun saveUserSession(session: UserSession) {
         ?.putString("user_role", session.role)
         ?.putString("user_email", session.email)
         ?.putString("user_name", session.name)
+        ?.putString("user_photo", session.photoUrl)
         ?.apply()
 }
 
@@ -22,9 +23,10 @@ actual fun loadUserSession(): UserSession? {
     val role = prefs.getString("user_role", "") ?: ""
     val email = prefs.getString("user_email", "") ?: ""
     val name = prefs.getString("user_name", "") ?: ""
+    val photoUrl = prefs.getString("user_photo", null)
 
     if (role.isBlank() || email.isBlank()) return null
-    return UserSession(role = role, email = email, name = name)
+    return UserSession(role = role, email = email, name = name, photoUrl = photoUrl)
 }
 
 actual fun clearUserSession() {

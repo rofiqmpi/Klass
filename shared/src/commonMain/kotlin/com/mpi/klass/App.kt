@@ -1,5 +1,6 @@
 package com.mpi.klass
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -9,6 +10,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -80,6 +84,18 @@ sealed interface AppScreen {
         val role: UserRole,
         val email: String,
         val name: String,
+        val photoUrl: String? = null,
+    ) : AppScreen
+    // Student profile setup screen shown after first student sign-in
+    data class StudentProfileSetup(
+        val email: String,
+        val displayName: String,
+        val photoUrl: String? = null,
+    ) : AppScreen
+    // Pending approval screen shown when request is not yet approved
+    data class PendingApproval(
+        val email: String,
+        val role: UserRole,
     ) : AppScreen
 }
 
@@ -87,6 +103,7 @@ enum class ErrorImageType {
     NO_INTERNET,      // error404.webp (No Internet / Network Error)
     GENERAL_ERROR,   // timeouterror.webp (Auth failure, wrong email, timeout, or server error)
     CONFIGURATION_ERROR,
+    SIGN_IN_DISABLED,  // Sign-in is disabled by admin
 }
 
 private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exceptionMessage) {
@@ -111,7 +128,7 @@ fun App(
     }
 
     var currentScreen by remember {
-        mutableStateOf<AppScreen>(
+        mutableStateOf(
             try {
                 val session = loadUserSession()
                 when {
@@ -119,7 +136,7 @@ fun App(
                     session.role.trim().uppercase() == "GUEST" -> AppScreen.GuestHome
                     else -> {
                         val role = UserRole.fromRaw(session.role)
-                        if (role != null) AppScreen.RoleHome(role = role, email = session.email, name = session.name)
+                        if (role != null) AppScreen.RoleHome(role = role, email = session.email, name = session.name, photoUrl = session.photoUrl)
                         else AppScreen.Welcome
                     }
                 }
@@ -133,6 +150,7 @@ fun App(
     var isLoadingOverlay by remember { mutableStateOf(value = false) }
 
     val coroutineScope = rememberCoroutineScope()
+    val hindSiliguri = getHindSiliguriFontFamily()
 
     fun showError(type: ErrorImageType) {
         lastErrorType = type
@@ -149,7 +167,7 @@ fun App(
         try {
             val result = RoleConfig.verifyRoleInFirebase(session.email, role)
             result.onSuccess { isVerified ->
-                if (isVerified == false) {
+                if (!isVerified) {
                     clearUserSession()
                     currentScreen = AppScreen.Welcome
                 }
@@ -193,51 +211,131 @@ fun App(
             if (!isNetworkAvailable()) {
                 isLoadingOverlay = false
                 showError(ErrorImageType.NO_INTERNET)
-            } else {
-                onLaunchGoogleSignIn { email, name, _, errorMsg ->
-                    when {
-                        errorMsg != null -> {
-                            // A sign-in failure is not necessarily "no internet"
-                            // (it can be a server/internal error), so the generic
-                            // error popup is shown.
-                            isLoadingOverlay = false
-                            onSignOutGoogle()
-                            showError(ErrorImageType.GENERAL_ERROR)
-                        }
+                return@launch
+            }
 
-                        email != null -> {
-                            coroutineScope.launch {
-                                var result = RoleConfig.verifyRoleInFirebase(email, role)
-                                // Teachers/students self-register on their first
-                                // sign-in; admins must already exist in the console.
-                                if ((result.getOrNull() == false) && (role != UserRole.ADMIN)) {
-                                    result = RoleConfig.registerRoleMember(email, role, name).map { true }
-                                }
-                                isLoadingOverlay = false
-                                result.onSuccess { isVerified ->
-                                    if (isVerified) {
+            // Check sign-in control config
+            val signInControl = RoleConfig.fetchSignInControl()
+
+            onLaunchGoogleSignIn { email, name, photoUrl, errorMsg ->
+                when {
+                    errorMsg != null -> {
+                        isLoadingOverlay = false
+                        onSignOutGoogle()
+                        showError(ErrorImageType.GENERAL_ERROR)
+                    }
+
+                    email != null -> {
+                        coroutineScope.launch {
+                            val cleanEmail = email.trim().lowercase()
+
+                            when (role) {
+                                UserRole.ADMIN -> {
+                                    val isEmpty = RoleConfig.isAdminsCollectionEmpty()
+                                    val verifyResult = RoleConfig.verifyRoleInFirebase(cleanEmail, UserRole.ADMIN)
+                                    val isAdmin = isEmpty || (verifyResult.getOrNull() == true)
+
+                                    if (isAdmin) {
+                                        if (isEmpty) {
+                                            RoleConfig.registerRoleMember(cleanEmail, UserRole.ADMIN, name)
+                                        }
+                                        isLoadingOverlay = false
                                         val userName = name ?: role.defaultName
-                                        saveUserSession(UserSession(role = role.name, email = email, name = userName))
-                                        currentScreen = AppScreen.RoleHome(
-                                            role = role,
-                                            email = email,
-                                            name = userName,
-                                        )
+                                        saveUserSession(UserSession(role = role.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                        currentScreen = AppScreen.RoleHome(role = role, email = cleanEmail, name = userName, photoUrl = photoUrl)
                                     } else {
-                                        onSignOutGoogle()
-                                        showError(ErrorImageType.GENERAL_ERROR)
+                                        // Not yet an approved admin -> check sign-in control toggle
+                                        if (!signInControl.adminSignInEnabled) {
+                                            isLoadingOverlay = false
+                                            onSignOutGoogle()
+                                            showError(ErrorImageType.SIGN_IN_DISABLED)
+                                            return@launch
+                                        }
+
+                                        // Check existing login request status
+                                        val existingRequest = RoleConfig.getLoginRequestStatus(cleanEmail)
+                                        when (existingRequest?.status) {
+                                            RequestStatus.APPROVED.name -> {
+                                                RoleConfig.registerRoleMember(cleanEmail, role, name)
+                                                isLoadingOverlay = false
+                                                val userName = name ?: role.defaultName
+                                                saveUserSession(UserSession(role = role.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                                currentScreen = AppScreen.RoleHome(role = role, email = cleanEmail, name = userName, photoUrl = photoUrl)
+                                            }
+                                            RequestStatus.PENDING.name -> {
+                                                isLoadingOverlay = false
+                                                onSignOutGoogle()
+                                                currentScreen = AppScreen.PendingApproval(email = cleanEmail, role = role)
+                                            }
+                                            RequestStatus.REJECTED.name -> {
+                                                isLoadingOverlay = false
+                                                onSignOutGoogle()
+                                                showError(ErrorImageType.GENERAL_ERROR)
+                                            }
+                                            else -> {
+                                                // Create new admin request (pending)
+                                                RoleConfig.createLoginRequest(cleanEmail, role, name)
+                                                isLoadingOverlay = false
+                                                onSignOutGoogle()
+                                                currentScreen = AppScreen.PendingApproval(email = cleanEmail, role = role)
+                                            }
+                                        }
                                     }
-                                }.onFailure { exception ->
-                                    onSignOutGoogle()
-                                    showError(errorTypeFor(exception.message))
+                                }
+
+                                UserRole.TEACHER -> {
+                                    val isExistingTeacher = RoleConfig.verifyRoleInFirebase(cleanEmail, UserRole.TEACHER).getOrNull() == true
+
+                                    // If sign-in is disabled AND user is NOT in database -> block new sign-in
+                                    if (!signInControl.teacherSignInEnabled && !isExistingTeacher) {
+                                        isLoadingOverlay = false
+                                        onSignOutGoogle()
+                                        showError(ErrorImageType.SIGN_IN_DISABLED)
+                                        return@launch
+                                    }
+
+                                    // Register in role collection if needed and sign in directly
+                                    RoleConfig.registerRoleMember(cleanEmail, role, name)
+                                    isLoadingOverlay = false
+                                    val userName = name ?: role.defaultName
+                                    saveUserSession(UserSession(role = role.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                    currentScreen = AppScreen.RoleHome(role = role, email = cleanEmail, name = userName, photoUrl = photoUrl)
+                                }
+
+                                UserRole.STUDENT -> {
+                                    val existingProfile = RoleConfig.fetchStudentProfile(cleanEmail)
+                                    val isExistingStudent = existingProfile != null && existingProfile.profileSetupComplete
+
+                                    // If sign-in is disabled AND user is NOT in database -> block new sign-in
+                                    if (!signInControl.studentSignInEnabled && !isExistingStudent) {
+                                        isLoadingOverlay = false
+                                        onSignOutGoogle()
+                                        showError(ErrorImageType.SIGN_IN_DISABLED)
+                                        return@launch
+                                    }
+
+                                    // Register in role collection
+                                    RoleConfig.registerRoleMember(cleanEmail, role, name)
+
+                                    if (isExistingStudent) {
+                                        // Profile already setup -> go to home
+                                        isLoadingOverlay = false
+                                        val userName = existingProfile.name.ifBlank { name ?: role.defaultName }
+                                        saveUserSession(UserSession(role = role.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                        currentScreen = AppScreen.RoleHome(role = role, email = cleanEmail, name = userName, photoUrl = photoUrl)
+                                    } else {
+                                        // New student -> must complete profile setup
+                                        isLoadingOverlay = false
+                                        currentScreen = AppScreen.StudentProfileSetup(email = cleanEmail, displayName = name ?: "", photoUrl = photoUrl)
+                                    }
                                 }
                             }
                         }
+                    }
 
-                        else -> {
-                            // User cancelled the account picker — no error popup.
-                            isLoadingOverlay = false
-                        }
+                    else -> {
+                        // User cancelled account picker
+                        isLoadingOverlay = false
                     }
                 }
             }
@@ -251,6 +349,10 @@ fun App(
         currentScreen = AppScreen.Welcome
     }
 
+    fun navigateBackToWelcomeWithoutSignOut() {
+        currentScreen = AppScreen.Welcome
+    }
+
     AppTheme(themeMode = themeMode) {
         Surface(
             modifier = Modifier
@@ -259,44 +361,102 @@ fun App(
             color = MaterialTheme.colorScheme.background,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                when (val screen = currentScreen) {
-                    AppScreen.Welcome -> {
-                        WelcomeScreen(
-                            currentThemeMode = themeMode,
-                            onThemeModeChange = { newMode ->
-                                themeMode = newMode
-                                saveThemeMode(newMode)
-                            },
-                            onGuestClick = { launchGuestMode() },
-                            onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
-                            onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
-                            onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
-                            onCloseApp = onCloseApp,
-                        )
-                    }
+                AnimatedContent(
+                    targetState = currentScreen,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(400)) + slideInHorizontally(animationSpec = tween(400)) { it }) togetherWith
+                            (fadeOut(animationSpec = tween(400)) + slideOutHorizontally(animationSpec = tween(400)) { -it })
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) { screen ->
+                    when (screen) {
+                        AppScreen.Welcome -> {
+                            WelcomeScreen(
+                                currentThemeMode = themeMode,
+                                onThemeModeChange = { newMode ->
+                                    themeMode = newMode
+                                    saveThemeMode(newMode)
+                                },
+                                onGuestClick = { launchGuestMode() },
+                                onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
+                                onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
+                                onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
+                                onCloseApp = onCloseApp,
+                            )
+                        }
 
-                    AppScreen.GuestHome -> {
-                        GuestHomeScreen(
-                            currentThemeMode = themeMode,
-                            onThemeModeChange = { newMode ->
-                                themeMode = newMode
-                                saveThemeMode(newMode)
-                            },
-                            onSwitchToLogin = { signOutAndReturnToWelcome() },
-                        )
-                    }
+                        AppScreen.GuestHome -> {
+                            GuestHomeScreen(
+                                currentThemeMode = themeMode,
+                                onThemeModeChange = { newMode ->
+                                    themeMode = newMode
+                                    saveThemeMode(newMode)
+                                },
+                                onSwitchToLogin = { signOutAndReturnToWelcome() },
+                                onCloseApp = onCloseApp,
+                                onBackToWelcome = { navigateBackToWelcomeWithoutSignOut() },
+                            )
+                        }
 
-                    is AppScreen.RoleHome -> {
-                        RoleHomeScreen(
-                            role = screen.role,
-                            userName = screen.name,
-                            currentThemeMode = themeMode,
-                            onThemeModeChange = { newMode ->
-                                themeMode = newMode
-                                saveThemeMode(newMode)
-                            },
-                            onSignOut = { signOutAndReturnToWelcome() },
-                        )
+                        is AppScreen.RoleHome -> {
+                            RoleHomeScreen(
+                                role = screen.role,
+                                userName = screen.name,
+                                photoUrl = screen.photoUrl,
+                                email = screen.email,
+                                currentThemeMode = themeMode,
+                                onThemeModeChange = { newMode ->
+                                    themeMode = newMode
+                                    saveThemeMode(newMode)
+                                },
+                                onSignOut = { signOutAndReturnToWelcome() },
+                                onCloseApp = onCloseApp,
+                                onBackToWelcome = { navigateBackToWelcomeWithoutSignOut() },
+                                onProfileUpdated = { newName, newPhotoUrl ->
+                                    currentScreen = screen.copy(name = newName, photoUrl = newPhotoUrl)
+                                },
+                            )
+                        }
+
+                        is AppScreen.StudentProfileSetup -> {
+                            StudentProfileSetupScreen(
+                                email = screen.email,
+                                displayName = screen.displayName,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onSetupComplete = { profile ->
+                                    val userName = profile.name.ifBlank { profile.email }
+                                    saveUserSession(
+                                        UserSession(
+                                            role = UserRole.STUDENT.name,
+                                            email = screen.email,
+                                            name = userName,
+                                            photoUrl = screen.photoUrl,
+                                        ),
+                                    )
+                                    currentScreen = AppScreen.RoleHome(
+                                        role = UserRole.STUDENT,
+                                        email = screen.email,
+                                        name = userName,
+                                        photoUrl = screen.photoUrl,
+                                    )
+                                },
+                                onSetupAbandoned = {
+                                    onSignOutGoogle()
+                                    currentScreen = AppScreen.Welcome
+                                },
+                            )
+                        }
+
+                        is AppScreen.PendingApproval -> {
+                            PendingApprovalScreen(
+                                email = screen.email,
+                                role = screen.role,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onBackToWelcome = { currentScreen = AppScreen.Welcome },
+                            )
+                        }
                     }
                 }
 
@@ -311,8 +471,6 @@ fun App(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.65f))
-                            // Enabled-but-empty click consumes touches so the dimmed
-                            // UI underneath cannot be tapped while loading.
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -346,8 +504,6 @@ fun App(
                     exit = fadeOut(animationSpec = tween(300)),
                     modifier = Modifier.zIndex(100f),
                 ) {
-                    // lastErrorType is kept so the popup can play its exit animation
-                    // even after activeErrorType has become null.
                     ErrorImagePopup(
                         errorType = activeErrorType ?: lastErrorType,
                         isDark = isDark,
@@ -359,6 +515,92 @@ fun App(
     }
 }
 
+// ─── Pending Approval Screen ─────────────────────────────────────────────────
+
+@Composable
+fun PendingApprovalScreen(
+    email: String,
+    role: UserRole,
+    isDark: Boolean,
+    hindSiliguri: androidx.compose.ui.text.font.FontFamily,
+    onBackToWelcome: () -> Unit,
+) {
+    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
+    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val roleLabel = when (role) {
+        UserRole.TEACHER -> "শিক্ষক"
+        UserRole.STUDENT -> "শিক্ষার্থী"
+        UserRole.ADMIN -> "এডমিন"
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = cardBg,
+            border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f)),
+            shadowElevation = 8.dp,
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .wrapContentHeight(),
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(text = "⏳", fontSize = 48.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "অনুমোদনের অপেক্ষায়",
+                    fontSize = 20.sp,
+                    fontFamily = hindSiliguri,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF59E0B),
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "আপনার $roleLabel সাইন ইন রিকোয়েস্ট পাঠানো হয়েছে।\nএডমিন অনুমোদন করলে আপনি লগইন করতে পারবেন।",
+                    fontSize = 13.sp,
+                    fontFamily = hindSiliguri,
+                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = email,
+                    fontSize = 12.sp,
+                    color = Color(0xFF0284C7),
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                androidx.compose.material3.Button(
+                    onClick = onBackToWelcome,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF0284C7),
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "ফিরে যান",
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ─── Error Popup ─────────────────────────────────────────────────────────────
+
 @Composable
 fun ErrorImagePopup(
     errorType: ErrorImageType,
@@ -369,18 +611,21 @@ fun ErrorImagePopup(
         ErrorImageType.NO_INTERNET -> Res.drawable.error404
         ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
         ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror
+        ErrorImageType.SIGN_IN_DISABLED -> Res.drawable.timeouterror
     }
 
     val title = when (errorType) {
         ErrorImageType.NO_INTERNET -> "ইন্টারনেট সংযোগ নেই!"
         ErrorImageType.GENERAL_ERROR -> "অনুরোধ সম্পূর্ণ করা যায়নি!"
         ErrorImageType.CONFIGURATION_ERROR -> "ওয়েব সেটআপ সম্পূর্ণ হয়নি"
+        ErrorImageType.SIGN_IN_DISABLED -> "সাইন ইন বন্ধ আছে"
     }
 
     val description = when (errorType) {
         ErrorImageType.NO_INTERNET -> "আপনার ডিভাইসে সক্রিয় ইন্টারনেট সংযোগ পাওয়া যায়নি। অ্যাপটির সমস্ত সুবিধা পেতে ইন্টারনেট কানেকশন প্রয়োজন।"
         ErrorImageType.GENERAL_ERROR -> "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
-        ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
+        ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
+        ErrorImageType.SIGN_IN_DISABLED -> "এডমিন এই ধরনের সাইন ইন সাময়িকভাবে বন্ধ রেখেছেন। পরে আবার চেষ্টা করুন অথবা এডমিনের সাথে যোগাযোগ করুন।"
     }
 
     val steps = when (errorType) {
@@ -397,18 +642,24 @@ fun ErrorImagePopup(
             "Authentication-এ Google provider এবং Hosting domain অনুমোদন করুন।",
             "পরিবর্তনের পর ওয়েব অ্যাপটি আবার build ও deploy করুন।",
         )
+        ErrorImageType.SIGN_IN_DISABLED -> listOf(
+            "এডমিন এই রোলের সাইন ইন অনুমতি বন্ধ রেখেছেন।",
+            "এডমিনের সাথে যোগাযোগ করুন এবং সাইন ইন চালু করতে অনুরোধ করুন।",
+        )
     }
 
     val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
     val borderColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-
     val stepsBgColor = if (isDark) Color(0xFF0F172A).copy(alpha = 0.8f) else Color(0xFFF8FAFC)
     val stepsBorderColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
 
-    val titleColor = if (errorType == ErrorImageType.GENERAL_ERROR) {
-        if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
-    } else {
-        if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
+    val titleColor = when (errorType) {
+        ErrorImageType.NO_INTERNET, ErrorImageType.GENERAL_ERROR ->
+            if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
+        ErrorImageType.SIGN_IN_DISABLED ->
+            if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
+        else ->
+            if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
     }
 
     val textColorPrimary = if (isDark) Color(0xFFF1F5F9) else Color(0xFF1E293B)
@@ -426,7 +677,6 @@ fun ErrorImagePopup(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        // Outer Column to hold Card Surface and 6dp-below Close Button at bottom
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -435,7 +685,6 @@ fun ErrorImagePopup(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Theme-Aware Surface Card
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -452,7 +701,6 @@ fun ErrorImagePopup(
                         .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // 1. Prominent Image
                     Image(
                         painter = painterResource(drawableRes),
                         contentDescription = "Error Illustration",
@@ -465,7 +713,6 @@ fun ErrorImagePopup(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 2. Title
                     Text(
                         text = title,
                         fontFamily = fontBengali,
@@ -477,7 +724,6 @@ fun ErrorImagePopup(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // 3. Description Message
                     Text(
                         text = description,
                         fontFamily = fontBengali,
@@ -490,16 +736,13 @@ fun ErrorImagePopup(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 4. Actionable Steps Card ("কী করবেন:" / "করণীয়:")
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         color = stepsBgColor,
                         border = BorderStroke(1.dp, stepsBorderColor),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                        ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
                             Text(
                                 text = "করণীয়:",
                                 fontFamily = fontBengali,
@@ -537,7 +780,6 @@ fun ErrorImagePopup(
                 }
             }
 
-            // Clean, elegant solid Close Button at bottom (like Terms Popup!)
             Surface(
                 onClick = onDismiss,
                 modifier = Modifier.size(44.dp),
@@ -567,9 +809,9 @@ fun ErrorImagePopup(
 fun SmartMechanicalGearsLoader(
     modifier: Modifier = Modifier,
     isDark: Boolean = false,
-    primaryColor: Color = if (isDark) Color(0xFF38BDF8) else Color(0xFF1D4ED8),   // Cyan / Blue
-    secondaryColor: Color = Color(0xFFF59E0B), // Amber Gold
-    tertiaryColor: Color = Color(0xFF10B981),  // Mint Emerald
+    primaryColor: Color = if (isDark) Color(0xFF38BDF8) else Color(0xFF1D4ED8),
+    secondaryColor: Color = Color(0xFFF59E0B),
+    tertiaryColor: Color = Color(0xFF10B981),
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "SmartGearsRotation")
     val rotationAngle by infiniteTransition.animateFloat(
@@ -590,7 +832,6 @@ fun SmartMechanicalGearsLoader(
         val w = size.width
         val h = size.height
 
-        // Gear 1: Center Main Gear (Clockwise)
         drawSmartGear(
             center = Offset(w * 0.46f, h * 0.56f),
             radius = 32.dp.toPx(),
@@ -601,7 +842,6 @@ fun SmartMechanicalGearsLoader(
             cutoutColor = cutoutColor,
         )
 
-        // Gear 2: Top-Right Gear (Counter-Clockwise, Meshed)
         drawSmartGear(
             center = Offset(w * 0.76f, h * 0.30f),
             radius = 22.dp.toPx(),
@@ -612,7 +852,6 @@ fun SmartMechanicalGearsLoader(
             cutoutColor = cutoutColor,
         )
 
-        // Gear 3: Bottom-Left Gear (Counter-Clockwise, Meshed)
         drawSmartGear(
             center = Offset(w * 0.20f, h * 0.34f),
             radius = 18.dp.toPx(),
@@ -653,10 +892,8 @@ private fun DrawScope.drawSmartGear(
     }
     path.close()
 
-    // 1. Solid Gear Body & Precision Teeth
     drawPath(path = path, color = gearColor)
 
-    // 2. Pitch Circle Accent Line
     drawCircle(
         color = accentColor.copy(alpha = 0.5f),
         radius = pitchRadius,
@@ -664,21 +901,18 @@ private fun DrawScope.drawSmartGear(
         style = Stroke(width = 1.5.dp.toPx()),
     )
 
-    // 3. Center Hole Cutout
     drawCircle(
         color = cutoutColor,
         radius = holeRadius,
         center = center,
     )
 
-    // 4. Center Axle Pin Dot
     drawCircle(
         color = gearColor,
         radius = holeRadius * 0.5f,
         center = center,
     )
 
-    // 5. 4 Circular Weight-Reduction Cutout Holes inside Gear Body
     val holeCount = 4
     val holeDistance = (innerRadius + holeRadius) / 2f
     val weightHoleRadius = (innerRadius - holeRadius) / 2.6f

@@ -14,10 +14,13 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
 
+    implementation("com.google.firebase:firebase-auth:23.2.0")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.google.play.services.auth)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)

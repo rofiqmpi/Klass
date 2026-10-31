@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.0"
 android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "37"
@@ -14,6 +14,9 @@ composeMultiplatform = "1.12.1"
 gitliveFirebase = "2.7.0"
 googleServices = "4.4.2"
 google-playServices-auth = "21.3.0"
+firebaseUiAuth = "10.0.0"
+firebaseBom = "33.9.0"
+coil = "3.6.3"
 junit = "4.13.2"
 kotlin = "2.4.20"
 kotlinx-datetime = "0.7.1"
@@ -46,6 +49,11 @@ gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", versio
 gitlive-firebase-storage = { module = "dev.gitlive:firebase-storage", version.ref = "gitliveFirebase" }
 gitlive-firebase-analytics = { module = "dev.gitlive:firebase-analytics", version.ref = "gitliveFirebase" }
 google-play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "google-playServices-auth" }
+firebaseUiAuth = { module = "com.firebaseui:firebase-ui-auth", version.ref = "firebaseUiAuth" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Klass</string>
+    <string name="facebook_application_id" translatable="false">0000000000000000</string>
+    <string name="facebook_login_protocol_scheme" translatable="false">fb0000000000000000</string>
 </resources>

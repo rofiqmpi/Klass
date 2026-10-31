@@ -132,6 +132,10 @@ fun WelcomeScreen(
     var showTermsDialog by remember { mutableStateOf(value = false) }
     var isRegistrationMode by remember { mutableStateOf(value = false) }
 
+    AppBackHandler(enabled = isRegistrationMode) {
+        isRegistrationMode = false
+    }
+
     val themeCardWidth by animateDpAsState(
         targetValue = if (isThemeExpanded) 135.dp else 36.dp,
         animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
@@ -438,78 +442,19 @@ fun WelcomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = buttonHorizontalPadding),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(animationSpec = tween(350)) + slideInVertically(animationSpec = tween(350)) { it / 2 },
+                            exit = fadeOut(animationSpec = tween(350)) + slideOutVertically(animationSpec = tween(350)) { it / 2 },
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            // Title with mode-adaptive shadow (White in Light mode, Black in Dark mode)
-                            Text(
-                                text = "নিবন্ধন করুন",
-                                style = TextStyle(
-                                    fontSize = 21.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = hindSiliguri,
-                                    color = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
-                                    textAlign = TextAlign.Center,
-                                    shadow = Shadow(
-                                        color = if (isDark) Color.Black else Color.White,
-                                        offset = Offset(0f, 0f),
-                                        blurRadius = 30f,
-                                    ),
-                                ),
-                            )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                RoleButton(
-                                    text = "এডমিন",
-                                    icon = Res.drawable.admin,
-                                    isDark = isDark,
-                                    fontFamily = hindSiliguri,
-                                    onClick = onAdminClick,
-                                )
-                                RoleButton(
-                                    text = "শিক্ষক",
-                                    icon = Res.drawable.teacher,
-                                    isDark = isDark,
-                                    fontFamily = hindSiliguri,
-                                    onClick = onTeacherClick,
-                                )
-                                RoleButton(
-                                    text = "শিক্ষার্থী",
-                                    icon = Res.drawable.student,
-                                    isDark = isDark,
-                                    fontFamily = hindSiliguri,
-                                    onClick = onStudentClick,
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Thin Line (cikon line)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(0.8.dp)
-                                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)),
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "আপনার অ্যাকাউন্টের ধরণ নির্বাচন\nকরে এগিয়ে যান",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                fontFamily = hindSiliguri,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                                textAlign = TextAlign.Center,
+                            RoleSelectionScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                buttonHorizontalPadding = buttonHorizontalPadding,
+                                onAdminClick = onAdminClick,
+                                onTeacherClick = onTeacherClick,
+                                onStudentClick = onStudentClick,
                             )
                         }
 
@@ -998,7 +943,7 @@ fun WelcomeScreen(
 }
 
 @Composable
-private fun RoleButton(
+internal fun RoleButton(
     text: String,
     icon: DrawableResource,
     isDark: Boolean,
