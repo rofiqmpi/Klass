@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -137,8 +138,8 @@ fun WelcomeScreen(
     val isCloseBtnPressed by closeBtnInteractionSource.collectIsPressedAsState()
 
     var isThemeExpanded by remember { mutableStateOf(value = false) }
+    var isLanguageExpanded by remember { mutableStateOf(value = false) }
     var showTermsDialog by remember { mutableStateOf(value = false) }
-    var showLanguageDialog by remember { mutableStateOf(value = false) }
     var isRegistrationMode by remember { mutableStateOf(value = false) }
 
     AppBackHandler(enabled = isRegistrationMode) {
@@ -154,16 +155,27 @@ fun WelcomeScreen(
         animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
     )
 
-    val buttonHorizontalPadding = 56.dp
+    val languageCardHeight by animateDpAsState(
+        targetValue = if (isLanguageExpanded) 140.dp else 48.dp,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+    )
+
+    val buttonHorizontalPadding = 36.dp
 
     // Corner shape for Theme Button / Card:
-    // When CLOSED: both right corners are FLAT (0.dp) to join the close button!
-    // When EXPANDED: top-right is FLAT (0.dp), bottom-right is ROUNDED (10.dp)
     val themeShape = RoundedCornerShape(
         topStart = 10.dp,
         bottomStart = 10.dp,
         topEnd = 0.dp,
         bottomEnd = if (isThemeExpanded) 10.dp else 0.dp,
+    )
+
+    // Corner shape for Language Button / Card (bottom edge fixed at button row, top edge expands upward):
+    val languageShape = RoundedCornerShape(
+        topStart = 12.dp,
+        topEnd = if (isLanguageExpanded) 12.dp else 0.dp,
+        bottomStart = 12.dp,
+        bottomEnd = 0.dp,
     )
 
     Box(
@@ -177,8 +189,8 @@ fun WelcomeScreen(
             contentScale = ContentScale.FillBounds,
         )
 
-        // Background Backdrop for collapsing theme menu, language or terms dialog when clicking outside
-        if (isThemeExpanded || showTermsDialog || showLanguageDialog) {
+        // Background Backdrop for collapsing theme or language menu or terms dialog when clicking outside
+        if (isThemeExpanded || showTermsDialog || isLanguageExpanded) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -186,7 +198,7 @@ fun WelcomeScreen(
                     .clickable {
                         isThemeExpanded = false
                         showTermsDialog = false
-                        showLanguageDialog = false
+                        isLanguageExpanded = false
                     },
             )
         }
@@ -243,7 +255,8 @@ fun WelcomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 0.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .zIndex(20f),
             contentAlignment = Alignment.BottomCenter,
         ) {
             AnimatedContent(
@@ -310,135 +323,283 @@ fun WelcomeScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(51.dp),
-                            contentAlignment = Alignment.TopCenter,
+                                .height(51.dp)
+                                .zIndex(25f),
+                            contentAlignment = Alignment.BottomStart,
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .offset(y = 3.dp)
-                                    .fillMaxWidth()
-                                    .height(48.dp),
-                                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp)
-                                        .clip(
-                                            RoundedCornerShape(
-                                                topStart = 12.dp,
-                                                bottomStart = 12.dp,
-                                                topEnd = 0.dp,
-                                                bottomEnd = 0.dp,
-                                            ),
-                                        )
-                                        .background(Color(0xFF94A3B8)),
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp)
-                                        .clip(
-                                            RoundedCornerShape(
-                                                topStart = 0.dp,
-                                                bottomStart = 0.dp,
-                                                topEnd = 12.dp,
-                                                bottomEnd = 12.dp,
-                                            ),
-                                        )
-                                        .background(Color(0xFF8E7864)),
-                                )
-                            }
-
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(51.dp),
                                 horizontalArrangement = Arrangement.spacedBy(1.dp),
-                                verticalAlignment = Alignment.Top,
+                                verticalAlignment = Alignment.Bottom,
                             ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        showLanguageDialog = true
-                                    },
-                                    interactionSource = languageInteractionSource,
+                                // Expanding 3D Language Card (Bottom edge strictly FIXED at bottom row, Top edge expands UPWARDS)
+                                Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(48.dp)
-                                        .offset(y = if (isLanguagePressed) 3.dp else 0.dp),
-                                    shape = RoundedCornerShape(
-                                        topStart = 12.dp,
-                                        bottomStart = 12.dp,
-                                        topEnd = 0.dp,
-                                        bottomEnd = 0.dp,
-                                    ),
-                                    border = BorderStroke(0.5.dp, Color(0xFF94A3B8)),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surface,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                    ),
+                                        .height(51.dp)
+                                        .zIndex(30f),
+                                    contentAlignment = Alignment.BottomStart,
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
+                                    // 3D Base Shape (Anchored at bottom, bottom edge at y=51dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .fillMaxWidth()
+                                            .requiredHeight(languageCardHeight + 3.dp)
+                                            .clip(languageShape)
+                                            .background(Color(0xFF94A3B8)),
+                                    )
+
+                                    // Foreground Animated 3D Surface Card (Anchored at bottom, bottom edge at y=48dp)
+                                    Surface(
+                                        onClick = {
+                                            if (!isLanguageExpanded) {
+                                                isThemeExpanded = false
+                                                showTermsDialog = false
+                                                isLanguageExpanded = true
+                                            } else {
+                                                isLanguageExpanded = false
+                                            }
+                                        },
+                                        interactionSource = languageInteractionSource,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(bottom = if (isLanguagePressed && !isLanguageExpanded) 0.dp else 3.dp)
+                                            .fillMaxWidth()
+                                            .requiredHeight(languageCardHeight),
+                                        shape = languageShape,
+                                        border = BorderStroke(0.5.dp, Color(0xFF94A3B8)),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shadowElevation = if (isLanguageExpanded) 8.dp else 0.dp,
                                     ) {
-                                        Icon(
-                                            imageVector = LanguageGlobeIcon,
-                                            contentDescription = "Language",
-                                            modifier = Modifier.size(18.dp),
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = AppStrings.languageBtn(currentLanguage),
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                        )
+                                        if (!isLanguageExpanded) {
+                                            // Closed state: Always says "ভাষা" / "Language"
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 6.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center,
+                                            ) {
+                                                Icon(
+                                                    imageVector = LanguageGlobeIcon,
+                                                    contentDescription = "Language",
+                                                    modifier = Modifier.size(17.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = if (currentLanguage == AppLanguage.BENGALI) "ভাষা" else "Language",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = hindSiliguri,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                )
+                                            }
+                                        } else {
+                                            // Expanded State (Theme popup styling with transparent unselected background)
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                                verticalArrangement = Arrangement.SpaceBetween,
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Icon(
+                                                        imageVector = LanguageGlobeIcon,
+                                                        contentDescription = "Language",
+                                                        modifier = Modifier.size(15.dp),
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(
+                                                        text = if (currentLanguage == AppLanguage.BENGALI) "ভাষা নির্বাচন" else "Select Language",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontFamily = hindSiliguri,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        maxLines = 1,
+                                                        softWrap = false,
+                                                    )
+                                                }
+
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                                ) {
+                                                    // Option 1: বাংলা
+                                                    val isBengali = currentLanguage == AppLanguage.BENGALI
+                                                    Surface(
+                                                        onClick = {
+                                                            onLanguageChange(AppLanguage.BENGALI)
+                                                            isLanguageExpanded = false
+                                                        },
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = if (isBengali) {
+                                                            MaterialTheme.colorScheme.primaryContainer
+                                                        } else {
+                                                            Color.Transparent
+                                                        },
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(34.dp),
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .fillMaxSize()
+                                                                .padding(horizontal = 8.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                        ) {
+                                                            Text(
+                                                                text = "বাংলা",
+                                                                fontSize = 13.5.sp,
+                                                                fontWeight = if (isBengali) FontWeight.Bold else FontWeight.Medium,
+                                                                fontFamily = hindSiliguri,
+                                                                color = if (isBengali) {
+                                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                                } else {
+                                                                    MaterialTheme.colorScheme.onSurface
+                                                                },
+                                                            )
+                                                            if (isBengali) {
+                                                                Text(
+                                                                    text = "✓",
+                                                                    fontSize = 13.5.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Option 2: English
+                                                    val isEnglish = currentLanguage == AppLanguage.ENGLISH
+                                                    Surface(
+                                                        onClick = {
+                                                            onLanguageChange(AppLanguage.ENGLISH)
+                                                            isLanguageExpanded = false
+                                                        },
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = if (isEnglish) {
+                                                            MaterialTheme.colorScheme.primaryContainer
+                                                        } else {
+                                                            Color.Transparent
+                                                        },
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(34.dp),
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .fillMaxSize()
+                                                                .padding(horizontal = 8.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                        ) {
+                                                            Text(
+                                                                text = "English",
+                                                                fontSize = 13.5.sp,
+                                                                fontWeight = if (isEnglish) FontWeight.Bold else FontWeight.Medium,
+                                                                fontFamily = hindSiliguri,
+                                                                color = if (isEnglish) {
+                                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                                } else {
+                                                                    MaterialTheme.colorScheme.onSurface
+                                                                },
+                                                            )
+                                                            if (isEnglish) {
+                                                                Text(
+                                                                    text = "✓",
+                                                                    fontSize = 13.5.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
-                                Button(
-                                    onClick = {
-                                        isRegistrationMode = true
-                                    },
-                                    interactionSource = startInteractionSource,
+                                // 3D Registration Button
+                                Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(48.dp)
-                                        .offset(y = if (isStartPressed) 3.dp else 0.dp),
-                                    shape = RoundedCornerShape(
-                                        topStart = 0.dp,
-                                        bottomStart = 0.dp,
-                                        topEnd = 12.dp,
-                                        bottomEnd = 12.dp,
-                                    ),
-                                    border = BorderStroke(0.5.dp, Color(0xFF8E7864)),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF8CB9D9),
-                                        contentColor = Color(0xFF1E293B),
-                                    ),
+                                        .height(51.dp),
+                                    contentAlignment = Alignment.TopCenter,
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
+                                    // 3D Shadow underneath
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(y = 3.dp)
+                                            .fillMaxWidth()
+                                            .height(48.dp)
+                                            .clip(
+                                                RoundedCornerShape(
+                                                    topStart = 0.dp,
+                                                    bottomStart = 0.dp,
+                                                    topEnd = 12.dp,
+                                                    bottomEnd = 12.dp,
+                                                ),
+                                            )
+                                            .background(Color(0xFF8E7864)),
+                                    )
+
+                                    // Foreground Button
+                                    Button(
+                                        onClick = {
+                                            isRegistrationMode = true
+                                        },
+                                        interactionSource = startInteractionSource,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp)
+                                            .offset(y = if (isStartPressed) 3.dp else 0.dp),
+                                        shape = RoundedCornerShape(
+                                            topStart = 0.dp,
+                                            bottomStart = 0.dp,
+                                            topEnd = 12.dp,
+                                            bottomEnd = 12.dp,
+                                        ),
+                                        border = BorderStroke(0.5.dp, Color(0xFF8E7864)),
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF8CB9D9),
+                                            contentColor = Color(0xFF1E293B),
+                                        ),
                                     ) {
-                                        Icon(
-                                            imageVector = RegistrationIcon,
-                                            contentDescription = "Registration",
-                                            modifier = Modifier.size(18.dp),
-                                            tint = Color(0xFF1E293B),
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = AppStrings.registrationBtn(currentLanguage),
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Icon(
+                                                imageVector = RegistrationIcon,
+                                                contentDescription = "Registration",
+                                                modifier = Modifier.size(17.dp),
+                                                tint = Color(0xFF1E293B),
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = AppStrings.registrationBtn(currentLanguage),
+                                                fontSize = if (currentLanguage == AppLanguage.ENGLISH) 13.sp else 14.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = hindSiliguri,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -977,173 +1138,6 @@ fun WelcomeScreen(
             }
         }
 
-        // Language Selection Center Modal Popup
-        if (showLanguageDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(100f)
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) { showLanguageDialog = false },
-                contentAlignment = Alignment.Center,
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .clip(RoundedCornerShape(20.dp)),
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp,
-                    shadowElevation = 8.dp,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                imageVector = LanguageGlobeIcon,
-                                contentDescription = "Language",
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = AppStrings.languageDialogTitle(currentLanguage),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Option 1: Bengali
-                        Surface(
-                            onClick = {
-                                onLanguageChange(AppLanguage.BENGALI)
-                                showLanguageDialog = false
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (currentLanguage == AppLanguage.BENGALI) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                            },
-                            border = BorderStroke(
-                                1.dp,
-                                if (currentLanguage == AppLanguage.BENGALI) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            ),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text = "বাংলা (Bengali)",
-                                    fontWeight = if (currentLanguage == AppLanguage.BENGALI) FontWeight.Bold else FontWeight.Medium,
-                                    fontFamily = hindSiliguri,
-                                    fontSize = 16.sp,
-                                    color = if (currentLanguage == AppLanguage.BENGALI) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                                if (currentLanguage == AppLanguage.BENGALI) {
-                                    Text(
-                                        text = "✓",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Option 2: English
-                        Surface(
-                            onClick = {
-                                onLanguageChange(AppLanguage.ENGLISH)
-                                showLanguageDialog = false
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (currentLanguage == AppLanguage.ENGLISH) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                            },
-                            border = BorderStroke(
-                                1.dp,
-                                if (currentLanguage == AppLanguage.ENGLISH) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            ),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text = "English",
-                                    fontWeight = if (currentLanguage == AppLanguage.ENGLISH) FontWeight.Bold else FontWeight.Medium,
-                                    fontFamily = hindSiliguri,
-                                    fontSize = 16.sp,
-                                    color = if (currentLanguage == AppLanguage.ENGLISH) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                                if (currentLanguage == AppLanguage.ENGLISH) {
-                                    Text(
-                                        text = "✓",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        TextButton(
-                            onClick = { showLanguageDialog = false },
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
-                            Text(
-                                text = AppStrings.cancel(currentLanguage),
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

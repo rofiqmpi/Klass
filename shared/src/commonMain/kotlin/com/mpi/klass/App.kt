@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -226,12 +227,13 @@ fun App(
     }
 
     AppTheme(themeMode = themeMode) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding(),
-            color = MaterialTheme.colorScheme.background,
-        ) {
+        CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding(),
+                color = MaterialTheme.colorScheme.background,
+            ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 AnimatedContent(
                     targetState = currentScreen,
@@ -355,6 +357,7 @@ fun App(
             }
         }
     }
+}
 }
 
 

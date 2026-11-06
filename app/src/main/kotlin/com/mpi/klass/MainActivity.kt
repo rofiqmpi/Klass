@@ -92,8 +92,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setBengaliLocale(this)
         initThemeContext(this)
+        applyAppLocale(this, loadAppLanguage())
         installSplashScreen()
         enableEdgeToEdge()
 
@@ -185,8 +185,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun setBengaliLocale(context: Context) {
-        val locale = Locale.forLanguageTag("bn-BD")
+    private fun applyAppLocale(context: Context, language: AppLanguage) {
+        val tag = if (language == AppLanguage.BENGALI) "bn-BD" else "en-US"
+        val locale = Locale.forLanguageTag(tag)
         Locale.setDefault(locale)
         val config = context.resources.configuration
         config.setLocale(locale)

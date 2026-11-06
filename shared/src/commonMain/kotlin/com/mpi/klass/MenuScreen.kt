@@ -51,7 +51,7 @@ fun MenuScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "মেনু অপশনসমূহ",
+                    text = "মেনু অপশনসমূহ".localized(),
                     fontSize = 18.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Bold,
@@ -59,7 +59,7 @@ fun MenuScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "এখানে আপনার প্রয়োজনীয় মেনু ও অপশনগুলো উপলব্ধ রয়েছে।",
+                    text = "এখানে আপনার প্রয়োজনীয় মেনু ও অপশনগুলো উপলব্ধ রয়েছে।".localized(),
                     fontSize = 13.sp,
                     fontFamily = hindSiliguri,
                     color = subTextColor,

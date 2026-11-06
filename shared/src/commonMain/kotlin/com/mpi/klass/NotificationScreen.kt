@@ -43,7 +43,7 @@ fun NotificationScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "কোনো নতুন নোটিফিকেশন নেই",
+            text = "কোনো নতুন নোটিফিকেশন নেই".localized(),
             fontSize = 14.sp,
             fontFamily = hindSiliguri,
             color = subTextColor,
