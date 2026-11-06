@@ -1,0 +1,6 @@
+{
+  "name": "Klass",
+  "description": "Educational platform app for classroom management, student profiles, and notices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
