@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -65,6 +64,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -347,7 +348,7 @@ fun WelcomeScreen(
                                         modifier = Modifier
                                             .align(Alignment.BottomStart)
                                             .fillMaxWidth()
-                                            .requiredHeight(languageCardHeight + 3.dp)
+                                            .expandUpwards(languageCardHeight)
                                             .clip(languageShape)
                                             .background(Color(0xFF94A3B8)),
                                     )
@@ -368,7 +369,7 @@ fun WelcomeScreen(
                                             .align(Alignment.BottomStart)
                                             .padding(bottom = if (isLanguagePressed && !isLanguageExpanded) 0.dp else 3.dp)
                                             .fillMaxWidth()
-                                            .requiredHeight(languageCardHeight),
+                                            .expandUpwards(languageCardHeight),
                                         shape = languageShape,
                                         border = BorderStroke(0.5.dp, Color(0xFF94A3B8)),
                                         color = MaterialTheme.colorScheme.surface,
@@ -421,7 +422,7 @@ fun WelcomeScreen(
                                                     )
                                                     Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
-                                                        text = if (currentLanguage == AppLanguage.BENGALI) "ভাষা নির্বাচন" else "Select Language",
+                                                        text = if (currentLanguage == AppLanguage.BENGALI) "ভাষা নির্বাচন করুন" else "Select Language",
                                                         fontSize = 12.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         fontFamily = hindSiliguri,
@@ -433,7 +434,7 @@ fun WelcomeScreen(
 
                                                 Column(
                                                     modifier = Modifier.fillMaxWidth(),
-                                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(15.dp),
                                                 ) {
                                                     // Option 1: বাংলা
                                                     val isBengali = currentLanguage == AppLanguage.BENGALI
@@ -1207,3 +1208,18 @@ private val DeepBowArchShape = GenericShape { size, _ ->
     )
     close()
 }
+
+private fun Modifier.expandUpwards(targetHeight: Dp): Modifier = this.layout { measurable, constraints ->
+    val heightPx = targetHeight.roundToPx()
+    val placeable = measurable.measure(
+        constraints.copy(
+            minHeight = heightPx,
+            maxHeight = heightPx,
+        ),
+    )
+    val layoutHeight = constraints.maxHeight
+    layout(placeable.width, layoutHeight) {
+        placeable.placeRelative(0, layoutHeight - placeable.height)
+    }
+}
+
