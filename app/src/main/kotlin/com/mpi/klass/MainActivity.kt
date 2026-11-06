@@ -41,19 +41,23 @@ class MainActivity : ComponentActivity() {
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account?.idToken
                 if (idToken != null) {
-                    val credential = GoogleAuthProvider.getCredential(idToken, null)
-                    FirebaseAuth.getInstance().signInWithCredential(credential)
-                        .addOnCompleteListener { authTask ->
-                            if (authTask.isSuccessful) {
-                                val user = FirebaseAuth.getInstance().currentUser
-                                val email = user?.email ?: account.email ?: "${user?.uid}@google.user"
-                                val name = user?.displayName ?: account.displayName ?: "Google User"
-                                val photoUrl = user?.photoUrl?.toString() ?: account.photoUrl?.toString()
-                                callback?.invoke(email, name, photoUrl, null)
-                            } else {
-                                handleFallbackSignIn(account, callback)
+                    try {
+                        val credential = GoogleAuthProvider.getCredential(idToken, null)
+                        FirebaseAuth.getInstance().signInWithCredential(credential)
+                            .addOnCompleteListener { authTask ->
+                                if (authTask.isSuccessful) {
+                                    val user = FirebaseAuth.getInstance().currentUser
+                                    val email = user?.email ?: account.email ?: "${user?.uid}@google.user"
+                                    val name = user?.displayName ?: account.displayName ?: "Google User"
+                                    val photoUrl = user?.photoUrl?.toString() ?: account.photoUrl?.toString()
+                                    callback?.invoke(email, name, photoUrl, null)
+                                } else {
+                                    handleFallbackSignIn(account, callback)
+                                }
                             }
-                        }
+                    } catch (_: Exception) {
+                        handleFallbackSignIn(account, callback)
+                    }
                 } else {
                     handleFallbackSignIn(account, callback)
                 }
@@ -73,12 +77,16 @@ class MainActivity : ComponentActivity() {
         val name = account?.displayName ?: "Google User"
         val photoUrl = account?.photoUrl?.toString()
 
-        val auth = FirebaseAuth.getInstance()
-        if (auth.currentUser == null) {
-            auth.signInAnonymously().addOnCompleteListener { _ ->
+        try {
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser == null) {
+                auth.signInAnonymously().addOnCompleteListener { _ ->
+                    callback?.invoke(email, name, photoUrl, null)
+                }
+            } else {
                 callback?.invoke(email, name, photoUrl, null)
             }
-        } else {
+        } catch (_: Exception) {
             callback?.invoke(email, name, photoUrl, null)
         }
     }
@@ -141,35 +149,39 @@ class MainActivity : ComponentActivity() {
         scopes: List<String>,
         callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit
     ) {
-        val provider = OAuthProvider.newBuilder(providerId)
-        provider.scopes = scopes
-        val auth = FirebaseAuth.getInstance()
+        try {
+            val provider = OAuthProvider.newBuilder(providerId)
+            provider.scopes = scopes
+            val auth = FirebaseAuth.getInstance()
 
-        val pendingResultTask = auth.pendingAuthResult
-        if (pendingResultTask != null) {
-            pendingResultTask
-                .addOnSuccessListener { authResult ->
-                    val user = authResult.user
-                    val email = user?.email ?: "user@$providerId"
-                    val name = user?.displayName ?: providerId.substringBefore(".").replaceFirstChar { it.uppercase() }
-                    val photoUrl = user?.photoUrl?.toString()
-                    callback(email, name, photoUrl, null)
-                }
-                .addOnFailureListener { e ->
-                    callback(null, null, null, e.localizedMessage ?: "$providerId সাইন-ইন ব্যর্থ হয়েছে")
-                }
-        } else {
-            auth.startActivityForSignInWithProvider(this, provider.build())
-                .addOnSuccessListener { authResult ->
-                    val user = authResult.user
-                    val email = user?.email ?: "user@$providerId"
-                    val name = user?.displayName ?: providerId.substringBefore(".").replaceFirstChar { it.uppercase() }
-                    val photoUrl = user?.photoUrl?.toString()
-                    callback(email, name, photoUrl, null)
-                }
-                .addOnFailureListener { e ->
-                    callback(null, null, null, e.localizedMessage ?: "$providerId সাইন-ইন ব্যর্থ হয়েছে")
-                }
+            val pendingResultTask = auth.pendingAuthResult
+            if (pendingResultTask != null) {
+                pendingResultTask
+                    .addOnSuccessListener { authResult ->
+                        val user = authResult.user
+                        val email = user?.email ?: "user@$providerId"
+                        val name = user?.displayName ?: providerId.substringBefore(".").replaceFirstChar { it.uppercase() }
+                        val photoUrl = user?.photoUrl?.toString()
+                        callback(email, name, photoUrl, null)
+                    }
+                    .addOnFailureListener { e ->
+                        callback(null, null, null, e.localizedMessage ?: "$providerId সাইন-ইন ব্যর্থ হয়েছে")
+                    }
+            } else {
+                auth.startActivityForSignInWithProvider(this, provider.build())
+                    .addOnSuccessListener { authResult ->
+                        val user = authResult.user
+                        val email = user?.email ?: "user@$providerId"
+                        val name = user?.displayName ?: providerId.substringBefore(".").replaceFirstChar { it.uppercase() }
+                        val photoUrl = user?.photoUrl?.toString()
+                        callback(email, name, photoUrl, null)
+                    }
+                    .addOnFailureListener { e ->
+                        callback(null, null, null, e.localizedMessage ?: "$providerId সাইন-ইন ব্যর্থ হয়েছে")
+                    }
+            }
+        } catch (e: Exception) {
+            callback(null, null, null, e.localizedMessage ?: "Firebase কনফিগারেশন অনুপস্থিত")
         }
     }
 

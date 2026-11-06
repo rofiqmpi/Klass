@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -73,8 +74,10 @@ import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.DarkModeIcon
+import com.mpi.klass.theme.LanguageGlobeIcon
 import com.mpi.klass.theme.LightModeIcon
 import com.mpi.klass.theme.PaletteIcon
+import com.mpi.klass.theme.RegistrationIcon
 import com.mpi.klass.theme.RightArrowIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
@@ -93,6 +96,8 @@ import org.jetbrains.compose.resources.painterResource
 fun WelcomeScreen(
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
+    currentLanguage: AppLanguage = AppLanguage.BENGALI,
+    onLanguageChange: (AppLanguage) -> Unit = {},
     onGuestClick: () -> Unit = {},
     onGoogleClick: () -> Unit = {},
     onFacebookClick: () -> Unit = {},
@@ -114,6 +119,9 @@ fun WelcomeScreen(
 
     val hindSiliguri = getHindSiliguriFontFamily()
 
+    val languageInteractionSource = remember { MutableInteractionSource() }
+    val isLanguagePressed by languageInteractionSource.collectIsPressedAsState()
+
     val guestInteractionSource = remember { MutableInteractionSource() }
     val isGuestPressed by guestInteractionSource.collectIsPressedAsState()
     val isGuestHovered by guestInteractionSource.collectIsHoveredAsState()
@@ -130,6 +138,7 @@ fun WelcomeScreen(
 
     var isThemeExpanded by remember { mutableStateOf(value = false) }
     var showTermsDialog by remember { mutableStateOf(value = false) }
+    var showLanguageDialog by remember { mutableStateOf(value = false) }
     var isRegistrationMode by remember { mutableStateOf(value = false) }
 
     AppBackHandler(enabled = isRegistrationMode) {
@@ -168,8 +177,8 @@ fun WelcomeScreen(
             contentScale = ContentScale.FillBounds,
         )
 
-        // Background Backdrop for collapsing theme menu or terms dialog when clicking outside
-        if (isThemeExpanded || showTermsDialog) {
+        // Background Backdrop for collapsing theme menu, language or terms dialog when clicking outside
+        if (isThemeExpanded || showTermsDialog || showLanguageDialog) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -177,6 +186,7 @@ fun WelcomeScreen(
                     .clickable {
                         isThemeExpanded = false
                         showTermsDialog = false
+                        showLanguageDialog = false
                     },
             )
         }
@@ -284,7 +294,7 @@ fun WelcomeScreen(
                     ) {
                         // Motivational Quote
                         Text(
-                            text = "ফোকাস মানে হলো হাজারটা ভালো আইডিয়াকে 'না' বলা। আর সেই একটা 'হ্যাঁ'-এর জন্য শেষ পর্যন্ত লড়ে যাওয়া।",
+                            text = AppStrings.quote(currentLanguage),
                             style = MaterialTheme.typography.bodyMedium,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraLight,
@@ -296,7 +306,7 @@ fun WelcomeScreen(
 
                         Spacer(modifier = Modifier.height(60.dp))
 
-                        // 3D Buttons Container
+                        // 3D Buttons Container (Language & Registration)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -349,12 +359,14 @@ fun WelcomeScreen(
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 OutlinedButton(
-                                    onClick = onGuestClick,
-                                    interactionSource = guestInteractionSource,
+                                    onClick = {
+                                        showLanguageDialog = true
+                                    },
+                                    interactionSource = languageInteractionSource,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(48.dp)
-                                        .offset(y = if (isGuestPressed) 3.dp else 0.dp),
+                                        .offset(y = if (isLanguagePressed) 3.dp else 0.dp),
                                     shape = RoundedCornerShape(
                                         topStart = 12.dp,
                                         bottomStart = 12.dp,
@@ -362,18 +374,30 @@ fun WelcomeScreen(
                                         bottomEnd = 0.dp,
                                     ),
                                     border = BorderStroke(0.5.dp, Color(0xFF94A3B8)),
-                                    contentPadding = PaddingValues(horizontal = 15.dp, vertical = 0.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surface,
                                         contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                                 ) {
-                                    Text(
-                                        text = "গেস্ট মোড",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = LanguageGlobeIcon,
+                                            contentDescription = "Language",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = AppStrings.languageBtn(currentLanguage),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = hindSiliguri,
+                                        )
+                                    }
                                 }
 
                                 Button(
@@ -398,12 +422,24 @@ fun WelcomeScreen(
                                         contentColor = Color(0xFF1E293B),
                                     ),
                                 ) {
-                                    Text(
-                                        text = "রেজিস্ট্রেশন",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = RegistrationIcon,
+                                            contentDescription = "Registration",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = Color(0xFF1E293B),
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = AppStrings.registrationBtn(currentLanguage),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = hindSiliguri,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -411,7 +447,7 @@ fun WelcomeScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
-                            text = "টার্মস অ্যান্ড কন্ডিশন",
+                            text = AppStrings.termsAndConditions(currentLanguage),
                             style = MaterialTheme.typography.labelMedium,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
@@ -452,6 +488,7 @@ fun WelcomeScreen(
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 buttonHorizontalPadding = buttonHorizontalPadding,
+                                currentLanguage = currentLanguage,
                                 onGoogleClick = onGoogleClick,
                                 onFacebookClick = onFacebookClick,
                                 onAppleClick = onAppleClick,
@@ -484,7 +521,7 @@ fun WelcomeScreen(
                             ) {
                                 Icon(
                                     imageVector = RightArrowIcon,
-                                    contentDescription = "গেস্ট মোড",
+                                    contentDescription = AppStrings.guestMode(currentLanguage),
                                     tint = guestContentColor,
                                     modifier = Modifier.size(16.dp),
                                 )
@@ -492,7 +529,7 @@ fun WelcomeScreen(
                                 Spacer(modifier = Modifier.height(2.dp))
 
                                 Text(
-                                    text = "গেস্ট মোড",
+                                    text = AppStrings.guestMode(currentLanguage),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Light,
                                     fontFamily = hindSiliguri,
@@ -934,6 +971,174 @@ fun WelcomeScreen(
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Language Selection Center Modal Popup
+        if (showLanguageDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(100f)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { showLanguageDialog = false },
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .clip(RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                imageVector = LanguageGlobeIcon,
+                                contentDescription = "Language",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = AppStrings.languageDialogTitle(currentLanguage),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = hindSiliguri,
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Option 1: Bengali
+                        Surface(
+                            onClick = {
+                                onLanguageChange(AppLanguage.BENGALI)
+                                showLanguageDialog = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (currentLanguage == AppLanguage.BENGALI) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            },
+                            border = BorderStroke(
+                                1.dp,
+                                if (currentLanguage == AppLanguage.BENGALI) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            ),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "বাংলা (Bengali)",
+                                    fontWeight = if (currentLanguage == AppLanguage.BENGALI) FontWeight.Bold else FontWeight.Medium,
+                                    fontFamily = hindSiliguri,
+                                    fontSize = 16.sp,
+                                    color = if (currentLanguage == AppLanguage.BENGALI) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                                if (currentLanguage == AppLanguage.BENGALI) {
+                                    Text(
+                                        text = "✓",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Option 2: English
+                        Surface(
+                            onClick = {
+                                onLanguageChange(AppLanguage.ENGLISH)
+                                showLanguageDialog = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (currentLanguage == AppLanguage.ENGLISH) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            },
+                            border = BorderStroke(
+                                1.dp,
+                                if (currentLanguage == AppLanguage.ENGLISH) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            ),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "English",
+                                    fontWeight = if (currentLanguage == AppLanguage.ENGLISH) FontWeight.Bold else FontWeight.Medium,
+                                    fontFamily = hindSiliguri,
+                                    fontSize = 16.sp,
+                                    color = if (currentLanguage == AppLanguage.ENGLISH) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                                if (currentLanguage == AppLanguage.ENGLISH) {
+                                    Text(
+                                        text = "✓",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        TextButton(
+                            onClick = { showLanguageDialog = false },
+                            modifier = Modifier.align(Alignment.End),
+                        ) {
+                            Text(
+                                text = AppStrings.cancel(currentLanguage),
+                                fontFamily = hindSiliguri,
+                                fontWeight = FontWeight.SemiBold,
+                            )
                         }
                     }
                 }

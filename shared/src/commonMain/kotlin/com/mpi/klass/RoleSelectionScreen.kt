@@ -31,6 +31,7 @@ fun RoleSelectionScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     buttonHorizontalPadding: androidx.compose.ui.unit.Dp,
+    currentLanguage: AppLanguage = AppLanguage.BENGALI,
     onGoogleClick: () -> Unit,
     onFacebookClick: () -> Unit,
     onAppleClick: () -> Unit,
@@ -46,7 +47,7 @@ fun RoleSelectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "সাইন ইন করুন",
+                text = AppStrings.signInTitle(currentLanguage),
                 style = TextStyle(
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold,
@@ -102,7 +103,7 @@ fun RoleSelectionScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Google, Facebook বা Apple অ্যাকাউন্ট\nব্যবহার করে সাইন ইন করুন",
+                text = AppStrings.signInSubtitle(currentLanguage),
                 style = MaterialTheme.typography.bodySmall,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,

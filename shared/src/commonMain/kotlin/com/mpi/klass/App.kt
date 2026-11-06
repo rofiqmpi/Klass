@@ -113,6 +113,7 @@ fun App(
     isBackendConfigured: Boolean = true,
 ) {
     var themeMode by remember { mutableStateOf(loadThemeMode()) }
+    var appLanguage by remember { mutableStateOf(loadAppLanguage()) }
     val systemInDark = isSystemInDarkTheme()
     val isDark = when (themeMode) {
         ThemeMode.LIGHT -> false
@@ -247,6 +248,11 @@ fun App(
                                 onThemeModeChange = { newMode ->
                                     themeMode = newMode
                                     saveThemeMode(newMode)
+                                },
+                                currentLanguage = appLanguage,
+                                onLanguageChange = { newLang ->
+                                    appLanguage = newLang
+                                    saveAppLanguage(newLang)
                                 },
                                 onGuestClick = { launchGuestMode() },
                                 onGoogleClick = { launchProviderSignIn("google") },

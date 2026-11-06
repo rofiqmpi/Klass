@@ -865,3 +865,72 @@ val AppleIcon: ImageVector
             close()
         }
     }.build()
+
+val LanguageGlobeIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "LanguageGlobe",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 2f)
+            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
+            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
+            close()
+
+            moveTo(2f, 12f)
+            horizontalLineTo(22f)
+
+            moveTo(12f, 2f)
+            curveTo(8.5f, 5.5f, 6.5f, 8.5f, 6.5f, 12f)
+            curveTo(6.5f, 15.5f, 8.5f, 18.5f, 12f, 22f)
+
+            moveTo(12f, 2f)
+            curveTo(15.5f, 5.5f, 17.5f, 8.5f, 17.5f, 12f)
+            curveTo(17.5f, 15.5f, 15.5f, 18.5f, 12f, 22f)
+        }
+    }.build()
+
+val RegistrationIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Registration",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(9f, 12f)
+            curveTo(11.21f, 12f, 13f, 10.21f, 13f, 8f)
+            curveTo(13f, 5.79f, 11.21f, 4f, 9f, 4f)
+            curveTo(6.79f, 4f, 5f, 5.79f, 5f, 8f)
+            curveTo(5f, 10.21f, 6.79f, 12f, 9f, 12f)
+            close()
+
+            moveTo(17f, 20f)
+            verticalLineTo(18.5f)
+            curveTo(17f, 16.5f, 14.5f, 15f, 9f, 15f)
+            curveTo(3.5f, 15f, 1f, 16.5f, 1f, 18.5f)
+            verticalLineTo(20f)
+
+            moveTo(20f, 8f)
+            verticalLineTo(14f)
+
+            moveTo(17f, 11f)
+            horizontalLineTo(23f)
+        }
+    }.build()
