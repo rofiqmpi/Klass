@@ -22,19 +22,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import klass.shared.generated.resources.Res
-import klass.shared.generated.resources.admin
-import klass.shared.generated.resources.student
-import klass.shared.generated.resources.teacher
+import com.mpi.klass.theme.AppleIcon
+import com.mpi.klass.theme.FacebookIcon
+import com.mpi.klass.theme.GoogleIcon
 
 @Composable
 fun RoleSelectionScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     buttonHorizontalPadding: androidx.compose.ui.unit.Dp,
-    onAdminClick: () -> Unit,
-    onTeacherClick: () -> Unit,
-    onStudentClick: () -> Unit,
+    onGoogleClick: () -> Unit,
+    onFacebookClick: () -> Unit,
+    onAppleClick: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -47,7 +46,7 @@ fun RoleSelectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "নিবন্ধন করুন",
+                text = "সাইন ইন করুন",
                 style = TextStyle(
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold,
@@ -69,25 +68,25 @@ fun RoleSelectionScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 RoleButton(
-                    text = "এডমিন",
-                    icon = Res.drawable.admin,
+                    text = "Google",
+                    icon = GoogleIcon,
                     isDark = isDark,
                     fontFamily = hindSiliguri,
-                    onClick = onAdminClick,
+                    onClick = onGoogleClick,
                 )
                 RoleButton(
-                    text = "শিক্ষক",
-                    icon = Res.drawable.teacher,
+                    text = "Facebook",
+                    icon = FacebookIcon,
                     isDark = isDark,
                     fontFamily = hindSiliguri,
-                    onClick = onTeacherClick,
+                    onClick = onFacebookClick,
                 )
                 RoleButton(
-                    text = "শিক্ষার্থী",
-                    icon = Res.drawable.student,
+                    text = "Apple",
+                    icon = AppleIcon,
                     isDark = isDark,
                     fontFamily = hindSiliguri,
-                    onClick = onStudentClick,
+                    onClick = onAppleClick,
                 )
             }
 
@@ -103,7 +102,7 @@ fun RoleSelectionScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "আপনার অ্যাকাউন্টের ধরণ নির্বাচন\nকরে এগিয়ে যান",
+                text = "Google, Facebook বা Apple অ্যাকাউন্ট\nব্যবহার করে সাইন ইন করুন",
                 style = MaterialTheme.typography.bodySmall,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,

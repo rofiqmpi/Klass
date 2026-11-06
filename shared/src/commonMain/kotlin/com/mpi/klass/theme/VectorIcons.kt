@@ -770,3 +770,98 @@ val ToggleOffIcon: ImageVector
             close()
         }
     }.build()
+
+val GoogleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Google",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            pathFillType = PathFillType.NonZero,
+        ) {
+            moveTo(12f, 2f)
+            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
+            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+            curveTo(22f, 11.3f, 21.93f, 10.63f, 21.8f, 10f)
+            horizontalLineTo(12f)
+            verticalLineTo(14f)
+            horizontalLineTo(17.65f)
+            curveTo(17.39f, 15.35f, 16.35f, 18f, 12f, 18f)
+            curveTo(8.69f, 18f, 6f, 15.31f, 6f, 12f)
+            curveTo(6f, 8.69f, 8.69f, 6f, 12f, 6f)
+            curveTo(13.66f, 6f, 15.14f, 6.62f, 16.24f, 7.64f)
+            lineTo(19.07f, 4.81f)
+            curveTo(17.38f, 3.25f, 15.11f, 2f, 12f, 2f)
+            close()
+        }
+    }.build()
+
+val FacebookIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Facebook",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(24f, 12.073f)
+            curveTo(24f, 5.405f, 18.627f, 0f, 12f, 0f)
+            curveTo(5.373f, 0f, 0f, 5.405f, 0f, 12.073f)
+            curveTo(0f, 18.1f, 4.388f, 23.094f, 10.125f, 24f)
+            verticalLineTo(15.563f)
+            horizontalLineTo(7.078f)
+            verticalLineTo(12.073f)
+            horizontalLineTo(10.125f)
+            verticalLineTo(9.413f)
+            curveTo(10.125f, 6.405f, 11.916f, 4.723f, 14.656f, 4.723f)
+            curveTo(15.969f, 4.723f, 17.344f, 4.955f, 17.344f, 4.955f)
+            verticalLineTo(7.93f)
+            horizontalLineTo(15.83f)
+            curveTo(14.34f, 7.93f, 13.875f, 8.853f, 13.875f, 9.795f)
+            verticalLineTo(12.073f)
+            horizontalLineTo(17.203f)
+            lineTo(16.671f, 15.563f)
+            horizontalLineTo(13.875f)
+            verticalLineTo(24f)
+            curveTo(19.612f, 23.094f, 24f, 18.1f, 24f, 12.073f)
+            close()
+        }
+    }.build()
+
+val AppleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Apple",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(18.71f, 19.5f)
+            curveTo(17.88f, 20.74f, 17f, 21.95f, 15.66f, 21.97f)
+            curveTo(14.32f, 22f, 13.89f, 21.18f, 12.37f, 21.18f)
+            curveTo(10.85f, 21.18f, 10.37f, 21.95f, 9.1f, 22.03f)
+            curveTo(7.77f, 22.1f, 6.8f, 20.73f, 5.96f, 19.5f)
+            curveTo(4.25f, 17f, 2.94f, 12.45f, 4.7f, 9.39f)
+            curveTo(5.57f, 7.87f, 7.13f, 6.91f, 8.82f, 6.88f)
+            curveTo(10.1f, 6.86f, 11.32f, 7.75f, 12.11f, 7.75f)
+            curveTo(12.9f, 7.75f, 14.35f, 6.64f, 15.88f, 6.81f)
+            curveTo(16.52f, 6.84f, 18.3f, 7.08f, 19.45f, 8.76f)
+            curveTo(19.36f, 8.82f, 17.3f, 10.05f, 17.33f, 12.5f)
+            curveTo(17.36f, 15.35f, 19.82f, 16.32f, 19.85f, 16.34f)
+            curveTo(19.83f, 16.4f, 19.46f, 17.7f, 18.71f, 19.5f)
+            close()
+            moveTo(15.13f, 4.88f)
+            curveTo(15.82f, 4.04f, 16.28f, 2.87f, 16.15f, 1.7f)
+            curveTo(15.12f, 1.74f, 13.84f, 2.39f, 13.14f, 3.23f)
+            curveTo(12.51f, 3.99f, 11.97f, 5.18f, 12.12f, 6.34f)
+            curveTo(13.27f, 6.43f, 14.44f, 5.72f, 15.13f, 4.88f)
+            close()
+        }
+    }.build()

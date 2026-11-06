@@ -72,6 +72,7 @@ import com.mpi.klass.theme.PenIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.StarIcon
 import com.mpi.klass.theme.ThemeMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private data class OrbitIcons(
@@ -120,6 +121,7 @@ fun ProfileScreen(
     email: String = "",
     photoUrl: String? = null,
     onUpdateProfile: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
+    onCategoryChanged: ((UserRole) -> Unit)? = null,
 ) {
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -138,6 +140,10 @@ fun ProfileScreen(
     // Student profile state
     var studentProfile by remember { mutableStateOf<StudentProfile?>(null) }
     var isLoadingStudentProfile by remember { mutableStateOf(false) }
+
+    // Student profile setup timer (5 minutes to complete setup)
+    var setupRemainingSeconds by remember { mutableStateOf(300) }
+    var setupTimerExpired by remember { mutableStateOf(false) }
 
     // Student profile setup form state (inline on profile screen)
     var setupSemester by remember { mutableStateOf("") }
@@ -172,6 +178,29 @@ fun ProfileScreen(
                 setupRollNumber = prof.rollNumber
             }
             isLoadingStudentProfile = false
+        }
+    }
+
+    // 5-minute countdown for incomplete student profile setup
+    LaunchedEffect(Unit) {
+        if (role != UserRole.STUDENT) return@LaunchedEffect
+        val prof = studentProfile
+        val isComplete = prof != null && prof.profileSetupComplete
+        if (isComplete || setupTimerExpired) return@LaunchedEffect
+
+        var remaining = setupRemainingSeconds
+        while (remaining > 0 && !setupTimerExpired) {
+            delay(1000L)
+            remaining--
+            setupRemainingSeconds = remaining
+        }
+        if (!setupTimerExpired) {
+            setupTimerExpired = true
+            coroutineScope.launch {
+                RoleConfig.deleteStudentSignInData(cleanEmail)
+                clearUserSession()
+                onSignOut()
+            }
         }
     }
 
@@ -389,6 +418,70 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Category Selection Card (Profile Category Selection)
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = cardBg,
+            border = BorderStroke(1.dp, roleColor.copy(alpha = 0.35f)),
+            shadowElevation = 3.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "অ্যাকাউন্টের ক্যাটাগরি নির্বাচন করুন",
+                    fontSize = 14.5.sp,
+                    fontFamily = hindSiliguri,
+                    fontWeight = FontWeight.Bold,
+                    color = roleColor,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val categories = listOf(
+                        UserRole.STUDENT to "শিক্ষার্থী",
+                        UserRole.TEACHER to "শিক্ষক",
+                        UserRole.ADMIN to "এডমিন",
+                    )
+                    categories.forEach { (catRole, catLabel) ->
+                        val isSelected = role == catRole
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    RoleConfig.updateUserCategory(cleanEmail, catRole.name)
+                                    onCategoryChanged?.invoke(catRole)
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) roleColor else if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9),
+                                contentColor = if (isSelected) Color.White else textColor,
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text(
+                                text = catLabel,
+                                fontSize = 13.sp,
+                                fontFamily = hindSiliguri,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // Edit Profile Action Card
         Surface(
             onClick = { showEditDialog = true },
@@ -490,6 +583,29 @@ fun ProfileScreen(
                         }
                     }
 
+                    // Countdown timer warning for incomplete setup
+                    if (!isSetupComplete && !setupTimerExpired && !isStudentEditing) {
+                        val timerMinutes = setupRemainingSeconds / 60
+                        val timerSecs = setupRemainingSeconds % 60
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFFF3CD),
+                            border = BorderStroke(1.dp, Color(0xFFFFD600).copy(alpha = 0.5f)),
+                        ) {
+                            Text(
+                                text = "⚠️ প্রোফাইল সেটআপের বাকি সময়: ${timerMinutes}:${timerSecs.toString().padStart(2, '0')}\nসময় শেষ হলে আপনার সমস্ত তথ্য ডাটাবেস থেকে মুছে যাবে।",
+                                fontSize = 12.5.sp,
+                                fontFamily = hindSiliguri,
+                                color = Color(0xFF856404),
+                                modifier = Modifier.padding(12.dp),
+                                lineHeight = 18.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (!isSetupComplete || isStudentEditing) {
@@ -555,12 +671,13 @@ fun ProfileScreen(
                                         if (res.isSuccess) {
                                             studentProfile = newProfile
                                             isStudentEditing = false
+                                            setupTimerExpired = true // stop the countdown timer
                                         } else {
                                             studentProfileError = "সংরক্ষণ করা যায়নি। পুনরায় চেষ্টা করুন।"
                                         }
                                     }
                                 },
-                                enabled = !isSavingStudentProfile,
+                                enabled = !isSavingStudentProfile && !setupTimerExpired,
                                 modifier = Modifier.fillMaxWidth().height(46.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
@@ -946,59 +1063,7 @@ fun ProfileScreen(
         }
     }
 
-    // Admin Requests Full-Screen Modal Dialog
-    if (showAdminRequestsDialog) {
-        Dialog(
-            onDismissRequest = { showAdminRequestsDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().height(64.dp),
-                        color = cardBg,
-                        shadowElevation = 4.dp,
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { showAdminRequestsDialog = false }) {
-                                    Icon(
-                                        imageVector = CloseIcon,
-                                        contentDescription = "বন্ধ করুন",
-                                        tint = textColor,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "অনুরোধ পর্যালোচনা",
-                                    fontSize = 18.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                )
-                            }
-                        }
-                    }
 
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        AdminRequestScreen(
-                            adminEmail = cleanEmail,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    }
-                }
-            }
-        }
-    }
 
     // Full-Screen Edit Profile Dialog
     if (showEditDialog) {

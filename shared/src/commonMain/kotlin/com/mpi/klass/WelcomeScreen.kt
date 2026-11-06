@@ -94,9 +94,9 @@ fun WelcomeScreen(
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
     onGuestClick: () -> Unit = {},
-    onAdminClick: () -> Unit = {},
-    onTeacherClick: () -> Unit = {},
-    onStudentClick: () -> Unit = {},
+    onGoogleClick: () -> Unit = {},
+    onFacebookClick: () -> Unit = {},
+    onAppleClick: () -> Unit = {},
     onCloseApp: () -> Unit = {},
 ) {
     val systemInDark = isSystemInDarkTheme()
@@ -452,9 +452,9 @@ fun WelcomeScreen(
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 buttonHorizontalPadding = buttonHorizontalPadding,
-                                onAdminClick = onAdminClick,
-                                onTeacherClick = onTeacherClick,
-                                onStudentClick = onStudentClick,
+                                onGoogleClick = onGoogleClick,
+                                onFacebookClick = onFacebookClick,
+                                onAppleClick = onAppleClick,
                             )
                         }
 
@@ -945,7 +945,7 @@ fun WelcomeScreen(
 @Composable
 internal fun RoleButton(
     text: String,
-    icon: DrawableResource,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     isDark: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     onClick: () -> Unit,
@@ -974,11 +974,11 @@ internal fun RoleButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            Image(
-                painter = painterResource(icon),
+            Icon(
+                imageVector = icon,
                 contentDescription = text,
                 modifier = Modifier.size(24.dp),
-                contentScale = ContentScale.Fit,
+                tint = textColor,
             )
 
             Spacer(modifier = Modifier.width(10.dp))

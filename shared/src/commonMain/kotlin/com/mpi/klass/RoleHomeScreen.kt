@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +60,7 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun RoleHomeScreen(
-    role: UserRole,
+    role: UserRole = UserRole.STUDENT,
     userName: String,
     photoUrl: String? = null,
     email: String = "",
@@ -69,9 +70,22 @@ fun RoleHomeScreen(
     onCloseApp: () -> Unit = {},
     onBackToWelcome: () -> Unit = {},
     onProfileUpdated: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
+    initialTab: String = "home",
 ) {
     var currentUserName by remember(userName) { mutableStateOf(userName) }
     var currentPhotoUrl by remember(photoUrl) { mutableStateOf(photoUrl) }
+    var currentRole by remember(role) { mutableStateOf(role) }
+
+    LaunchedEffect(email) {
+        if (email.isNotBlank()) {
+            val prof = RoleConfig.fetchUserProfile(email)
+            if (prof != null) {
+                UserRole.fromRaw(prof.category)?.let {
+                    currentRole = it
+                }
+            }
+        }
+    }
 
     val systemInDark = isSystemInDarkTheme()
     val isDark = when (currentThemeMode) {
@@ -81,7 +95,7 @@ fun RoleHomeScreen(
     }
 
     val hindSiliguri = getHindSiliguriFontFamily()
-    var selectedTab by remember { mutableStateOf("home") }
+    var selectedTab by remember { mutableStateOf(initialTab) }
 
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -376,7 +390,7 @@ fun RoleHomeScreen(
                         "profile" -> {
                             ProfileScreen(
                                 userName = currentUserName,
-                                role = role,
+                                role = currentRole,
                                 isDark = isDark,
                                 currentThemeMode = currentThemeMode,
                                 onThemeModeChange = onThemeModeChange,
@@ -391,7 +405,7 @@ fun RoleHomeScreen(
                                     if (sessionEmail.isNotBlank()) {
                                         saveUserSession(
                                             UserSession(
-                                                role = role.name,
+                                                role = currentRole.name,
                                                 email = sessionEmail,
                                                 name = newName,
                                                 photoUrl = newPhotoUrl,
@@ -399,6 +413,20 @@ fun RoleHomeScreen(
                                         )
                                     }
                                     onProfileUpdated?.invoke(newName, newPhotoUrl)
+                                },
+                                onCategoryChanged = { newRole ->
+                                    currentRole = newRole
+                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
+                                    if (sessionEmail.isNotBlank()) {
+                                        saveUserSession(
+                                            UserSession(
+                                                role = newRole.name,
+                                                email = sessionEmail,
+                                                name = currentUserName,
+                                                photoUrl = currentPhotoUrl,
+                                            )
+                                        )
+                                    }
                                 },
                             )
                         }

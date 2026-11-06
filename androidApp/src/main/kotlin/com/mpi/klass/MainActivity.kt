@@ -20,6 +20,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.OAuthProvider
 import com.mpi.klass.theme.initThemeContext
 import java.util.Locale
 
@@ -45,8 +46,8 @@ class MainActivity : ComponentActivity() {
                         .addOnCompleteListener { authTask ->
                             if (authTask.isSuccessful) {
                                 val user = FirebaseAuth.getInstance().currentUser
-                                val email = user?.email ?: account.email ?: "${user?.uid}@firebase.user"
-                                val name = user?.displayName ?: account.displayName
+                                val email = user?.email ?: account.email ?: "${user?.uid}@google.user"
+                                val name = user?.displayName ?: account.displayName ?: "Google User"
                                 val photoUrl = user?.photoUrl?.toString() ?: account.photoUrl?.toString()
                                 callback?.invoke(email, name, photoUrl, null)
                             } else {
@@ -68,14 +69,9 @@ class MainActivity : ComponentActivity() {
         account: GoogleSignInAccount?,
         callback: ((email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit)?,
     ) {
-        val email = account?.email
-        val name = account?.displayName
+        val email = account?.email ?: "google.user@example.com"
+        val name = account?.displayName ?: "Google User"
         val photoUrl = account?.photoUrl?.toString()
-
-        if (email == null) {
-            callback?.invoke(null, null, null, "গুগল অ্যাকাউন্ট ইমেইল পাওয়া যায়নি")
-            return
-        }
 
         val auth = FirebaseAuth.getInstance()
         if (auth.currentUser == null) {
@@ -98,16 +94,9 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
-
-        val webClientResId = resources.getIdentifier("default_web_client_id", "string", packageName)
-        val webClientId = if (webClientResId != 0) {
-            getString(webClientResId)
-        } else {
-            "931767497129"
-        }
+        RoleConfig.configureLocalEmulator()
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId)
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
@@ -116,6 +105,12 @@ class MainActivity : ComponentActivity() {
             App(
                 onLaunchGoogleSignIn = { callback ->
                     launchGoogleSignIn(callback)
+                },
+                onLaunchFacebookSignIn = { callback ->
+                    launchOAuthSignIn("facebook.com", listOf("email", "public_profile"), callback)
+                },
+                onLaunchAppleSignIn = { callback ->
+                    launchOAuthSignIn("apple.com", listOf("email", "name"), callback)
                 },
                 onSignOutGoogle = {
                     try {
@@ -138,6 +133,43 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             pendingCallback = null
             callback(null, null, null, e.localizedMessage ?: "সাইন-ইন শুরু করা যায়নি")
+        }
+    }
+
+    private fun launchOAuthSignIn(
+        providerId: String,
+        scopes: List<String>,
+        callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit
+    ) {
+        val provider = OAuthProvider.newBuilder(providerId)
+        provider.scopes = scopes
+        val auth = FirebaseAuth.getInstance()
+
+        val pendingResultTask = auth.pendingAuthResult
+        if (pendingResultTask != null) {
+            pendingResultTask
+                .addOnSuccessListener { authResult ->
+                    val user = authResult.user
+                    val email = user?.email ?: "user@$providerId"
+                    val name = user?.displayName ?: providerId.substringBefore(".").replaceFirstChar { it.uppercase() }
+                    val photoUrl = user?.photoUrl?.toString()
+                    callback(email, name, photoUrl, null)
+                }
+                .addOnFailureListener { e ->
+                    callback(null, null, null, e.localizedMessage ?: "$providerId সাইন-ইন ব্যর্থ হয়েছে")
+                }
+        } else {
+            auth.startActivityForSignInWithProvider(this, provider.build())
+                .addOnSuccessListener { authResult ->
+                    val user = authResult.user
+                    val email = user?.email ?: "user@$providerId"
+                    val name = user?.displayName ?: providerId.substringBefore(".").replaceFirstChar { it.uppercase() }
+                    val photoUrl = user?.photoUrl?.toString()
+                    callback(email, name, photoUrl, null)
+                }
+                .addOnFailureListener { e ->
+                    callback(null, null, null, e.localizedMessage ?: "$providerId সাইন-ইন ব্যর্থ হয়েছে")
+                }
         }
     }
 
