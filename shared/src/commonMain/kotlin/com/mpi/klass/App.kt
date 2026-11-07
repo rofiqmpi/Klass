@@ -83,6 +83,7 @@ sealed interface AppScreen {
     data object Welcome : AppScreen
     data object GuestHome : AppScreen
     data class RoleHome(
+        val role: UserRole = UserRole.ADMIN,
         val email: String,
         val name: String,
         val photoUrl: String? = null,
@@ -96,6 +97,7 @@ enum class ErrorImageType {
     GENERAL_ERROR,   // timeouterror.webp (Auth failure, wrong email, timeout, or server error)
     CONFIGURATION_ERROR,
     SIGN_IN_DISABLED,  // Sign-in is disabled by admin
+    ADMIN_NOT_AUTHORIZED,
 }
 
 private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exceptionMessage) {
@@ -107,8 +109,6 @@ private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exce
 @Composable
 fun App(
     onLaunchGoogleSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
-    onLaunchFacebookSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
-    onLaunchAppleSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
     onLaunchEmailSignIn: (email: String, password: String, callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = { _, _, _ -> },
     onSignOutGoogle: () -> Unit = {},
     onCloseApp: () -> Unit = {},
@@ -131,7 +131,12 @@ fun App(
                     session == null -> AppScreen.Welcome
                     session.role.trim().uppercase() == "GUEST" -> AppScreen.GuestHome
                     else -> {
-                        AppScreen.RoleHome(email = session.email, name = session.name, photoUrl = session.photoUrl)
+                        AppScreen.RoleHome(
+                            role = UserRole.fromRaw(session.role) ?: UserRole.STUDENT,
+                            email = session.email,
+                            name = session.name,
+                            photoUrl = session.photoUrl,
+                        )
                     }
                 }
             } catch (_: Exception) {
@@ -155,34 +160,19 @@ fun App(
     LaunchedEffect(Unit) {
         val session = loadUserSession() ?: return@LaunchedEffect
         if (session.role.trim().uppercase() == "GUEST") return@LaunchedEffect
-
         try {
-            val profile = RoleConfig.fetchUserProfile(session.email)
-            if (profile == null && isNetworkAvailable()) {
+            val isAdmin = session.role.trim().uppercase() == UserRole.ADMIN.name
+            val isAuthorized = !isAdmin || RoleConfig.isAuthorizedAdminEmail(session.email)
+            if (!isAuthorized && isNetworkAvailable()) {
                 clearUserSession()
                 currentScreen = AppScreen.Welcome
             }
         } catch (_: Exception) {}
     }
 
-    fun launchGuestMode() {
+    fun launchAdminGoogleSignIn() {
         isLoadingOverlay = true
-        coroutineScope.launch {
-            saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
-            currentScreen = AppScreen.GuestHome
-            isLoadingOverlay = false
-        }
-    }
-
-    fun launchProviderSignIn(provider: String) {
-        isLoadingOverlay = true
-        val launcher = when (provider) {
-            "facebook" -> onLaunchFacebookSignIn
-            "apple" -> onLaunchAppleSignIn
-            else -> onLaunchGoogleSignIn
-        }
-
-        launcher { email, name, photoUrl, errorMsg ->
+        onLaunchGoogleSignIn { email, name, photoUrl, errorMsg ->
             when {
                 errorMsg != null -> {
                     isLoadingOverlay = false
@@ -191,21 +181,31 @@ fun App(
                 }
 
                 email != null -> {
-                    isLoadingOverlay = true
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
-                        val userName = name ?: provider.replaceFirstChar { it.uppercase() }
-                        val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
-                        val category = existingProfile?.category?.ifBlank { "STUDENT" } ?: "STUDENT"
-                        RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, provider, category)
-                        saveUserSession(UserSession(role = provider, email = cleanEmail, name = userName, photoUrl = photoUrl))
-                        currentScreen = AppScreen.RoleHome(
-                            email = cleanEmail,
-                            name = userName,
-                            photoUrl = photoUrl,
-                            initialTab = "home",
-                        )
-                        isLoadingOverlay = false
+                        if (!RoleConfig.isAuthorizedAdminEmail(cleanEmail)) {
+                            isLoadingOverlay = false
+                            onSignOutGoogle()
+                            showError(ErrorImageType.ADMIN_NOT_AUTHORIZED)
+                        } else {
+                            val userName = name ?: cleanEmail.substringBefore("@")
+                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", "ADMIN")
+                            if (RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl).isSuccess) {
+                                saveUserSession(UserSession(role = "ADMIN", email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                currentScreen = AppScreen.RoleHome(
+                                    role = UserRole.ADMIN,
+                                    email = cleanEmail,
+                                    name = userName,
+                                    photoUrl = photoUrl,
+                                )
+                                isLoadingOverlay = false
+                            } else {
+                                isLoadingOverlay = false
+                                onSignOutGoogle()
+                                showError(ErrorImageType.GENERAL_ERROR)
+                            }
+                            }
+                        }
                     }
                 }
 
@@ -214,32 +214,55 @@ fun App(
                 }
             }
         }
-    }
 
-    fun launchEmailPasswordSignIn(emailInput: String, passwordInput: String) {
-        if (emailInput.isBlank() || passwordInput.isBlank()) {
-            showError(ErrorImageType.GENERAL_ERROR)
-            return
+        fun launchGuestMode() {
+            isLoadingOverlay = true
+            coroutineScope.launch {
+                saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
+                currentScreen = AppScreen.GuestHome
+                isLoadingOverlay = false
+            }
         }
-        isLoadingOverlay = true
-        val cleanEmail = emailInput.trim().lowercase()
-        coroutineScope.launch {
-            try {
-                val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
-                val userName = existingProfile?.name?.ifBlank { null } ?: cleanEmail.substringBefore("@")
-                val category = existingProfile?.category?.ifBlank { "STUDENT" } ?: "STUDENT"
-                RoleConfig.saveUserProfile(cleanEmail, userName, null, "email", category)
-                saveUserSession(UserSession(role = "email", email = cleanEmail, name = userName, photoUrl = null))
-                currentScreen = AppScreen.RoleHome(
-                    email = cleanEmail,
-                    name = userName,
-                    photoUrl = null,
-                    initialTab = "home",
-                )
-                isLoadingOverlay = false
-            } catch (_: Exception) {
-                isLoadingOverlay = false
+
+        fun launchEmailPasswordSignIn(emailInput: String, passwordInput: String) {
+            if (emailInput.isBlank() || passwordInput.isBlank()) {
                 showError(ErrorImageType.GENERAL_ERROR)
+                return
+            }
+            isLoadingOverlay = true
+            onLaunchEmailSignIn(emailInput.trim(), passwordInput) { email, name, photoUrl, errorMsg ->
+                when {
+                    errorMsg != null -> {
+                        isLoadingOverlay = false
+                        showError(ErrorImageType.GENERAL_ERROR)
+                    }
+                    email != null -> {
+                        coroutineScope.launch {
+                            val cleanEmail = email.trim().lowercase()
+                            val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
+                            val category = existingProfile?.category?.ifBlank { "STUDENT" } ?: "STUDENT"
+                            val userName = name ?: existingProfile?.name?.ifBlank { null } ?: cleanEmail.substringBefore("@")
+                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "email", category)
+                            val resolvedRole = UserRole.fromRaw(category) ?: UserRole.STUDENT
+                            saveUserSession(
+                                UserSession(
+                                    role = resolvedRole.name,
+                                    email = cleanEmail,
+                                    name = userName,
+                                    photoUrl = photoUrl,
+                                ),
+                            )
+                            currentScreen = AppScreen.RoleHome(
+                                role = resolvedRole,
+                                email = cleanEmail,
+                                name = userName,
+                                photoUrl = photoUrl,
+                            )
+                            isLoadingOverlay = false
+                        }
+                    }
+                    else -> isLoadingOverlay = false
+                }
             }
         }
     }
@@ -281,13 +304,15 @@ fun App(
                                     saveThemeMode(newMode)
                                 },
                                 currentLanguage = appLanguage,
-                                onLanguageChange = { newLang ->
-                                    appLanguage = newLang
-                                    saveAppLanguage(newLang)
+                                onLanguageChange = { newLanguage ->
+                                    appLanguage = newLanguage
+                                    saveAppLanguage(newLanguage)
                                 },
                                 onGuestClick = { launchGuestMode() },
-                                onGoogleClick = { launchProviderSignIn("google") },
-                                onEmailPasswordSignIn = { email, password -> launchEmailPasswordSignIn(email, password) },
+                                onGoogleClick = { launchAdminGoogleSignIn() },
+                                onEmailPasswordSignIn = { email, password ->
+                                    launchEmailPasswordSignIn(email, password)
+                                },
                                 onCloseApp = onCloseApp,
                             )
                         }
@@ -307,6 +332,7 @@ fun App(
 
                         is AppScreen.RoleHome -> {
                             RoleHomeScreen(
+                                role = screen.role,
                                 userName = screen.name,
                                 photoUrl = screen.photoUrl,
                                 email = screen.email,
@@ -403,6 +429,7 @@ fun ErrorImagePopup(
         ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
         ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror
         ErrorImageType.SIGN_IN_DISABLED -> Res.drawable.timeouterror
+        ErrorImageType.ADMIN_NOT_AUTHORIZED -> Res.drawable.timeouterror
     }
 
     val title = when (errorType) {
@@ -410,6 +437,7 @@ fun ErrorImagePopup(
         ErrorImageType.GENERAL_ERROR -> "অনুরোধ সম্পূর্ণ করা যায়নি!"
         ErrorImageType.CONFIGURATION_ERROR -> "ওয়েব সেটআপ সম্পূর্ণ হয়নি"
         ErrorImageType.SIGN_IN_DISABLED -> "সাইন ইন বন্ধ আছে"
+        ErrorImageType.ADMIN_NOT_AUTHORIZED -> "এই Google অ্যাকাউন্ট অনুমোদিত নয়"
     }
 
     val description = when (errorType) {
@@ -417,6 +445,7 @@ fun ErrorImagePopup(
         ErrorImageType.GENERAL_ERROR -> "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
         ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
         ErrorImageType.SIGN_IN_DISABLED -> "এডমিন এই ধরনের সাইন ইন সাময়িকভাবে বন্ধ রেখেছেন। পরে আবার চেষ্টা করুন অথবা এডমিনের সাথে যোগাযোগ করুন।"
+        ErrorImageType.ADMIN_NOT_AUTHORIZED -> "শুধু Firebase-এর admin_emails তালিকায় থাকা email দিয়ে এই অ্যাপে প্রবেশ করা যাবে।"
     }
 
     val steps = when (errorType) {
@@ -437,6 +466,10 @@ fun ErrorImagePopup(
             "এডমিন এই রোলের সাইন ইন অনুমতি বন্ধ রেখেছেন।",
             "এডমিনের সাথে যোগাযোগ করুন এবং সাইন ইন চালু করতে অনুরোধ করুন।",
         )
+        ErrorImageType.ADMIN_NOT_AUTHORIZED -> listOf(
+            "Firebase Firestore-এর admin_emails collection-এ আপনার email যোগ করুন।",
+            "enabled ফিল্ড না দিলে email-টি সক্রিয় ধরা হবে।",
+        )
     }
 
     val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
@@ -448,6 +481,8 @@ fun ErrorImagePopup(
         ErrorImageType.NO_INTERNET, ErrorImageType.GENERAL_ERROR ->
             if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
         ErrorImageType.SIGN_IN_DISABLED ->
+            if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
+        ErrorImageType.ADMIN_NOT_AUTHORIZED ->
             if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
         else ->
             if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)

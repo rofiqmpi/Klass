@@ -24,3 +24,14 @@ This is a Kotlin Multiplatform project targeting Android and iOS.
 ---
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+
+## Admin access
+
+Google sign-in is reserved for approved administrators. Before the first admin login,
+create a Firestore document at `admin_emails/{lowercase-email}`. Set `enabled` to
+`true` (or omit it). A successful admin login also saves the administrator's profile
+in `admins/{lowercase-email}`. Guest mode and email/password sign-in remain available
+for other users; Facebook and Apple sign-in are not supported.
+
+The admin app shell contains one Home, Profile, and Menu screen. The Menu screen
+includes Profile, Books Library, Teacher, and Classroom entries.

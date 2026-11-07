@@ -382,7 +382,11 @@ fun RoleHomeScreen(
                             }
                         }
                         "menu" -> {
-                            MenuScreen(isDark = isDark, hindSiliguri = hindSiliguri)
+                            MenuScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onProfileClick = { selectedTab = "profile" },
+                            )
                         }
                         "notification" -> {
                             NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 fun MenuScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
+    onProfileClick: () -> Unit = {},
 ) {
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -57,15 +58,37 @@ fun MenuScreen(
                     fontWeight = FontWeight.Bold,
                     color = textColor,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "এখানে আপনার প্রয়োজনীয় মেনু ও অপশনগুলো উপলব্ধ রয়েছে।".localized(),
-                    fontSize = 13.sp,
-                    fontFamily = hindSiliguri,
-                    color = subTextColor,
-                    textAlign = TextAlign.Center,
-                )
+                Spacer(modifier = Modifier.height(18.dp))
+                MenuItem("প্রোফাইল", hindSiliguri, textColor, subTextColor, onProfileClick)
+                MenuItem("বুকস লাইব্রেরি", hindSiliguri, textColor, subTextColor)
+                MenuItem("শিক্ষক", hindSiliguri, textColor, subTextColor)
+                MenuItem("ক্লাসরুম", hindSiliguri, textColor, subTextColor)
             }
         }
+    }
+}
+
+@Composable
+private fun MenuItem(
+    title: String,
+    hindSiliguri: FontFamily,
+    textColor: Color,
+    subTextColor: Color,
+    onClick: () -> Unit = {},
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = subTextColor.copy(alpha = 0.08f),
+    ) {
+        Text(
+            text = title.localized(),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            fontSize = 15.sp,
+            fontFamily = hindSiliguri,
+            fontWeight = FontWeight.Medium,
+            color = textColor,
+        )
     }
 }

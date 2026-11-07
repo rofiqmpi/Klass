@@ -32,8 +32,8 @@ object AppStrings {
     }
 
     fun signInSubtitle(lang: AppLanguage): String = when (lang) {
-        AppLanguage.BENGALI -> "Google, Facebook বা Apple অ্যাকাউন্ট\nব্যবহার করে সাইন ইন করুন"
-        AppLanguage.ENGLISH -> "Sign in using your Google, Facebook or Apple account"
+        AppLanguage.BENGALI -> "Google অথবা ইমেইল অ্যাকাউন্ট\nব্যবহার করে সাইন ইন করুন"
+        AppLanguage.ENGLISH -> "Sign in using Google or email"
     }
 
     fun guestMode(lang: AppLanguage): String = when (lang) {

@@ -32,7 +32,7 @@ data class UserProfile(
     val email: String = "",
     val name: String = "",
     val photoUrl: String? = null,
-    val provider: String = "", // "google", "facebook", "apple"
+    val provider: String = "", // "google" or "email"
     val category: String = "STUDENT", // selected in Profile screen
     val registeredAt: Long = 0L,
     val updatedAt: Long = 0L,
@@ -67,6 +67,8 @@ expect fun updateLocalCategory(email: String, category: String)
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
+    private const val ADMIN_EMAILS_COLLECTION = "admin_emails"
+    private const val ADMINS_COLLECTION = "admins"
     private var isEmulatorInitialized = false
 
     /**
@@ -110,6 +112,38 @@ object RoleConfig {
         } catch (_: Exception) {}
 
         return Result.success(Unit)
+    }
+
+    suspend fun isAuthorizedAdminEmail(email: String): Boolean {
+        if (email.isBlank()) return false
+        val cleanEmail = email.trim().lowercase()
+        return try {
+            val doc = withTimeoutOrNull(3.seconds) {
+                Firebase.firestore.collection(ADMIN_EMAILS_COLLECTION).document(cleanEmail).get()
+            }
+            doc?.exists == true && (doc.data<Map<String, Any>>()["enabled"] as? Boolean ?: true)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun saveAdminEmail(email: String, name: String, photoUrl: String?): Result<Unit> {
+        if (email.isBlank()) return Result.failure(Exception("Invalid admin email"))
+        val cleanEmail = email.trim().lowercase()
+        return try {
+            Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).set(
+                mapOf(
+                    "email" to cleanEmail,
+                    "name" to name,
+                    "photo_url" to (photoUrl ?: ""),
+                    "updated_at" to kotlin.time.Clock.System.now().toEpochMilliseconds(),
+                ),
+                merge = true,
+            )
+            Result.success(Unit)
+        } catch (exception: Exception) {
+            Result.failure(exception)
+        }
     }
 
     suspend fun fetchUserProfile(email: String): UserProfile? {

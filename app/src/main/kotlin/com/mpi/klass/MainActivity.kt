@@ -20,7 +20,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.OAuthProvider
 import com.mpi.klass.theme.initThemeContext
 import java.util.Locale
 
@@ -52,42 +51,20 @@ class MainActivity : ComponentActivity() {
                                     val photoUrl = user?.photoUrl?.toString() ?: account.photoUrl?.toString()
                                     callback?.invoke(email, name, photoUrl, null)
                                 } else {
-                                    handleFallbackSignIn(account, callback)
+                                    callback?.invoke(null, null, null, authTask.exception?.localizedMessage ?: "Firebase sign-in failed")
                                 }
                             }
-                    } catch (_: Exception) {
-                        handleFallbackSignIn(account, callback)
+                    } catch (exception: Exception) {
+                        callback?.invoke(null, null, null, exception.localizedMessage ?: "Firebase sign-in failed")
                     }
                 } else {
-                    handleFallbackSignIn(account, callback)
+                    callback?.invoke(null, null, null, "Google did not return an ID token")
                 }
             } catch (e: ApiException) {
                 callback?.invoke(null, null, null, e.localizedMessage ?: "গুগল সাইন-ইন ব্যর্থ হয়েছে")
             }
         } else {
             callback?.invoke(null, null, null, null) // Cancelled by user
-        }
-    }
-
-    private fun handleFallbackSignIn(
-        account: GoogleSignInAccount?,
-        callback: ((email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit)?,
-    ) {
-        val email = account?.email ?: "google.user@example.com"
-        val name = account?.displayName ?: "Google User"
-        val photoUrl = account?.photoUrl?.toString()
-
-        try {
-            val auth = FirebaseAuth.getInstance()
-            if (auth.currentUser == null) {
-                auth.signInAnonymously().addOnCompleteListener { _ ->
-                    callback?.invoke(email, name, photoUrl, null)
-                }
-            } else {
-                callback?.invoke(email, name, photoUrl, null)
-            }
-        } catch (_: Exception) {
-            callback?.invoke(email, name, photoUrl, null)
         }
     }
 
@@ -106,6 +83,7 @@ class MainActivity : ComponentActivity() {
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
+            .requestIdToken(getString(R.string.default_web_client_id))
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
@@ -113,12 +91,6 @@ class MainActivity : ComponentActivity() {
             App(
                 onLaunchGoogleSignIn = { callback ->
                     launchGoogleSignIn(callback)
-                },
-                onLaunchFacebookSignIn = { callback ->
-                    launchOAuthSignIn("facebook", "facebook.com", listOf("email", "public_profile"), callback)
-                },
-                onLaunchAppleSignIn = { callback ->
-                    launchOAuthSignIn("apple", "apple.com", listOf("email", "name"), callback)
                 },
                 onLaunchEmailSignIn = { email, password, callback ->
                     launchEmailSignIn(email, password, callback)
@@ -131,39 +103,6 @@ class MainActivity : ComponentActivity() {
                 },
                 onCloseApp = { finish() },
             )
-        }
-    }
-
-    private fun launchEmailSignIn(
-        email: String,
-        password: String,
-        callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit
-    ) {
-        try {
-            val auth = FirebaseAuth.getInstance()
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnSuccessListener { authResult ->
-                    val user = authResult.user
-                    val userEmail = user?.email ?: email
-                    val name = user?.displayName ?: email.substringBefore("@")
-                    val photoUrl = user?.photoUrl?.toString()
-                    callback(userEmail, name, photoUrl, null)
-                }
-                .addOnFailureListener { _ ->
-                    auth.createUserWithEmailAndPassword(email, password)
-                        .addOnSuccessListener { authResult ->
-                            val user = authResult.user
-                            val userEmail = user?.email ?: email
-                            val name = user?.displayName ?: email.substringBefore("@")
-                            val photoUrl = user?.photoUrl?.toString()
-                            callback(userEmail, name, photoUrl, null)
-                        }
-                        .addOnFailureListener { createErr ->
-                            callback(null, null, null, createErr.localizedMessage ?: "ইমেইল সাইন-ইন ব্যর্থ হয়েছে")
-                        }
-                }
-        } catch (e: Exception) {
-            callback(null, null, null, e.localizedMessage ?: "Firebase কনফিগারেশন অনুপস্থিত")
         }
     }
 
@@ -180,50 +119,40 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun launchOAuthSignIn(
-        providerName: String,
-        providerId: String,
-        scopes: List<String>,
-        callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit
+    private fun launchEmailSignIn(
+        email: String,
+        password: String,
+        callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit,
     ) {
         try {
-            val provider = OAuthProvider.newBuilder(providerId)
-            provider.scopes = scopes
             val auth = FirebaseAuth.getInstance()
-
-            auth.startActivityForSignInWithProvider(this, provider.build())
+            auth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener { authResult ->
                     val user = authResult.user
-                    val email = user?.email ?: "user@$providerName.com"
-                    val name = user?.displayName ?: "${providerName.replaceFirstChar { it.uppercase() }} User"
-                    val photoUrl = user?.photoUrl?.toString()
-                    callback(email, name, photoUrl, null)
+                    callback(
+                        user?.email ?: email,
+                        user?.displayName ?: email.substringBefore("@"),
+                        user?.photoUrl?.toString(),
+                        null,
+                    )
                 }
-                .addOnFailureListener { _ ->
-                    handleOAuthFallback(providerName, callback)
+                .addOnFailureListener {
+                    auth.createUserWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { authResult ->
+                            val user = authResult.user
+                            callback(
+                                user?.email ?: email,
+                                user?.displayName ?: email.substringBefore("@"),
+                                user?.photoUrl?.toString(),
+                                null,
+                            )
+                        }
+                        .addOnFailureListener { error ->
+                            callback(null, null, null, error.localizedMessage ?: "ইমেইল সাইন-ইন ব্যর্থ হয়েছে")
+                        }
                 }
-        } catch (_: Exception) {
-            handleOAuthFallback(providerName, callback)
-        }
-    }
-
-    private fun handleOAuthFallback(
-        providerName: String,
-        callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit
-    ) {
-        val email = "user@$providerName.local"
-        val name = "${providerName.replaceFirstChar { it.uppercase() }} User"
-        try {
-            val auth = FirebaseAuth.getInstance()
-            if (auth.currentUser == null) {
-                auth.signInAnonymously().addOnCompleteListener { _ ->
-                    callback(email, name, null, null)
-                }
-            } else {
-                callback(email, name, null, null)
-            }
-        } catch (_: Exception) {
-            callback(email, name, null, null)
+        } catch (error: Exception) {
+            callback(null, null, null, error.localizedMessage ?: "Firebase কনফিগারেশন অনুপস্থিত")
         }
     }
 
