@@ -8,15 +8,6 @@ plugins {
 }
 
 kotlin {
-    js {
-        browser {
-            commonWebpackConfig {
-                outputFileName = "composeApp.js"
-            }
-        }
-        binaries.executable()
-    }
-    
     android {
        namespace = "com.mpi.klass.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -45,13 +36,6 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
             implementation(libs.coil.network.okhttp)
-        }
-        jsMain.dependencies {
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

@@ -204,7 +204,6 @@ fun App(
                                 onSignOutGoogle()
                                 showError(ErrorImageType.GENERAL_ERROR)
                             }
-                            }
                         }
                     }
                 }
@@ -214,6 +213,7 @@ fun App(
                 }
             }
         }
+    }
 
         fun launchGuestMode() {
             isLoadingOverlay = true
@@ -265,7 +265,6 @@ fun App(
                 }
             }
         }
-    }
 
     // Signing out is a purely local action; it must not require internet.
     fun signOutAndReturnToWelcome() {
