@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -102,8 +103,7 @@ fun WelcomeScreen(
     onLanguageChange: (AppLanguage) -> Unit = {},
     onGuestClick: () -> Unit = {},
     onGoogleClick: () -> Unit = {},
-    onFacebookClick: () -> Unit = {},
-    onAppleClick: () -> Unit = {},
+    onEmailPasswordSignIn: (String, String) -> Unit = { _, _ -> },
     onCloseApp: () -> Unit = {},
 ) {
     val systemInDark = isSystemInDarkTheme()
@@ -652,8 +652,7 @@ fun WelcomeScreen(
                                 buttonHorizontalPadding = buttonHorizontalPadding,
                                 currentLanguage = currentLanguage,
                                 onGoogleClick = onGoogleClick,
-                                onFacebookClick = onFacebookClick,
-                                onAppleClick = onAppleClick,
+                                onEmailPasswordSignIn = onEmailPasswordSignIn,
                             )
                         }
 

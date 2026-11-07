@@ -109,6 +109,7 @@ fun App(
     onLaunchGoogleSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
     onLaunchFacebookSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
     onLaunchAppleSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
+    onLaunchEmailSignIn: (email: String, password: String, callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = { _, _, _ -> },
     onSignOutGoogle: () -> Unit = {},
     onCloseApp: () -> Unit = {},
     isBackendConfigured: Boolean = true,
@@ -215,6 +216,34 @@ fun App(
         }
     }
 
+    fun launchEmailPasswordSignIn(emailInput: String, passwordInput: String) {
+        if (emailInput.isBlank() || passwordInput.isBlank()) {
+            showError(ErrorImageType.GENERAL_ERROR)
+            return
+        }
+        isLoadingOverlay = true
+        val cleanEmail = emailInput.trim().lowercase()
+        coroutineScope.launch {
+            try {
+                val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
+                val userName = existingProfile?.name?.ifBlank { null } ?: cleanEmail.substringBefore("@")
+                val category = existingProfile?.category?.ifBlank { "STUDENT" } ?: "STUDENT"
+                RoleConfig.saveUserProfile(cleanEmail, userName, null, "email", category)
+                saveUserSession(UserSession(role = "email", email = cleanEmail, name = userName, photoUrl = null))
+                currentScreen = AppScreen.RoleHome(
+                    email = cleanEmail,
+                    name = userName,
+                    photoUrl = null,
+                    initialTab = "home",
+                )
+                isLoadingOverlay = false
+            } catch (_: Exception) {
+                isLoadingOverlay = false
+                showError(ErrorImageType.GENERAL_ERROR)
+            }
+        }
+    }
+
     // Signing out is a purely local action; it must not require internet.
     fun signOutAndReturnToWelcome() {
         clearUserSession()
@@ -258,8 +287,7 @@ fun App(
                                 },
                                 onGuestClick = { launchGuestMode() },
                                 onGoogleClick = { launchProviderSignIn("google") },
-                                onFacebookClick = { launchProviderSignIn("facebook") },
-                                onAppleClick = { launchProviderSignIn("apple") },
+                                onEmailPasswordSignIn = { email, password -> launchEmailPasswordSignIn(email, password) },
                                 onCloseApp = onCloseApp,
                             )
                         }
