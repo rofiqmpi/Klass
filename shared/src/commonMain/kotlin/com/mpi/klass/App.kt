@@ -170,7 +170,7 @@ fun App(
         } catch (_: Exception) {}
     }
 
-    fun launchAdminGoogleSignIn() {
+    fun launchRoleSignIn(targetRole: UserRole) {
         isLoadingOverlay = true
         onLaunchGoogleSignIn { email, name, photoUrl, errorMsg ->
             when {
@@ -183,27 +183,24 @@ fun App(
                 email != null -> {
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
-                        if (!RoleConfig.isAuthorizedAdminEmail(cleanEmail)) {
+                        if (targetRole == UserRole.ADMIN && !RoleConfig.isAuthorizedAdminEmail(cleanEmail)) {
                             isLoadingOverlay = false
                             onSignOutGoogle()
                             showError(ErrorImageType.ADMIN_NOT_AUTHORIZED)
                         } else {
                             val userName = name ?: cleanEmail.substringBefore("@")
-                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", "ADMIN")
-                            if (RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl).isSuccess) {
-                                saveUserSession(UserSession(role = "ADMIN", email = cleanEmail, name = userName, photoUrl = photoUrl))
-                                currentScreen = AppScreen.RoleHome(
-                                    role = UserRole.ADMIN,
-                                    email = cleanEmail,
-                                    name = userName,
-                                    photoUrl = photoUrl,
-                                )
-                                isLoadingOverlay = false
-                            } else {
-                                isLoadingOverlay = false
-                                onSignOutGoogle()
-                                showError(ErrorImageType.GENERAL_ERROR)
+                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
+                            if (targetRole == UserRole.ADMIN) {
+                                RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
                             }
+                            saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                            currentScreen = AppScreen.RoleHome(
+                                role = targetRole,
+                                email = cleanEmail,
+                                name = userName,
+                                photoUrl = photoUrl,
+                            )
+                            isLoadingOverlay = false
                         }
                     }
                 }
@@ -215,56 +212,31 @@ fun App(
         }
     }
 
-        fun launchGuestMode() {
-            isLoadingOverlay = true
-            coroutineScope.launch {
-                saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
-                currentScreen = AppScreen.GuestHome
-                isLoadingOverlay = false
-            }
+    fun launchGuestMode() {
+        isLoadingOverlay = true
+        coroutineScope.launch {
+            saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
+            currentScreen = AppScreen.GuestHome
+            isLoadingOverlay = false
         }
+    }
 
-        fun launchEmailPasswordSignIn(emailInput: String, passwordInput: String) {
-            if (emailInput.isBlank() || passwordInput.isBlank()) {
-                showError(ErrorImageType.GENERAL_ERROR)
-                return
-            }
-            isLoadingOverlay = true
-            onLaunchEmailSignIn(emailInput.trim(), passwordInput) { email, name, photoUrl, errorMsg ->
-                when {
-                    errorMsg != null -> {
-                        isLoadingOverlay = false
-                        showError(ErrorImageType.GENERAL_ERROR)
-                    }
-                    email != null -> {
-                        coroutineScope.launch {
-                            val cleanEmail = email.trim().lowercase()
-                            val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
-                            val category = existingProfile?.category?.ifBlank { "STUDENT" } ?: "STUDENT"
-                            val userName = name ?: existingProfile?.name?.ifBlank { null } ?: cleanEmail.substringBefore("@")
-                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "email", category)
-                            val resolvedRole = UserRole.fromRaw(category) ?: UserRole.STUDENT
-                            saveUserSession(
-                                UserSession(
-                                    role = resolvedRole.name,
-                                    email = cleanEmail,
-                                    name = userName,
-                                    photoUrl = photoUrl,
-                                ),
-                            )
-                            currentScreen = AppScreen.RoleHome(
-                                role = resolvedRole,
-                                email = cleanEmail,
-                                name = userName,
-                                photoUrl = photoUrl,
-                            )
-                            isLoadingOverlay = false
-                        }
-                    }
-                    else -> isLoadingOverlay = false
-                }
-            }
+    fun launchStudentMode() {
+        isLoadingOverlay = true
+        coroutineScope.launch {
+            val studentEmail = "student@mpi.edu.bd"
+            val studentName = "শিক্ষার্থী"
+            RoleConfig.saveUserProfile(studentEmail, studentName, null, "student", UserRole.STUDENT.name)
+            saveUserSession(UserSession(role = UserRole.STUDENT.name, email = studentEmail, name = studentName, photoUrl = null))
+            currentScreen = AppScreen.RoleHome(
+                role = UserRole.STUDENT,
+                email = studentEmail,
+                name = studentName,
+                photoUrl = null,
+            )
+            isLoadingOverlay = false
         }
+    }
 
     // Signing out is a purely local action; it must not require internet.
     fun signOutAndReturnToWelcome() {
@@ -308,10 +280,9 @@ fun App(
                                     saveAppLanguage(newLanguage)
                                 },
                                 onGuestClick = { launchGuestMode() },
-                                onGoogleClick = { launchAdminGoogleSignIn() },
-                                onEmailPasswordSignIn = { email, password ->
-                                    launchEmailPasswordSignIn(email, password)
-                                },
+                                onStudentClick = { launchStudentMode() },
+                                onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
+                                onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
                                 onCloseApp = onCloseApp,
                             )
                         }

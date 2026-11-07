@@ -105,8 +105,9 @@ fun WelcomeScreen(
     currentLanguage: AppLanguage = AppLanguage.BENGALI,
     onLanguageChange: (AppLanguage) -> Unit = {},
     onGuestClick: () -> Unit = {},
-    onGoogleClick: () -> Unit = {},
-    onEmailPasswordSignIn: (String, String) -> Unit = { _, _ -> },
+    onStudentClick: () -> Unit = {},
+    onTeacherClick: () -> Unit = {},
+    onAdminClick: () -> Unit = {},
     onCloseApp: () -> Unit = {},
 ) {
     val systemInDark = isSystemInDarkTheme()
@@ -658,8 +659,9 @@ fun WelcomeScreen(
                                 hindSiliguri = hindSiliguri,
                                 buttonHorizontalPadding = buttonHorizontalPadding,
                                 currentLanguage = currentLanguage,
-                                onGoogleClick = onGoogleClick,
-                                onEmailPasswordSignIn = onEmailPasswordSignIn,
+                                onStudentClick = onStudentClick,
+                                onTeacherClick = onTeacherClick,
+                                onAdminClick = onAdminClick,
                             )
                         }
 
@@ -1187,6 +1189,57 @@ internal fun RoleButton(
                 contentDescription = text,
                 modifier = Modifier.size(24.dp),
                 tint = textColor,
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Text(
+                text = text,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = fontFamily,
+                color = textColor,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun RoleButton(
+    text: String,
+    painter: DrawableResource,
+    isDark: Boolean,
+    fontFamily: androidx.compose.ui.text.font.FontFamily,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
+    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val borderColor = if (isDark) Color(0xFF475569) else Color(0xFF94A3B8)
+
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, borderColor),
+        color = cardBgColor,
+        shadowElevation = if (isDark) 2.dp else 3.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Image(
+                painter = painterResource(painter),
+                contentDescription = text,
+                modifier = Modifier.size(24.dp),
             )
 
             Spacer(modifier = Modifier.width(10.dp))

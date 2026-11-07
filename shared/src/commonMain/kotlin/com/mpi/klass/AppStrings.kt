@@ -12,8 +12,8 @@ object AppStrings {
     }
 
     fun registrationBtn(lang: AppLanguage): String = when (lang) {
-        AppLanguage.BENGALI -> "রেজিস্ট্রেশন"
-        AppLanguage.ENGLISH -> "Registration"
+        AppLanguage.BENGALI -> "এগিয়ে যান"
+        AppLanguage.ENGLISH -> "Proceed"
     }
 
     fun quote(lang: AppLanguage): String = when (lang) {
