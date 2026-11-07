@@ -1,9 +1,9 @@
 package com.mpi.klass
 
 actual fun isGestureNavigation(): Boolean {
-    return true
+    return false
 }
 
 actual fun getDisplayBottomCornerRadiusDp(): Float {
-    return 38f
+    return 0f
 }

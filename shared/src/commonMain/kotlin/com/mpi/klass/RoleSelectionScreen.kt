@@ -4,17 +4,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -36,7 +40,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mpi.klass.theme.EmailIcon
 import com.mpi.klass.theme.GoogleIcon
+import com.mpi.klass.theme.LockIcon
 
 @Composable
 fun RoleSelectionScreen(
@@ -50,6 +56,10 @@ fun RoleSelectionScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+    val fieldBorderColor = if (isDark) Color(0xFF475569) else Color(0xFF94A3B8)
+    val iconTint = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -59,12 +69,12 @@ fun RoleSelectionScreen(
                 .fillMaxWidth()
                 .padding(horizontal = buttonHorizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isImeVisible) 8.dp else 10.dp),
         ) {
             Text(
                 text = AppStrings.signInTitle(currentLanguage),
                 style = TextStyle(
-                    fontSize = 21.sp,
+                    fontSize = if (isImeVisible) 19.sp else 21.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = hindSiliguri,
                     color = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
@@ -77,70 +87,119 @@ fun RoleSelectionScreen(
                 ),
             )
 
-            // 1. Facebook and Apple buttons removed
-
-            // Inputs Column with IME padding
+            // Inputs Column
             Column(
-                modifier = Modifier.fillMaxWidth().imePadding(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                // 2. Email input field
+                // Email input field (matching Google button height 48.dp & radius 8.dp, no focused border change)
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text(if (currentLanguage == AppLanguage.BENGALI) "ইমেইল অ্যাড্রেস" else "Email address", fontFamily = hindSiliguri) },
+                    placeholder = {
+                        Text(
+                            text = if (currentLanguage == AppLanguage.BENGALI) "ইমেইল অ্যাড্রেস" else "Email address",
+                            fontFamily = hindSiliguri,
+                            fontSize = 14.sp,
+                            lineHeight = 14.sp,
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = EmailIcon,
+                            contentDescription = "Email",
+                            modifier = Modifier.size(20.dp),
+                            tint = iconTint,
+                        )
+                    },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        fontFamily = hindSiliguri,
+                        color = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
+                        lineHeight = 14.sp,
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB),
-                        unfocusedBorderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1),
+                        focusedBorderColor = fieldBorderColor,
+                        unfocusedBorderColor = fieldBorderColor,
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    )
+                    ),
                 )
 
-                // 3. Password field split in 2 parts
+                // Password field split in 2 parts (matching Google button height 48.dp & radius 8.dp, no focused border change)
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        placeholder = { Text(if (currentLanguage == AppLanguage.BENGALI) "পাসওয়ার্ড" else "Password", fontFamily = hindSiliguri) },
+                        placeholder = {
+                            Text(
+                                text = if (currentLanguage == AppLanguage.BENGALI) "পাসওয়ার্ড" else "Password",
+                                fontFamily = hindSiliguri,
+                                fontSize = 14.sp,
+                                lineHeight = 14.sp,
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = LockIcon,
+                                contentDescription = "Password",
+                                modifier = Modifier.size(20.dp),
+                                tint = iconTint,
+                            )
+                        },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.weight(2.5f),
-                        shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp, topEnd = 0.dp, bottomEnd = 0.dp),
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            fontFamily = hindSiliguri,
+                            color = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
+                            lineHeight = 14.sp,
+                        ),
+                        modifier = Modifier
+                            .weight(2.5f)
+                            .fillMaxHeight(),
+                        shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 0.dp, bottomEnd = 0.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB),
-                            unfocusedBorderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1),
+                            focusedBorderColor = fieldBorderColor,
+                            unfocusedBorderColor = fieldBorderColor,
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        )
+                        ),
                     )
 
                     Button(
                         onClick = { onEmailPasswordSignIn(email, password) },
-                        modifier = Modifier.weight(0.7f).fillMaxHeight(),
-                        shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 12.dp, bottomEnd = 12.dp),
+                        modifier = Modifier
+                            .weight(0.7f)
+                            .fillMaxHeight(),
+                        shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 8.dp, bottomEnd = 8.dp),
+                        contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isDark) Color(0xFF334155).copy(alpha = 0.5f) else Color(0xFFF1F5F9),
-                            contentColor = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
-                        )
+                            containerColor = if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9), // Neutral grey / snow-slate color
+                            contentColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
+                        ),
                     ) {
                         Text(
                             text = "→",
-                            fontSize = 18.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
                     }
                 }
             }
 
-            // 4. 3rd button is Google
+            // Google button
             RoleButton(
                 text = "Google",
                 icon = GoogleIcon,
@@ -149,26 +208,28 @@ fun RoleSelectionScreen(
                 onClick = onGoogleClick,
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            if (!isImeVisible) {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(0.8.dp)
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)),
-            )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.8.dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)),
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = AppStrings.signInSubtitle(currentLanguage),
-                style = MaterialTheme.typography.bodySmall,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = hindSiliguri,
-                color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
-                textAlign = TextAlign.Center,
-            )
+                Text(
+                    text = AppStrings.signInSubtitle(currentLanguage),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = hindSiliguri,
+                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

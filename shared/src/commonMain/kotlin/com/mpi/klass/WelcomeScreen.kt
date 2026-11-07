@@ -32,6 +32,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -636,8 +639,12 @@ fun WelcomeScreen(
                         if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
                     }
 
+                    val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .imePadding(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         AnimatedVisibility(
@@ -656,47 +663,49 @@ fun WelcomeScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        if (!isImeVisible) {
+                            Spacer(modifier = Modifier.height(6.dp))
 
-                        // Full 100% Width Deep Bow/Arch Shaped Bottom Guest Mode Button Attached directly to Display Bottom Edge
-                        Surface(
-                            shape = DeepBowArchShape,
-                            color = guestBtnColor,
-                            shadowElevation = if (isGuestActive) 6.dp else 0.dp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
-                                .clip(DeepBowArchShape)
-                                .clickable(
-                                    interactionSource = guestInteractionSource,
-                                    indication = ripple(bounded = true, color = if (isDark) Color(0xFF38BDF8) else Color(0xFF1D4ED8)),
-                                    onClick = onGuestClick,
-                                ),
-                        ) {
-                            Column(
+                            // Full 100% Width Deep Bow/Arch Shaped Bottom Guest Mode Button Attached directly to Display Bottom Edge
+                            Surface(
+                                shape = DeepBowArchShape,
+                                color = guestBtnColor,
+                                shadowElevation = if (isGuestActive) 6.dp else 0.dp,
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(top = 4.dp, bottom = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
+                                    .fillMaxWidth()
+                                    .height(60.dp)
+                                    .clip(DeepBowArchShape)
+                                    .clickable(
+                                        interactionSource = guestInteractionSource,
+                                        indication = ripple(bounded = true, color = if (isDark) Color(0xFF38BDF8) else Color(0xFF1D4ED8)),
+                                        onClick = onGuestClick,
+                                    ),
                             ) {
-                                Icon(
-                                    imageVector = RightArrowIcon,
-                                    contentDescription = AppStrings.guestMode(currentLanguage),
-                                    tint = guestContentColor,
-                                    modifier = Modifier.size(16.dp),
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(top = 4.dp, bottom = 10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = RightArrowIcon,
+                                        contentDescription = AppStrings.guestMode(currentLanguage),
+                                        tint = guestContentColor,
+                                        modifier = Modifier.size(16.dp),
+                                    )
 
-                                Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(2.dp))
 
-                                Text(
-                                    text = AppStrings.guestMode(currentLanguage),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Light,
-                                    fontFamily = hindSiliguri,
-                                    color = guestContentColor,
-                                    textAlign = TextAlign.Center,
-                                )
+                                    Text(
+                                        text = AppStrings.guestMode(currentLanguage),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Light,
+                                        fontFamily = hindSiliguri,
+                                        color = guestContentColor,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
                             }
                         }
                     }

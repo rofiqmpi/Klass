@@ -8,14 +8,13 @@ plugins {
 }
 
 kotlin {
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Shared"
-            isStatic = true
+    js {
+        browser {
+            commonWebpackConfig {
+                outputFileName = "composeApp.js"
+            }
         }
+        binaries.executable()
     }
     
     android {
@@ -46,6 +45,13 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
             implementation(libs.coil.network.okhttp)
+        }
+        jsMain.dependencies {
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.components.resources)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

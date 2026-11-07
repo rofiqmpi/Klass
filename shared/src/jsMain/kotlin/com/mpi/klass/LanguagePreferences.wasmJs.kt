@@ -1,16 +1,18 @@
 package com.mpi.klass
 
-import platform.Foundation.NSUserDefaults
+import kotlinx.browser.localStorage
 
 actual fun saveAppLanguage(language: AppLanguage) {
-    NSUserDefaults.standardUserDefaults.setObject(language.name, forKey = "app_language")
+    try {
+        localStorage.setItem("app_language", language.name)
+    } catch (_: Throwable) {}
 }
 
 actual fun loadAppLanguage(): AppLanguage {
-    val savedName = NSUserDefaults.standardUserDefaults.stringForKey("app_language")
     return try {
+        val savedName = localStorage.getItem("app_language")
         if (savedName != null) AppLanguage.valueOf(savedName) else AppLanguage.BENGALI
-    } catch (_: Exception) {
+    } catch (_: Throwable) {
         AppLanguage.BENGALI
     }
 }

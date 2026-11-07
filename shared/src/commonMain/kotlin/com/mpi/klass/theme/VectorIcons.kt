@@ -934,3 +934,66 @@ val RegistrationIcon: ImageVector
             horizontalLineTo(23f)
         }
     }.build()
+
+val EmailIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Email",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(4f, 4f)
+            horizontalLineTo(20f)
+            curveTo(21.1f, 4f, 22f, 4.9f, 22f, 6f)
+            verticalLineTo(18f)
+            curveTo(22f, 19.1f, 21.1f, 20f, 20f, 20f)
+            horizontalLineTo(4f)
+            curveTo(2.9f, 20f, 2f, 19.1f, 2f, 18f)
+            verticalLineTo(6f)
+            curveTo(2f, 4.9f, 2.9f, 4f, 4f, 4f)
+            close()
+            moveTo(22f, 6f)
+            lineTo(12f, 13f)
+            lineTo(2f, 6f)
+        }
+    }.build()
+
+val LockIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Lock",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(19f, 11f)
+            horizontalLineTo(5f)
+            curveTo(3.895f, 11f, 3f, 11.895f, 3f, 13f)
+            verticalLineTo(20f)
+            curveTo(3f, 21.105f, 3.895f, 22f, 5f, 22f)
+            horizontalLineTo(19f)
+            curveTo(20.105f, 22f, 21f, 21.105f, 21f, 20f)
+            verticalLineTo(13f)
+            curveTo(21f, 11.895f, 20.105f, 11f, 19f, 11f)
+            close()
+            moveTo(7f, 11f)
+            verticalLineTo(7f)
+            curveTo(7f, 4.239f, 9.239f, 2f, 12f, 2f)
+            curveTo(14.761f, 2f, 17f, 4.239f, 17f, 7f)
+            verticalLineTo(11f)
+        }
+    }.build()
+
