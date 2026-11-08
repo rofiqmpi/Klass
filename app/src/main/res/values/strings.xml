@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">Klass</string>
-    <string name="default_web_client_id">dummy_web_client_id</string>
 </resources>
