@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
@@ -212,8 +213,9 @@ fun WelcomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 56.dp),
+                .padding(top = 44.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // 3D Circular Logo
@@ -719,7 +721,8 @@ fun WelcomeScreen(
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 40.dp, end = 16.dp)
+                .statusBarsPadding()
+                .padding(top = 28.dp, end = 16.dp)
                 .zIndex(10f),
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalAlignment = Alignment.Top,

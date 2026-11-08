@@ -215,7 +215,8 @@ fun App(
     fun launchGuestMode() {
         isLoadingOverlay = true
         coroutineScope.launch {
-            saveUserSession(UserSession(role = "GUEST", email = "guest@mpi.edu.bd", name = "গেস্ট ইউজার"))
+            val uniqueGuestSeed = "guest_" + (100000..999999).random()
+            saveUserSession(UserSession(role = "GUEST", email = uniqueGuestSeed, name = "গেস্ট ইউজার"))
             currentScreen = AppScreen.GuestHome
             isLoadingOverlay = false
         }

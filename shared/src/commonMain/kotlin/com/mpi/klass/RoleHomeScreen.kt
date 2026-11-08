@@ -1,12 +1,6 @@
 package com.mpi.klass
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,7 +47,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
@@ -149,25 +143,20 @@ fun RoleHomeScreen(
             if (selectedTab != "ai") {
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(86.dp),
+                        .fillMaxWidth(),
                     color = Color.Transparent,
                     shadowElevation = if (selectedTab == "home") 6.dp else 0.dp,
                 ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(if (selectedTab == "home") headerGradient else transparentBrush),
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (selectedTab == "home") headerGradient else transparentBrush),
                     ) {
-                        Spacer(modifier = Modifier.height(24.dp))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
-                                .padding(start = 14.dp, end = 14.dp),
+                                .statusBarsPadding()
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -185,26 +174,10 @@ fun RoleHomeScreen(
                                             modifier = Modifier.size(50.dp).clip(CircleShape),
                                             shadowElevation = 5.dp,
                                         ) {
-                                            Box(
+                                            DynamicAvatar(
+                                                seed = email.ifBlank { currentUserName },
                                                 modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                if (!currentPhotoUrl.isNullOrBlank()) {
-                                                    AsyncImage(
-                                                        model = currentPhotoUrl,
-                                                        contentDescription = "Profile Picture",
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop,
-                                                    )
-                                                } else {
-                                                    Text(
-                                                        text = currentUserName.ifEmpty { "G" }.take(1).uppercase(),
-                                                        fontSize = 20.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = if (isDark) Color.White else Color.Black,
-                                                    )
-                                                }
-                                            }
+                                            )
                                         }
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -348,110 +321,101 @@ fun RoleHomeScreen(
                             }
                         }
                     }
+                }
 
-                    // Bottom borderline (Visible ONLY on Home screen!)
-                    if (selectedTab == "home") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(0.5.dp)
-                                .align(Alignment.BottomCenter)
-                                .background(if (isDark) Color.White else Color.Black),
-                        )
-                    }
+                // Bottom borderline (Visible ONLY on Home screen!)
+                if (selectedTab == "home") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(0.5.dp)
+                            .background(if (isDark) Color.White else Color.Black),
+                    )
                 }
             }
-            }
 
-            // Center Content with Smooth Transition Animation
+            // Center Content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
             ) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                    },
-                ) { targetTab ->
-                    when (targetTab) {
-                        "home" -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                ClassRoutineTable(
-                                    hindSiliguri = hindSiliguri,
-                                    isDark = isDark,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
-                        "menu" -> {
-                            MenuScreen(
-                                isDark = isDark,
+                when (selectedTab) {
+                    "home" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(3.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            ClassRoutineTable(
                                 hindSiliguri = hindSiliguri,
-                                onProfileClick = { selectedTab = "profile" },
-                                onAiClick = { selectedTab = "ai" },
+                                isDark = isDark,
+                                modifier = Modifier.fillMaxSize(),
                             )
                         }
-                        "ai" -> {
-                            AiAssistantScreen(
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                onBack = { selectedTab = "home" },
-                                userDisplayName = currentUserName,
-                            )
-                        }
-                        "notification" -> {
-                            NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)
-                        }
-                        "profile" -> {
-                            ProfileScreen(
-                                userName = currentUserName,
-                                role = currentRole,
-                                isDark = isDark,
-                                currentThemeMode = currentThemeMode,
-                                onThemeModeChange = onThemeModeChange,
-                                onSignOut = onSignOut,
-                                hindSiliguri = hindSiliguri,
-                                email = email,
-                                photoUrl = currentPhotoUrl,
-                                onUpdateProfile = { newName, newPhotoUrl ->
-                                    currentUserName = newName
-                                    currentPhotoUrl = newPhotoUrl
-                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
-                                    if (sessionEmail.isNotBlank()) {
-                                        saveUserSession(
-                                            UserSession(
-                                                role = currentRole.name,
-                                                email = sessionEmail,
-                                                name = newName,
-                                                photoUrl = newPhotoUrl,
-                                            )
+                    }
+                    "menu" -> {
+                        MenuScreen(
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onProfileClick = { selectedTab = "profile" },
+                            onAiClick = { selectedTab = "ai" },
+                        )
+                    }
+                    "ai" -> {
+                        AiAssistantScreen(
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onBack = { selectedTab = "home" },
+                            userDisplayName = currentUserName,
+                        )
+                    }
+                    "notification" -> {
+                        NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)
+                    }
+                    "profile" -> {
+                        ProfileScreen(
+                            userName = currentUserName,
+                            role = currentRole,
+                            isDark = isDark,
+                            currentThemeMode = currentThemeMode,
+                            onThemeModeChange = onThemeModeChange,
+                            onSignOut = onSignOut,
+                            hindSiliguri = hindSiliguri,
+                            email = email,
+                            photoUrl = currentPhotoUrl,
+                            onUpdateProfile = { newName, newPhotoUrl ->
+                                currentUserName = newName
+                                currentPhotoUrl = newPhotoUrl
+                                val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
+                                if (sessionEmail.isNotBlank()) {
+                                    saveUserSession(
+                                        UserSession(
+                                            role = currentRole.name,
+                                            email = sessionEmail,
+                                            name = newName,
+                                            photoUrl = newPhotoUrl,
                                         )
-                                    }
-                                    onProfileUpdated?.invoke(newName, newPhotoUrl)
-                                },
-                                onCategoryChanged = { newRole ->
-                                    currentRole = newRole
-                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
-                                    if (sessionEmail.isNotBlank()) {
-                                        saveUserSession(
-                                            UserSession(
-                                                role = newRole.name,
-                                                email = sessionEmail,
-                                                name = currentUserName,
-                                                photoUrl = currentPhotoUrl,
-                                            )
+                                    )
+                                }
+                                onProfileUpdated?.invoke(newName, newPhotoUrl)
+                            },
+                            onCategoryChanged = { newRole ->
+                                currentRole = newRole
+                                val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
+                                if (sessionEmail.isNotBlank()) {
+                                    saveUserSession(
+                                        UserSession(
+                                            role = newRole.name,
+                                            email = sessionEmail,
+                                            name = currentUserName,
+                                            photoUrl = currentPhotoUrl,
                                         )
-                                    }
-                                },
-                            )
-                        }
+                                    )
+                                }
+                            },
+                        )
                     }
                 }
             }

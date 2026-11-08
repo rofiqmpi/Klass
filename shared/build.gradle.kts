@@ -54,6 +54,7 @@ kotlin {
             implementation(libs.gitlive.firebase.database)
             implementation(libs.gitlive.firebase.firestore)
             implementation(libs.coil.compose)
+            implementation(libs.coil.svg)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -1,4 +1,4 @@
-﻿package com.mpi.klass
+package com.mpi.klass
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -63,16 +63,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil3.compose.AsyncImage
 import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.AwardIcon
 import com.mpi.klass.theme.BookIcon
-import com.mpi.klass.theme.CameraIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.CrownIcon
 import com.mpi.klass.theme.DarkModeIcon
 import com.mpi.klass.theme.EditIcon
-import com.mpi.klass.theme.GalleryIcon
 import com.mpi.klass.theme.GearIcon
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.ToggleOffIcon
@@ -291,7 +288,6 @@ fun ProfileScreen(
         UserRole.ADMIN -> Color(0xFFD97706)
         UserRole.TEACHER -> Color(0xFF059669)
         UserRole.STUDENT -> Color(0xFF0284C7)
-        null -> Color(0xFF6366F1)
     }
 
     val roleBorderColor = roleColor.copy(alpha = if (isDark) 0.5f else 0.35f)
@@ -302,7 +298,6 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -395,61 +390,20 @@ fun ProfileScreen(
                 }
             }
 
-            // Main Profile Picture Avatar & Camera Edit Badge
-            Box(
-                contentAlignment = Alignment.BottomEnd,
+            // Main Dynamic Genderless Non-Text Profile Picture Avatar
+            Surface(
+                shape = CircleShape,
+                color = Color.Transparent,
+                border = BorderStroke(2.5.dp, if (isDark) Color.White else Color(0xFF0F172A)),
+                modifier = Modifier
+                    .size(95.dp)
+                    .clip(CircleShape),
+                shadowElevation = 5.dp,
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF8CB9D9),
-                    border = BorderStroke(2.5.dp, if (isDark) Color.White else Color(0xFF0F172A)),
-                    modifier = Modifier
-                        .size(95.dp)
-                        .clip(CircleShape),
-                    shadowElevation = 5.dp,
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = userName.ifEmpty { "G" }.take(1).uppercase(),
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-
-                        if (!photoUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = photoUrl,
-                                contentDescription = "User Profile Picture",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop,
-                            )
-                        }
-                    }
-                }
-
-                Surface(
-                    onClick = { showEditDialog = true },
-                    shape = CircleShape,
-                    color = Color(0xFF0284C7),
-                    border = BorderStroke(1.5.dp, Color.White),
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.size(28.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = CameraIcon,
-                            contentDescription = "ছবি পরিবর্তন করুন",
-                            tint = Color.White,
-                            modifier = Modifier.size(15.dp),
-                        )
-                    }
-                }
+                DynamicAvatar(
+                    seed = cleanEmail.ifBlank { userName },
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
 
@@ -592,7 +546,7 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "প্রোফাইল নাম ও ছবি পরিবর্তন করুন",
+                        text = "প্রোফাইল নাম পরিবর্তন করুন",
                         fontSize = 13.5.sp,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.SemiBold,
@@ -1048,7 +1002,7 @@ fun ProfileScreen(
         }
 
         // Account Delete Button (For all registered users)
-        if (role != null && cleanEmail.isNotBlank()) {
+        if (cleanEmail.isNotBlank()) {
             Spacer(modifier = Modifier.height(10.dp))
             OutlinedButton(
                 onClick = { showDeleteDialog = true },
@@ -1071,7 +1025,7 @@ fun ProfileScreen(
     }
 
     // Account Delete Confirmation Dialog
-    if (showDeleteDialog && role != null) {
+    if (showDeleteDialog) {
         Dialog(onDismissRequest = { if (!isDeletingAccount) showDeleteDialog = false }) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -1151,13 +1105,6 @@ fun ProfileScreen(
     // Full-Screen Edit Profile Dialog
     if (showEditDialog) {
         var editName by remember { mutableStateOf(userName) }
-        var editPhotoUrl by remember { mutableStateOf(photoUrl ?: "") }
-
-        val launchPhotoPicker = rememberPhotoPickerLauncher { pickedUri ->
-            if (!pickedUri.isNullOrBlank()) {
-                editPhotoUrl = pickedUri
-            }
-        }
 
         Dialog(
             onDismissRequest = { showEditDialog = false },
@@ -1196,7 +1143,7 @@ fun ProfileScreen(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "প্রোফাইল এডিট করুন",
+                                    text = "প্রোফাইল নাম পরিবর্তন",
                                     fontSize = 18.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Bold,
@@ -1207,8 +1154,7 @@ fun ProfileScreen(
                             Button(
                                 onClick = {
                                     val finalName = editName.trim().ifEmpty { userName }
-                                    val finalPhotoUrl = editPhotoUrl.trim().ifEmpty { null }
-                                    onUpdateProfile?.invoke(finalName, finalPhotoUrl)
+                                    onUpdateProfile?.invoke(finalName, null)
                                     showEditDialog = false
                                 },
                                 shape = RoundedCornerShape(10.dp),
@@ -1228,7 +1174,7 @@ fun ProfileScreen(
                         }
                     }
 
-                    // Scrollable Form & Gallery
+                    // Form Body
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -1236,38 +1182,23 @@ fun ProfileScreen(
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        // 1. Live Preview Avatar
+                        // 1. Live Preview Dynamic Avatar
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFF8CB9D9),
+                            color = Color.Transparent,
                             border = BorderStroke(3.dp, if (isDark) Color.White else Color(0xFF0F172A)),
                             modifier = Modifier
-                                .size(90.dp)
+                                .size(100.dp)
                                 .clip(CircleShape),
                             shadowElevation = 6.dp,
                         ) {
-                            Box(
+                            DynamicAvatar(
+                                seed = cleanEmail.ifBlank { editName.ifEmpty { userName } },
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = editName.ifEmpty { "G" }.take(1).uppercase(),
-                                    fontSize = 36.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                )
-                                if (editPhotoUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = editPhotoUrl,
-                                        contentDescription = "Preview Avatar",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                }
-                            }
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
                         // 2. Name Input Card
                         Surface(
@@ -1279,7 +1210,7 @@ fun ProfileScreen(
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    text = "আপনার নাম পরিবর্তন করুন",
+                                    text = "আপনার নাম লিখুন",
                                     fontSize = 13.5.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Bold,
@@ -1299,221 +1230,6 @@ fun ProfileScreen(
                                         unfocusedTextColor = textColor,
                                     ),
                                 )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // 3. Device Gallery Option & Photo URL Input Card
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "গ্যালারি অথবা ইউআরএল থেকে ছবি আপলোড",
-                                    fontSize = 13.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Button(
-                                    onClick = { launchPhotoPicker() },
-                                    modifier = Modifier.fillMaxWidth().height(46.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF0284C7).copy(alpha = 0.12f),
-                                        contentColor = Color(0xFF0284C7),
-                                    ),
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
-                                    ) {
-                                        Icon(
-                                            imageVector = GalleryIcon,
-                                            contentDescription = "গ্যালারি",
-                                            modifier = Modifier.size(18.dp),
-                                            tint = Color(0xFF0284C7),
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "ডিভাইসের গ্যালারি থেকে ছবি বেছে নিন",
-                                            fontSize = 13.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                OutlinedTextField(
-                                    value = editPhotoUrl,
-                                    onValueChange = { editPhotoUrl = it },
-                                    label = { Text("অথবা ছবির লিংক (URL)", fontFamily = hindSiliguri) },
-                                    placeholder = { Text("https://example.com/photo.jpg", fontSize = 12.sp) },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    trailingIcon = {
-                                        if (editPhotoUrl.isNotBlank()) {
-                                            IconButton(onClick = { editPhotoUrl = "" }) {
-                                                Icon(
-                                                    imageVector = CloseIcon,
-                                                    contentDescription = "Clear Photo",
-                                                    modifier = Modifier.size(16.dp),
-                                                    tint = textColor,
-                                                )
-                                            }
-                                        }
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color(0xFF0284C7),
-                                        unfocusedBorderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1),
-                                        focusedLabelColor = Color(0xFF0284C7),
-                                        unfocusedLabelColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
-                                        focusedTextColor = textColor,
-                                        unfocusedTextColor = textColor,
-                                    ),
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // 4. Categorized Avatar Gallery System
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "অ্যাভাটার গ্যালারি থেকে বেছে নিন",
-                                    fontSize = 14.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                var selectedCategoryIndex by remember { mutableStateOf(0) }
-                                val categories = listOf("🐾 পশুপাখি", "👩‍🎓 পেশাজীবী", "🤖 রোবট", "👾 পিক্সেল")
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    categories.forEachIndexed { index, catName ->
-                                        val isSelected = selectedCategoryIndex == index
-                                        Button(
-                                            onClick = { selectedCategoryIndex = index },
-                                            shape = RoundedCornerShape(20.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (isSelected) Color(0xFF0284C7) else (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9)),
-                                                contentColor = if (isSelected) Color.White else textColor,
-                                            ),
-                                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-                                        ) {
-                                            Text(
-                                                text = catName,
-                                                fontSize = 12.5.sp,
-                                                fontFamily = hindSiliguri,
-                                                fontWeight = FontWeight.Bold,
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                val animals = listOf(
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Panda",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Fox",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Bear",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Bunny",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Cat",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Dog",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Lion",
-                                    "https://api.dicebear.com/7.x/adventurer/png?seed=Penguin",
-                                )
-
-                                val professionals = listOf(
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Teacher",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Student",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Felix",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Aneka",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Sophia",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Zack",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Milo",
-                                    "https://api.dicebear.com/7.x/avataaars/png?seed=Zoe",
-                                )
-
-                                val robots = listOf(
-                                    "https://api.dicebear.com/7.x/bottts/png?seed=Avatar1",
-                                    "https://api.dicebear.com/7.x/bottts/png?seed=Klass",
-                                    "https://api.dicebear.com/7.x/bottts/png?seed=Cyber",
-                                    "https://api.dicebear.com/7.x/bottts/png?seed=Tech",
-                                    "https://api.dicebear.com/7.x/bottts/png?seed=Iron",
-                                    "https://api.dicebear.com/7.x/bottts/png?seed=Mecha",
-                                )
-
-                                val pixels = listOf(
-                                    "https://api.dicebear.com/7.x/pixel-art/png?seed=Gamer",
-                                    "https://api.dicebear.com/7.x/pixel-art/png?seed=Coder",
-                                    "https://api.dicebear.com/7.x/pixel-art/png?seed=Pixel",
-                                    "https://api.dicebear.com/7.x/big-smile/png?seed=Happy",
-                                    "https://api.dicebear.com/7.x/big-smile/png?seed=Smile",
-                                    "https://api.dicebear.com/7.x/fun-emoji/png?seed=Cool",
-                                )
-
-                                val activeAvatars = when (selectedCategoryIndex) {
-                                    0 -> animals
-                                    1 -> professionals
-                                    2 -> robots
-                                    else -> pixels
-                                }
-
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    activeAvatars.chunked(4).forEach { rowAvatars ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceAround,
-                                        ) {
-                                            rowAvatars.forEach { url ->
-                                                val isSelected = editPhotoUrl == url
-                                                Surface(
-                                                    onClick = { editPhotoUrl = url },
-                                                    shape = CircleShape,
-                                                    border = BorderStroke(
-                                                        if (isSelected) 3.dp else 1.dp,
-                                                        if (isSelected) Color(0xFF0284C7) else (if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1)),
-                                                    ),
-                                                    color = Color(0xFF8CB9D9),
-                                                    modifier = Modifier.size(58.dp),
-                                                    shadowElevation = if (isSelected) 6.dp else 1.dp,
-                                                ) {
-                                                    AsyncImage(
-                                                        model = url,
-                                                        contentDescription = "Gallery Avatar",
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
 
