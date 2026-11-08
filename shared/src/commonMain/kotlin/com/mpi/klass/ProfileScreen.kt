@@ -1,7 +1,15 @@
 ﻿package com.mpi.klass
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +51,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.PI
+import kotlin.math.sin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -123,6 +134,78 @@ fun ProfileScreen(
     onUpdateProfile: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
     onCategoryChanged: ((UserRole) -> Unit)? = null,
 ) {
+    if (role == null) {
+        val currentLang = LocalAppLanguage.current
+        val primaryColor = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
+        val ringColor = primaryColor.copy(alpha = 0.15f)
+
+        val transition = rememberInfiniteTransition(label = "RippleTransition")
+        val pulseProgress by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2200, easing = androidx.compose.animation.core.LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "PulseProgress"
+        )
+
+        val interactionSource = remember { MutableInteractionSource() }
+        val isButtonClicked by interactionSource.collectIsPressedAsState()
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Multiple concentric circle layers spanning outward across the screen
+            val numberOfRings = 6
+            for (i in 1..numberOfRings) {
+                val animatedScale = if (isButtonClicked) {
+                    (1f + (pulseProgress * 0.5f) + (i * 0.12f)).coerceIn(1f, 3f)
+                } else {
+                    1f + (sin((pulseProgress * 2f * PI + i * 0.5f)).toFloat() * 0.04f)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size((140 + i * 85).dp)
+                        .graphicsLayer(
+                            scaleX = animatedScale,
+                            scaleY = animatedScale,
+                            alpha = (1f - (i * 0.14f)).coerceIn(0.08f, 0.7f)
+                        )
+                        .clip(CircleShape)
+                        .background(ringColor)
+                )
+            }
+
+            // Center Pure Circle Sign In Button
+            Button(
+                onClick = onSignOut,
+                interactionSource = interactionSource,
+                modifier = Modifier
+                    .size(140.dp), // Pure circle
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = primaryColor,
+                    contentColor = Color.White,
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 10.dp),
+            ) {
+                Text(
+                    text = if (currentLang == AppLanguage.BENGALI) "সাইন ইন করুন" else "Sign In",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = hindSiliguri,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        return
+    }
+
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)

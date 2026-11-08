@@ -226,7 +226,9 @@ fun App(
         coroutineScope.launch {
             val studentEmail = "student@mpi.edu.bd"
             val studentName = "শিক্ষার্থী"
-            RoleConfig.saveUserProfile(studentEmail, studentName, null, "student", UserRole.STUDENT.name)
+            try {
+                saveLocalProfile(studentEmail, studentName, null, "student", UserRole.STUDENT.name)
+            } catch (_: Exception) {}
             saveUserSession(UserSession(role = UserRole.STUDENT.name, email = studentEmail, name = studentName, photoUrl = null))
             currentScreen = AppScreen.RoleHome(
                 role = UserRole.STUDENT,

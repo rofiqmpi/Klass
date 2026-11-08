@@ -97,18 +97,20 @@ object RoleConfig {
         // 1. Save locally on device
         saveLocalProfile(cleanEmail, name, photoUrl, provider, category)
 
-        // 2. Save to Local Firebase Emulator
+        // 2. Save to Local Firebase Emulator with timeout
         try {
-            val docRef = Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail)
-            val data = mapOf(
-                "email" to cleanEmail,
-                "name" to name,
-                "photo_url" to (photoUrl ?: ""),
-                "provider" to provider,
-                "category" to category,
-                "updated_at" to kotlin.time.Clock.System.now().toEpochMilliseconds()
-            )
-            docRef.set(data)
+            withTimeoutOrNull(2.seconds) {
+                val docRef = Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail)
+                val data = mapOf(
+                    "email" to cleanEmail,
+                    "name" to name,
+                    "photo_url" to (photoUrl ?: ""),
+                    "provider" to provider,
+                    "category" to category,
+                    "updated_at" to kotlin.time.Clock.System.now().toEpochMilliseconds()
+                )
+                docRef.set(data)
+            }
         } catch (_: Exception) {}
 
         return Result.success(Unit)
