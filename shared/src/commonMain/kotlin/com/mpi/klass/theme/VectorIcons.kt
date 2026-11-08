@@ -997,3 +997,47 @@ val LockIcon: ImageVector
         }
     }.build()
 
+val SparkleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Sparkle",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            stroke = null,
+            pathFillType = PathFillType.NonZero,
+        ) {
+            moveTo(12f, 2f)
+            curveTo(12.3f, 7.5f, 16.5f, 11.7f, 22f, 12f)
+            curveTo(16.5f, 12.3f, 12.3f, 16.5f, 12f, 22f)
+            curveTo(11.7f, 16.5f, 7.5f, 12.3f, 2f, 12f)
+            curveTo(7.5f, 11.7f, 11.7f, 7.5f, 12f, 2f)
+            close()
+        }
+    }.build()
+
+val SendIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Send",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            stroke = null,
+            pathFillType = PathFillType.NonZero,
+        ) {
+            moveTo(2.01f, 21f)
+            lineTo(23f, 12f)
+            lineTo(2.01f, 3f)
+            lineTo(2f, 10f)
+            lineTo(17f, 12f)
+            lineTo(2f, 14f)
+            close()
+        }
+    }.build()

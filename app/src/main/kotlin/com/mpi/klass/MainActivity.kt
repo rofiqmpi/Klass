@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
+        configureAppCheck(this, intent)
         RoleConfig.configureLocalEmulator()
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)

@@ -127,9 +127,22 @@ object AppStrings {
         "বাতিল" to "Cancel",
         "ইন্টারনেট সংযোগ নেই। আপনার নেটওয়ার্ক চেক করুন।" to "No internet connection. Please check your network.",
         "কিছু ভুল হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।" to "Something went wrong. Please try again.",
-        "গুগল সাইন-ইন ব্যর্থ হয়েছে" to "Google sign-in failed",
         "অনুমোদন প্রক্রিয়াধীন" to "Approval Pending",
         "এডমিন অনুমোদন অনুরোধ" to "Admin Approval Request",
+
+        // Gemini AI Assistant
+        "Gemini AI স্টাডি সহকারী" to "Gemini AI Study Assistant",
+        "Gemini AI" to "Gemini AI",
+        "AI-কে যেকোনো প্রশ্ন করুন..." to "Ask AI any question...",
+        "ক্লাস নোটের সারাংশ" to "Summarize class notes",
+        "কঠিন বিষয় সহজ করে ব্যাখ্যা" to "Explain tough topics simply",
+        "অনুশীলনী প্রশ্ন তৈরি করুন" to "Generate practice quiz",
+        "পড়ার রুটিন তৈরি করুন" to "Create study schedule",
+        "নতুন চ্যাট" to "New Chat",
+        "Gemini চিন্তা করছে..." to "Gemini is thinking...",
+        "আবার চেষ্টা করুন" to "Try Again",
+        "কপি করা হয়েছে" to "Copied to clipboard",
+        "AI স্টাডি অ্যাসিস্ট্যান্ট" to "AI Study Assistant",
     )
 
     /**

@@ -26,6 +26,7 @@ fun MenuScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     onProfileClick: () -> Unit = {},
+    onAiClick: () -> Unit = {},
 ) {
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -59,6 +60,7 @@ fun MenuScreen(
                     color = textColor,
                 )
                 Spacer(modifier = Modifier.height(18.dp))
+                MenuItem("✨ Gemini AI স্টাডি সহকারী", hindSiliguri, textColor, subTextColor, onAiClick)
                 MenuItem("প্রোফাইল", hindSiliguri, textColor, subTextColor, onProfileClick)
                 MenuItem("বুকস লাইব্রেরি", hindSiliguri, textColor, subTextColor)
                 MenuItem("শিক্ষক", hindSiliguri, textColor, subTextColor)

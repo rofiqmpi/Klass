@@ -14,6 +14,10 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.recaptcha)
+    implementation(libs.firebase.appcheck.debug)
     implementation("com.google.firebase:firebase-auth:23.2.0")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
@@ -69,6 +73,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests {

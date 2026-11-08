@@ -8,9 +8,14 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.testTag
+import com.mpi.klass.theme.SparkleIcon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,6 +86,7 @@ fun GuestHomeScreen(
 
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
 
     val isGesture = remember { isGestureNavigation() }
     val exactCornerRadiusDp = remember { getDisplayBottomCornerRadiusDp() }
@@ -122,13 +128,14 @@ fun GuestHomeScreen(
             val transparentBrush = Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
 
             // Header
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(86.dp),
-                color = Color.Transparent,
-                shadowElevation = if (selectedTab == "home") 6.dp else 0.dp,
-            ) {
+            if (selectedTab != "ai") {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(86.dp),
+                    color = Color.Transparent,
+                    shadowElevation = if (selectedTab == "home") 6.dp else 0.dp,
+                ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -336,6 +343,7 @@ fun GuestHomeScreen(
                     }
                 }
             }
+            }
 
             // Center Content with Smooth Transition Animation
             Box(
@@ -352,19 +360,33 @@ fun GuestHomeScreen(
                     when (targetTab) {
                         "home" -> {
                             Box(
-                                modifier = Modifier.fillMaxSize().padding(20.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 4.dp, vertical = 4.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Image(
-                                    painter = painterResource(Res.drawable.welcome),
-                                    contentDescription = "Welcome",
-                                    modifier = Modifier.size(160.dp),
-                                    contentScale = ContentScale.Fit,
+                                ClassRoutineTable(
+                                    hindSiliguri = hindSiliguri,
+                                    isDark = isDark,
+                                    modifier = Modifier.fillMaxSize(),
                                 )
                             }
                         }
                         "menu" -> {
-                            MenuScreen(isDark = isDark, hindSiliguri = hindSiliguri)
+                            MenuScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onProfileClick = { selectedTab = "profile" },
+                                onAiClick = { selectedTab = "ai" },
+                            )
+                        }
+                        "ai" -> {
+                            AiAssistantScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onBack = { selectedTab = "home" },
+                                userDisplayName = currentUserName,
+                            )
                         }
                         "notification" -> {
                             NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)

@@ -36,6 +36,8 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
             implementation(libs.coil.network.okhttp)
+            implementation(project.dependencies.platform(libs.firebase.bom.get()))
+            implementation(libs.firebase.ai)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

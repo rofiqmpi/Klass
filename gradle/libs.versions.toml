@@ -15,7 +15,7 @@ gitliveFirebase = "2.7.0"
 googleServices = "4.4.2"
 google-playServices-auth = "21.3.0"
 firebaseUiAuth = "10.0.0"
-firebaseBom = "33.9.0"
+firebaseBom = "35.1.0"
 coil = "3.6.3"
 junit = "4.13.2"
 kotlin = "2.4.20"
@@ -52,6 +52,9 @@ google-play-services-auth = { module = "com.google.android.gms:play-services-aut
 firebaseUiAuth = { module = "com.firebaseui:firebase-ui-auth", version.ref = "firebaseUiAuth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-ai = { module = "com.google.firebase:firebase-ai" }
+firebase-appcheck-recaptcha = { module = "com.google.firebase:firebase-appcheck-recaptcha" }
+firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 
