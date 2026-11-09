@@ -183,16 +183,41 @@ fun App(
                 email != null -> {
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
-                        if (targetRole == UserRole.ADMIN && !RoleConfig.isAuthorizedAdminEmail(cleanEmail)) {
+                        if (targetRole == UserRole.ADMIN) {
+                            val isAuth = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
+                            if (!isAuth) {
+                                isLoadingOverlay = false
+                                onSignOutGoogle()
+                                showError(ErrorImageType.ADMIN_NOT_AUTHORIZED)
+                                return@launch
+                            }
+                            val userName = name ?: cleanEmail.substringBefore("@")
+                            RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
+                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
+                            saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                            currentScreen = AppScreen.RoleHome(
+                                role = targetRole,
+                                email = cleanEmail,
+                                name = userName,
+                                photoUrl = photoUrl,
+                            )
                             isLoadingOverlay = false
-                            onSignOutGoogle()
-                            showError(ErrorImageType.ADMIN_NOT_AUTHORIZED)
+                        } else if (targetRole == UserRole.TEACHER) {
+                            val userName = name ?: cleanEmail.substringBefore("@")
+                            // Save profile directly into teachers collection in Firebase Firestore
+                            RoleConfig.saveTeacherProfile(cleanEmail, userName, photoUrl, "google")
+                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
+                            saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                            currentScreen = AppScreen.RoleHome(
+                                role = targetRole,
+                                email = cleanEmail,
+                                name = userName,
+                                photoUrl = photoUrl,
+                            )
+                            isLoadingOverlay = false
                         } else {
                             val userName = name ?: cleanEmail.substringBefore("@")
                             RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
-                            if (targetRole == UserRole.ADMIN) {
-                                RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
-                            }
                             saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
                             currentScreen = AppScreen.RoleHome(
                                 role = targetRole,
@@ -418,7 +443,7 @@ fun ErrorImagePopup(
         ErrorImageType.GENERAL_ERROR -> "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
         ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
         ErrorImageType.SIGN_IN_DISABLED -> "এডমিন এই ধরনের সাইন ইন সাময়িকভাবে বন্ধ রেখেছেন। পরে আবার চেষ্টা করুন অথবা এডমিনের সাথে যোগাযোগ করুন।"
-        ErrorImageType.ADMIN_NOT_AUTHORIZED -> "শুধু Firebase-এর admin_emails তালিকায় থাকা email দিয়ে এই অ্যাপে প্রবেশ করা যাবে।"
+        ErrorImageType.ADMIN_NOT_AUTHORIZED -> "শুধু Firebase Firestore-এর admins কালেকশনে থাকা অনুমোদিত email দিয়ে এডমিন হিসেবে প্রবেশ করা যাবে।"
     }
 
     val steps = when (errorType) {
@@ -440,8 +465,8 @@ fun ErrorImagePopup(
             "এডমিনের সাথে যোগাযোগ করুন এবং সাইন ইন চালু করতে অনুরোধ করুন।",
         )
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> listOf(
-            "Firebase Firestore-এর admin_emails collection-এ আপনার email যোগ করুন।",
-            "enabled ফিল্ড না দিলে email-টি সক্রিয় ধরা হবে।",
+            "Firebase Console-এ Firestore Database > admins কালেকশনে আপনার email ডকুমেন্ট হিসেবে যোগ করুন।",
+            "অনুমোদিত ইমেইল অ্যাকাউন্ট দিয়ে পুনরায় চেষ্টা করুন।",
         )
     }
 

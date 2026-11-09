@@ -67,21 +67,45 @@ expect fun updateLocalCategory(email: String, category: String)
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
-    private const val ADMIN_EMAILS_COLLECTION = "admin_emails"
     private const val ADMINS_COLLECTION = "admins"
-    private var isEmulatorInitialized = false
+    private const val TEACHERS_COLLECTION = "teachers"
 
-    /**
-     * Configures Firebase to connect to Local Emulator on PC (10.0.2.2).
-     */
     fun configureLocalEmulator(host: String = "10.0.2.2") {
-        if (isEmulatorInitialized) return
-        try {
-            Firebase.firestore.setSettings(host = "$host:8080", sslEnabled = false)
-            Firebase.auth.useEmulator(host, 9099)
-            Firebase.database.useEmulator(host, 9000)
-            isEmulatorInitialized = true
-        } catch (_: Exception) {}
+        // No-op: Always connect directly to live Firebase services
+    }
+
+    suspend fun saveTeacherProfile(
+        email: String,
+        name: String,
+        photoUrl: String?,
+        provider: String = "google",
+    ): Result<Unit> {
+        if (email.isBlank()) return Result.failure(Exception("Invalid email"))
+        val cleanEmail = email.trim().lowercase()
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
+
+        // 1. Save locally on device
+        saveLocalProfile(cleanEmail, name, photoUrl, provider, UserRole.TEACHER.name)
+
+        // 2. Save directly to Firebase 'teachers' collection
+        return try {
+            withTimeoutOrNull(6.seconds) {
+                val docRef = Firebase.firestore.collection(TEACHERS_COLLECTION).document(cleanEmail)
+                val data = mapOf(
+                    "email" to cleanEmail,
+                    "name" to name,
+                    "photo_url" to (photoUrl ?: ""),
+                    "role" to "TEACHER",
+                    "provider" to provider,
+                    "registered_at" to now,
+                    "updated_at" to now,
+                )
+                docRef.set(data, merge = true)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun saveUserProfile(
@@ -89,17 +113,23 @@ object RoleConfig {
         name: String,
         photoUrl: String?,
         provider: String,
-        category: String = "STUDENT"
+        category: String = "STUDENT",
     ): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
         // 1. Save locally on device
         saveLocalProfile(cleanEmail, name, photoUrl, provider, category)
 
-        // 2. Save to Local Firebase Emulator with timeout
+        // 2. If Teacher, save to 'teachers' collection
+        if (category.equals(UserRole.TEACHER.name, ignoreCase = true)) {
+            saveTeacherProfile(cleanEmail, name, photoUrl, provider)
+        }
+
+        // 3. Save to live Firebase Firestore 'users' collection
         try {
-            withTimeoutOrNull(2.seconds) {
+            withTimeoutOrNull(5.seconds) {
                 val docRef = Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail)
                 val data = mapOf(
                     "email" to cleanEmail,
@@ -107,9 +137,9 @@ object RoleConfig {
                     "photo_url" to (photoUrl ?: ""),
                     "provider" to provider,
                     "category" to category,
-                    "updated_at" to kotlin.time.Clock.System.now().toEpochMilliseconds()
+                    "updated_at" to now,
                 )
-                docRef.set(data)
+                docRef.set(data, merge = true)
             }
         } catch (_: Exception) {}
 
@@ -120,11 +150,36 @@ object RoleConfig {
         if (email.isBlank()) return false
         val cleanEmail = email.trim().lowercase()
         return try {
-            val doc = withTimeoutOrNull(3.seconds) {
-                Firebase.firestore.collection(ADMIN_EMAILS_COLLECTION).document(cleanEmail).get()
+            // 1. Check direct document by email ID in 'admins' collection (e.g. admins/user@email.com)
+            val doc = withTimeoutOrNull(6.seconds) {
+                Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).get()
             }
-            doc?.exists == true && (doc.data<Map<String, Any>>()["enabled"] as? Boolean ?: true)
-        } catch (_: Exception) {
+            if (doc?.exists == true) {
+                val data = try { doc.data<Map<String, Any>>() } catch (_: Exception) { null }
+                val isEnabled = data?.get("enabled") as? Boolean ?: true
+                return isEnabled
+            }
+
+            // 2. Check query where email field == cleanEmail (in case document was saved with auto ID)
+            val querySnapshot = withTimeoutOrNull(6.seconds) {
+                try {
+                    Firebase.firestore.collection(ADMINS_COLLECTION)
+                        .where { "email" equalTo cleanEmail }
+                        .get()
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            if (querySnapshot != null && querySnapshot.documents.isNotEmpty()) {
+                val firstDoc = querySnapshot.documents.first()
+                val data = try { firstDoc.data<Map<String, Any>>() } catch (_: Exception) { null }
+                val isEnabled = data?.get("enabled") as? Boolean ?: true
+                return isEnabled
+            }
+
+            false
+        } catch (e: Exception) {
+            println("Admin authorization check exception: ${e.message}")
             false
         }
     }
@@ -132,16 +187,21 @@ object RoleConfig {
     suspend fun saveAdminEmail(email: String, name: String, photoUrl: String?): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid admin email"))
         val cleanEmail = email.trim().lowercase()
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
         return try {
-            Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).set(
-                mapOf(
-                    "email" to cleanEmail,
-                    "name" to name,
-                    "photo_url" to (photoUrl ?: ""),
-                    "updated_at" to kotlin.time.Clock.System.now().toEpochMilliseconds(),
-                ),
-                merge = true,
-            )
+            withTimeoutOrNull(6.seconds) {
+                Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).set(
+                    mapOf(
+                        "email" to cleanEmail,
+                        "name" to name,
+                        "photo_url" to (photoUrl ?: ""),
+                        "role" to "ADMIN",
+                        "last_login_at" to now,
+                        "updated_at" to now,
+                    ),
+                    merge = true,
+                )
+            }
             Result.success(Unit)
         } catch (exception: Exception) {
             Result.failure(exception)
@@ -155,8 +215,30 @@ object RoleConfig {
         val localProf = fetchLocalProfile(cleanEmail)
         if (localProf != null) return localProf
 
+        // Try 'teachers' collection first if registered as teacher
         try {
-            val doc = withTimeoutOrNull(2.seconds) {
+            val teacherDoc = withTimeoutOrNull(4.seconds) {
+                Firebase.firestore.collection(TEACHERS_COLLECTION).document(cleanEmail).get()
+            }
+            if (teacherDoc?.exists == true) {
+                val data = teacherDoc.data<Map<String, Any>>()
+                val prof = UserProfile(
+                    email = (data["email"] as? String) ?: cleanEmail,
+                    name = (data["name"] as? String) ?: "",
+                    photoUrl = (data["photo_url"] as? String)?.ifBlank { null },
+                    provider = (data["provider"] as? String) ?: "google",
+                    category = UserRole.TEACHER.name,
+                    registeredAt = (data["registered_at"] as? Long) ?: 0L,
+                    updatedAt = (data["updated_at"] as? Long) ?: 0L,
+                )
+                saveLocalProfile(cleanEmail, prof.name, prof.photoUrl, prof.provider, prof.category)
+                return prof
+            }
+        } catch (_: Exception) {}
+
+        // Fallback to 'users' collection
+        try {
+            val doc = withTimeoutOrNull(4.seconds) {
                 Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail).get()
             }
             if (doc?.exists == true) {
@@ -168,7 +250,7 @@ object RoleConfig {
                     provider = (data["provider"] as? String) ?: "",
                     category = (data["category"] as? String) ?: "STUDENT",
                     registeredAt = (data["registered_at"] as? Long) ?: 0L,
-                    updatedAt = (data["updated_at"] as? Long) ?: 0L
+                    updatedAt = (data["updated_at"] as? Long) ?: 0L,
                 )
                 saveLocalProfile(cleanEmail, prof.name, prof.photoUrl, prof.provider, prof.category)
                 return prof
@@ -181,12 +263,20 @@ object RoleConfig {
     suspend fun updateUserCategory(email: String, category: String): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
-        // Update local storage & local emulator
+        // Update local storage
         updateLocalCategory(cleanEmail, category)
+
+        // If updated to TEACHER, also record into 'teachers' collection
+        if (category.equals(UserRole.TEACHER.name, ignoreCase = true)) {
+            val local = fetchLocalProfile(cleanEmail)
+            saveTeacherProfile(cleanEmail, local?.name ?: "", local?.photoUrl, local?.provider ?: "google")
+        }
+
         try {
             val docRef = Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail)
-            docRef.set(mapOf("category" to category, "updated_at" to kotlin.time.Clock.System.now().toEpochMilliseconds()), merge = true)
+            docRef.set(mapOf("category" to category, "updated_at" to now), merge = true)
         } catch (_: Exception) {}
 
         return Result.success(Unit)
@@ -199,6 +289,7 @@ object RoleConfig {
         deleteLocalProfile(cleanEmail)
         try {
             Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail).delete()
+            Firebase.firestore.collection(TEACHERS_COLLECTION).document(cleanEmail).delete()
             Firebase.auth.currentUser?.delete()
         } catch (_: Exception) {}
 

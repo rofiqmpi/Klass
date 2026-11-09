@@ -79,7 +79,6 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         configureAppCheck(this, intent)
-        RoleConfig.configureLocalEmulator()
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()

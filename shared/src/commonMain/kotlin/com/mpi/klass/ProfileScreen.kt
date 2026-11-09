@@ -237,6 +237,7 @@ fun ProfileScreen(
     var isSavingStudentProfile by remember { mutableStateOf(false) }
     var studentProfileError by remember { mutableStateOf<String?>(null) }
     var isStudentEditing by remember { mutableStateOf(false) }
+    var adminCheckError by remember { mutableStateOf<String?>(null) }
 
     val cleanEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
 
@@ -491,6 +492,14 @@ fun ProfileScreen(
                         Button(
                             onClick = {
                                 coroutineScope.launch {
+                                    if (catRole == UserRole.ADMIN) {
+                                        val isAuth = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
+                                        if (!isAuth) {
+                                            adminCheckError = "আপনার ইমেইলটি Firebase-এর admins তালিকায় অনুমোদিত নয়।"
+                                            return@launch
+                                        }
+                                    }
+                                    adminCheckError = null
                                     RoleConfig.updateUserCategory(cleanEmail, catRole.name)
                                     onCategoryChanged?.invoke(catRole)
                                 }
@@ -513,6 +522,19 @@ fun ProfileScreen(
                             )
                         }
                     }
+                }
+
+                if (!adminCheckError.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = adminCheckError ?: "",
+                        color = Color(0xFFEF4444),
+                        fontSize = 12.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    )
                 }
             }
         }

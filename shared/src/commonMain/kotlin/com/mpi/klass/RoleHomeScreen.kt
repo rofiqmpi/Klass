@@ -1,6 +1,7 @@
 package com.mpi.klass
 
 import androidx.compose.foundation.BorderStroke
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -94,6 +96,7 @@ fun RoleHomeScreen(
     }
 
     val hindSiliguri = getHindSiliguriFontFamily()
+    val coroutineScope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf(initialTab) }
 
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
@@ -398,6 +401,14 @@ fun RoleHomeScreen(
                                             photoUrl = newPhotoUrl,
                                         )
                                     )
+                                    coroutineScope.launch {
+                                        if (currentRole == UserRole.TEACHER) {
+                                            RoleConfig.saveTeacherProfile(sessionEmail, newName, newPhotoUrl)
+                                        } else if (currentRole == UserRole.ADMIN) {
+                                            RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
+                                        }
+                                        RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                    }
                                 }
                                 onProfileUpdated?.invoke(newName, newPhotoUrl)
                             },
