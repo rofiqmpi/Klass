@@ -1023,8 +1023,8 @@ fun ProfileScreen(
             }
         }
 
-        // Account Delete Button (For all registered users)
-        if (cleanEmail.isNotBlank()) {
+        // Account Delete Button (For registered Teachers and Students, but NOT Admins)
+        if (cleanEmail.isNotBlank() && role != UserRole.ADMIN) {
             Spacer(modifier = Modifier.height(10.dp))
             OutlinedButton(
                 onClick = { showDeleteDialog = true },

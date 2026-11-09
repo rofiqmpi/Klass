@@ -176,7 +176,7 @@ private suspend fun checkDatabaseForAdmin(db: FirebaseFirestore, dbLabel: String
             // 3. Collection scan
             try {
                 val allDocs = colRef.get().awaitTask()
-                Log.d(TAG, "[$dbLabel] Collection '$colName' contains ${allDocs.size()} docs: ${allDocs.documents.map { it.id }}")
+                Log.d(TAG, "[$dbLabel] Collection '$colName' contains ${allDocs.size()} docs")
                 for (doc in allDocs.documents) {
                     if (isDocMatchingEmail(doc, cleanEmail)) {
                         Log.d(TAG, "[$dbLabel] SUCCESS: Authorized admin via collection scan in $colName: ${doc.id}")
@@ -268,6 +268,35 @@ actual suspend fun saveTeacherInFirestore(
     return Result.success(Unit)
 }
 
+actual suspend fun saveStudentInFirestore(
+    email: String,
+    name: String,
+    photoUrl: String?,
+    provider: String,
+): Result<Unit> {
+    if (email.isBlank()) return Result.failure(Exception("Invalid email"))
+    val cleanEmail = email.trim().lowercase()
+    val now = System.currentTimeMillis()
+    val data = mapOf(
+        "email" to cleanEmail,
+        "name" to name,
+        "photo_url" to (photoUrl ?: ""),
+        "role" to "STUDENT",
+        "provider" to provider,
+        "registered_at" to now,
+        "updated_at" to now,
+    )
+
+    val instances = getFirestoreInstances()
+    for ((db, _) in instances) {
+        try {
+            db.collection("students").document(cleanEmail).set(data, SetOptions.merge())
+        } catch (_: Exception) {}
+    }
+
+    return Result.success(Unit)
+}
+
 actual suspend fun saveUserInFirestore(
     email: String,
     name: String,
@@ -301,44 +330,59 @@ actual suspend fun fetchUserFromFirestore(email: String): UserProfile? {
     val instances = getFirestoreInstances()
 
     for ((db, _) in instances) {
-        // Try 'teachers' collection
+        // Try 'teachers'
         try {
-            val teacherDoc = db.collection("teachers").document(cleanEmail).get().awaitTask()
-            if (teacherDoc.exists()) {
-                val data = teacherDoc.data
+            val doc = db.collection("teachers").document(cleanEmail).get().awaitTask()
+            if (doc.exists()) {
+                val data = doc.data
                 if (data != null) {
-                    val prof = UserProfile(
+                    return UserProfile(
                         email = (data["email"] as? String) ?: cleanEmail,
                         name = (data["name"] as? String) ?: "",
                         photoUrl = (data["photo_url"] as? String)?.ifBlank { null },
                         provider = (data["provider"] as? String) ?: "google",
-                        category = UserRole.TEACHER.name,
-                        registeredAt = (data["registered_at"] as? Long) ?: (data["registeredAt"] as? Long) ?: 0L,
-                        updatedAt = (data["updated_at"] as? Long) ?: (data["updatedAt"] as? Long) ?: 0L,
+                        category = "TEACHER",
+                        registeredAt = (data["registered_at"] as? Long) ?: 0L,
+                        updatedAt = (data["updated_at"] as? Long) ?: 0L,
                     )
-                    saveLocalProfile(cleanEmail, prof.name, prof.photoUrl, prof.provider, prof.category)
-                    return prof
                 }
             }
         } catch (_: Exception) {}
 
-        // Try 'users' collection
+        // Try 'students'
         try {
-            val userDoc = db.collection("users").document(cleanEmail).get().awaitTask()
-            if (userDoc.exists()) {
-                val data = userDoc.data
+            val doc = db.collection("students").document(cleanEmail).get().awaitTask()
+            if (doc.exists()) {
+                val data = doc.data
                 if (data != null) {
-                    val prof = UserProfile(
+                    return UserProfile(
+                        email = (data["email"] as? String) ?: cleanEmail,
+                        name = (data["name"] as? String) ?: "",
+                        photoUrl = (data["photo_url"] as? String)?.ifBlank { null },
+                        provider = (data["provider"] as? String) ?: "google",
+                        category = "STUDENT",
+                        registeredAt = (data["registered_at"] as? Long) ?: 0L,
+                        updatedAt = (data["updated_at"] as? Long) ?: 0L,
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Try 'users'
+        try {
+            val doc = db.collection("users").document(cleanEmail).get().awaitTask()
+            if (doc.exists()) {
+                val data = doc.data
+                if (data != null) {
+                    return UserProfile(
                         email = (data["email"] as? String) ?: cleanEmail,
                         name = (data["name"] as? String) ?: "",
                         photoUrl = (data["photo_url"] as? String)?.ifBlank { null },
                         provider = (data["provider"] as? String) ?: "",
                         category = (data["category"] as? String) ?: "STUDENT",
-                        registeredAt = (data["registered_at"] as? Long) ?: (data["registeredAt"] as? Long) ?: 0L,
-                        updatedAt = (data["updated_at"] as? Long) ?: (data["updatedAt"] as? Long) ?: 0L,
+                        registeredAt = (data["registered_at"] as? Long) ?: 0L,
+                        updatedAt = (data["updated_at"] as? Long) ?: 0L,
                     )
-                    saveLocalProfile(cleanEmail, prof.name, prof.photoUrl, prof.provider, prof.category)
-                    return prof
                 }
             }
         } catch (_: Exception) {}
@@ -347,14 +391,17 @@ actual suspend fun fetchUserFromFirestore(email: String): UserProfile? {
     return null
 }
 
-actual suspend fun deleteUserFromFirestore(email: String): Result<Unit> {
+actual suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit> {
     if (email.isBlank()) return Result.failure(Exception("Invalid email"))
     val cleanEmail = email.trim().lowercase()
     val instances = getFirestoreInstances()
     for ((db, _) in instances) {
         try {
             db.collection("users").document(cleanEmail).delete()
-            db.collection("teachers").document(cleanEmail).delete()
+            when (role.uppercase()) {
+                "TEACHER" -> db.collection("teachers").document(cleanEmail).delete()
+                "STUDENT" -> db.collection("students").document(cleanEmail).delete()
+            }
         } catch (_: Exception) {}
     }
     return Result.success(Unit)

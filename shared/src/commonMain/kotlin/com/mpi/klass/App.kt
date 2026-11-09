@@ -173,16 +173,19 @@ fun App(
     fun launchRoleSignIn(targetRole: UserRole) {
         isLoadingOverlay = true
         onLaunchGoogleSignIn { email, name, photoUrl, errorMsg ->
+            println("DEBUG: Google sign-in callback: email=$email, error=$errorMsg")
             when {
                 errorMsg != null -> {
                     isLoadingOverlay = false
                     onSignOutGoogle()
+                    println("DEBUG: Sign-in error: $errorMsg")
                     showError(ErrorImageType.GENERAL_ERROR)
                 }
 
                 email != null -> {
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
+                        println("DEBUG: Proceeding with role check for: $cleanEmail")
                         if (targetRole == UserRole.ADMIN) {
                             val isAuth = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
                             if (!isAuth) {
@@ -204,8 +207,7 @@ fun App(
                             isLoadingOverlay = false
                         } else if (targetRole == UserRole.TEACHER) {
                             val userName = name ?: cleanEmail.substringBefore("@")
-                            // Save profile directly into teachers collection in Firebase Firestore
-                            RoleConfig.saveTeacherProfile(cleanEmail, userName, photoUrl, "google")
+                            // Save profile directly into teachers collection and users collection
                             RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
                             saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
                             currentScreen = AppScreen.RoleHome(
@@ -217,6 +219,7 @@ fun App(
                             isLoadingOverlay = false
                         } else {
                             val userName = name ?: cleanEmail.substringBefore("@")
+                            // STUDENT role: saveUserProfile now handles students collection saving
                             RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
                             saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
                             currentScreen = AppScreen.RoleHome(
@@ -247,24 +250,7 @@ fun App(
         }
     }
 
-    fun launchStudentMode() {
-        isLoadingOverlay = true
-        coroutineScope.launch {
-            val studentEmail = "student@mpi.edu.bd"
-            val studentName = "শিক্ষার্থী"
-            try {
-                saveLocalProfile(studentEmail, studentName, null, "student", UserRole.STUDENT.name)
-            } catch (_: Exception) {}
-            saveUserSession(UserSession(role = UserRole.STUDENT.name, email = studentEmail, name = studentName, photoUrl = null))
-            currentScreen = AppScreen.RoleHome(
-                role = UserRole.STUDENT,
-                email = studentEmail,
-                name = studentName,
-                photoUrl = null,
-            )
-            isLoadingOverlay = false
-        }
-    }
+
 
     // Signing out is a purely local action; it must not require internet.
     fun signOutAndReturnToWelcome() {
@@ -308,7 +294,7 @@ fun App(
                                     saveAppLanguage(newLanguage)
                                 },
                                 onGuestClick = { launchGuestMode() },
-                                onStudentClick = { launchStudentMode() },
+                                onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
                                 onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
                                 onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
                                 onCloseApp = onCloseApp,

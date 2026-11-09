@@ -67,14 +67,16 @@ expect fun updateLocalCategory(email: String, category: String)
 expect suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean
 expect suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
 expect suspend fun saveTeacherInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
+expect suspend fun saveStudentInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
 expect suspend fun saveUserInFirestore(email: String, name: String, photoUrl: String?, provider: String, category: String): Result<Unit>
 expect suspend fun fetchUserFromFirestore(email: String): UserProfile?
-expect suspend fun deleteUserFromFirestore(email: String): Result<Unit>
+expect suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit>
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
     private const val ADMINS_COLLECTION = "admins"
     private const val TEACHERS_COLLECTION = "teachers"
+    private const val STUDENTS_COLLECTION = "students"
 
     fun configureLocalEmulator(host: String = "10.0.2.2") {
         // No-op: Always connect directly to live Firebase services
@@ -96,6 +98,22 @@ object RoleConfig {
         return saveTeacherInFirestore(cleanEmail, name, photoUrl, provider)
     }
 
+    suspend fun saveStudentProfile(
+        email: String,
+        name: String,
+        photoUrl: String?,
+        provider: String = "google",
+    ): Result<Unit> {
+        if (email.isBlank()) return Result.failure(Exception("Invalid email"))
+        val cleanEmail = email.trim().lowercase()
+
+        // 1. Save locally on device
+        saveLocalProfile(cleanEmail, name, photoUrl, provider, UserRole.STUDENT.name)
+
+        // 2. Save directly to Firebase 'students' collection across databases
+        return saveStudentInFirestore(cleanEmail, name, photoUrl, provider)
+    }
+
     suspend fun saveUserProfile(
         email: String,
         name: String,
@@ -105,14 +123,14 @@ object RoleConfig {
     ): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
-        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
         // 1. Save locally on device
         saveLocalProfile(cleanEmail, name, photoUrl, provider, category)
 
-        // 2. If Teacher, save to 'teachers' collection
-        if (category.equals(UserRole.TEACHER.name, ignoreCase = true)) {
-            saveTeacherProfile(cleanEmail, name, photoUrl, provider)
+        // 2. Specialized collection saving
+        when (category.uppercase()) {
+            UserRole.TEACHER.name -> saveTeacherProfile(cleanEmail, name, photoUrl, provider)
+            UserRole.STUDENT.name -> saveStudentProfile(cleanEmail, name, photoUrl, provider)
         }
 
         // 3. Save to live Firebase Firestore 'users' collection across active databases
@@ -125,8 +143,10 @@ object RoleConfig {
         if (email.isBlank()) return false
         val cleanEmail = email.trim().lowercase()
 
+        println("DEBUG: Checking admin authorization for '$cleanEmail'")
         // 1. Primary check via native Android Firestore supporting both default and custom DBs
         val isAuthNative = checkIsAuthorizedAdminEmail(cleanEmail)
+        println("DEBUG: isAuthNative result: $isAuthNative")
         if (isAuthNative) return true
 
         // 2. Secondary fallback check via GitLive Firebase
@@ -137,6 +157,7 @@ object RoleConfig {
             if (doc?.exists == true) {
                 val data = try { doc.data<Map<String, Any>>() } catch (_: Exception) { null }
                 val isEnabled = data?.get("enabled") as? Boolean ?: true
+                println("DEBUG: Found admin doc via GitLive, enabled: $isEnabled")
                 if (isEnabled) return true
             }
 
@@ -153,11 +174,14 @@ object RoleConfig {
                 val firstDoc = querySnapshot.documents.first()
                 val data = try { firstDoc.data<Map<String, Any>>() } catch (_: Exception) { null }
                 val isEnabled = data?.get("enabled") as? Boolean ?: true
+                println("DEBUG: Found admin via GitLive query, enabled: $isEnabled")
                 if (isEnabled) return true
             }
 
+            println("DEBUG: Admin authorization FAILED for '$cleanEmail'")
             false
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            println("DEBUG: Admin authorization check exception: ${e.message}")
             false
         }
     }
@@ -206,12 +230,16 @@ object RoleConfig {
         return Result.success(Unit)
     }
 
-    suspend fun deleteUserAccount(email: String): Result<Unit> {
+    suspend fun deleteUserAccount(email: String, role: UserRole): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
 
+        if (role == UserRole.ADMIN) {
+            return Result.failure(Exception("এডমিন অ্যাকাউন্ট ডিলিট করা সম্ভব নয়।"))
+        }
+
         deleteLocalProfile(cleanEmail)
-        deleteUserFromFirestore(cleanEmail)
+        deleteUserFromFirestore(cleanEmail, role.name)
         try {
             Firebase.auth.currentUser?.delete()
         } catch (_: Exception) {}
@@ -222,9 +250,9 @@ object RoleConfig {
 
     // Stubs for backward compatibility
     suspend fun fetchStudentProfile(email: String): StudentProfile? = StudentProfile(email = email)
-    suspend fun saveStudentProfile(profile: StudentProfile): Result<Unit> = Result.success(Unit)
-    suspend fun deleteStudentSignInData(email: String): Result<Unit> = Result.success(Unit)
+    suspend fun saveStudentProfile(profile: StudentProfile): Result<Unit> = saveStudentProfile(profile.email, profile.name, null)
+    suspend fun deleteStudentSignInData(email: String): Result<Unit> = deleteUserAccount(email, UserRole.STUDENT)
     suspend fun fetchSignInControl(): SignInControlConfig = SignInControlConfig()
     suspend fun saveSignInControl(config: SignInControlConfig): Result<Unit> = Result.success(Unit)
-    suspend fun deleteAccountFromFirebase(email: String, role: UserRole): Result<Unit> = deleteUserAccount(email)
+    suspend fun deleteAccountFromFirebase(email: String, role: UserRole): Result<Unit> = deleteUserAccount(email, role)
 }

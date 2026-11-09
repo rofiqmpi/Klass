@@ -7,14 +7,17 @@ service cloud.firestore {
     }
 
     // Admins collection:
-    // Authorized users can check admin status and record last login
     match /admins/{adminId} {
       allow read, write: if isAuthenticated();
     }
 
     // Teachers collection:
-    // Registered teachers can save profiles, and authenticated users can view
     match /teachers/{teacherId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Students collection:
+    match /students/{studentId} {
       allow read, write: if isAuthenticated();
     }
 
