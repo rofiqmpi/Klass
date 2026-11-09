@@ -1,6 +1,12 @@
 {
-  "firestore": {
-    "rules": "firestore.rules",
-    "database": "ai-studio-android-klass-12f1bead-bdd0-4fa6-8971-0f8fe8db4bd5"
-  }
+  "firestore": [
+    {
+      "rules": "firestore.rules",
+      "database": "(default)"
+    },
+    {
+      "rules": "firestore.rules",
+      "database": "ai-studio-android-klass-12f1bead-bdd0-4fa6-8971-0f8fe8db4bd5"
+    }
+  ]
 }

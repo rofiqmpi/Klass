@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.firebase.appcheck.recaptcha)
     implementation(libs.firebase.appcheck.debug)
     implementation("com.google.firebase:firebase-auth:23.2.0")
+    implementation("com.google.firebase:firebase-firestore")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.splashscreen)

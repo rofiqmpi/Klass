@@ -64,6 +64,9 @@ expect fun saveLocalProfile(email: String, name: String, photoUrl: String?, prov
 expect fun fetchLocalProfile(email: String): UserProfile?
 expect fun deleteLocalProfile(email: String)
 expect fun updateLocalCategory(email: String, category: String)
+expect suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean
+expect suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
+expect suspend fun saveTeacherInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
@@ -82,30 +85,12 @@ object RoleConfig {
     ): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
-        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
         // 1. Save locally on device
         saveLocalProfile(cleanEmail, name, photoUrl, provider, UserRole.TEACHER.name)
 
-        // 2. Save directly to Firebase 'teachers' collection
-        return try {
-            withTimeoutOrNull(6.seconds) {
-                val docRef = Firebase.firestore.collection(TEACHERS_COLLECTION).document(cleanEmail)
-                val data = mapOf(
-                    "email" to cleanEmail,
-                    "name" to name,
-                    "photo_url" to (photoUrl ?: ""),
-                    "role" to "TEACHER",
-                    "provider" to provider,
-                    "registered_at" to now,
-                    "updated_at" to now,
-                )
-                docRef.set(data, merge = true)
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        // 2. Save directly to Firebase 'teachers' collection across databases
+        return saveTeacherInFirestore(cleanEmail, name, photoUrl, provider)
     }
 
     suspend fun saveUserProfile(
@@ -149,19 +134,23 @@ object RoleConfig {
     suspend fun isAuthorizedAdminEmail(email: String): Boolean {
         if (email.isBlank()) return false
         val cleanEmail = email.trim().lowercase()
+
+        // 1. Primary check via native Android Firestore supporting both default and custom DBs
+        val isAuthNative = checkIsAuthorizedAdminEmail(cleanEmail)
+        if (isAuthNative) return true
+
+        // 2. Secondary fallback check via GitLive Firebase
         return try {
-            // 1. Check direct document by email ID in 'admins' collection (e.g. admins/user@email.com)
-            val doc = withTimeoutOrNull(6.seconds) {
+            val doc = withTimeoutOrNull(4.seconds) {
                 Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).get()
             }
             if (doc?.exists == true) {
                 val data = try { doc.data<Map<String, Any>>() } catch (_: Exception) { null }
                 val isEnabled = data?.get("enabled") as? Boolean ?: true
-                return isEnabled
+                if (isEnabled) return true
             }
 
-            // 2. Check query where email field == cleanEmail (in case document was saved with auto ID)
-            val querySnapshot = withTimeoutOrNull(6.seconds) {
+            val querySnapshot = withTimeoutOrNull(4.seconds) {
                 try {
                     Firebase.firestore.collection(ADMINS_COLLECTION)
                         .where { "email" equalTo cleanEmail }
@@ -174,12 +163,11 @@ object RoleConfig {
                 val firstDoc = querySnapshot.documents.first()
                 val data = try { firstDoc.data<Map<String, Any>>() } catch (_: Exception) { null }
                 val isEnabled = data?.get("enabled") as? Boolean ?: true
-                return isEnabled
+                if (isEnabled) return true
             }
 
             false
-        } catch (e: Exception) {
-            println("Admin authorization check exception: ${e.message}")
+        } catch (_: Exception) {
             false
         }
     }
@@ -187,25 +175,7 @@ object RoleConfig {
     suspend fun saveAdminEmail(email: String, name: String, photoUrl: String?): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid admin email"))
         val cleanEmail = email.trim().lowercase()
-        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
-        return try {
-            withTimeoutOrNull(6.seconds) {
-                Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).set(
-                    mapOf(
-                        "email" to cleanEmail,
-                        "name" to name,
-                        "photo_url" to (photoUrl ?: ""),
-                        "role" to "ADMIN",
-                        "last_login_at" to now,
-                        "updated_at" to now,
-                    ),
-                    merge = true,
-                )
-            }
-            Result.success(Unit)
-        } catch (exception: Exception) {
-            Result.failure(exception)
-        }
+        return saveAdminInFirestore(cleanEmail, name, photoUrl)
     }
 
     suspend fun fetchUserProfile(email: String): UserProfile? {

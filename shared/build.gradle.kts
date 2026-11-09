@@ -38,6 +38,7 @@ kotlin {
             implementation(libs.coil.network.okhttp)
             implementation(project.dependencies.platform(libs.firebase.bom.get()))
             implementation(libs.firebase.ai)
+            implementation("com.google.firebase:firebase-firestore")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

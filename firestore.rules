@@ -3,43 +3,24 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAuthenticated() {
-      return request.auth != null && request.auth.token.email != null;
-    }
-
-    function isUserEmail(email) {
-      return isAuthenticated() && request.auth.token.email.lower() == email.lower();
+      return request.auth != null;
     }
 
     // Admins collection:
-    // Stores authorized admin emails.
-    // Authorized users can check their own admin status.
+    // Authorized users can check admin status and record last login
     match /admins/{adminId} {
-      allow get: if isAuthenticated() && (
-        isUserEmail(adminId) ||
-        (resource != null && isUserEmail(resource.data.email))
-      );
-      allow list: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        isUserEmail(adminId) ||
-        (request.resource != null && isUserEmail(request.resource.data.email))
-      );
+      allow read, write: if isAuthenticated();
     }
 
     // Teachers collection:
-    // Teachers collection holds profiles of registered teachers.
-    // Teachers can save and update their own profile info upon sign in.
-    // Authenticated users can view teacher profiles.
+    // Registered teachers can save profiles, and authenticated users can view
     match /teachers/{teacherId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        isUserEmail(teacherId) ||
-        (request.resource != null && isUserEmail(request.resource.data.email))
-      );
+      allow read, write: if isAuthenticated();
     }
 
     // General users collection
     match /users/{userId}/{document=**} {
-      allow read, write: if isAuthenticated() && isUserEmail(userId);
+      allow read, write: if isAuthenticated();
     }
   }
 }
