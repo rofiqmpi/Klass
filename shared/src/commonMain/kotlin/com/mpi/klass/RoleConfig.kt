@@ -60,6 +60,21 @@ data class SignInControlConfig(
     val studentSignInEnabled: Boolean = true,
 )
 
+enum class AdminStatus {
+    APPROVED,
+    PENDING,
+    DECLINED,
+    NOT_REQUESTED,
+}
+
+data class AdminRequestItem(
+    val email: String = "",
+    val name: String = "",
+    val photoUrl: String? = null,
+    val status: String = "PENDING",
+    val requestedAt: Long = 0L,
+)
+
 expect fun saveLocalProfile(email: String, name: String, photoUrl: String?, provider: String, category: String)
 expect fun fetchLocalProfile(email: String): UserProfile?
 expect fun deleteLocalProfile(email: String)
@@ -71,6 +86,12 @@ expect suspend fun saveStudentInFirestore(email: String, name: String, photoUrl:
 expect suspend fun saveUserInFirestore(email: String, name: String, photoUrl: String?, provider: String, category: String): Result<Unit>
 expect suspend fun fetchUserFromFirestore(email: String): UserProfile?
 expect suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit>
+expect suspend fun fetchSignInControlFromFirestore(): SignInControlConfig
+expect suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Result<Unit>
+expect suspend fun getAdminStatusFromFirestore(email: String): AdminStatus
+expect suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
+expect suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem>
+expect suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit>
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
@@ -142,48 +163,8 @@ object RoleConfig {
     suspend fun isAuthorizedAdminEmail(email: String): Boolean {
         if (email.isBlank()) return false
         val cleanEmail = email.trim().lowercase()
-
-        println("DEBUG: Checking admin authorization for '$cleanEmail'")
-        // 1. Primary check via native Android Firestore supporting both default and custom DBs
-        val isAuthNative = checkIsAuthorizedAdminEmail(cleanEmail)
-        println("DEBUG: isAuthNative result: $isAuthNative")
-        if (isAuthNative) return true
-
-        // 2. Secondary fallback check via GitLive Firebase
-        return try {
-            val doc = withTimeoutOrNull(4.seconds) {
-                Firebase.firestore.collection(ADMINS_COLLECTION).document(cleanEmail).get()
-            }
-            if (doc?.exists == true) {
-                val data = try { doc.data<Map<String, Any>>() } catch (_: Exception) { null }
-                val isEnabled = data?.get("enabled") as? Boolean ?: true
-                println("DEBUG: Found admin doc via GitLive, enabled: $isEnabled")
-                if (isEnabled) return true
-            }
-
-            val querySnapshot = withTimeoutOrNull(4.seconds) {
-                try {
-                    Firebase.firestore.collection(ADMINS_COLLECTION)
-                        .where { "email" equalTo cleanEmail }
-                        .get()
-                } catch (_: Exception) {
-                    null
-                }
-            }
-            if (querySnapshot != null && querySnapshot.documents.isNotEmpty()) {
-                val firstDoc = querySnapshot.documents.first()
-                val data = try { firstDoc.data<Map<String, Any>>() } catch (_: Exception) { null }
-                val isEnabled = data?.get("enabled") as? Boolean ?: true
-                println("DEBUG: Found admin via GitLive query, enabled: $isEnabled")
-                if (isEnabled) return true
-            }
-
-            println("DEBUG: Admin authorization FAILED for '$cleanEmail'")
-            false
-        } catch (e: Exception) {
-            println("DEBUG: Admin authorization check exception: ${e.message}")
-            false
-        }
+        val status = getAdminStatusFromFirestore(cleanEmail)
+        return status == AdminStatus.APPROVED
     }
 
     suspend fun saveAdminEmail(email: String, name: String, photoUrl: String?): Result<Unit> {
@@ -248,11 +229,31 @@ object RoleConfig {
         return Result.success(Unit)
     }
 
+    suspend fun isUserRegisteredForRole(email: String, role: UserRole): Boolean {
+        if (email.isBlank()) return false
+        val cleanEmail = email.trim().lowercase()
+        return when (role) {
+            UserRole.ADMIN -> isAuthorizedAdminEmail(cleanEmail)
+            UserRole.TEACHER -> {
+                val profile = fetchUserProfile(cleanEmail)
+                profile != null && profile.category.trim().uppercase() == UserRole.TEACHER.name
+            }
+            UserRole.STUDENT -> {
+                val profile = fetchUserProfile(cleanEmail)
+                profile != null
+            }
+        }
+    }
+
     // Stubs for backward compatibility
     suspend fun fetchStudentProfile(email: String): StudentProfile? = StudentProfile(email = email)
     suspend fun saveStudentProfile(profile: StudentProfile): Result<Unit> = saveStudentProfile(profile.email, profile.name, null)
     suspend fun deleteStudentSignInData(email: String): Result<Unit> = deleteUserAccount(email, UserRole.STUDENT)
-    suspend fun fetchSignInControl(): SignInControlConfig = SignInControlConfig()
-    suspend fun saveSignInControl(config: SignInControlConfig): Result<Unit> = Result.success(Unit)
+    suspend fun fetchSignInControl(): SignInControlConfig = fetchSignInControlFromFirestore()
+    suspend fun saveSignInControl(config: SignInControlConfig): Result<Unit> = saveSignInControlInFirestore(config)
     suspend fun deleteAccountFromFirebase(email: String, role: UserRole): Result<Unit> = deleteUserAccount(email, role)
+    suspend fun getAdminStatusFromFirestore(email: String): AdminStatus = com.mpi.klass.getAdminStatusFromFirestore(email)
+    suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit> = com.mpi.klass.submitAdminRequestToFirestore(email, name, photoUrl)
+    suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem> = com.mpi.klass.fetchPendingAdminRequestsFromFirestore()
+    suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit> = com.mpi.klass.updateAdminRequestStatusInFirestore(email, newStatus)
 }

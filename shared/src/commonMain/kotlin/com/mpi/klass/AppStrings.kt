@@ -138,14 +138,68 @@ object AppStrings {
         "আবার চেষ্টা করুন" to "Try Again",
         "কপি করা হয়েছে" to "Copied to clipboard",
         "AI স্টাডি অ্যাসিস্ট্যান্ট" to "AI Study Assistant",
+
+        // Routine & Schedule
+        "দিন" to "Day",
+        "সময়" to "Time",
+        "বিষয়" to "Subject",
+        "কোড" to "Code",
+        "রুম" to "Room",
+        "কক্ষ" to "Room",
+        "রবিবার" to "Sunday",
+        "সোমবার" to "Monday",
+        "মঙ্গলবার" to "Tuesday",
+        "বুধবার" to "Wednesday",
+        "বৃহস্পতিবার" to "Thursday",
+        "রুটিন" to "Routine",
+        "নোটিফিকেশন" to "Notifications",
+        "বুকস লাইব্রেরি" to "Books Library",
+        "ক্লাসরুম" to "Classroom",
+        "নোটিশ বোর্ড" to "Notice Board",
+        "শিক্ষকবৃন্দ" to "Teachers",
+        "অ্যাপ থিম পরিবর্তন" to "Change App Theme",
+        "নতুন সাইন ইন নিয়ন্ত্রণ" to "New Sign-In Control",
+        "এডমিন রিকোয়েস্ট ও অনুমোদন" to "Admin Requests & Approvals",
+        "AI সহকারী" to "AI Assistant",
+        "লাইট" to "Light",
+        "ডার্ক" to "Dark",
+        "অটো" to "Auto",
+        "চালু আছে" to "Enabled",
+        "বন্ধ রয়েছে" to "Disabled",
+        "এডমিন সাইন ইন" to "Admin Sign In",
+        "শিক্ষক সাইন ইন" to "Teacher Sign In",
+        "শিক্ষার্থী সাইন ইন" to "Student Sign In",
     )
 
+    private val aiTranslationCache = mutableMapOf<String, String>()
+
     /**
-     * Translates any string dynamically based on the current AppLanguage.
+     * Translates any string dynamically based on the current AppLanguage, utilizing Gemini AI model for dynamic translation.
      */
     fun translate(text: String, lang: AppLanguage): String {
-        if (lang == AppLanguage.BENGALI) return text
-        return translations[text.trim()] ?: text
+        if (lang == AppLanguage.BENGALI || text.isBlank()) return text
+        val trimmed = text.trim()
+        return translations[trimmed] ?: aiTranslationCache[trimmed] ?: trimmed
+    }
+
+    suspend fun translateWithAiModel(text: String, lang: AppLanguage): String {
+        if (lang == AppLanguage.BENGALI || text.isBlank()) return text
+        val trimmed = text.trim()
+        translations[trimmed]?.let { return it }
+        aiTranslationCache[trimmed]?.let { return it }
+
+        return try {
+            val prompt = "Translate the following Bengali UI text into natural, professional English for an institute management mobile app. Output ONLY the translated text without quotes: \"$trimmed\""
+            val result = GeminiAiService.generateContent(prompt).trim().removeSurrounding("\"")
+            if (result.isNotBlank()) {
+                aiTranslationCache[trimmed] = result
+                result
+            } else {
+                trimmed
+            }
+        } catch (e: Exception) {
+            trimmed
+        }
     }
 }
 

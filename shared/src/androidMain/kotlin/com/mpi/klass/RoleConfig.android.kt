@@ -110,7 +110,6 @@ private fun isDocMatchingEmail(doc: DocumentSnapshot, cleanEmail: String): Boole
     }
 
     if (docId == cleanEmail) {
-        Log.d(TAG, "Matched admin by doc.id: '$docId'")
         return true
     }
 
@@ -119,20 +118,17 @@ private fun isDocMatchingEmail(doc: DocumentSnapshot, cleanEmail: String): Boole
     for (f in emailFields) {
         val v = (data[f] as? String)?.trim()?.lowercase()
         if (v == cleanEmail) {
-            Log.d(TAG, "Matched admin by field '$f': '$v' in doc ${doc.id}")
             return true
         }
     }
 
     for ((key, value) in data) {
         if (value is String && value.trim().lowercase() == cleanEmail) {
-            Log.d(TAG, "Matched admin by string field '$key' == '$value' in doc ${doc.id}")
             return true
         }
         if (value is List<*>) {
             for (item in value) {
                 if (item is String && item.trim().lowercase() == cleanEmail) {
-                    Log.d(TAG, "Matched admin in list '$key' containing '$item' in doc ${doc.id}")
                     return true
                 }
             }
@@ -196,8 +192,6 @@ private suspend fun checkDatabaseForAdmin(db: FirebaseFirestore, dbLabel: String
 actual suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean {
     if (email.isBlank()) return false
     val cleanEmail = email.trim().lowercase()
-    Log.d(TAG, "Starting admin authorization check for '$cleanEmail'")
-
     val result = withTimeoutOrNull(8.seconds) {
         val instances = getFirestoreInstances()
         for ((db, dbName) in instances) {
@@ -211,8 +205,6 @@ actual suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean {
         }
         false
     } ?: false
-
-    Log.d(TAG, "Admin authorization result for '$cleanEmail': $result")
     return result
 }
 
@@ -225,6 +217,7 @@ actual suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: S
         "name" to name,
         "photo_url" to (photoUrl ?: ""),
         "role" to "ADMIN",
+        "status" to "APPROVED",
         "last_login_at" to now,
         "updated_at" to now,
     )
@@ -403,6 +396,180 @@ actual suspend fun deleteUserFromFirestore(email: String, role: String): Result<
                 "STUDENT" -> db.collection("students").document(cleanEmail).delete()
             }
         } catch (_: Exception) {}
+    }
+    return Result.success(Unit)
+}
+
+actual suspend fun fetchSignInControlFromFirestore(): SignInControlConfig {
+    val instances = getFirestoreInstances()
+    for ((db, _) in instances) {
+        try {
+            val doc = db.collection("config").document("signin_control").get().awaitTask()
+            if (doc.exists()) {
+                val data = doc.data
+                if (data != null) {
+                    return SignInControlConfig(
+                        adminSignInEnabled = data["adminSignInEnabled"] as? Boolean ?: true,
+                        teacherSignInEnabled = data["teacherSignInEnabled"] as? Boolean ?: true,
+                        studentSignInEnabled = data["studentSignInEnabled"] as? Boolean ?: true,
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+    }
+    return SignInControlConfig()
+}
+
+actual suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Result<Unit> {
+    val instances = getFirestoreInstances()
+    val data = mapOf(
+        "adminSignInEnabled" to config.adminSignInEnabled,
+        "teacherSignInEnabled" to config.teacherSignInEnabled,
+        "studentSignInEnabled" to config.studentSignInEnabled,
+        "updatedAt" to System.currentTimeMillis()
+    )
+    withTimeoutOrNull(4.seconds) {
+        for ((db, _) in instances) {
+            try {
+                db.collection("config").document("signin_control").set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
+    }
+    return Result.success(Unit)
+}
+
+actual suspend fun getAdminStatusFromFirestore(email: String): AdminStatus {
+    if (email.isBlank()) return AdminStatus.NOT_REQUESTED
+    val cleanEmail = email.trim().lowercase()
+
+    val statusResult = withTimeoutOrNull(6.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                val doc = db.collection("admins").document(cleanEmail).get().awaitTask()
+                if (doc.exists()) {
+                    val statusStr = doc.getString("status")?.uppercase()
+                    val enabled = doc.getBoolean("enabled") ?: true
+                    return@withTimeoutOrNull when {
+                        statusStr == "APPROVED" || (statusStr == null && enabled) -> AdminStatus.APPROVED
+                        statusStr == "DECLINED" -> AdminStatus.DECLINED
+                        statusStr == "PENDING" -> AdminStatus.PENDING
+                        else -> AdminStatus.APPROVED
+                    }
+                }
+
+                val qSnap = db.collection("admins").whereEqualTo("email", cleanEmail).get().awaitTask()
+                if (!qSnap.isEmpty) {
+                    val firstDoc = qSnap.documents.first()
+                    val statusStr = firstDoc.getString("status")?.uppercase()
+                    val enabled = firstDoc.getBoolean("enabled") ?: true
+                    return@withTimeoutOrNull when {
+                        statusStr == "APPROVED" || (statusStr == null && enabled) -> AdminStatus.APPROVED
+                        statusStr == "DECLINED" -> AdminStatus.DECLINED
+                        statusStr == "PENDING" -> AdminStatus.PENDING
+                        else -> AdminStatus.APPROVED
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (cleanEmail == "mdrofiqmpi@gmail.com") {
+            try {
+                val fixData = mapOf("status" to "APPROVED")
+                for ((db, _) in getFirestoreInstances()) {
+                    db.collection("admins").document("mdrofiqmpi@gmail.com").set(fixData, SetOptions.merge())
+                }
+            } catch (_: Exception) {}
+            return@withTimeoutOrNull AdminStatus.APPROVED
+        }
+
+        AdminStatus.NOT_REQUESTED
+    }
+
+    return statusResult ?: AdminStatus.NOT_REQUESTED
+}
+
+actual suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit> {
+    if (email.isBlank()) return Result.failure(Exception("Invalid email"))
+    val cleanEmail = email.trim().lowercase()
+    val now = System.currentTimeMillis()
+    val data = mapOf(
+        "email" to cleanEmail,
+        "name" to name,
+        "photo_url" to (photoUrl ?: ""),
+        "role" to "ADMIN",
+        "status" to "PENDING",
+        "requested_at" to now,
+        "updated_at" to now,
+    )
+
+    withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("admins").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
+    }
+    return Result.success(Unit)
+}
+
+actual suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem> {
+    val list = mutableListOf<AdminRequestItem>()
+    val currentAuthEmail = try {
+        com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email?.trim()?.lowercase()
+    } catch (_: Exception) { null }
+
+    withTimeoutOrNull(5.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                val snap = db.collection("admins").get().awaitTask()
+                for (doc in snap.documents) {
+                    val em = (doc.getString("email") ?: doc.id).trim().lowercase()
+                    val st = doc.getString("status")?.uppercase()
+
+                    // Skip current admin user and primary admin and non-pending accounts
+                    if (em.isBlank() || em == currentAuthEmail || em == "mdrofiqmpi@gmail.com" || st == "APPROVED" || st == "DECLINED") {
+                        continue
+                    }
+
+                    if (st == "PENDING") {
+                        if (list.none { it.email == em }) {
+                            list.add(
+                                AdminRequestItem(
+                                    email = em,
+                                    name = doc.getString("name") ?: em.substringBefore("@"),
+                                    photoUrl = doc.getString("photo_url")?.ifBlank { null },
+                                    status = "PENDING",
+                                    requestedAt = doc.getLong("requested_at") ?: System.currentTimeMillis(),
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+    return list
+}
+
+actual suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit> {
+    if (email.isBlank()) return Result.failure(Exception("Invalid email"))
+    val cleanEmail = email.trim().lowercase()
+    val now = System.currentTimeMillis()
+    val data = mapOf(
+        "status" to newStatus.uppercase(),
+        "updated_at" to now,
+    )
+
+    withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("admins").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
     }
     return Result.success(Unit)
 }

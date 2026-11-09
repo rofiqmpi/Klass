@@ -98,6 +98,8 @@ enum class ErrorImageType {
     CONFIGURATION_ERROR,
     SIGN_IN_DISABLED,  // Sign-in is disabled by admin
     ADMIN_NOT_AUTHORIZED,
+    ADMIN_REQUEST_PENDING,
+    ADMIN_REQUEST_DECLINED,
 }
 
 private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exceptionMessage) {
@@ -128,8 +130,10 @@ fun App(
             try {
                 val session = loadUserSession()
                 when {
-                    session == null -> AppScreen.Welcome
-                    session.role.trim().uppercase() == "GUEST" -> AppScreen.GuestHome
+                    session == null || session.role.trim().uppercase() == "GUEST" -> {
+                        clearUserSession()
+                        AppScreen.Welcome
+                    }
                     else -> {
                         AppScreen.RoleHome(
                             role = UserRole.fromRaw(session.role) ?: UserRole.STUDENT,
@@ -173,38 +177,68 @@ fun App(
     fun launchRoleSignIn(targetRole: UserRole) {
         isLoadingOverlay = true
         onLaunchGoogleSignIn { email, name, photoUrl, errorMsg ->
-            println("DEBUG: Google sign-in callback: email=$email, error=$errorMsg")
             when {
                 errorMsg != null -> {
                     isLoadingOverlay = false
                     onSignOutGoogle()
-                    println("DEBUG: Sign-in error: $errorMsg")
                     showError(ErrorImageType.GENERAL_ERROR)
                 }
 
                 email != null -> {
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
-                        println("DEBUG: Proceeding with role check for: $cleanEmail")
-                        if (targetRole == UserRole.ADMIN) {
-                            val isAuth = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
-                            if (!isAuth) {
+
+                        val control = RoleConfig.fetchSignInControl()
+                        val isEnabled = when (targetRole) {
+                            UserRole.ADMIN -> control.adminSignInEnabled
+                            UserRole.TEACHER -> control.teacherSignInEnabled
+                            UserRole.STUDENT -> control.studentSignInEnabled
+                        }
+
+                        if (!isEnabled) {
+                            val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, targetRole)
+                            if (!isExisting) {
                                 isLoadingOverlay = false
                                 onSignOutGoogle()
-                                showError(ErrorImageType.ADMIN_NOT_AUTHORIZED)
+                                showError(ErrorImageType.SIGN_IN_DISABLED)
                                 return@launch
                             }
+                        }
+
+                        if (targetRole == UserRole.ADMIN) {
                             val userName = name ?: cleanEmail.substringBefore("@")
-                            RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
-                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
-                            saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
-                            currentScreen = AppScreen.RoleHome(
-                                role = targetRole,
-                                email = cleanEmail,
-                                name = userName,
-                                photoUrl = photoUrl,
-                            )
-                            isLoadingOverlay = false
+                            val adminStatus = RoleConfig.getAdminStatusFromFirestore(cleanEmail)
+                            when (adminStatus) {
+                                AdminStatus.APPROVED -> {
+                                    RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
+                                    RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
+                                    saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                    currentScreen = AppScreen.RoleHome(
+                                        role = targetRole,
+                                        email = cleanEmail,
+                                        name = userName,
+                                        photoUrl = photoUrl,
+                                    )
+                                    isLoadingOverlay = false
+                                }
+                                AdminStatus.PENDING -> {
+                                    isLoadingOverlay = false
+                                    onSignOutGoogle()
+                                    showError(ErrorImageType.ADMIN_REQUEST_PENDING)
+                                }
+                                AdminStatus.DECLINED -> {
+                                    isLoadingOverlay = false
+                                    onSignOutGoogle()
+                                    showError(ErrorImageType.ADMIN_REQUEST_DECLINED)
+                                }
+                                AdminStatus.NOT_REQUESTED -> {
+                                    RoleConfig.submitAdminRequestToFirestore(cleanEmail, userName, photoUrl)
+                                    isLoadingOverlay = false
+                                    onSignOutGoogle()
+                                    showError(ErrorImageType.ADMIN_REQUEST_PENDING)
+                                }
+                            }
+                            return@launch
                         } else if (targetRole == UserRole.TEACHER) {
                             val userName = name ?: cleanEmail.substringBefore("@")
                             // Save profile directly into teachers collection and users collection
@@ -243,8 +277,7 @@ fun App(
     fun launchGuestMode() {
         isLoadingOverlay = true
         coroutineScope.launch {
-            val uniqueGuestSeed = "guest_" + (100000..999999).random()
-            saveUserSession(UserSession(role = "GUEST", email = uniqueGuestSeed, name = "গেস্ট ইউজার"))
+            clearUserSession()
             currentScreen = AppScreen.GuestHome
             isLoadingOverlay = false
         }
@@ -355,25 +388,24 @@ fun App(
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(28.dp),
-                            color = if (isDark) Color(0xFF1E293B).copy(alpha = 0.94f) else Color.White.copy(alpha = 0.95f),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isDark) Color(0xFF38BDF8).copy(alpha = 0.4f) else Color(0xFF1D4ED8).copy(alpha = 0.3f),
-                            ),
-                            shadowElevation = 12.dp,
+                        Box(
                             modifier = Modifier
-                                .size(115.dp)
-                                .graphicsLayer(rotationZ = 45f),
+                                .size(115.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer(rotationZ = -45f),
-                                contentAlignment = Alignment.Center,
+                                    .graphicsLayer(rotationZ = 45f),
                             ) {
-                                SmartMechanicalGearsLoader(isDark = isDark)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer(rotationZ = -45f),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    SmartMechanicalGearsLoader(isDark = isDark)
+                                }
                             }
                         }
                     }
@@ -412,8 +444,13 @@ fun ErrorImagePopup(
         ErrorImageType.NO_INTERNET -> Res.drawable.error404
         ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
         ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror
+        ErrorImageType.NO_INTERNET -> Res.drawable.error404
+        ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
+        ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror
         ErrorImageType.SIGN_IN_DISABLED -> Res.drawable.timeouterror
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> Res.drawable.timeouterror
+        ErrorImageType.ADMIN_REQUEST_PENDING -> Res.drawable.timeouterror
+        ErrorImageType.ADMIN_REQUEST_DECLINED -> Res.drawable.timeouterror
     }
 
     val title = when (errorType) {
@@ -422,6 +459,8 @@ fun ErrorImagePopup(
         ErrorImageType.CONFIGURATION_ERROR -> "ওয়েব সেটআপ সম্পূর্ণ হয়নি"
         ErrorImageType.SIGN_IN_DISABLED -> "সাইন ইন বন্ধ আছে"
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> "এই Google অ্যাকাউন্ট অনুমোদিত নয়"
+        ErrorImageType.ADMIN_REQUEST_PENDING -> "এডমিন রিকোয়েস্ট পেন্ডিং রয়েছে"
+        ErrorImageType.ADMIN_REQUEST_DECLINED -> "এডমিন রিকোয়েস্ট প্রত্যাখ্যাত হয়েছে"
     }
 
     val description = when (errorType) {
@@ -430,6 +469,8 @@ fun ErrorImagePopup(
         ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
         ErrorImageType.SIGN_IN_DISABLED -> "এডমিন এই ধরনের সাইন ইন সাময়িকভাবে বন্ধ রেখেছেন। পরে আবার চেষ্টা করুন অথবা এডমিনের সাথে যোগাযোগ করুন।"
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> "শুধু Firebase Firestore-এর admins কালেকশনে থাকা অনুমোদিত email দিয়ে এডমিন হিসেবে প্রবেশ করা যাবে।"
+        ErrorImageType.ADMIN_REQUEST_PENDING -> "আপনার এডমিন অ্যাক্সেস রিকোয়েস্টটি পেন্ডিং রয়েছে। পূর্বে অনুমোদিত কোনো এডমিন আপনার ইমেইলটি অনুমোদন (Approve) করলে আপনি এডমিন হিসেবে প্রবেশ করতে পারবেন।"
+        ErrorImageType.ADMIN_REQUEST_DECLINED -> "আপনার এডমিন অ্যাক্সেস রিকোয়েস্টটি এডমিন কর্তৃক বাতিল বা প্রত্যাখ্যান (Decline) করা হয়েছে।"
     }
 
     val steps = when (errorType) {
@@ -447,12 +488,19 @@ fun ErrorImagePopup(
             "পরিবর্তনের পর ওয়েব অ্যাপটি আবার build ও deploy করুন।",
         )
         ErrorImageType.SIGN_IN_DISABLED -> listOf(
-            "এডমিন এই রোলের সাইন ইন অনুমতি বন্ধ রেখেছেন।",
+            "এডমিন এই রোルの সাইন ইন অনুমতি বন্ধ রেখেছেন।",
             "এডমিনের সাথে যোগাযোগ করুন এবং সাইন ইন চালু করতে অনুরোধ করুন।",
         )
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> listOf(
             "Firebase Console-এ Firestore Database > admins কালেকশনে আপনার email ডকুমেন্ট হিসেবে যোগ করুন।",
             "অনুমোদিত ইমেইল অ্যাকাউন্ট দিয়ে পুনরায় চেষ্টা করুন।",
+        )
+        ErrorImageType.ADMIN_REQUEST_PENDING -> listOf(
+            "বর্তমান অনুমোদিত এডমিনের সাথে যোগাযোগ করুন।",
+            "এডমিনকে অ্যাপের মেনু স্ক্রিনের 'এডমিন রিকোয়েস্ট অনুমোদন' প্যানেল থেকে আপনার ইমেইলটি Approve করতে বলুন।",
+        )
+        ErrorImageType.ADMIN_REQUEST_DECLINED -> listOf(
+            "প্রয়োজনে বিদ্যমান অনুমোদিত এডমিনের সাথে কথা বলুন।",
         )
     }
 
@@ -464,7 +512,7 @@ fun ErrorImagePopup(
     val titleColor = when (errorType) {
         ErrorImageType.NO_INTERNET, ErrorImageType.GENERAL_ERROR ->
             if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
-        ErrorImageType.SIGN_IN_DISABLED ->
+        ErrorImageType.SIGN_IN_DISABLED, ErrorImageType.ADMIN_REQUEST_PENDING, ErrorImageType.ADMIN_REQUEST_DECLINED ->
             if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
         ErrorImageType.ADMIN_NOT_AUTHORIZED ->
             if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
@@ -634,7 +682,7 @@ fun SmartMechanicalGearsLoader(
         label = "GearAngle",
     )
 
-    val cutoutColor = if (isDark) Color(0xFF1E293B) else Color.White
+    val cutoutColor = Color.Black.copy(alpha = 0.65f)
 
     Canvas(
         modifier = modifier.size(84.dp),

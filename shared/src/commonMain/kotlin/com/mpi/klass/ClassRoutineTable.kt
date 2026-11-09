@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +41,26 @@ data class DayRoutineConfig(
     val rowCount: Int,
 )
 
+private fun Modifier.verticalDayText(): Modifier = this.layout { measurable, constraints ->
+    val placeable = measurable.measure(
+        constraints.copy(
+            minWidth = 0,
+            maxWidth = constraints.maxHeight,
+            minHeight = 0,
+            maxHeight = constraints.maxWidth,
+        )
+    )
+    layout(placeable.height, placeable.width) {
+        placeable.placeRelativeWithLayer(
+            x = -(placeable.width - placeable.height) / 2,
+            y = -(placeable.height - placeable.width) / 2,
+            layerBlock = {
+                rotationZ = -90f
+            }
+        )
+    }
+}
+
 @Composable
 fun ClassRoutineTable(
     hindSiliguri: FontFamily,
@@ -54,10 +75,10 @@ fun ClassRoutineTable(
     val gapThickness = 2.dp // Gap between individual floating cells/cards
 
     val colDayWeight = 0.65f
-    val colTimeWeight = 1.6f
-    val colSubjectWeight = 2.7f
-    val colCodeWeight = 1.0f
-    val colRoomWeight = 1.0f
+    val colTimeWeight = 1.55f
+    val colSubjectWeight = 2.65f
+    val colCodeWeight = 0.95f
+    val colRoomWeight = 0.95f
     val totalDataWeight = colTimeWeight + colSubjectWeight + colCodeWeight + colRoomWeight
 
     val days = remember {
@@ -98,7 +119,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "দিন",
+                            text = "দিন".localized(),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -118,7 +139,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "সময়",
+                            text = "সময়".localized(),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -138,7 +159,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "বিষয়",
+                            text = "বিষয়".localized(),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -158,7 +179,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "কোড",
+                            text = "কোড".localized(),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -178,7 +199,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "কক্ষ",
+                            text = "কক্ষ".localized(),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -210,9 +231,12 @@ fun ClassRoutineTable(
                         color = slateHeaderBg,
                         shadowElevation = 1.dp,
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Text(
-                                text = dayConfig.name,
+                                text = dayConfig.name.localized(),
                                 color = Color.White,
                                 fontSize = 10.sp,
                                 fontFamily = hindSiliguri,
@@ -220,7 +244,7 @@ fun ClassRoutineTable(
                                 maxLines = 1,
                                 softWrap = false,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.graphicsLayer(rotationZ = -90f),
+                                modifier = Modifier.verticalDayText(),
                             )
                         }
                     }

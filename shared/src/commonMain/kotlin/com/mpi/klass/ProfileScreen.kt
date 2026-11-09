@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.PI
 import kotlin.math.sin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -131,6 +133,18 @@ fun ProfileScreen(
     onUpdateProfile: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
     onCategoryChanged: ((UserRole) -> Unit)? = null,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    var signInControl by remember { mutableStateOf(SignInControlConfig()) }
+    var isLoadingControl by remember { mutableStateOf(false) }
+
+    LaunchedEffect(role) {
+        if (role == UserRole.ADMIN) {
+            isLoadingControl = true
+            signInControl = RoleConfig.fetchSignInControl()
+            isLoadingControl = false
+        }
+    }
+
     if (role == null) {
         val currentLang = LocalAppLanguage.current
         val primaryColor = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
@@ -207,14 +221,12 @@ fun ProfileScreen(
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
 
-    val coroutineScope = rememberCoroutineScope()
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
-    var showAdminRequestsDialog by remember { mutableStateOf(false) }
 
     // Admin sign in control state
-    var signInControl by remember { mutableStateOf(SignInControlConfig()) }
+    // signInControl is already declared at the top of ProfileScreen
     var isUpdatingControl by remember { mutableStateOf(false) }
 
     // Student profile state
@@ -456,141 +468,7 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Category Selection Card (Profile Category Selection)
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = cardBg,
-            border = BorderStroke(1.dp, roleColor.copy(alpha = 0.35f)),
-            shadowElevation = 3.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = "অ্যাকাউন্টের ক্যাটাগরি নির্বাচন করুন",
-                    fontSize = 14.5.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    color = roleColor,
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    val categories = listOf(
-                        UserRole.STUDENT to "শিক্ষার্থী",
-                        UserRole.TEACHER to "শিক্ষক",
-                        UserRole.ADMIN to "এডমিন",
-                    )
-                    categories.forEach { (catRole, catLabel) ->
-                        val isSelected = role == catRole
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    if (catRole == UserRole.ADMIN) {
-                                        val isAuth = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
-                                        if (!isAuth) {
-                                            adminCheckError = "আপনার ইমেইলটি Firebase-এর admins তালিকায় অনুমোদিত নয়।"
-                                            return@launch
-                                        }
-                                    }
-                                    adminCheckError = null
-                                    RoleConfig.updateUserCategory(cleanEmail, catRole.name)
-                                    onCategoryChanged?.invoke(catRole)
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) roleColor else if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9),
-                                contentColor = if (isSelected) Color.White else textColor,
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(0.dp),
-                        ) {
-                            Text(
-                                text = catLabel,
-                                fontSize = 13.sp,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                }
 
-                if (!adminCheckError.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = adminCheckError ?: "",
-                        color = Color(0xFFEF4444),
-                        fontSize = 12.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Edit Profile Action Card
-        Surface(
-            onClick = { showEditDialog = true },
-            shape = RoundedCornerShape(14.dp),
-            color = cardBg,
-            border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-            shadowElevation = 2.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = EditIcon,
-                        contentDescription = "প্রোফাইল এডিট",
-                        tint = Color(0xFF0284C7),
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "প্রোফাইল নাম পরিবর্তন করুন",
-                        fontSize = 13.5.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textColor,
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF0284C7).copy(alpha = 0.15f),
-                ) {
-                    Text(
-                        text = "এডিট",
-                        fontSize = 12.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0284C7),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    )
-                }
-            }
-        }
 
         // Student Profile Setup & Information Card (Visible ONLY for Students)
         if (role == UserRole.STUDENT) {
@@ -768,158 +646,6 @@ fun ProfileScreen(
             }
         }
 
-        // Admin Controls (Visible ONLY for Admin)
-        if (role == UserRole.ADMIN) {
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 1. Login Requests Button
-            Surface(
-                onClick = { showAdminRequestsDialog = true },
-                shape = RoundedCornerShape(14.dp),
-                color = cardBg,
-                border = BorderStroke(1.dp, Color(0xFFD97706).copy(alpha = 0.4f)),
-                shadowElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = ShieldIcon,
-                            contentDescription = null,
-                            tint = Color(0xFFD97706),
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "লগইন রিকোয়েস্ট ও অনুমোদন",
-                            fontSize = 14.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            color = textColor,
-                        )
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFD97706).copy(alpha = 0.15f),
-                    ) {
-                        Text(
-                            text = "পর্যালোচনা",
-                            fontSize = 12.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFD97706),
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 2. Sign-in Control Card
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = cardBg,
-                border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                shadowElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = "নতুন সাইন ইন নিয়ন্ত্রণ",
-                            fontSize = 14.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            color = textColor,
-                        )
-                        if (isUpdatingControl) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "বন্ধ রাখলে শুধুমাত্র বিদ্যমান ব্যবহারকারীরা লগইন করতে পারবে, নতুন কেউ সাইন ইন করতে পারবে না।",
-                        fontSize = 11.5.sp,
-                        fontFamily = hindSiliguri,
-                        color = subTextColor,
-                        lineHeight = 16.sp,
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    SignInToggleRow(
-                        title = "এডমিন সাইন ইন",
-                        isEnabled = signInControl.adminSignInEnabled,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        textColor = textColor,
-                        onToggle = { newValue ->
-                            val updated = signInControl.copy(adminSignInEnabled = newValue)
-                            signInControl = updated
-                            isUpdatingControl = true
-                            coroutineScope.launch {
-                                RoleConfig.saveSignInControl(updated)
-                                isUpdatingControl = false
-                            }
-                        },
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    SignInToggleRow(
-                        title = "শিক্ষক সাইন ইন",
-                        isEnabled = signInControl.teacherSignInEnabled,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        textColor = textColor,
-                        onToggle = { newValue ->
-                            val updated = signInControl.copy(teacherSignInEnabled = newValue)
-                            signInControl = updated
-                            isUpdatingControl = true
-                            coroutineScope.launch {
-                                RoleConfig.saveSignInControl(updated)
-                                isUpdatingControl = false
-                            }
-                        },
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    SignInToggleRow(
-                        title = "শিক্ষার্থী সাইন ইন",
-                        isEnabled = signInControl.studentSignInEnabled,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        textColor = textColor,
-                        onToggle = { newValue ->
-                            val updated = signInControl.copy(studentSignInEnabled = newValue)
-                            signInControl = updated
-                            isUpdatingControl = true
-                            coroutineScope.launch {
-                                RoleConfig.saveSignInControl(updated)
-                                isUpdatingControl = false
-                            }
-                        },
-                    )
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -1122,8 +848,6 @@ fun ProfileScreen(
         }
     }
 
-
-
     // Full-Screen Edit Profile Dialog
     if (showEditDialog) {
         var editName by remember { mutableStateOf(userName) }
@@ -1261,6 +985,9 @@ fun ProfileScreen(
             }
         }
     }
+
+
+
 }
 
 @Composable
@@ -1423,37 +1150,29 @@ private fun SignInToggleRow(
     textColor: Color,
     onToggle: (Boolean) -> Unit,
 ) {
-    Surface(
-        onClick = { onToggle(!isEnabled) },
-        shape = RoundedCornerShape(10.dp),
-        color = if (isEnabled) Color(0xFF10B981).copy(alpha = 0.08f) else Color(0xFFEF4444).copy(alpha = 0.08f),
-        border = BorderStroke(
-            1.dp,
-            if (isEnabled) Color(0xFF10B981).copy(alpha = 0.3f) else Color(0xFFEF4444).copy(alpha = 0.3f),
-        ),
-        modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = title,
-                fontSize = 13.5.sp,
-                fontFamily = hindSiliguri,
-                fontWeight = FontWeight.Medium,
-                color = textColor,
+        Text(
+            text = title,
+            fontSize = 13.5.sp,
+            fontFamily = hindSiliguri,
+            fontWeight = FontWeight.Medium,
+            color = textColor,
+        )
+        Switch(
+            checked = isEnabled,
+            onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFF0284C7),
+                uncheckedThumbColor = if (isDark) Color(0xFF64748B) else Color(0xFF94A3B8),
+                uncheckedTrackColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0),
             )
-
-            Icon(
-                imageVector = if (isEnabled) ToggleOnIcon else ToggleOffIcon,
-                contentDescription = null,
-                tint = if (isEnabled) Color(0xFF10B981) else Color(0xFFEF4444),
-                modifier = Modifier.size(24.dp),
-            )
-        }
+        )
     }
 }

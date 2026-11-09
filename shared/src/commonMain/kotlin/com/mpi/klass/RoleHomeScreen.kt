@@ -1,14 +1,17 @@
 package com.mpi.klass
 
 import androidx.compose.foundation.BorderStroke
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontFamily
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.testTag
 import com.mpi.klass.theme.SparkleIcon
 import androidx.compose.foundation.layout.Arrangement
@@ -278,47 +281,75 @@ fun RoleHomeScreen(
                                 }
                             }
 
-                            // Right Side: Notification Button (on Home, Menu, Profile) OR Close Button (on Notification screen)
-                            if (selectedTab == "notification") {
-                                Surface(
-                                    onClick = { selectedTab = "home" },
-                                    shape = CircleShape,
-                                    color = cardBg,
-                                    border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                    modifier = Modifier.size(50.dp),
-                                    shadowElevation = 4.dp,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
+                            // Right Side: AI Assistant Button + Notification/Close Button
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                if (selectedTab != "ai") {
+                                    Surface(
+                                        onClick = { selectedTab = "ai" },
+                                        shape = CircleShape,
+                                        color = cardBg,
+                                        border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                                        modifier = Modifier.size(50.dp),
+                                        shadowElevation = 4.dp,
                                     ) {
-                                        Icon(
-                                            imageVector = CloseIcon,
-                                            contentDescription = "বন্ধ করুন",
-                                            tint = if (isDark) Color.White else Color.Black,
-                                            modifier = Modifier.size(24.dp),
-                                        )
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = SparkleIcon,
+                                                contentDescription = "AI সহকারী",
+                                                tint = Color(0xFF8B5CF6),
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
                                     }
                                 }
-                            } else {
-                                Surface(
-                                    onClick = { selectedTab = "notification" },
-                                    shape = CircleShape,
-                                    color = cardBg,
-                                    border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                    modifier = Modifier.size(50.dp),
-                                    shadowElevation = 4.dp,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
+
+                                if (selectedTab == "notification") {
+                                    Surface(
+                                        onClick = { selectedTab = "home" },
+                                        shape = CircleShape,
+                                        color = cardBg,
+                                        border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                                        modifier = Modifier.size(50.dp),
+                                        shadowElevation = 4.dp,
                                     ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.notification),
-                                            contentDescription = "নোটিফিকেশন",
-                                            tint = if (isDark) Color.White else Color.Black,
-                                            modifier = Modifier.size(24.dp),
-                                        )
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = CloseIcon,
+                                                contentDescription = "বন্ধ করুন",
+                                                tint = if (isDark) Color.White else Color.Black,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Surface(
+                                        onClick = { selectedTab = "notification" },
+                                        shape = CircleShape,
+                                        color = cardBg,
+                                        border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                                        modifier = Modifier.size(50.dp),
+                                        shadowElevation = 4.dp,
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(Res.drawable.notification),
+                                                contentDescription = "নোটিফিকেশন",
+                                                tint = if (isDark) Color.White else Color.Black,
+                                                modifier = Modifier.size(24.dp),
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -362,8 +393,12 @@ fun RoleHomeScreen(
                         MenuScreen(
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
+                            role = currentRole,
+                            currentThemeMode = currentThemeMode,
+                            onThemeModeChange = onThemeModeChange,
                             onProfileClick = { selectedTab = "profile" },
                             onAiClick = { selectedTab = "ai" },
+                            onNoticeClick = { selectedTab = "notification" },
                         )
                     }
                     "ai" -> {
@@ -429,6 +464,8 @@ fun RoleHomeScreen(
                         )
                     }
                 }
+
+
             }
 
             // Bottom Navigation Bar (Visible on "home" and "menu" screens)
@@ -571,3 +608,6 @@ fun RoleHomeScreen(
         }
     }
 }
+
+
+
