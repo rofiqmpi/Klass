@@ -67,6 +67,9 @@ expect fun updateLocalCategory(email: String, category: String)
 expect suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean
 expect suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
 expect suspend fun saveTeacherInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
+expect suspend fun saveUserInFirestore(email: String, name: String, photoUrl: String?, provider: String, category: String): Result<Unit>
+expect suspend fun fetchUserFromFirestore(email: String): UserProfile?
+expect suspend fun deleteUserFromFirestore(email: String): Result<Unit>
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
@@ -112,21 +115,8 @@ object RoleConfig {
             saveTeacherProfile(cleanEmail, name, photoUrl, provider)
         }
 
-        // 3. Save to live Firebase Firestore 'users' collection
-        try {
-            withTimeoutOrNull(5.seconds) {
-                val docRef = Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail)
-                val data = mapOf(
-                    "email" to cleanEmail,
-                    "name" to name,
-                    "photo_url" to (photoUrl ?: ""),
-                    "provider" to provider,
-                    "category" to category,
-                    "updated_at" to now,
-                )
-                docRef.set(data, merge = true)
-            }
-        } catch (_: Exception) {}
+        // 3. Save to live Firebase Firestore 'users' collection across active databases
+        saveUserInFirestore(cleanEmail, name, photoUrl, provider, category)
 
         return Result.success(Unit)
     }
@@ -185,47 +175,11 @@ object RoleConfig {
         val localProf = fetchLocalProfile(cleanEmail)
         if (localProf != null) return localProf
 
-        // Try 'teachers' collection first if registered as teacher
-        try {
-            val teacherDoc = withTimeoutOrNull(4.seconds) {
-                Firebase.firestore.collection(TEACHERS_COLLECTION).document(cleanEmail).get()
-            }
-            if (teacherDoc?.exists == true) {
-                val data = teacherDoc.data<Map<String, Any>>()
-                val prof = UserProfile(
-                    email = (data["email"] as? String) ?: cleanEmail,
-                    name = (data["name"] as? String) ?: "",
-                    photoUrl = (data["photo_url"] as? String)?.ifBlank { null },
-                    provider = (data["provider"] as? String) ?: "google",
-                    category = UserRole.TEACHER.name,
-                    registeredAt = (data["registered_at"] as? Long) ?: 0L,
-                    updatedAt = (data["updated_at"] as? Long) ?: 0L,
-                )
-                saveLocalProfile(cleanEmail, prof.name, prof.photoUrl, prof.provider, prof.category)
-                return prof
-            }
-        } catch (_: Exception) {}
-
-        // Fallback to 'users' collection
-        try {
-            val doc = withTimeoutOrNull(4.seconds) {
-                Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail).get()
-            }
-            if (doc?.exists == true) {
-                val data = doc.data<Map<String, Any>>()
-                val prof = UserProfile(
-                    email = (data["email"] as? String) ?: cleanEmail,
-                    name = (data["name"] as? String) ?: "",
-                    photoUrl = (data["photo_url"] as? String)?.ifBlank { null },
-                    provider = (data["provider"] as? String) ?: "",
-                    category = (data["category"] as? String) ?: "STUDENT",
-                    registeredAt = (data["registered_at"] as? Long) ?: 0L,
-                    updatedAt = (data["updated_at"] as? Long) ?: 0L,
-                )
-                saveLocalProfile(cleanEmail, prof.name, prof.photoUrl, prof.provider, prof.category)
-                return prof
-            }
-        } catch (_: Exception) {}
+        val remoteProf = fetchUserFromFirestore(cleanEmail)
+        if (remoteProf != null) {
+            saveLocalProfile(cleanEmail, remoteProf.name, remoteProf.photoUrl, remoteProf.provider, remoteProf.category)
+            return remoteProf
+        }
 
         return null
     }
@@ -233,21 +187,21 @@ object RoleConfig {
     suspend fun updateUserCategory(email: String, category: String): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
-        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
 
         // Update local storage
         updateLocalCategory(cleanEmail, category)
 
+        val local = fetchLocalProfile(cleanEmail)
+        val name = local?.name ?: cleanEmail.substringBefore("@")
+        val photoUrl = local?.photoUrl
+        val provider = local?.provider ?: "google"
+
         // If updated to TEACHER, also record into 'teachers' collection
         if (category.equals(UserRole.TEACHER.name, ignoreCase = true)) {
-            val local = fetchLocalProfile(cleanEmail)
-            saveTeacherProfile(cleanEmail, local?.name ?: "", local?.photoUrl, local?.provider ?: "google")
+            saveTeacherProfile(cleanEmail, name, photoUrl, provider)
         }
 
-        try {
-            val docRef = Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail)
-            docRef.set(mapOf("category" to category, "updated_at" to now), merge = true)
-        } catch (_: Exception) {}
+        saveUserInFirestore(cleanEmail, name, photoUrl, provider, category)
 
         return Result.success(Unit)
     }
@@ -257,9 +211,8 @@ object RoleConfig {
         val cleanEmail = email.trim().lowercase()
 
         deleteLocalProfile(cleanEmail)
+        deleteUserFromFirestore(cleanEmail)
         try {
-            Firebase.firestore.collection(USERS_COLLECTION).document(cleanEmail).delete()
-            Firebase.firestore.collection(TEACHERS_COLLECTION).document(cleanEmail).delete()
             Firebase.auth.currentUser?.delete()
         } catch (_: Exception) {}
 
