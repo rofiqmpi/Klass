@@ -49,6 +49,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import org.jetbrains.compose.resources.painterResource
+import klass.shared.generated.resources.Res
+import klass.shared.generated.resources.img_menu_books
+import klass.shared.generated.resources.img_menu_classroom
+import klass.shared.generated.resources.img_menu_notice
+import klass.shared.generated.resources.img_menu_profile
+import klass.shared.generated.resources.img_menu_teachers
 import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CheckIcon
@@ -103,7 +112,7 @@ fun MenuScreen(
             textColor = textColor,
             subTextColor = subTextColor,
             hindSiliguri = hindSiliguri,
-            iconVector = PersonIcon,
+            imagePainter = painterResource(Res.drawable.img_menu_profile),
             onClick = onProfileClick,
         )
 
@@ -122,7 +131,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
-                iconVector = BookIcon,
+                imagePainter = painterResource(Res.drawable.img_menu_books),
                 onClick = onBooksClick,
             )
 
@@ -137,7 +146,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
-                iconVector = GraduationCapIcon,
+                imagePainter = painterResource(Res.drawable.img_menu_classroom),
                 onClick = onClassroomClick,
             )
 
@@ -152,7 +161,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
-                iconVector = GraduationCapIcon,
+                imagePainter = painterResource(Res.drawable.img_menu_teachers),
                 onClick = onTeachersClick,
             )
 
@@ -167,7 +176,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
-                iconVector = NotificationIcon,
+                imagePainter = painterResource(Res.drawable.img_menu_notice),
                 onClick = onNoticeClick,
             )
 
@@ -928,15 +937,16 @@ private fun ProfessionalMenuCard(
     textColor: Color,
     subTextColor: Color,
     hindSiliguri: FontFamily,
-    iconVector: ImageVector,
+    iconVector: ImageVector? = null,
+    imagePainter: androidx.compose.ui.graphics.painter.Painter? = null,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(80.dp),
+        modifier = Modifier.fillMaxWidth().height(82.dp),
         shape = RoundedCornerShape(18.dp),
         color = cardBg,
-        border = BorderStroke(1.dp, gradientColors.first().copy(alpha = 0.25f)),
+        border = BorderStroke(1.dp, gradientColors.first().copy(alpha = 0.3f)),
         shadowElevation = 4.dp,
     ) {
         Row(
@@ -945,20 +955,36 @@ private fun ProfessionalMenuCard(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Icon Container with gradient background
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Brush.linearGradient(gradientColors)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = iconVector,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp),
-                )
+            if (imagePainter != null) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, gradientColors.first().copy(alpha = 0.5f)),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Image(
+                        painter = imagePainter,
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            } else if (iconVector != null) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Brush.linearGradient(gradientColors)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))

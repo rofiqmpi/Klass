@@ -5,20 +5,28 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,6 +48,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,14 +73,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.Image
 import androidx.compose.ui.window.DialogProperties
+import coil3.compose.AsyncImage
 import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.AwardIcon
 import com.mpi.klass.theme.BookIcon
+import com.mpi.klass.theme.CameraIcon
+import com.mpi.klass.theme.CheckIcon
+import com.mpi.klass.theme.ChevronDownIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.CrownIcon
 import com.mpi.klass.theme.DarkModeIcon
 import com.mpi.klass.theme.EditIcon
+import com.mpi.klass.theme.GalleryIcon
 import com.mpi.klass.theme.GearIcon
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.ToggleOffIcon
@@ -82,6 +97,17 @@ import com.mpi.klass.theme.PenIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.StarIcon
 import com.mpi.klass.theme.ThemeMode
+import klass.shared.generated.resources.Res
+import klass.shared.generated.resources.img_address
+import klass.shared.generated.resources.img_blood
+import klass.shared.generated.resources.img_department
+import klass.shared.generated.resources.img_details
+import klass.shared.generated.resources.img_phone
+import klass.shared.generated.resources.img_roll
+import klass.shared.generated.resources.img_section
+import klass.shared.generated.resources.img_semester
+import klass.shared.generated.resources.img_shift
+import org.jetbrains.compose.resources.painterResource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -221,9 +247,21 @@ fun ProfileScreen(
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
 
-    var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
+
+    // Inline Profile Name Edit & Photo Upload State
+    var isEditingNameInline by remember { mutableStateOf(false) }
+    var inlineNameInput by remember { mutableStateOf(userName) }
+    var currentPhotoUrl by remember(photoUrl) { mutableStateOf(photoUrl ?: "") }
+    var showAvatarPicker by remember { mutableStateOf(false) }
+
+    // Native Device Gallery Photo Picker Launcher
+    val launchPhotoPicker = rememberPhotoPickerLauncher { pickedUri ->
+        currentPhotoUrl = pickedUri
+        onUpdateProfile?.invoke(userName, pickedUri)
+        showAvatarPicker = false
+    }
 
     // Admin sign in control state
     // signInControl is already declared at the top of ProfileScreen
@@ -251,6 +289,16 @@ fun ProfileScreen(
     var isStudentEditing by remember { mutableStateOf(false) }
     var adminCheckError by remember { mutableStateOf<String?>(null) }
 
+    // Expansion states for 8 Student Profile Cards directly on profile screen
+    var expSemester by remember { mutableStateOf(false) }
+    var expShift by remember { mutableStateOf(false) }
+    var expDept by remember { mutableStateOf(false) }
+    var expSection by remember { mutableStateOf(false) }
+    var expRoll by remember { mutableStateOf(false) }
+    var expPhone by remember { mutableStateOf(false) }
+    var expBlood by remember { mutableStateOf(false) }
+    var expAddress by remember { mutableStateOf(false) }
+
     val cleanEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
 
     LaunchedEffect(cleanEmail, role) {
@@ -262,7 +310,7 @@ fun ProfileScreen(
             studentProfile = prof
             if (prof != null) {
                 setupSemester = prof.semester
-                setupShift = if (prof.shift == "1") "সকাল → ১" else "বিকাল → ২"
+                setupShift = if (prof.shift == "1") "Morning" else if (prof.shift == "2") "Evening" else prof.shift
                 setupDepartment = prof.department
                 setupSection = prof.section
                 setupPhone = prof.phone
@@ -312,15 +360,15 @@ fun ProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 24.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Profile Picture Section with Staggered Wing Orbit Icons
+        // Profile Picture Section with Staggered Wing Orbit Icons & Photo Upload Badge
         Box(
             modifier = Modifier
                 .padding(top = 10.dp)
                 .fillMaxWidth()
-                .height(115.dp),
+                .height(118.dp),
             contentAlignment = Alignment.Center,
         ) {
             // Left Inner Icon
@@ -403,56 +451,158 @@ fun ProfileScreen(
                 }
             }
 
-            // Main Dynamic Genderless Non-Text Profile Picture Avatar
-            Surface(
-                shape = CircleShape,
-                color = Color.Transparent,
-                border = BorderStroke(2.5.dp, if (isDark) Color.White else Color(0xFF0F172A)),
-                modifier = Modifier
-                    .size(95.dp)
-                    .clip(CircleShape),
-                shadowElevation = 5.dp,
+            // Main Dynamic Profile Picture Avatar & Camera Upload Badge
+            Box(
+                modifier = Modifier.size(98.dp),
+                contentAlignment = Alignment.BottomEnd,
             ) {
-                DynamicAvatar(
-                    seed = cleanEmail.ifBlank { userName },
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(2.5.dp, if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7)),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    shadowElevation = 5.dp,
+                ) {
+                    if (currentPhotoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = currentPhotoUrl,
+                            contentDescription = "Profile Photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        DynamicAvatar(
+                            seed = cleanEmail.ifBlank { userName },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+
+                // 3D Camera / Photo Selection Badge
+                Surface(
+                    onClick = { launchPhotoPicker() },
+                    shape = CircleShape,
+                    color = Color(0xFF0284C7),
+                    border = BorderStroke(1.5.dp, Color.White),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            imageVector = CameraIcon,
+                            contentDescription = "গ্যালারি থেকে ছবি আপলোড",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // User Name & Edit Button
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = userName.ifEmpty { "গেস্ট ইউজার" },
-                fontSize = 20.sp,
-                fontFamily = hindSiliguri,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-            )
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Surface(
-                onClick = { showEditDialog = true },
-                shape = CircleShape,
-                color = Color(0xFF8CB9D9).copy(alpha = 0.2f),
-                modifier = Modifier.size(28.dp),
+        // Profile Name display / Inline editing
+        if (isEditingNameInline) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                OutlinedTextField(
+                    value = inlineNameInput,
+                    onValueChange = { inlineNameInput = it },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF0284C7),
+                        unfocusedBorderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1),
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                    ),
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Save Checkmark 3D Button
+                Surface(
+                    onClick = {
+                        val finalName = inlineNameInput.trim().ifEmpty { userName }
+                        onUpdateProfile?.invoke(finalName, currentPhotoUrl.ifBlank { null })
+                        isEditingNameInline = false
+                    },
+                    shape = CircleShape,
+                    color = Color(0xFF10B981),
+                    shadowElevation = 3.dp,
+                    modifier = Modifier.size(36.dp),
                 ) {
-                    Icon(
-                        imageVector = EditIcon,
-                        contentDescription = "এডিট নাম",
-                        tint = Color(0xFF0284C7),
-                        modifier = Modifier.size(14.dp),
-                    )
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            imageVector = CheckIcon,
+                            contentDescription = "সেভ করুন",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // Cancel 3D Button
+                Surface(
+                    onClick = { isEditingNameInline = false },
+                    shape = CircleShape,
+                    color = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            imageVector = CloseIcon,
+                            contentDescription = "বাতিল",
+                            tint = textColor,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = userName.ifEmpty { "গেস্ট ইউজার" },
+                    fontSize = 20.sp,
+                    fontFamily = hindSiliguri,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Surface(
+                    onClick = {
+                        inlineNameInput = userName
+                        isEditingNameInline = true
+                    },
+                    shape = CircleShape,
+                    color = Color(0xFF0284C7).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFF0284C7).copy(alpha = 0.4f)),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = EditIcon,
+                            contentDescription = "ইনলাইন নাম এডিট",
+                            tint = Color(0xFF0284C7),
+                            modifier = Modifier.size(15.dp),
+                        )
+                    }
                 }
             }
         }
@@ -470,178 +620,420 @@ fun ProfileScreen(
 
 
 
-        // Student Profile Setup & Information Card (Visible ONLY for Students)
+        // Student Profile Information & 8 Collapsible 3D Option Cards
         if (role == UserRole.STUDENT) {
             val prof = studentProfile
             val isSetupComplete = prof != null && prof.profileSetupComplete
+            val isBengali = LocalAppLanguage.current == AppLanguage.BENGALI
 
             Spacer(modifier = Modifier.height(14.dp))
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = cardBg,
-                border = BorderStroke(1.dp, Color(0xFF0284C7).copy(alpha = 0.35f)),
-                shadowElevation = 3.dp,
+            Column(
                 modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                // Top Title & Countdown Banner
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = GraduationCapIcon,
+                            contentDescription = null,
+                            tint = Color(0xFF0284C7),
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isBengali) "শিক্ষার্থী প্রোফাইল তথ্য" else "Student Profile Details",
+                            fontSize = 15.sp,
+                            fontFamily = hindSiliguri,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0284C7),
+                        )
+                    }
+                }
+
+                // Countdown timer warning for incomplete setup
+                if (!isSetupComplete && !setupTimerExpired) {
+                    val timerMinutes = setupRemainingSeconds / 60
+                    val timerSecs = setupRemainingSeconds % 60
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFFF3CD),
+                        border = BorderStroke(1.dp, Color(0xFFFFD600).copy(alpha = 0.5f)),
+                    ) {
+                        Text(
+                            text = if (isBengali)
+                                "⚠️ প্রোফাইল সেটআপের বাকি সময়: ${timerMinutes}:${timerSecs.toString().padStart(2, '0')}\nসময় শেষ হলে আপনার তথ্য মুছে যাবে।"
+                            else
+                                "⚠️ Setup time remaining: ${timerMinutes}:${timerSecs.toString().padStart(2, '0')}\nProfile data will be cleared if expired.",
+                            fontSize = 12.5.sp,
+                            fontFamily = hindSiliguri,
+                            color = Color(0xFF856404),
+                            modifier = Modifier.padding(10.dp),
+                            lineHeight = 17.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+
+                // Card 1: Semester - 7 3D Choice Buttons (Strictly English Buttons)
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "সেমিস্টার" else "Semester",
+                    selectedValue = if (setupSemester.isNotBlank()) setupSemester else (if (isBengali) "সেমিস্টার সিলেক্ট করুন" else "Select Semester"),
+                    imagePainter = painterResource(Res.drawable.img_semester),
+                    iconColor = Color(0xFF0284C7),
+                    isExpanded = expSemester,
+                    onToggleExpand = { expSemester = !expSemester },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    val semesters = listOf("1st", "2nd", "3rd", "4th", "5th", "6th", "7th")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            semesters.take(4).forEach { sem ->
+                                ThreeDOptionButton(
+                                    label = sem,
+                                    subLabel = null,
+                                    isSelected = setupSemester.startsWith(sem, ignoreCase = true) || setupSemester.contains(sem, ignoreCase = true),
+                                    onClick = { setupSemester = sem },
+                                    modifier = Modifier.weight(1f),
+                                    activeColor = Color(0xFF0284C7),
+                                    isDark = isDark,
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            semesters.drop(4).forEach { sem ->
+                                ThreeDOptionButton(
+                                    label = sem,
+                                    subLabel = null,
+                                    isSelected = setupSemester.startsWith(sem, ignoreCase = true) || setupSemester.contains(sem, ignoreCase = true),
+                                    onClick = { setupSemester = sem },
+                                    modifier = Modifier.weight(1f),
+                                    activeColor = Color(0xFF0284C7),
+                                    isDark = isDark,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Card 2: Shift - 2 3D Choice Buttons (Strictly English Buttons)
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "শিফট" else "Shift",
+                    selectedValue = if (setupShift.contains("1") || setupShift.contains("Morning", ignoreCase = true) || setupShift.contains("সকাল")) (if (isBengali) "সকাল (১ম শিফট)" else "Morning (1st Shift)") else if (setupShift.contains("2") || setupShift.contains("Evening", ignoreCase = true) || setupShift.contains("বিকাল")) (if (isBengali) "বিকাল (২য় শিফট)" else "Evening (2nd Shift)") else (if (isBengali) "শিফট সিলেক্ট করুন" else "Select Shift"),
+                    imagePainter = painterResource(Res.drawable.img_shift),
+                    iconColor = Color(0xFFD97706),
+                    isExpanded = expShift,
+                    onToggleExpand = { expShift = !expShift },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = GraduationCapIcon,
-                                contentDescription = null,
-                                tint = Color(0xFF0284C7),
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isSetupComplete && !isStudentEditing) "শিক্ষার্থী প্রোফাইল বিবরণ" else "শিক্ষার্থী প্রোফাইল সেটআপ",
-                                fontSize = 14.5.sp,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0284C7),
-                            )
-                        }
-                        if (isSetupComplete) {
-                            OutlinedButton(
-                                onClick = { isStudentEditing = !isStudentEditing },
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            ) {
-                                Text(text = if (isStudentEditing) "বাতিল" else "এডিট", fontSize = 11.5.sp, fontFamily = hindSiliguri)
-                            }
-                        }
+                        ThreeDOptionButton(
+                            label = "Morning",
+                            subLabel = null,
+                            isSelected = setupShift.contains("1") || setupShift.contains("Morning", ignoreCase = true) || setupShift.contains("সকাল"),
+                            onClick = { setupShift = "Morning (1st)" },
+                            modifier = Modifier.weight(1f),
+                            activeColor = Color(0xFFD97706),
+                            isDark = isDark,
+                        )
+                        ThreeDOptionButton(
+                            label = "Evening",
+                            subLabel = null,
+                            isSelected = setupShift.contains("2") || setupShift.contains("Evening", ignoreCase = true) || setupShift.contains("বিকাল"),
+                            onClick = { setupShift = "Evening (2nd)" },
+                            modifier = Modifier.weight(1f),
+                            activeColor = Color(0xFF8B5CF6),
+                            isDark = isDark,
+                        )
                     }
+                }
 
-                    // Countdown timer warning for incomplete setup
-                    if (!isSetupComplete && !setupTimerExpired && !isStudentEditing) {
-                        val timerMinutes = setupRemainingSeconds / 60
-                        val timerSecs = setupRemainingSeconds % 60
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
+                // Card 3: Department - 7 3D Choice Buttons (Strictly English Buttons)
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "ডিপার্টমেন্ট" else "Department",
+                    selectedValue = if (setupDepartment.isNotBlank()) setupDepartment else (if (isBengali) "ডিপার্টমেন্ট সিলেক্ট করুন" else "Select Department"),
+                    imagePainter = painterResource(Res.drawable.img_department),
+                    iconColor = Color(0xFF059669),
+                    isExpanded = expDept,
+                    onToggleExpand = { expDept = !expDept },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    val depts = listOf("CST", "CT", "ET", "MT", "PT", "EnT", "EMT")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFFFF3CD),
-                            border = BorderStroke(1.dp, Color(0xFFFFD600).copy(alpha = 0.5f)),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Text(
-                                text = "⚠️ প্রোফাইল সেটআপের বাকি সময়: ${timerMinutes}:${timerSecs.toString().padStart(2, '0')}\nসময় শেষ হলে আপনার সমস্ত তথ্য ডাটাবেস থেকে মুছে যাবে।",
-                                fontSize = 12.5.sp,
-                                fontFamily = hindSiliguri,
-                                color = Color(0xFF856404),
-                                modifier = Modifier.padding(12.dp),
-                                lineHeight = 18.sp,
-                                textAlign = TextAlign.Center,
+                            depts.take(4).forEach { dept ->
+                                ThreeDOptionButton(
+                                    label = dept,
+                                    subLabel = null,
+                                    isSelected = setupDepartment.equals(dept, ignoreCase = true),
+                                    onClick = { setupDepartment = dept },
+                                    modifier = Modifier.weight(1f),
+                                    activeColor = Color(0xFF059669),
+                                    isDark = isDark,
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            depts.drop(4).forEach { dept ->
+                                ThreeDOptionButton(
+                                    label = dept,
+                                    subLabel = null,
+                                    isSelected = setupDepartment.equals(dept, ignoreCase = true),
+                                    onClick = { setupDepartment = dept },
+                                    modifier = Modifier.weight(1f),
+                                    activeColor = Color(0xFF059669),
+                                    isDark = isDark,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Card 4: Section - 3 3D Choice Buttons (Strictly English Buttons)
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "সেকশন" else "Section",
+                    selectedValue = if (setupSection.isNotBlank()) "Section ${setupSection}" else (if (isBengali) "সেকশন সিলেক্ট করুন" else "Select Section"),
+                    imagePainter = painterResource(Res.drawable.img_section),
+                    iconColor = Color(0xFFEC4899),
+                    isExpanded = expSection,
+                    onToggleExpand = { expSection = !expSection },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    val sections = listOf("A", "B", "C")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        sections.forEach { sec ->
+                            ThreeDOptionButton(
+                                label = sec,
+                                subLabel = null,
+                                isSelected = setupSection.equals(sec, ignoreCase = true),
+                                onClick = { setupSection = sec },
+                                modifier = Modifier.weight(1f),
+                                activeColor = Color(0xFFEC4899),
+                                isDark = isDark,
                             )
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                // Card 5: Roll Number
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "রোল নম্বর" else "Roll Number",
+                    selectedValue = if (setupRollNumber.isNotBlank()) setupRollNumber else (if (isBengali) "রোল নম্বর লিখুন" else "Enter Roll Number"),
+                    imagePainter = painterResource(Res.drawable.img_roll),
+                    iconColor = Color(0xFF6366F1),
+                    isExpanded = expRoll,
+                    onToggleExpand = { expRoll = !expRoll },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    ProfileInputField(if (isBengali) "রোল নং" else "Roll No", setupRollNumber, { setupRollNumber = it }, if (isBengali) "যেমন: ১২৩৪৫৬" else "e.g. 123456", isDark, hindSiliguri, textColor)
+                }
 
-                    if (!isSetupComplete || isStudentEditing) {
-                        // Student Profile Setup / Edit Form
-                        val semesterOptions = listOf("১ম", "২য়", "৩য়", "৪র্থ", "৫ম", "৬ষ্ঠ", "৭ম")
-                        val shiftOptions = listOf("সকাল → ১", "বিকাল → ২")
-                        val departmentOptions = listOf("CST", "CT", "ET", "PT", "MT", "EnT", "EMT")
-                        val sectionOptions = listOf("A", "B", "C")
-                        val bloodGroupOptions = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+                // Card 6: Phone Number
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "ফোন নম্বর" else "Phone Number",
+                    selectedValue = if (setupPhone.isNotBlank()) setupPhone else (if (isBengali) "ফোন নম্বর লিখুন" else "Enter Phone Number"),
+                    imagePainter = painterResource(Res.drawable.img_phone),
+                    iconColor = Color(0xFF10B981),
+                    isExpanded = expPhone,
+                    onToggleExpand = { expPhone = !expPhone },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    ProfileInputField(if (isBengali) "ফোন নাম্বার" else "Phone No", setupPhone, { setupPhone = it }, if (isBengali) "যেমন: ০১৭xxxxxxxx" else "e.g. 017xxxxxxxx", isDark, hindSiliguri, textColor)
+                }
 
-                        val isFormValid = setupSemester.isNotBlank() && setupShift.isNotBlank() &&
-                            setupDepartment.isNotBlank() && setupSection.isNotBlank() &&
-                            setupPhone.isNotBlank() && setupBloodGroup.isNotBlank() &&
-                            setupAddress.isNotBlank() && setupRollNumber.isNotBlank()
-
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            ProfileDropdownField("সেমিস্টার", setupSemester, semesterOptions, { setupSemester = it }, isDark, hindSiliguri, cardBg, textColor, subTextColor)
-                            ProfileDropdownField("শিফট", setupShift, shiftOptions, { setupShift = it }, isDark, hindSiliguri, cardBg, textColor, subTextColor)
-                            ProfileDropdownField("ডিপার্টমেন্ট", setupDepartment, departmentOptions, { setupDepartment = it }, isDark, hindSiliguri, cardBg, textColor, subTextColor)
-                            ProfileDropdownField("সেকশন", setupSection, sectionOptions, { setupSection = it }, isDark, hindSiliguri, cardBg, textColor, subTextColor)
-
-                            ProfileInputField("রোল নং", setupRollNumber, { setupRollNumber = it }, "যেমন: ১২৩৪৫৬", isDark, hindSiliguri, textColor)
-                            ProfileInputField("ফোন নাম্বার", setupPhone, { setupPhone = it }, "যেমন: ০১৭xxxxxxxx", isDark, hindSiliguri, textColor)
-                            ProfileDropdownField("ব্লাড গ্রুপ", setupBloodGroup, bloodGroupOptions, { setupBloodGroup = it }, isDark, hindSiliguri, cardBg, textColor, subTextColor)
-                            ProfileInputField("ঠিকানা", setupAddress, { setupAddress = it }, "আপনার বর্তমান ঠিকানা লিখুন", isDark, hindSiliguri, textColor, singleLine = false)
-
-                            if (studentProfileError != null) {
-                                Text(
-                                    text = studentProfileError!!,
-                                    fontSize = 12.sp,
-                                    fontFamily = hindSiliguri,
-                                    color = Color(0xFFEF4444),
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-
-                            Button(
-                                onClick = {
-                                    if (!isFormValid) {
-                                        studentProfileError = "সকল তথ্য পূরণ করুন"
-                                        return@Button
-                                    }
-                                    studentProfileError = null
-                                    isSavingStudentProfile = true
-                                    coroutineScope.launch {
-                                        val shiftVal = if (setupShift.contains("সকাল")) "1" else "2"
-                                        val newProfile = StudentProfile(
-                                            email = cleanEmail,
-                                            name = userName,
-                                            semester = setupSemester,
-                                            shift = shiftVal,
-                                            department = setupDepartment,
-                                            section = setupSection,
-                                            phone = setupPhone,
-                                            bloodGroup = setupBloodGroup,
-                                            address = setupAddress,
-                                            rollNumber = setupRollNumber,
-                                            profileSetupComplete = true,
-                                        )
-                                        val res = RoleConfig.saveStudentProfile(newProfile)
-                                        isSavingStudentProfile = false
-                                        if (res.isSuccess) {
-                                            studentProfile = newProfile
-                                            isStudentEditing = false
-                                            setupTimerExpired = true // stop the countdown timer
-                                        } else {
-                                            studentProfileError = "সংরক্ষণ করা যায়নি। পুনরায় চেষ্টা করুন।"
-                                        }
-                                    }
-                                },
-                                enabled = !isSavingStudentProfile && !setupTimerExpired,
-                                modifier = Modifier.fillMaxWidth().height(46.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-                            ) {
-                                if (isSavingStudentProfile) {
-                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-                                Text(
-                                    text = if (isSavingStudentProfile) "সংরক্ষণ করা হচ্ছে..." else "প্রোফাইল সংরক্ষণ করুন",
-                                    fontSize = 14.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
+                // Card 7: Blood Group - 8 3D Choice Buttons (Strictly English Buttons)
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "ব্লাড গ্রুপ" else "Blood Group",
+                    selectedValue = if (setupBloodGroup.isNotBlank()) setupBloodGroup else (if (isBengali) "ব্লাড গ্রুপ সিলেক্ট করুন" else "Select Blood Group"),
+                    imagePainter = painterResource(Res.drawable.img_blood),
+                    iconColor = Color(0xFFEF4444),
+                    isExpanded = expBlood,
+                    onToggleExpand = { expBlood = !expBlood },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    val bloods = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            bloods.take(4).forEach { bg ->
+                                ThreeDOptionButton(
+                                    label = bg,
+                                    subLabel = null,
+                                    isSelected = setupBloodGroup.equals(bg, ignoreCase = true),
+                                    onClick = { setupBloodGroup = bg },
+                                    modifier = Modifier.weight(1f),
+                                    activeColor = Color(0xFFEF4444),
+                                    isDark = isDark,
                                 )
                             }
                         }
-                    } else {
-                        // Display Profile Info Summary
-                        ProfileInfoRow("সেমিস্টার", prof.semester, textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("শিফট", if (prof.shift == "1") "সকাল (১)" else "বিকাল (২)", textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("ডিপার্টমেন্ট", prof.department, textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("সেকশন", prof.section, textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("রোল নং", prof.rollNumber, textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("ফোন নাম্বার", prof.phone, textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("ব্লাড গ্রুপ", prof.bloodGroup, textColor, subTextColor, hindSiliguri)
-                        ProfileInfoRow("ঠিকানা", prof.address, textColor, subTextColor, hindSiliguri)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            bloods.drop(4).forEach { bg ->
+                                ThreeDOptionButton(
+                                    label = bg,
+                                    subLabel = null,
+                                    isSelected = setupBloodGroup.equals(bg, ignoreCase = true),
+                                    onClick = { setupBloodGroup = bg },
+                                    modifier = Modifier.weight(1f),
+                                    activeColor = Color(0xFFEF4444),
+                                    isDark = isDark,
+                                )
+                            }
+                        }
                     }
+                }
+
+                // Card 8: Address
+                Collapsible3DProfileCard(
+                    title = if (isBengali) "বর্তমান ঠিকানা" else "Current Address",
+                    selectedValue = if (setupAddress.isNotBlank()) setupAddress else (if (isBengali) "ঠিকানা লিখুন" else "Enter Address"),
+                    imagePainter = painterResource(Res.drawable.img_address),
+                    iconColor = Color(0xFF8B5CF6),
+                    isExpanded = expAddress,
+                    onToggleExpand = { expAddress = !expAddress },
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    hindSiliguri = hindSiliguri,
+                ) {
+                    ProfileInputField(if (isBengali) "ঠিকানা" else "Address", setupAddress, { setupAddress = it }, if (isBengali) "আপনার বর্তমান ঠিকানা লিখুন" else "Enter your current address", isDark, hindSiliguri, textColor, singleLine = false)
+                }
+
+                if (studentProfileError != null) {
+                    Text(
+                        text = studentProfileError!!,
+                        fontSize = 12.sp,
+                        fontFamily = hindSiliguri,
+                        color = Color(0xFFEF4444),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                val isFormValid = setupSemester.isNotBlank() && setupShift.isNotBlank() &&
+                    setupDepartment.isNotBlank() && setupSection.isNotBlank() &&
+                    setupPhone.isNotBlank() && setupBloodGroup.isNotBlank() &&
+                    setupAddress.isNotBlank() && setupRollNumber.isNotBlank()
+
+                // Save Profile Button
+                Button(
+                    onClick = {
+                        if (!isFormValid) {
+                            studentProfileError = if (isBengali) "সকল তথ্য পূরণ করুন" else "Please fill in all details"
+                            return@Button
+                        }
+                        studentProfileError = null
+                        isSavingStudentProfile = true
+                        coroutineScope.launch {
+                            val shiftVal = if (setupShift.contains("Morning") || setupShift.contains("1") || setupShift.contains("সকাল")) "1" else "2"
+                            val newProfile = StudentProfile(
+                                email = cleanEmail,
+                                name = userName,
+                                semester = setupSemester,
+                                shift = shiftVal,
+                                department = setupDepartment,
+                                section = setupSection,
+                                phone = setupPhone,
+                                bloodGroup = setupBloodGroup,
+                                address = setupAddress,
+                                rollNumber = setupRollNumber,
+                                profileSetupComplete = true,
+                            )
+                            val res = RoleConfig.saveStudentProfile(newProfile)
+                            isSavingStudentProfile = false
+                            if (res.isSuccess) {
+                                studentProfile = newProfile
+                                isStudentEditing = false
+                                setupTimerExpired = true // stop countdown timer
+                                // Collapse all cards after successful save
+                                expSemester = false
+                                expShift = false
+                                expDept = false
+                                expSection = false
+                                expRoll = false
+                                expPhone = false
+                                expBlood = false
+                                expAddress = false
+                            } else {
+                                studentProfileError = if (isBengali) "সংরক্ষণ করা যায়নি। পুনরায় চেষ্টা করুন।" else "Save failed. Please try again."
+                            }
+                        }
+                    },
+                    enabled = !isSavingStudentProfile && !setupTimerExpired,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                ) {
+                    if (isSavingStudentProfile) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = if (isSavingStudentProfile) (if (isBengali) "সংরক্ষণ করা হচ্ছে..." else "Saving...") else (if (isBengali) "পরিবর্তন সংরক্ষণ করুন" else "Save Changes"),
+                        fontSize = 14.5.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
@@ -700,6 +1092,8 @@ fun ProfileScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.imePadding().height(28.dp))
     }
 
     // Account Delete Confirmation Dialog
@@ -778,143 +1172,7 @@ fun ProfileScreen(
         }
     }
 
-    // Full-Screen Edit Profile Dialog
-    if (showEditDialog) {
-        var editName by remember { mutableStateOf(userName) }
 
-        Dialog(
-            onDismissRequest = { showEditDialog = false },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-            ),
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    // Top Bar Header
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().height(64.dp),
-                        color = cardBg,
-                        shadowElevation = 4.dp,
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { showEditDialog = false }) {
-                                    Icon(
-                                        imageVector = CloseIcon,
-                                        contentDescription = "বন্ধ করুন",
-                                        tint = textColor,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "প্রোফাইল নাম পরিবর্তন",
-                                    fontSize = 18.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                )
-                            }
-
-                            Button(
-                                onClick = {
-                                    val finalName = editName.trim().ifEmpty { userName }
-                                    onUpdateProfile?.invoke(finalName, null)
-                                    showEditDialog = false
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF0284C7),
-                                    contentColor = Color.White,
-                                ),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                            ) {
-                                Text(
-                                    text = "সংরক্ষণ করুন",
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp,
-                                )
-                            }
-                        }
-                    }
-
-                    // Form Body
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        // 1. Live Preview Dynamic Avatar
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(3.dp, if (isDark) Color.White else Color(0xFF0F172A)),
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape),
-                            shadowElevation = 6.dp,
-                        ) {
-                            DynamicAvatar(
-                                seed = cleanEmail.ifBlank { editName.ifEmpty { userName } },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // 2. Name Input Card
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                            shadowElevation = 2.dp,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "আপনার নাম লিখুন",
-                                    fontSize = 13.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                OutlinedTextField(
-                                    value = editName,
-                                    onValueChange = { editName = it },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color(0xFF0284C7),
-                                        unfocusedBorderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1),
-                                        focusedTextColor = textColor,
-                                        unfocusedTextColor = textColor,
-                                    ),
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                }
-            }
-        }
-    }
 
 
 
@@ -1104,5 +1362,255 @@ private fun SignInToggleRow(
                 uncheckedTrackColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0),
             )
         )
+    }
+}
+
+@Composable
+private fun ThreeDOptionButton(
+    label: String,
+    subLabel: String? = null,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    activeColor: Color = Color(0xFF0284C7),
+    isDark: Boolean = false,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(12.dp)
+
+    val pressOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isPressed) 3.5.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessHigh)
+    )
+
+    val shadowColor = if (isSelected) {
+        activeColor.copy(alpha = 0.5f)
+    } else {
+        if (isDark) Color(0xFF0F172A) else Color(0xFFCBD5E1)
+    }
+
+    val bgColor = if (isSelected) {
+        activeColor
+    } else {
+        if (isDark) Color(0xFF334155) else Color(0xFFF8FAFC)
+    }
+
+    val contentColor = if (isSelected) {
+        Color.White
+    } else {
+        if (isDark) Color(0xFFE2E8F0) else Color(0xFF1E293B)
+    }
+
+    val borderColor = if (isSelected) {
+        activeColor.copy(alpha = 0.85f)
+    } else {
+        if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1)
+    }
+
+    Box(
+        modifier = modifier.height(46.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        // 3D Shadow Base
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = 3.5.dp)
+                .clip(shape)
+                .background(shadowColor),
+        )
+
+        // Interactive 3D Surface
+        Surface(
+            onClick = onClick,
+            interactionSource = interactionSource,
+            shape = shape,
+            color = bgColor,
+            border = BorderStroke(1.2.dp, borderColor),
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = pressOffset),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = label,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
+                        maxLines = 1,
+                    )
+                    if (subLabel != null) {
+                        Text(
+                            text = subLabel,
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = if (isSelected) Color.White.copy(alpha = 0.85f) else (if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Collapsible3DProfileCard(
+    title: String,
+    selectedValue: String,
+    icon: ImageVector? = null,
+    imagePainter: androidx.compose.ui.graphics.painter.Painter? = null,
+    iconColor: Color = Color(0xFF0284C7),
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    isDark: Boolean,
+    cardBg: Color,
+    textColor: Color,
+    subTextColor: Color,
+    hindSiliguri: FontFamily,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val rotationAngle by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+    )
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = cardBg,
+        border = BorderStroke(1.dp, if (isExpanded) iconColor.copy(alpha = 0.5f) else (if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0))),
+        shadowElevation = if (isExpanded) 4.dp else 2.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            // Header Row (Clickable to collapse/expand)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onToggleExpand() }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (imagePainter != null) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, iconColor.copy(alpha = 0.4f)),
+                            shadowElevation = 3.dp,
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Image(
+                                painter = imagePainter,
+                                contentDescription = title,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                                contentScale = ContentScale.Crop,
+                            )
+                        }
+                    } else if (icon != null) {
+                        Surface(
+                            shape = CircleShape,
+                            color = iconColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(34.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = iconColor,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = title,
+                            fontSize = 14.sp,
+                            fontFamily = hindSiliguri,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor,
+                        )
+                        Text(
+                            text = if (selectedValue.isNotBlank()) selectedValue else "নির্বাচন করতে ট্যাপ করুন",
+                            fontSize = 12.sp,
+                            fontFamily = hindSiliguri,
+                            color = if (selectedValue.isNotBlank()) iconColor else subTextColor,
+                            fontWeight = if (selectedValue.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                        )
+                    }
+                }
+
+                // Animated 3D Chevron Toggle Button
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset(y = 2.5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isExpanded) iconColor.copy(alpha = 0.5f)
+                                else (if (isDark) Color(0xFF0F172A) else Color(0xFFCBD5E1))
+                            ),
+                    )
+                    Surface(
+                        onClick = onToggleExpand,
+                        shape = CircleShape,
+                        color = if (isExpanded) iconColor else (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9)),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isExpanded) iconColor else (if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1))
+                        ),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(
+                                imageVector = ChevronDownIcon,
+                                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                tint = if (isExpanded) Color.White else (if (isDark) Color(0xFFE2E8F0) else Color(0xFF475569)),
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .graphicsLayer(rotationZ = rotationAngle),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Expanded Section
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    content()
+                }
+            }
+        }
     }
 }

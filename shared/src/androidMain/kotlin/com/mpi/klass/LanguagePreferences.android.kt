@@ -18,6 +18,7 @@ actual fun saveAppLanguage(language: AppLanguage) {
             Locale.setDefault(locale)
             val config = context.resources.configuration
             config.setLocale(locale)
+            @Suppress("DEPRECATION")
             context.resources.updateConfiguration(config, context.resources.displayMetrics)
         } catch (_: Exception) {}
     }

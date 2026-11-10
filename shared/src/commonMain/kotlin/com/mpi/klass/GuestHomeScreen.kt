@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.sp
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
+import androidx.compose.runtime.mutableStateListOf
+import coil3.compose.AsyncImage
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.home
 import klass.shared.generated.resources.menu
@@ -80,7 +82,22 @@ fun GuestHomeScreen(
     var currentPhotoUrl by remember { mutableStateOf(initialSession?.photoUrl) }
 
     val hindSiliguri = getHindSiliguriFontFamily()
-    var selectedTab by remember { mutableStateOf("home") }
+    val tabBackStack = remember { mutableStateListOf("home") }
+    val selectedTab = tabBackStack.lastOrNull() ?: "home"
+
+    fun navigateTo(tab: String) {
+        if (selectedTab != tab) {
+            tabBackStack.add(tab)
+        }
+    }
+
+    fun goBack() {
+        if (tabBackStack.size > 1) {
+            tabBackStack.removeAt(tabBackStack.lastIndex)
+        } else {
+            onBackToWelcome()
+        }
+    }
 
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -104,8 +121,8 @@ fun GuestHomeScreen(
         bottomEnd = bottomRadius,
     )
 
-    AppBackHandler(enabled = selectedTab != "home") {
-        selectedTab = "home"
+    AppBackHandler(enabled = true) {
+        goBack()
     }
 
     Box(
@@ -153,17 +170,26 @@ fun GuestHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Surface(
-                                            onClick = { selectedTab = "profile" },
+                                            onClick = { navigateTo("profile") },
                                             shape = CircleShape,
                                             color = cardBg,
                                             border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
                                             modifier = Modifier.size(50.dp).clip(CircleShape),
                                             shadowElevation = 5.dp,
                                         ) {
-                                            DynamicAvatar(
-                                                seed = guestSeed,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
+                                            if (!currentPhotoUrl.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = currentPhotoUrl,
+                                                    contentDescription = "Profile Photo",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop,
+                                                )
+                                            } else {
+                                                DynamicAvatar(
+                                                    seed = guestSeed,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                )
+                                            }
                                         }
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -186,7 +212,7 @@ fun GuestHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Surface(
-                                            onClick = { selectedTab = "home" },
+                                            onClick = { goBack() },
                                             shape = CircleShape,
                                             color = cardBg,
                                             border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -221,7 +247,7 @@ fun GuestHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Surface(
-                                            onClick = { selectedTab = "home" },
+                                            onClick = { goBack() },
                                             shape = CircleShape,
                                             color = cardBg,
                                             border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -268,7 +294,7 @@ fun GuestHomeScreen(
                             ) {
                                 if (selectedTab != "ai") {
                                     Surface(
-                                        onClick = { selectedTab = "ai" },
+                                        onClick = { navigateTo("ai") },
                                         shape = CircleShape,
                                         color = cardBg,
                                         border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -291,7 +317,7 @@ fun GuestHomeScreen(
 
                                 if (selectedTab == "notification") {
                                     Surface(
-                                        onClick = { selectedTab = "home" },
+                                        onClick = { goBack() },
                                         shape = CircleShape,
                                         color = cardBg,
                                         border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -312,7 +338,7 @@ fun GuestHomeScreen(
                                     }
                                 } else {
                                     Surface(
-                                        onClick = { selectedTab = "notification" },
+                                        onClick = { navigateTo("notification") },
                                         shape = CircleShape,
                                         color = cardBg,
                                         border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -375,16 +401,16 @@ fun GuestHomeScreen(
                             hindSiliguri = hindSiliguri,
                             currentThemeMode = currentThemeMode,
                             onThemeModeChange = onThemeModeChange,
-                            onProfileClick = { selectedTab = "profile" },
-                            onAiClick = { selectedTab = "ai" },
-                            onNoticeClick = { selectedTab = "notification" },
+                            onProfileClick = { navigateTo("profile") },
+                            onAiClick = { navigateTo("ai") },
+                            onNoticeClick = { navigateTo("notification") },
                         )
                     }
                     "ai" -> {
                         AiAssistantScreen(
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
-                            onBack = { selectedTab = "home" },
+                            onBack = { goBack() },
                             userDisplayName = currentUserName,
                         )
                     }
@@ -485,7 +511,7 @@ fun GuestHomeScreen(
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 Button(
-                                    onClick = { selectedTab = "home" },
+                                    onClick = { navigateTo("home") },
                                     interactionSource = homeInteractionSource,
                                     modifier = Modifier
                                         .weight(1f)
@@ -520,7 +546,7 @@ fun GuestHomeScreen(
                                 }
 
                                 Button(
-                                    onClick = { selectedTab = "menu" },
+                                    onClick = { navigateTo("menu") },
                                     interactionSource = menuInteractionSource,
                                     modifier = Modifier
                                         .weight(1f)

@@ -148,8 +148,29 @@ fun WelcomeScreen(
     var showTermsDialog by remember { mutableStateOf(value = false) }
     var isRegistrationMode by remember { mutableStateOf(value = false) }
 
-    AppBackHandler(enabled = isRegistrationMode) {
-        isRegistrationMode = false
+    var lastBackPressTime by remember { mutableStateOf(0L) }
+
+    AppBackHandler(enabled = true) {
+        when {
+            showTermsDialog -> showTermsDialog = false
+            isThemeExpanded -> isThemeExpanded = false
+            isLanguageExpanded -> isLanguageExpanded = false
+            isRegistrationMode -> isRegistrationMode = false
+            else -> {
+                val now = getCurrentTimeMillis()
+                if (now - lastBackPressTime < 2000L) {
+                    onCloseApp()
+                } else {
+                    lastBackPressTime = now
+                    showToast(
+                        if (currentLanguage == AppLanguage.BENGALI)
+                            "অ্যাপ থেকে বের হতে আবার ব্যাক প্রেস করুন"
+                        else
+                            "Press back again to exit"
+                    )
+                }
+            }
+        }
     }
 
     val themeCardWidth by animateDpAsState(

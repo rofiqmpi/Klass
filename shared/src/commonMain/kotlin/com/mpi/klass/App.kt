@@ -187,48 +187,28 @@ fun App(
                 email != null -> {
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
-
-                        // Automatically route to existing registered category if account already exists
-                        val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
-                        val isAdminApproved = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
-
-                        var actualRole = targetRole
-                        if (isAdminApproved) {
-                            actualRole = UserRole.ADMIN
-                        } else if (existingProfile != null && existingProfile.category.isNotBlank()) {
-                            val savedRole = UserRole.fromRaw(existingProfile.category)
-                            if (savedRole != null) {
-                                actualRole = savedRole
-                            }
-                        }
-
                         val control = RoleConfig.fetchSignInControl()
-                        val isEnabled = when (actualRole) {
-                            UserRole.ADMIN -> control.adminSignInEnabled
-                            UserRole.TEACHER -> control.teacherSignInEnabled
-                            UserRole.STUDENT -> control.studentSignInEnabled
-                        }
 
-                        if (!isEnabled) {
-                            val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, actualRole)
-                            if (!isExisting) {
-                                isLoadingOverlay = false
-                                onSignOutGoogle()
-                                showError(ErrorImageType.SIGN_IN_DISABLED)
-                                return@launch
+                        if (targetRole == UserRole.ADMIN) {
+                            if (!control.adminSignInEnabled) {
+                                val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, UserRole.ADMIN)
+                                if (!isExisting) {
+                                    isLoadingOverlay = false
+                                    onSignOutGoogle()
+                                    showError(ErrorImageType.SIGN_IN_DISABLED)
+                                    return@launch
+                                }
                             }
-                        }
 
-                        if (actualRole == UserRole.ADMIN) {
                             val userName = name ?: cleanEmail.substringBefore("@")
                             val adminStatus = RoleConfig.getAdminStatusFromFirestore(cleanEmail)
                             when (adminStatus) {
                                 AdminStatus.APPROVED -> {
                                     RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
-                                    RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", actualRole.name)
-                                    saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                    RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", UserRole.ADMIN.name)
+                                    saveUserSession(UserSession(role = UserRole.ADMIN.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
                                     currentScreen = AppScreen.RoleHome(
-                                        role = actualRole,
+                                        role = UserRole.ADMIN,
                                         email = cleanEmail,
                                         name = userName,
                                         photoUrl = photoUrl,
@@ -253,18 +233,48 @@ fun App(
                                 }
                             }
                             return@launch
-                        } else {
-                            val userName = name ?: cleanEmail.substringBefore("@")
-                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", actualRole.name)
-                            saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
-                            currentScreen = AppScreen.RoleHome(
-                                role = actualRole,
-                                email = cleanEmail,
-                                name = userName,
-                                photoUrl = photoUrl,
-                            )
-                            isLoadingOverlay = false
                         }
+
+                        // For TEACHER / STUDENT sign in: check existing profile
+                        val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
+                        val isAdminApproved = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
+
+                        var actualRole = targetRole
+                        if (isAdminApproved) {
+                            actualRole = UserRole.ADMIN
+                        } else if (existingProfile != null && existingProfile.category.isNotBlank()) {
+                            val savedRole = UserRole.fromRaw(existingProfile.category)
+                            if (savedRole != null) {
+                                actualRole = savedRole
+                            }
+                        }
+
+                        val isEnabled = when (actualRole) {
+                            UserRole.ADMIN -> control.adminSignInEnabled
+                            UserRole.TEACHER -> control.teacherSignInEnabled
+                            UserRole.STUDENT -> control.studentSignInEnabled
+                        }
+
+                        if (!isEnabled) {
+                            val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, actualRole)
+                            if (!isExisting) {
+                                isLoadingOverlay = false
+                                onSignOutGoogle()
+                                showError(ErrorImageType.SIGN_IN_DISABLED)
+                                return@launch
+                            }
+                        }
+
+                        val userName = name ?: cleanEmail.substringBefore("@")
+                        RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", actualRole.name)
+                        saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                        currentScreen = AppScreen.RoleHome(
+                            role = actualRole,
+                            email = cleanEmail,
+                            name = userName,
+                            photoUrl = photoUrl,
+                        )
+                        isLoadingOverlay = false
                     }
                 }
 
@@ -442,9 +452,6 @@ fun ErrorImagePopup(
     onDismiss: () -> Unit,
 ) {
     val drawableRes = when (errorType) {
-        ErrorImageType.NO_INTERNET -> Res.drawable.error404
-        ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
-        ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror
         ErrorImageType.NO_INTERNET -> Res.drawable.error404
         ErrorImageType.GENERAL_ERROR -> Res.drawable.timeouterror
         ErrorImageType.CONFIGURATION_ERROR -> Res.drawable.timeouterror

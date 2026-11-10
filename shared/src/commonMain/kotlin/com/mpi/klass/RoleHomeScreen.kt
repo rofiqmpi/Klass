@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.sp
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
+import androidx.compose.runtime.mutableStateListOf
+import coil3.compose.AsyncImage
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.home
 import klass.shared.generated.resources.menu
@@ -99,9 +101,32 @@ fun RoleHomeScreen(
     }
 
     val hindSiliguri = getHindSiliguriFontFamily()
-    val coroutineScope = rememberCoroutineScope()
-    var selectedTab by remember { mutableStateOf(initialTab) }
+    val tabBackStack = remember { mutableStateListOf(initialTab) }
+    val selectedTab = tabBackStack.lastOrNull() ?: "home"
+    var lastBackPressTime by remember { mutableStateOf(0L) }
 
+    fun navigateTo(tab: String) {
+        if (selectedTab != tab) {
+            tabBackStack.add(tab)
+        }
+    }
+
+    fun goBack() {
+        if (tabBackStack.size > 1) {
+            tabBackStack.removeAt(tabBackStack.lastIndex)
+        } else {
+            // At root "home" tab - double back to exit
+            val now = getCurrentTimeMillis()
+            if (now - lastBackPressTime < 2000L) {
+                onCloseApp()
+            } else {
+                lastBackPressTime = now
+                showToast("অ্যাপ থেকে বের হতে আবার ব্যাক প্রেস করুন")
+            }
+        }
+    }
+
+    val coroutineScope = rememberCoroutineScope()
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
@@ -124,8 +149,8 @@ fun RoleHomeScreen(
         bottomEnd = bottomRadius,
     )
 
-    AppBackHandler(enabled = selectedTab != "home") {
-        selectedTab = "home"
+    AppBackHandler(enabled = true) {
+        goBack()
     }
 
     Box(
@@ -173,17 +198,26 @@ fun RoleHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Surface(
-                                            onClick = { selectedTab = "profile" },
+                                            onClick = { navigateTo("profile") },
                                             shape = CircleShape,
                                             color = cardBg,
                                             border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
                                             modifier = Modifier.size(50.dp).clip(CircleShape),
                                             shadowElevation = 5.dp,
                                         ) {
-                                            DynamicAvatar(
-                                                seed = email.ifBlank { currentUserName },
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
+                                            if (!currentPhotoUrl.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = currentPhotoUrl,
+                                                    contentDescription = "Profile Photo",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop,
+                                                )
+                                            } else {
+                                                DynamicAvatar(
+                                                    seed = email.ifBlank { currentUserName },
+                                                    modifier = Modifier.fillMaxSize(),
+                                                )
+                                            }
                                         }
 
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -206,7 +240,7 @@ fun RoleHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Surface(
-                                            onClick = { selectedTab = "home" },
+                                            onClick = { goBack() },
                                             shape = CircleShape,
                                             color = cardBg,
                                             border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -241,7 +275,7 @@ fun RoleHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Surface(
-                                            onClick = { selectedTab = "home" },
+                                            onClick = { goBack() },
                                             shape = CircleShape,
                                             color = cardBg,
                                             border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -288,7 +322,7 @@ fun RoleHomeScreen(
                             ) {
                                 if (selectedTab != "ai") {
                                     Surface(
-                                        onClick = { selectedTab = "ai" },
+                                        onClick = { navigateTo("ai") },
                                         shape = CircleShape,
                                         color = cardBg,
                                         border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -311,7 +345,7 @@ fun RoleHomeScreen(
 
                                 if (selectedTab == "notification") {
                                     Surface(
-                                        onClick = { selectedTab = "home" },
+                                        onClick = { goBack() },
                                         shape = CircleShape,
                                         color = cardBg,
                                         border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -332,7 +366,7 @@ fun RoleHomeScreen(
                                     }
                                 } else {
                                     Surface(
-                                        onClick = { selectedTab = "notification" },
+                                        onClick = { navigateTo("notification") },
                                         shape = CircleShape,
                                         color = cardBg,
                                         border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
@@ -396,16 +430,16 @@ fun RoleHomeScreen(
                             role = currentRole,
                             currentThemeMode = currentThemeMode,
                             onThemeModeChange = onThemeModeChange,
-                            onProfileClick = { selectedTab = "profile" },
-                            onAiClick = { selectedTab = "ai" },
-                            onNoticeClick = { selectedTab = "notification" },
+                            onProfileClick = { navigateTo("profile") },
+                            onAiClick = { navigateTo("ai") },
+                            onNoticeClick = { navigateTo("notification") },
                         )
                     }
                     "ai" -> {
                         AiAssistantScreen(
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
-                            onBack = { selectedTab = "home" },
+                            onBack = { goBack() },
                             userDisplayName = currentUserName,
                         )
                     }
@@ -532,7 +566,7 @@ fun RoleHomeScreen(
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 Button(
-                                    onClick = { selectedTab = "home" },
+                                    onClick = { navigateTo("home") },
                                     interactionSource = homeInteractionSource,
                                     modifier = Modifier
                                         .weight(1f)
@@ -567,7 +601,7 @@ fun RoleHomeScreen(
                                 }
 
                                 Button(
-                                    onClick = { selectedTab = "menu" },
+                                    onClick = { navigateTo("menu") },
                                     interactionSource = menuInteractionSource,
                                     modifier = Modifier
                                         .weight(1f)
