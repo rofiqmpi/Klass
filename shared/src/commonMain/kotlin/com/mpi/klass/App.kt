@@ -188,15 +188,29 @@ fun App(
                     coroutineScope.launch {
                         val cleanEmail = email.trim().lowercase()
 
+                        // Automatically route to existing registered category if account already exists
+                        val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
+                        val isAdminApproved = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
+
+                        var actualRole = targetRole
+                        if (isAdminApproved) {
+                            actualRole = UserRole.ADMIN
+                        } else if (existingProfile != null && existingProfile.category.isNotBlank()) {
+                            val savedRole = UserRole.fromRaw(existingProfile.category)
+                            if (savedRole != null) {
+                                actualRole = savedRole
+                            }
+                        }
+
                         val control = RoleConfig.fetchSignInControl()
-                        val isEnabled = when (targetRole) {
+                        val isEnabled = when (actualRole) {
                             UserRole.ADMIN -> control.adminSignInEnabled
                             UserRole.TEACHER -> control.teacherSignInEnabled
                             UserRole.STUDENT -> control.studentSignInEnabled
                         }
 
                         if (!isEnabled) {
-                            val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, targetRole)
+                            val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, actualRole)
                             if (!isExisting) {
                                 isLoadingOverlay = false
                                 onSignOutGoogle()
@@ -205,16 +219,16 @@ fun App(
                             }
                         }
 
-                        if (targetRole == UserRole.ADMIN) {
+                        if (actualRole == UserRole.ADMIN) {
                             val userName = name ?: cleanEmail.substringBefore("@")
                             val adminStatus = RoleConfig.getAdminStatusFromFirestore(cleanEmail)
                             when (adminStatus) {
                                 AdminStatus.APPROVED -> {
                                     RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
-                                    RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
-                                    saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                    RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", actualRole.name)
+                                    saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
                                     currentScreen = AppScreen.RoleHome(
-                                        role = targetRole,
+                                        role = actualRole,
                                         email = cleanEmail,
                                         name = userName,
                                         photoUrl = photoUrl,
@@ -239,25 +253,12 @@ fun App(
                                 }
                             }
                             return@launch
-                        } else if (targetRole == UserRole.TEACHER) {
-                            val userName = name ?: cleanEmail.substringBefore("@")
-                            // Save profile directly into teachers collection and users collection
-                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
-                            saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
-                            currentScreen = AppScreen.RoleHome(
-                                role = targetRole,
-                                email = cleanEmail,
-                                name = userName,
-                                photoUrl = photoUrl,
-                            )
-                            isLoadingOverlay = false
                         } else {
                             val userName = name ?: cleanEmail.substringBefore("@")
-                            // STUDENT role: saveUserProfile now handles students collection saving
-                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", targetRole.name)
-                            saveUserSession(UserSession(role = targetRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                            RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", actualRole.name)
+                            saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
                             currentScreen = AppScreen.RoleHome(
-                                role = targetRole,
+                                role = actualRole,
                                 email = cleanEmail,
                                 name = userName,
                                 photoUrl = photoUrl,

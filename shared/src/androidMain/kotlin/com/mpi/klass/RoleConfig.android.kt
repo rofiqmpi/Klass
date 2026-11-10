@@ -392,6 +392,7 @@ actual suspend fun deleteUserFromFirestore(email: String, role: String): Result<
         try {
             db.collection("users").document(cleanEmail).delete()
             when (role.uppercase()) {
+                "ADMIN" -> db.collection("admins").document(cleanEmail).delete()
                 "TEACHER" -> db.collection("teachers").document(cleanEmail).delete()
                 "STUDENT" -> db.collection("students").document(cleanEmail).delete()
             }

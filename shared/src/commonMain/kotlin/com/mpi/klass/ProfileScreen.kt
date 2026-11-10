@@ -647,76 +647,6 @@ fun ProfileScreen(
         }
 
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // App Theme Selector Card
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = cardBg,
-            border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-            shadowElevation = 3.dp,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                Text(
-                    text = "অ্যাপ থিম নির্বাচন করুন",
-                    fontSize = 14.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    val modes = listOf(
-                        Triple(ThemeMode.LIGHT, "লাইট", LightModeIcon),
-                        Triple(ThemeMode.DARK, "ডার্ক", DarkModeIcon),
-                        Triple(ThemeMode.DEFAULT, "অটো", AutoModeIcon),
-                    )
-
-                    modes.forEach { (mode, label, icon) ->
-                        val isSelected = currentThemeMode == mode
-                        Button(
-                            onClick = { onThemeModeChange(mode) },
-                            modifier = Modifier.weight(1f).height(42.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) Color(0xFF8CB9D9) else (if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9)),
-                                contentColor = if (isDark) Color.White else Color.Black,
-                            ),
-                            contentPadding = PaddingValues(0.dp),
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = label,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = if (isDark) Color.White else Color.Black,
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = label,
-                                    fontSize = 12.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
         // Sign Out Button
@@ -749,8 +679,8 @@ fun ProfileScreen(
             }
         }
 
-        // Account Delete Button (For registered Teachers and Students, but NOT Admins)
-        if (cleanEmail.isNotBlank() && role != UserRole.ADMIN) {
+        // Account Delete Button
+        if (cleanEmail.isNotBlank()) {
             Spacer(modifier = Modifier.height(10.dp))
             OutlinedButton(
                 onClick = { showDeleteDialog = true },

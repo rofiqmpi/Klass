@@ -215,10 +215,6 @@ object RoleConfig {
         if (email.isBlank()) return Result.failure(Exception("Invalid email"))
         val cleanEmail = email.trim().lowercase()
 
-        if (role == UserRole.ADMIN) {
-            return Result.failure(Exception("এডমিন অ্যাকাউন্ট ডিলিট করা সম্ভব নয়।"))
-        }
-
         deleteLocalProfile(cleanEmail)
         deleteUserFromFirestore(cleanEmail, role.name)
         try {
