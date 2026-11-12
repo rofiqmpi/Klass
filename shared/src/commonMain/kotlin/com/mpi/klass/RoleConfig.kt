@@ -42,6 +42,7 @@ data class UserProfile(
 data class StudentProfile(
     val email: String = "",
     val name: String = "",
+    val photoUrl: String? = null,
     val semester: String = "",
     val shift: String = "",
     val department: String = "",
@@ -83,6 +84,8 @@ expect suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean
 expect suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
 expect suspend fun saveTeacherInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
 expect suspend fun saveStudentInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
+expect suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): Result<Unit>
+expect suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentProfile?
 expect suspend fun saveUserInFirestore(email: String, name: String, photoUrl: String?, provider: String, category: String): Result<Unit>
 expect suspend fun fetchUserFromFirestore(email: String): UserProfile?
 expect suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit>
@@ -241,9 +244,17 @@ object RoleConfig {
         }
     }
 
-    // Stubs for backward compatibility
-    suspend fun fetchStudentProfile(email: String): StudentProfile? = StudentProfile(email = email)
-    suspend fun saveStudentProfile(profile: StudentProfile): Result<Unit> = saveStudentProfile(profile.email, profile.name, null)
+    // Student profile persistence
+    suspend fun fetchStudentProfile(email: String): StudentProfile? {
+        if (email.isBlank()) return null
+        return fetchStudentProfileDataFromFirestore(email.trim().lowercase())
+    }
+
+    suspend fun saveStudentProfile(profile: StudentProfile): Result<Unit> {
+        if (profile.email.isBlank()) return Result.failure(Exception("Invalid email"))
+        saveStudentProfile(profile.email, profile.name, profile.photoUrl)
+        return saveStudentProfileDataInFirestore(profile)
+    }
     suspend fun deleteStudentSignInData(email: String): Result<Unit> = deleteUserAccount(email, UserRole.STUDENT)
     suspend fun fetchSignInControl(): SignInControlConfig = fetchSignInControlFromFirestore()
     suspend fun saveSignInControl(config: SignInControlConfig): Result<Unit> = saveSignInControlInFirestore(config)

@@ -475,6 +475,14 @@ fun RoleHomeScreen(
                                             RoleConfig.saveTeacherProfile(sessionEmail, newName, newPhotoUrl)
                                         } else if (currentRole == UserRole.ADMIN) {
                                             RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
+                                        } else if (currentRole == UserRole.STUDENT) {
+                                            val existing = RoleConfig.fetchStudentProfile(sessionEmail)
+                                            val studentProfileToSave = if (existing != null) {
+                                                existing.copy(name = newName, photoUrl = newPhotoUrl)
+                                            } else {
+                                                StudentProfile(email = sessionEmail, name = newName, photoUrl = newPhotoUrl)
+                                            }
+                                            RoleConfig.saveStudentProfile(studentProfileToSave)
                                         }
                                         RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
                                     }

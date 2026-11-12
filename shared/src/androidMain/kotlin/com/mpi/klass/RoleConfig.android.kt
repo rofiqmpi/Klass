@@ -290,6 +290,140 @@ actual suspend fun saveStudentInFirestore(
     return Result.success(Unit)
 }
 
+actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): Result<Unit> {
+    if (profile.email.isBlank()) return Result.failure(Exception("Invalid email"))
+    val cleanEmail = profile.email.trim().lowercase()
+    val ctx = getAppContext()
+    val prefs = ctx?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE)
+
+    // 1. Save locally in SharedPreferences
+    prefs?.edit()
+        ?.putString("${cleanEmail}_student_name", profile.name)
+        ?.putString("${cleanEmail}_student_photo", profile.photoUrl ?: "")
+        ?.putString("${cleanEmail}_student_semester", profile.semester)
+        ?.putString("${cleanEmail}_student_shift", profile.shift)
+        ?.putString("${cleanEmail}_student_department", profile.department)
+        ?.putString("${cleanEmail}_student_section", profile.section)
+        ?.putString("${cleanEmail}_student_phone", profile.phone)
+        ?.putString("${cleanEmail}_student_blood", profile.bloodGroup)
+        ?.putString("${cleanEmail}_student_address", profile.address)
+        ?.putString("${cleanEmail}_student_roll", profile.rollNumber)
+        ?.putBoolean("${cleanEmail}_student_complete", profile.profileSetupComplete)
+        ?.putLong("${cleanEmail}_student_time", System.currentTimeMillis())
+        ?.apply()
+
+    // 2. Save in Firestore 'students' collection
+    val now = System.currentTimeMillis()
+    val data = mapOf(
+        "email" to cleanEmail,
+        "name" to profile.name,
+        "photo_url" to (profile.photoUrl ?: ""),
+        "semester" to profile.semester,
+        "shift" to profile.shift,
+        "department" to profile.department,
+        "section" to profile.section,
+        "phone" to profile.phone,
+        "blood_group" to profile.bloodGroup,
+        "address" to profile.address,
+        "roll_number" to profile.rollNumber,
+        "profile_setup_complete" to profile.profileSetupComplete,
+        "updated_at" to now,
+    )
+
+    withTimeoutOrNull(5.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("students").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (e: Exception) {
+                Log.e("StudentProfile", "Failed saving to firestore: ${e.message}")
+            }
+        }
+    }
+
+    return Result.success(Unit)
+}
+
+actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentProfile? {
+    if (email.isBlank()) return null
+    val cleanEmail = email.trim().lowercase()
+    val ctx = getAppContext()
+    val prefs = ctx?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE)
+
+    // 1. First check local SharedPreferences
+    val localComplete = prefs?.getBoolean("${cleanEmail}_student_complete", false) ?: false
+    val localSemester = prefs?.getString("${cleanEmail}_student_semester", "") ?: ""
+    val localDept = prefs?.getString("${cleanEmail}_student_department", "") ?: ""
+    val localRoll = prefs?.getString("${cleanEmail}_student_roll", "") ?: ""
+
+    if (localComplete || localSemester.isNotBlank() || localDept.isNotBlank() || localRoll.isNotBlank()) {
+        val name = prefs?.getString("${cleanEmail}_student_name", "")?.ifBlank { prefs.getString("${cleanEmail}_name", "") } ?: ""
+        val photoUrl = prefs?.getString("${cleanEmail}_student_photo", "")?.ifBlank { prefs.getString("${cleanEmail}_photo", "")?.ifBlank { null } }
+        return StudentProfile(
+            email = cleanEmail,
+            name = name,
+            photoUrl = photoUrl,
+            semester = localSemester,
+            shift = prefs?.getString("${cleanEmail}_student_shift", "") ?: "",
+            department = localDept,
+            section = prefs?.getString("${cleanEmail}_student_section", "") ?: "",
+            phone = prefs?.getString("${cleanEmail}_student_phone", "") ?: "",
+            bloodGroup = prefs?.getString("${cleanEmail}_student_blood", "") ?: "",
+            address = prefs?.getString("${cleanEmail}_student_address", "") ?: "",
+            rollNumber = localRoll,
+            profileSetupComplete = localComplete,
+        )
+    }
+
+    // 2. Fetch from Firestore 'students' collection
+    val remoteProfile = withTimeoutOrNull(6.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                val doc = db.collection("students").document(cleanEmail).get().awaitTask()
+                if (doc.exists()) {
+                    val d = doc.data ?: continue
+                    val p = StudentProfile(
+                        email = (d["email"] as? String) ?: cleanEmail,
+                        name = (d["name"] as? String) ?: "",
+                        photoUrl = (d["photo_url"] as? String)?.ifBlank { null },
+                        semester = (d["semester"] as? String) ?: "",
+                        shift = (d["shift"] as? String) ?: "",
+                        department = (d["department"] as? String) ?: "",
+                        section = (d["section"] as? String) ?: "",
+                        phone = (d["phone"] as? String) ?: "",
+                        bloodGroup = (d["blood_group"] as? String) ?: "",
+                        address = (d["address"] as? String) ?: "",
+                        rollNumber = (d["roll_number"] as? String) ?: "",
+                        profileSetupComplete = (d["profile_setup_complete"] as? Boolean) ?: true,
+                    )
+                    // Cache locally
+                    prefs?.edit()
+                        ?.putString("${cleanEmail}_student_name", p.name)
+                        ?.putString("${cleanEmail}_student_photo", p.photoUrl ?: "")
+                        ?.putString("${cleanEmail}_student_semester", p.semester)
+                        ?.putString("${cleanEmail}_student_shift", p.shift)
+                        ?.putString("${cleanEmail}_student_department", p.department)
+                        ?.putString("${cleanEmail}_student_section", p.section)
+                        ?.putString("${cleanEmail}_student_phone", p.phone)
+                        ?.putString("${cleanEmail}_student_blood", p.bloodGroup)
+                        ?.putString("${cleanEmail}_student_address", p.address)
+                        ?.putString("${cleanEmail}_student_roll", p.rollNumber)
+                        ?.putBoolean("${cleanEmail}_student_complete", p.profileSetupComplete)
+                        ?.apply()
+                    return@withTimeoutOrNull p
+                }
+            } catch (_: Exception) {}
+        }
+        null
+    }
+
+    if (remoteProfile != null) return remoteProfile
+
+    val basicUser = fetchLocalProfile(cleanEmail)
+    return StudentProfile(email = cleanEmail, name = basicUser?.name ?: "", photoUrl = basicUser?.photoUrl)
+}
+
 actual suspend fun saveUserInFirestore(
     email: String,
     name: String,

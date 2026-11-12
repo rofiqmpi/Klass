@@ -265,14 +265,30 @@ fun App(
                             }
                         }
 
-                        val userName = name ?: cleanEmail.substringBefore("@")
-                        RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", actualRole.name)
-                        saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                        val studentProf = if (actualRole == UserRole.STUDENT) RoleConfig.fetchStudentProfile(cleanEmail) else null
+                        val savedName = studentProf?.name?.takeIf { it.isNotBlank() } 
+                            ?: existingProfile?.name?.takeIf { it.isNotBlank() }
+                        val savedPhoto = studentProf?.photoUrl?.takeIf { it.isNotBlank() } 
+                            ?: existingProfile?.photoUrl?.takeIf { it.isNotBlank() }
+
+                        val finalName = savedName ?: name ?: cleanEmail.substringBefore("@")
+                        val finalPhoto = savedPhoto ?: photoUrl
+
+                        RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
+                        if (actualRole == UserRole.STUDENT) {
+                            if (studentProf != null) {
+                                RoleConfig.saveStudentProfile(studentProf.copy(name = finalName, photoUrl = finalPhoto))
+                            } else {
+                                RoleConfig.saveStudentProfile(StudentProfile(email = cleanEmail, name = finalName, photoUrl = finalPhoto))
+                            }
+                        }
+
+                        saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = finalName, photoUrl = finalPhoto))
                         currentScreen = AppScreen.RoleHome(
                             role = actualRole,
                             email = cleanEmail,
-                            name = userName,
-                            photoUrl = photoUrl,
+                            name = finalName,
+                            photoUrl = finalPhoto,
                         )
                         isLoadingOverlay = false
                     }

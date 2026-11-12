@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -58,9 +59,18 @@ import klass.shared.generated.resources.img_menu_classroom
 import klass.shared.generated.resources.img_menu_notice
 import klass.shared.generated.resources.img_menu_profile
 import klass.shared.generated.resources.img_menu_teachers
+import klass.shared.generated.resources.bg_menu_books
+import klass.shared.generated.resources.bg_menu_classroom
+import klass.shared.generated.resources.bg_menu_notice
+import klass.shared.generated.resources.bg_menu_profile
+import klass.shared.generated.resources.bg_menu_teachers
+import klass.shared.generated.resources.bg_menu_security
+import klass.shared.generated.resources.bg_menu_requests
+import klass.shared.generated.resources.bg_menu_theme
 import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CheckIcon
+import com.mpi.klass.theme.ChevronDownIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.CrownIcon
 import com.mpi.klass.theme.DarkModeIcon
@@ -112,6 +122,7 @@ fun MenuScreen(
             textColor = textColor,
             subTextColor = subTextColor,
             hindSiliguri = hindSiliguri,
+            bgImagePainter = painterResource(Res.drawable.bg_menu_profile),
             imagePainter = painterResource(Res.drawable.img_menu_profile),
             onClick = onProfileClick,
         )
@@ -131,6 +142,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
+                bgImagePainter = painterResource(Res.drawable.bg_menu_books),
                 imagePainter = painterResource(Res.drawable.img_menu_books),
                 onClick = onBooksClick,
             )
@@ -146,6 +158,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
+                bgImagePainter = painterResource(Res.drawable.bg_menu_classroom),
                 imagePainter = painterResource(Res.drawable.img_menu_classroom),
                 onClick = onClassroomClick,
             )
@@ -161,6 +174,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
+                bgImagePainter = painterResource(Res.drawable.bg_menu_teachers),
                 imagePainter = painterResource(Res.drawable.img_menu_teachers),
                 onClick = onTeachersClick,
             )
@@ -176,6 +190,7 @@ fun MenuScreen(
                 textColor = textColor,
                 subTextColor = subTextColor,
                 hindSiliguri = hindSiliguri,
+                bgImagePainter = painterResource(Res.drawable.bg_menu_notice),
                 imagePainter = painterResource(Res.drawable.img_menu_notice),
                 onClick = onNoticeClick,
             )
@@ -216,9 +231,9 @@ fun MenuScreen(
                 color = cardBg,
                 border = BorderStroke(
                     1.2.dp,
-                    if (isExpanded) Color(0xFFD97706).copy(alpha = 0.5f) else (if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                    if (isExpanded) Color(0xFFD97706).copy(alpha = 0.8f) else Color(0xFFD97706).copy(alpha = 0.35f),
                 ),
-                shadowElevation = if (isExpanded) 6.dp else 3.dp,
+                shadowElevation = if (isExpanded) 6.dp else 4.dp,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
             ) {
                 Column(
@@ -227,89 +242,127 @@ fun MenuScreen(
                     // Clickable Card Header (Toggles Expand / Minimize)
                     Surface(
                         onClick = { isExpanded = !isExpanded },
-                        color = Color.Transparent,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(86.dp),
+                        shape = RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            bottomStart = if (isExpanded) 0.dp else 20.dp,
+                            bottomEnd = if (isExpanded) 0.dp else 20.dp,
+                        ),
+                        color = cardBg,
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(Color(0xFFD97706), Color(0xFFF59E0B))
-                                            )
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = ShieldIcon,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "নতুন সাইন ইন নিয়ন্ত্রণ",
-                                            fontSize = 15.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor,
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // Full-bleed Card Background Image
+                            Image(
+                                painter = painterResource(Res.drawable.bg_menu_security),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                                contentScale = ContentScale.Crop,
+                            )
+                            // Gradient Overlay ensuring readability
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                cardBg.copy(alpha = if (isDark) 0.92f else 0.88f),
+                                                cardBg.copy(alpha = if (isDark) 0.65f else 0.55f),
+                                                Color.Transparent,
+                                            ),
+                                            startX = 0f,
+                                            endX = 650f,
                                         )
-                                        if (isUpdatingControl) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(14.dp),
-                                                strokeWidth = 2.dp,
-                                                color = Color(0xFFD97706),
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = if (isExpanded) "অ্যাডমিন, শিক্ষক ও শিক্ষার্থী সাইন ইন পারমিশন" else "ক্লিক করে সেটিংস প্যানেল খুলুন",
-                                        fontSize = 11.5.sp,
-                                        fontFamily = hindSiliguri,
-                                        color = subTextColor,
                                     )
-                                }
-                            }
-
-                            val arrowRotation by animateFloatAsState(
-                                targetValue = if (isExpanded) 270f else 90f,
-                                animationSpec = spring(stiffness = 400f),
-                                label = "ArrowRotation",
                             )
 
-                            Surface(
-                                shape = CircleShape,
-                                color = Color(0xFFD97706).copy(alpha = 0.12f),
-                                modifier = Modifier.size(34.dp),
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Icon(
-                                        imageVector = RightArrowIcon,
-                                        contentDescription = "Expand or collapse",
-                                        tint = Color(0xFFD97706),
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Box(
                                         modifier = Modifier
-                                            .size(16.dp)
-                                            .graphicsLayer(rotationZ = arrowRotation),
-                                    )
+                                            .size(50.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(Color(0xFFD97706), Color(0xFFF59E0B))
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = ShieldIcon,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "নতুন সাইন ইন নিয়ন্ত্রণ",
+                                                fontSize = 16.5.sp,
+                                                fontFamily = hindSiliguri,
+                                                fontWeight = FontWeight.Bold,
+                                                color = textColor,
+                                            )
+                                            if (isUpdatingControl) {
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = Color(0xFFD97706),
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = if (isExpanded) "অ্যাডমিন, শিক্ষক ও শিক্ষার্থী সাইন ইন পারমিশন" else "ক্লিক করে সেটিংস প্যানেল খুলুন",
+                                            fontSize = 12.sp,
+                                            fontFamily = hindSiliguri,
+                                            color = subTextColor,
+                                        )
+                                    }
+                                }
+
+                                val arrowRotation by animateFloatAsState(
+                                    targetValue = if (isExpanded) 180f else 0f,
+                                    animationSpec = spring(stiffness = 400f),
+                                    label = "ArrowRotation",
+                                )
+
+                                Box(
+                                    modifier = Modifier.size(34.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .background(cardBg.copy(alpha = 0.88f))
+                                            .border(BorderStroke(1.dp, Color(0xFFD97706).copy(alpha = 0.5f)), CircleShape),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = ChevronDownIcon,
+                                            contentDescription = "Expand or collapse",
+                                            tint = Color(0xFFD97706),
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .graphicsLayer(rotationZ = arrowRotation),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -420,112 +473,150 @@ fun MenuScreen(
                 color = cardBg,
                 border = BorderStroke(
                     1.2.dp,
-                    if (isRequestsExpanded) Color(0xFF8B5CF6).copy(alpha = 0.5f) else (if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+                    if (isRequestsExpanded) Color(0xFF8B5CF6).copy(alpha = 0.8f) else Color(0xFF8B5CF6).copy(alpha = 0.35f),
                 ),
-                shadowElevation = if (isRequestsExpanded) 6.dp else 3.dp,
+                shadowElevation = if (isRequestsExpanded) 6.dp else 4.dp,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Surface(
                         onClick = { isRequestsExpanded = !isRequestsExpanded },
-                        color = Color.Transparent,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(86.dp),
+                        shape = RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            bottomStart = if (isRequestsExpanded) 0.dp else 20.dp,
+                            bottomEnd = if (isRequestsExpanded) 0.dp else 20.dp,
+                        ),
+                        color = cardBg,
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))
-                                            )
-                                        ),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = CrownIcon,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "এডমিন রিকোয়েস্ট ও অনুমোদন",
-                                            fontSize = 15.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor,
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // Full-bleed Card Background Image
+                            Image(
+                                painter = painterResource(Res.drawable.bg_menu_requests),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                                contentScale = ContentScale.Crop,
+                            )
+                            // Gradient Overlay ensuring readability
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                cardBg.copy(alpha = if (isDark) 0.92f else 0.88f),
+                                                cardBg.copy(alpha = if (isDark) 0.65f else 0.55f),
+                                                Color.Transparent,
+                                            ),
+                                            startX = 0f,
+                                            endX = 650f,
                                         )
-                                        if (pendingRequests.isNotEmpty()) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = Color(0xFFEF4444),
-                                            ) {
-                                                Text(
-                                                    text = "${pendingRequests.size}",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color.White,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    )
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = CrownIcon,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "এডমিন রিকোয়েস্ট ও অনুমোদন",
+                                                fontSize = 16.5.sp,
+                                                fontFamily = hindSiliguri,
+                                                fontWeight = FontWeight.Bold,
+                                                color = textColor,
+                                            )
+                                            if (pendingRequests.isNotEmpty()) {
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Surface(
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    color = Color(0xFFEF4444),
+                                                ) {
+                                                    Text(
+                                                        text = "${pendingRequests.size}",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color.White,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    )
+                                                }
+                                            }
+                                            if (isLoadingRequests) {
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = Color(0xFF8B5CF6),
                                                 )
                                             }
                                         }
-                                        if (isLoadingRequests) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(14.dp),
-                                                strokeWidth = 2.dp,
-                                                color = Color(0xFF8B5CF6),
-                                            )
-                                        }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = if (pendingRequests.isNotEmpty()) "${pendingRequests.size} টি আবেদন অনুমোদনের অপেক্ষায়" else "কোনো পেন্ডিং আবেদন নেই",
+                                            fontSize = 12.sp,
+                                            fontFamily = hindSiliguri,
+                                            color = subTextColor,
+                                        )
                                     }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = if (pendingRequests.isNotEmpty()) "${pendingRequests.size} টি আবেদন অনুমোদনের অপেক্ষায়" else "কোনো পেন্ডিং আবেদন নেই",
-                                        fontSize = 11.5.sp,
-                                        fontFamily = hindSiliguri,
-                                        color = subTextColor,
-                                    )
                                 }
-                            }
 
-                            val arrowRotation by animateFloatAsState(
-                                targetValue = if (isRequestsExpanded) 270f else 90f,
-                                animationSpec = spring(stiffness = 400f),
-                                label = "RequestsArrowRotation",
-                            )
+                                val arrowRotation by animateFloatAsState(
+                                    targetValue = if (isRequestsExpanded) 180f else 0f,
+                                    animationSpec = spring(stiffness = 400f),
+                                    label = "RequestsArrowRotation",
+                                )
 
-                            Surface(
-                                shape = CircleShape,
-                                color = Color(0xFF8B5CF6).copy(alpha = 0.12f),
-                                modifier = Modifier.size(34.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                    Icon(
-                                        imageVector = RightArrowIcon,
-                                        contentDescription = "Expand or collapse requests",
-                                        tint = Color(0xFF8B5CF6),
+                                Box(
+                                    modifier = Modifier.size(34.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Box(
                                         modifier = Modifier
-                                            .size(16.dp)
-                                            .graphicsLayer(rotationZ = arrowRotation),
-                                    )
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                            .background(cardBg.copy(alpha = 0.88f))
+                                            .border(BorderStroke(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.5f)), CircleShape),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = ChevronDownIcon,
+                                            contentDescription = "Expand or collapse requests",
+                                            tint = Color(0xFF8B5CF6),
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .graphicsLayer(rotationZ = arrowRotation),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -633,9 +724,9 @@ private fun ThreeDThemeCard(
         color = cardBg,
         border = BorderStroke(
             1.2.dp,
-            if (isExpanded) Color(0xFF6366F1).copy(alpha = 0.5f) else (if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
+            if (isExpanded) Color(0xFF6366F1).copy(alpha = 0.8f) else Color(0xFF6366F1).copy(alpha = 0.35f),
         ),
-        shadowElevation = if (isExpanded) 6.dp else 3.dp,
+        shadowElevation = if (isExpanded) 6.dp else 4.dp,
         modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
     ) {
         Column(
@@ -644,79 +735,117 @@ private fun ThreeDThemeCard(
             // Clickable Header (Toggles Expand / Minimize)
             Surface(
                 onClick = { isExpanded = !isExpanded },
-                color = Color.Transparent,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(86.dp),
+                shape = RoundedCornerShape(
+                    topStart = 20.dp,
+                    topEnd = 20.dp,
+                    bottomStart = if (isExpanded) 0.dp else 20.dp,
+                    bottomEnd = if (isExpanded) 0.dp else 20.dp,
+                ),
+                color = cardBg,
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = PaletteIcon,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp),
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Full-bleed Card Background Image
+                    Image(
+                        painter = painterResource(Res.drawable.bg_menu_theme),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                        contentScale = ContentScale.Crop,
+                    )
+                    // Gradient Overlay ensuring readability
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        cardBg.copy(alpha = if (isDark) 0.92f else 0.88f),
+                                        cardBg.copy(alpha = if (isDark) 0.65f else 0.55f),
+                                        Color.Transparent,
+                                    ),
+                                    startX = 0f,
+                                    endX = 650f,
+                                )
                             )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "অ্যাপ থিম পরিবর্তন",
-                                fontSize = 15.sp,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = if (isExpanded) "লাইট, ডার্ক অথবা অটো থিম সিলেক্ট করুন" else "ক্লিক করে থিম সেটিংস খুলুন",
-                                fontSize = 11.5.sp,
-                                fontFamily = hindSiliguri,
-                                color = subTextColor,
-                            )
-                        }
-                    }
-
-                    val arrowRotation by animateFloatAsState(
-                        targetValue = if (isExpanded) 270f else 90f,
-                        animationSpec = spring(stiffness = 400f),
-                        label = "ThemeArrowRotation",
                     )
 
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF6366F1).copy(alpha = 0.12f),
-                        modifier = Modifier.size(34.dp),
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(
-                                imageVector = RightArrowIcon,
-                                contentDescription = "Expand or collapse theme",
-                                tint = Color(0xFF6366F1),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Box(
                                 modifier = Modifier
-                                    .size(16.dp)
-                                    .graphicsLayer(rotationZ = arrowRotation),
-                            )
+                                    .size(50.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = PaletteIcon,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Column {
+                                Text(
+                                    text = "অ্যাপ থিম পরিবর্তন",
+                                    fontSize = 16.5.sp,
+                                    fontFamily = hindSiliguri,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isExpanded) "লাইট, ডার্ক অথবা অটো থিম সিলেক্ট করুন" else "ক্লিক করে থিম সেটিংস খুলুন",
+                                    fontSize = 12.sp,
+                                    fontFamily = hindSiliguri,
+                                    color = subTextColor,
+                                )
+                            }
+                        }
+
+                        val arrowRotation by animateFloatAsState(
+                            targetValue = if (isExpanded) 180f else 0f,
+                            animationSpec = spring(stiffness = 400f),
+                            label = "ThemeArrowRotation",
+                        )
+
+                        Box(
+                            modifier = Modifier.size(34.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(cardBg.copy(alpha = 0.88f))
+                                    .border(BorderStroke(1.dp, Color(0xFF6366F1).copy(alpha = 0.5f)), CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = ChevronDownIcon,
+                                    contentDescription = "Expand or collapse theme",
+                                    tint = Color(0xFF6366F1),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .graphicsLayer(rotationZ = arrowRotation),
+                                )
+                            }
                         }
                     }
                 }
@@ -739,7 +868,7 @@ private fun ThreeDThemeCard(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         val modes = listOf(
                             Triple(ThemeMode.LIGHT, "লাইট", LightModeIcon),
@@ -749,17 +878,12 @@ private fun ThreeDThemeCard(
 
                         modes.forEach { (mode, label, icon) ->
                             val isSelected = currentThemeMode == mode
-                            val activeColor = Color(0xFF6366F1)
-                            val activeBaseColor = Color(0xFF4338CA)
 
-                            ThreeDActionButton(
+                            ThreeDThemeOptionButton(
                                 text = label,
                                 iconVector = icon,
-                                baseColor = if (isSelected) activeBaseColor else (if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)),
-                                surfaceColor = if (isSelected) activeColor else (if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)),
-                                textColor = if (isSelected) Color.White else textColor,
-                                isLoading = false,
-                                enabled = true,
+                                isSelected = isSelected,
+                                isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 modifier = Modifier.weight(1f),
                                 onClick = { onThemeModeChange(mode) },
@@ -939,76 +1063,122 @@ private fun ProfessionalMenuCard(
     hindSiliguri: FontFamily,
     iconVector: ImageVector? = null,
     imagePainter: androidx.compose.ui.graphics.painter.Painter? = null,
+    bgImagePainter: androidx.compose.ui.graphics.painter.Painter? = null,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(82.dp),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().height(86.dp),
+        shape = RoundedCornerShape(20.dp),
         color = cardBg,
-        border = BorderStroke(1.dp, gradientColors.first().copy(alpha = 0.3f)),
-        shadowElevation = 4.dp,
+        border = BorderStroke(1.2.dp, gradientColors.first().copy(alpha = 0.45f)),
+        shadowElevation = 5.dp,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (imagePainter != null) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, gradientColors.first().copy(alpha = 0.5f)),
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Image(
-                        painter = imagePainter,
-                        contentDescription = title,
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-            } else if (iconVector != null) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Full card background image
+            if (bgImagePainter != null) {
+                Image(
+                    painter = bgImagePainter,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                    contentScale = ContentScale.Crop,
+                )
+                // Smooth gradient overlay to keep text ultra-crisp and legible
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    cardBg.copy(alpha = 0.88f),
+                                    cardBg.copy(alpha = 0.55f),
+                                    Color.Transparent,
+                                ),
+                                startX = 0f,
+                                endX = 650f,
+                            )
+                        )
+                )
+            }
+
+            // Foreground Content
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (imagePainter != null) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.Transparent,
+                        border = BorderStroke(1.2.dp, gradientColors.first().copy(alpha = 0.6f)),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.size(50.dp),
+                    ) {
+                        Image(
+                            painter = imagePainter,
+                            contentDescription = title,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                } else if (iconVector != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(gradientColors)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = iconVector,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = title.localized(),
+                        fontSize = 16.5.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle.localized(),
+                        fontSize = 12.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Medium,
+                        color = subTextColor,
+                        maxLines = 1,
+                    )
+                }
+
+                // Modern Arrow Indicator
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(gradientColors)),
+                        .background(cardBg.copy(alpha = 0.85f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp),
+                        imageVector = RightArrowIcon,
+                        contentDescription = "Open",
+                        tint = gradientColors.first(),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = title.localized(),
-                    fontSize = 16.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle.localized(),
-                    fontSize = 12.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Medium,
-                    color = subTextColor,
-                    maxLines = 1,
-                )
             }
         }
     }
@@ -1249,6 +1419,98 @@ private fun ThreeDActionButton(
                         color = if (enabled) textColor else textColor.copy(alpha = 0.6f),
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThreeDThemeOptionButton(
+    text: String,
+    iconVector: ImageVector,
+    isSelected: Boolean,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(16.dp)
+
+    val activeColor = Color(0xFF6366F1)
+    val activeBaseColor = Color(0xFF4338CA)
+    val inactiveSurfaceColor = if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+    val inactiveBaseColor = if (isDark) Color(0xFF0F172A) else Color(0xFFCBD5E1)
+    val contentColor = if (isSelected) Color.White else (if (isDark) Color(0xFFE2E8F0) else Color(0xFF1E293B))
+    val borderColor = if (isSelected) activeColor.copy(alpha = 0.85f) else (if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1))
+
+    val pressOffset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isPressed) 3.5.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessHigh),
+        label = "ThemeButtonPress",
+    )
+
+    Box(
+        modifier = modifier.aspectRatio(1f),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        // 3D Shadow Base
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = 3.5.dp)
+                .clip(shape)
+                .background(if (isSelected) activeBaseColor else inactiveBaseColor),
+        )
+
+        // 3D Surface
+        Surface(
+            onClick = onClick,
+            interactionSource = interactionSource,
+            shape = shape,
+            color = if (isSelected) activeColor else inactiveSurfaceColor,
+            border = BorderStroke(1.2.dp, borderColor),
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = pressOffset),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                // Icon circular container
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected) Color.White.copy(alpha = 0.22f)
+                            else (if (isDark) Color(0xFF334155).copy(alpha = 0.5f) else Color(0xFFE2E8F0))
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = null,
+                        tint = if (isSelected) Color.White else activeColor,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = text,
+                    fontSize = 13.sp,
+                    fontFamily = hindSiliguri,
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor,
+                    maxLines = 1,
+                )
             }
         }
     }
