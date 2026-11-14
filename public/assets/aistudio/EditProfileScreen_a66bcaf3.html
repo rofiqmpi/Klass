@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mymensingh Polytechnic Institute - Student Information System</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 20%, #ffd1ff 40%, #a1c4fd 60%, #c2e9fb 80%, #d4fc79 100%);
+            background-attachment: fixed;
+            color: #2c3e50;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .fullscreen-wrapper {
+            width: 100%;
+            min-height: 100vh;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(15px);
+            padding: 30px 40px;
+            box-sizing: border-box;
+        }
+        .header-section {
+            background: transparent;
+            text-align: center;
+            margin-bottom: 35px;
+        }
+        /* লোগো ও বাটনযুক্ত প্রিমিয়াম হেডার কার্ড বার */
+        .brand-card-bar {
+            display: inline-flex;
+            align-items: center;
+            background: #ffffff;
+            padding: 8px 20px 8px 10px;
+            border-radius: 50px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            margin-bottom: 20px;
+            gap: 15px;
+            border: 2px solid rgba(121, 40, 202, 0.1);
+        }
+        .college-logo {
+            width: 55px;
+            height: 55px;
+            object-fit: contain;
+            background: white;
+            border-radius: 50%;
+            padding: 4px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        /* লোগোর হাইটের সাথে একদম সামঞ্জস্যপূর্ণ বাটন */
+        .view-btn {
+            background: linear-gradient(135deg, #7928ca, #ff758c);
+            border: none;
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 10px 22px;
+            border-radius: 30px;
+            text-decoration: none;
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(121, 40, 202, 0.3);
+            display: inline-flex;
+            align-items: center;
+        }
+        .view-btn:hover {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(121, 40, 202, 0.4);
+        }
+        .header-section h1 {
+            color: #1a202c;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+            font-size: 2rem;
+        }
+        .header-section p {
+            color: #4a5568 !important;
+            font-weight: 500;
+        }
+        .form-section-title {
+            color: #7928ca;
+            font-weight: 700;
+            font-size: 1.3rem;
+            border-left: 6px solid #ff758c;
+            padding-left: 14px;
+            margin-bottom: 25px;
+            margin-top: 25px;
+            background: linear-gradient(90deg, rgba(121, 40, 202, 0.08), transparent);
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 0 8px 8px 0;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #34495e;
+            font-size: 1.05rem;
+        }
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            background-color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #7928ca;
+            box-shadow: 0 0 0 5px rgba(121, 40, 202, 0.15);
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #f857a6 0%, #ff5858 50%, #7928ca 100%);
+            color: white;
+            font-weight: 700;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            border: none;
+            box-shadow: 0 10px 25px rgba(248, 87, 166, 0.4);
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+            width: 100%;
+        }
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #ff5858 0%, #f857a6 50%, #5e17eb 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(121, 40, 202, 0.5);
+        }
+        .footer-text {
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-align: center;
+            margin-top: 40px;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="fullscreen-wrapper">
+    <!-- Header Section with Brand Card Bar -->
+    <div class="header-section">
+        <div class="brand-card-bar">
+            <img src="images/logo.png" alt="Mymensingh Polytechnic Institute Logo" class="college-logo" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/e/e4/Mymensingh_Polytechnic_Institute_logo.png'">
+            <a href="view.php" class="view-btn"><i class="fa-solid fa-database me-2"></i> প্রোফাইল দেখুন</a>
+        </div>
+        <h1 class="mb-1 fw-bold">ময়মনসিংহ সরকারি পলিটেকনিক ইনস্টিটিউট</h1>
+        <p class="mb-0 fs-5">আপনার প্রোফাইল সম্পাদনা করুন</p>
+    </div>
+
+    <!-- Form Container -->
+    <div class="container-fluid px-md-5">
+        <form action="insert.php" method="POST">
+            
+            <!-- Section: Personal Information -->
+            <div class="form-section-title">১. ব্যক্তিগত তথ্য (Personal Information)</div>
+            <div class="row g-4 mb-4">
+                <div class="col-lg-12">
+                    <label class="form-label"><i class="fa-solid fa-user me-1 text-primary"></i> শিক্ষার্থীর পূর্ণ নাম (Full Name)</label>
+                    <input type="text" name="fullname" class="form-control" placeholder="আপনার পুরো নাম লিখুন" required>
+                </div>
+                <div class="col-lg-6">
+                    <label class="form-label"><i class="fa-solid fa-user-tie me-1 text-success"></i> পিতার নাম (Father's Name)</label>
+                    <input type="text" name="father_name" class="form-control" placeholder="পিতার নাম লিখুন" required>
+                </div>
+                <div class="col-lg-6">
+                    <label class="form-label"><i class="fa-solid fa-user-nurse me-1 text-danger"></i> মাতার নাম (Mother's Name)</label>
+                    <input type="text" name="mother_name" class="form-control" placeholder="মাতার নাম লিখুন" required>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-calendar-days me-1 text-warning"></i> জন্ম তারিখ</label>
+                    <input type="date" name="dob" class="form-control" required>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-droplet text-danger me-1"></i> রক্তের গ্রুপ</label>
+                    <select name="blood_group" class="form-select">
+                        <option value="">গ্রুপ নির্বাচন করুন</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-hands-praying me-1 text-info"></i> ধর্ম</label>
+                    <select name="religion" class="form-select" required>
+                        <option value="">ধর্ম নির্বাচন করুন</option>
+                        <option value="Islam">ইসলাম</option>
+                        <option value="Hinduism">হিন্দুধর্ম</option>
+                        <option value="Buddhism">বৌদ্ধধর্ম</option>
+                        <option value="Christianity">খ্রিস্টধর্ম</option>
+                        <option value="Other">অন্যান্য</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-venus-mars me-1 text-danger"></i> লিঙ্গ (Gender)</label>
+                    <select name="gender" class="form-select" required>
+                        <option value="">লিঙ্গ নির্বাচন করুন</option>
+                        <option value="Male">পুরুষ (Male)</option>
+                        <option value="Female">মহিলা (Female)</option>
+                        <option value="Other">অন্যান্য (Other)</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-ring me-1 text-secondary"></i> বৈবাহিক অবস্থা</label>
+                    <select name="marital_status" class="form-select" required>
+                        <option value="Unmarried">অবিবাহিত (Unmarried)</option>
+                        <option value="Married">বিবাহিত (Married)</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-phone me-1 text-success"></i> মোবাইল নম্বর</label>
+                    <input type="tel" name="mobile" class="form-control" placeholder="01XXXXXXXXX" required>
+                </div>
+                <div class="col-lg-6 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-envelope me-1 text-primary"></i> ইমেল ঠিকানা (Email)</label>
+                    <input type="email" name="email" class="form-control" placeholder="example@gmail.com">
+                </div>
+                <div class="col-lg-6 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-location-dot me-1 text-danger"></i> বর্তমান ঠিকানা</label>
+                    <input type="text" name="address" class="form-control" placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা" required>
+                </div>                
+                <div class="col-lg-6 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-location-dot me-1 text-danger"></i> স্থায়ী ঠিকানা</label>
+                    <input type="text" name="address" class="form-control" placeholder="গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা" required>
+                </div>
+            </div>
+
+            <!-- Section: Academic Information -->
+            <div class="form-section-title">২. একাডেমিক তথ্য (Academic Information)</div>
+            <div class="row g-4 mb-4">
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-graduation-cap me-1 text-primary"></i> ডিপার্টমেন্ট (Department)</label>
+                    <select name="department" class="form-select" required>
+                        <option value="">ডিপার্টমেন্ট নির্বাচন করুন</option>
+                        <option value="CST">CST (Computer Science & Technology)</option>
+                        <option value="CT">CT (Civil Technology)</option>
+                        <option value="ET">ET (Electrical Technology)</option>
+                        <option value="MT">MT (Mechanical Technology)</option>
+                        <option value="PT">PT (Power Technology)</option>
+                        <option value="ENT">ENT (Electronics Technology)</option>
+                        <option value="EMT">EMT (Electro-Medical Technology)</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-layer-group me-1 text-success"></i> সেমিস্টার</label>
+                    <select name="semester" class="form-select" required>
+                        <option value="">সেমিস্টার নির্বাচন করুন</option>
+                        <option value="1st">১ম সেমিস্টার</option>
+                        <option value="2nd">২য় সেমিস্টার</option>
+                        <option value="3rd">৩য় সেমিস্টার</option>
+                        <option value="4th">৪র্থ সেমিস্টার</option>
+                        <option value="5th">৫ম সেমিস্টার</option>
+                        <option value="6th">৬ষ্ঠ সেমিস্টার</option>
+                        <option value="7th">৭ম সেমিস্টার</option>
+                        <option value="8th">৮ম সেমিস্টার</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-clock me-1 text-warning"></i> শিফট</label>
+                    <select name="shift" class="form-select" required>
+                        <option value="">শিফট নির্বাচন করুন</option>
+                        <option value="1st Shift">১ম শিফট</option>
+                        <option value="2nd Shift">২য় শিফট</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-users-rectangle me-1 text-secondary"></i> সেকশন (Section)</label>
+                    <select name="section" class="form-select" required>
+                        <option value="">সেকশন নির্বাচন করুন</option>
+                        <option value="A">Section A</option>
+                        <option value="B">Section B</option>
+                        <option value="C">Section C</option>
+                    </select>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-id-card me-1 text-danger"></i> বোর্ড রোল নম্বর (Roll)</label>
+                    <input type="text" name="roll" class="form-control" placeholder="যেমন: ৬৪৮১২৩" required>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label"><i class="fa-solid fa-file-lines me-1 text-info"></i> রেজিস্ট্রেশন নম্বর (Registration)</label>
+                    <input type="text" name="registration" class="form-control" placeholder="যেমন: ১৭৫৬৪২" required>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="row mt-5">
+                <div class="col-lg-6 mx-auto">
+                    <button type="submit" class="btn btn-submit"><i class="fa-solid fa-paper-plane me-2"></i> সংরক্ষণ করুন</button>
+                </div>
+            </div>
+
+        </form>
+
+        <div class="footer-text">
+            &copy; 2026 Mymensingh Polytechnic Institute | Designed by Klass
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

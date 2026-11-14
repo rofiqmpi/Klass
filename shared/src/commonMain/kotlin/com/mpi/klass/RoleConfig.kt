@@ -38,7 +38,7 @@ data class UserProfile(
     val updatedAt: Long = 0L,
 )
 
-// Backward compatibility stubs for existing screens
+// Student / User Profile model supporting all Personal and Academic fields
 data class StudentProfile(
     val email: String = "",
     val name: String = "",
@@ -51,6 +51,15 @@ data class StudentProfile(
     val bloodGroup: String = "",
     val address: String = "",
     val rollNumber: String = "",
+    val fatherName: String = "",
+    val motherName: String = "",
+    val dob: String = "",
+    val religion: String = "",
+    val gender: String = "",
+    val maritalStatus: String = "",
+    val contactEmail: String = "",
+    val permanentAddress: String = "",
+    val registrationNumber: String = "",
     val profileSetupComplete: Boolean = true,
     val registeredAt: Long = 0L,
 )

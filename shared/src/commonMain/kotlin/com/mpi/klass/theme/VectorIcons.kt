@@ -1062,3 +1062,614 @@ val ChevronDownIcon: ImageVector
         }
     }.build()
 
+// ─── FontAwesome-Matching Profile & Edit Profile Icons ───────────────────────
+
+val SolidUserIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "SolidUser",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 12f)
+            curveTo(14.76f, 12f, 17f, 9.76f, 17f, 7f)
+            curveTo(17f, 4.24f, 14.76f, 2f, 12f, 2f)
+            curveTo(9.24f, 2f, 7f, 4.24f, 7f, 7f)
+            curveTo(7f, 9.76f, 9.24f, 12f, 12f, 12f)
+            close()
+            moveTo(12f, 14f)
+            curveTo(7.58f, 14f, 4f, 16.69f, 4f, 20f)
+            curveTo(4f, 21.1f, 4.9f, 22f, 6f, 22f)
+            horizontalLineTo(18f)
+            curveTo(19.1f, 22f, 20f, 21.1f, 20f, 20f)
+            curveTo(20f, 16.69f, 16.42f, 14f, 12f, 14f)
+            close()
+        }
+    }.build()
+
+val UserTieIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "UserTie",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 12f)
+            curveTo(14.76f, 12f, 17f, 9.76f, 17f, 7f)
+            curveTo(17f, 4.24f, 14.76f, 2f, 12f, 2f)
+            curveTo(9.24f, 2f, 7f, 4.24f, 7f, 7f)
+            curveTo(7f, 9.76f, 9.24f, 12f, 12f, 12f)
+            close()
+            moveTo(14.5f, 14.2f)
+            lineTo(13.2f, 19.8f)
+            lineTo(12f, 21f)
+            lineTo(10.8f, 19.8f)
+            lineTo(9.5f, 14.2f)
+            curveTo(6.3f, 15.1f, 4f, 17.3f, 4f, 20f)
+            curveTo(4f, 21.1f, 4.9f, 22f, 6f, 22f)
+            horizontalLineTo(18f)
+            curveTo(19.1f, 22f, 20f, 21.1f, 20f, 20f)
+            curveTo(20f, 17.3f, 17.7f, 15.1f, 14.5f, 14.2f)
+            close()
+            moveTo(11f, 14f)
+            horizontalLineTo(13f)
+            lineTo(12.6f, 16.2f)
+            lineTo(13.2f, 18.8f)
+            lineTo(12f, 20f)
+            lineTo(10.8f, 18.8f)
+            lineTo(11.4f, 16.2f)
+            close()
+        }
+    }.build()
+
+val UserNurseIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "UserNurse",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(7.5f, 6.2f)
+            lineTo(8.5f, 2.5f)
+            horizontalLineTo(15.5f)
+            lineTo(16.5f, 6.2f)
+            close()
+            moveTo(12f, 12.5f)
+            curveTo(14.5f, 12.5f, 16.5f, 10.5f, 16.5f, 8f)
+            horizontalLineTo(7.5f)
+            curveTo(7.5f, 10.5f, 9.5f, 12.5f, 12f, 12.5f)
+            close()
+            moveTo(12f, 14.2f)
+            curveTo(7.6f, 14.2f, 4f, 16.8f, 4f, 20f)
+            curveTo(4f, 21.1f, 4.9f, 22f, 6f, 22f)
+            horizontalLineTo(18f)
+            curveTo(19.1f, 22f, 20f, 21.1f, 20f, 20f)
+            curveTo(20f, 16.8f, 16.4f, 14.2f, 12f, 14.2f)
+            close()
+        }
+    }.build()
+
+val CalendarDaysIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "CalendarDays",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(19f, 4f)
+            horizontalLineTo(18f)
+            verticalLineTo(2f)
+            horizontalLineTo(16f)
+            verticalLineTo(4f)
+            horizontalLineTo(8f)
+            verticalLineTo(2f)
+            horizontalLineTo(6f)
+            verticalLineTo(4f)
+            horizontalLineTo(5f)
+            curveTo(3.89f, 4f, 3f, 4.9f, 3f, 6f)
+            verticalLineTo(20f)
+            curveTo(3f, 21.1f, 3.89f, 22f, 5f, 22f)
+            horizontalLineTo(19f)
+            curveTo(20.1f, 22f, 21f, 21.1f, 21f, 20f)
+            verticalLineTo(6f)
+            curveTo(21f, 4.9f, 20.1f, 4f, 19f, 4f)
+            close()
+            moveTo(19f, 20f)
+            horizontalLineTo(5f)
+            verticalLineTo(10f)
+            horizontalLineTo(19f)
+            verticalLineTo(20f)
+            close()
+            moveTo(7f, 12f)
+            horizontalLineTo(9f)
+            verticalLineTo(14f)
+            horizontalLineTo(7f)
+            close()
+            moveTo(11f, 12f)
+            horizontalLineTo(13f)
+            verticalLineTo(14f)
+            horizontalLineTo(11f)
+            close()
+            moveTo(15f, 12f)
+            horizontalLineTo(17f)
+            verticalLineTo(14f)
+            horizontalLineTo(15f)
+            close()
+            moveTo(7f, 16f)
+            horizontalLineTo(9f)
+            verticalLineTo(18f)
+            horizontalLineTo(7f)
+            close()
+            moveTo(11f, 16f)
+            horizontalLineTo(13f)
+            verticalLineTo(18f)
+            horizontalLineTo(11f)
+            close()
+        }
+    }.build()
+
+val DropletIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Droplet",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 2.69f)
+            lineTo(17.66f, 8.35f)
+            curveTo(20.78f, 11.47f, 20.78f, 16.53f, 17.66f, 19.65f)
+            curveTo(14.54f, 22.77f, 9.46f, 22.77f, 6.34f, 19.65f)
+            curveTo(3.22f, 16.53f, 3.22f, 11.47f, 6.34f, 8.35f)
+            lineTo(12f, 2.69f)
+            close()
+        }
+    }.build()
+
+val PrayingHandsIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "PrayingHands",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(11.5f, 3f)
+            lineTo(8.2f, 12.2f)
+            lineTo(4.5f, 15.8f)
+            lineTo(6.2f, 18.2f)
+            lineTo(11.5f, 14.5f)
+            verticalLineTo(3f)
+            close()
+            moveTo(12.5f, 3f)
+            verticalLineTo(14.5f)
+            lineTo(17.8f, 18.2f)
+            lineTo(19.5f, 15.8f)
+            lineTo(15.8f, 12.2f)
+            lineTo(12.5f, 3f)
+            close()
+            moveTo(4f, 19.5f)
+            lineTo(11.5f, 16f)
+            verticalLineTo(21f)
+            horizontalLineTo(5.5f)
+            close()
+            moveTo(20f, 19.5f)
+            lineTo(18.5f, 21f)
+            horizontalLineTo(12.5f)
+            verticalLineTo(16f)
+            close()
+        }
+    }.build()
+
+val VenusMarsIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "VenusMars",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.1f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(9.5f, 13.5f)
+            curveTo(11.71f, 13.5f, 13.5f, 11.71f, 13.5f, 9.5f)
+            curveTo(13.5f, 7.29f, 11.71f, 5.5f, 9.5f, 5.5f)
+            curveTo(7.29f, 5.5f, 5.5f, 7.29f, 5.5f, 9.5f)
+            curveTo(5.5f, 11.71f, 7.29f, 13.5f, 9.5f, 13.5f)
+            close()
+            moveTo(9.5f, 13.5f)
+            verticalLineTo(20.5f)
+            moveTo(7f, 17.5f)
+            horizontalLineTo(12f)
+            moveTo(13f, 6.5f)
+            lineTo(19f, 3f)
+            moveTo(15f, 3f)
+            horizontalLineTo(19f)
+            verticalLineTo(7f)
+        }
+    }.build()
+
+val RingIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Ring",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 20.5f)
+            curveTo(15.87f, 20.5f, 19f, 17.37f, 19f, 13.5f)
+            curveTo(19f, 9.63f, 15.87f, 6.5f, 12f, 6.5f)
+            curveTo(8.13f, 6.5f, 5f, 9.63f, 5f, 13.5f)
+            curveTo(5f, 17.37f, 8.13f, 20.5f, 12f, 20.5f)
+            close()
+            moveTo(9.5f, 3.5f)
+            horizontalLineTo(14.5f)
+            lineTo(13f, 6.5f)
+            horizontalLineTo(11f)
+            close()
+        }
+    }.build()
+
+val PhoneSolidIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "PhoneSolid",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(6.62f, 10.79f)
+            curveTo(8.06f, 13.62f, 10.38f, 15.94f, 13.21f, 17.38f)
+            lineTo(15.41f, 15.18f)
+            curveTo(15.69f, 14.9f, 16.08f, 14.82f, 16.43f, 14.93f)
+            curveTo(17.55f, 15.3f, 18.75f, 15.5f, 20f, 15.5f)
+            curveTo(20.55f, 15.5f, 21f, 15.95f, 21f, 16.5f)
+            verticalLineTo(20f)
+            curveTo(21f, 20.55f, 20.55f, 21f, 20f, 21f)
+            curveTo(10.61f, 21f, 3f, 13.39f, 3f, 4f)
+            curveTo(3f, 3.45f, 3.45f, 3f, 4f, 3f)
+            horizontalLineTo(7.5f)
+            curveTo(8.05f, 3f, 8.5f, 3.45f, 8.5f, 4f)
+            curveTo(8.5f, 5.25f, 8.7f, 6.45f, 9.07f, 7.57f)
+            curveTo(9.18f, 7.92f, 9.1f, 8.31f, 8.82f, 8.59f)
+            lineTo(6.62f, 10.79f)
+            close()
+        }
+    }.build()
+
+val EnvelopeSolidIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "EnvelopeSolid",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(20f, 4f)
+            horizontalLineTo(4f)
+            curveTo(2.9f, 4f, 2.01f, 4.9f, 2.01f, 6f)
+            lineTo(2f, 18f)
+            curveTo(2f, 19.1f, 2.9f, 20f, 4f, 20f)
+            horizontalLineTo(20f)
+            curveTo(21.1f, 20f, 22f, 19.1f, 22f, 18f)
+            verticalLineTo(6f)
+            curveTo(22f, 4.9f, 21.1f, 4f, 20f, 4f)
+            close()
+            moveTo(20f, 8f)
+            lineTo(12f, 13f)
+            lineTo(4f, 8f)
+            verticalLineTo(6f)
+            lineTo(12f, 11f)
+            lineTo(20f, 6f)
+            verticalLineTo(8f)
+            close()
+        }
+    }.build()
+
+val LocationDotIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "LocationDot",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 2f)
+            curveTo(8.13f, 2f, 5f, 5.13f, 5f, 9f)
+            curveTo(5f, 14.25f, 12f, 22f, 12f, 22f)
+            curveTo(12f, 22f, 19f, 14.25f, 19f, 9f)
+            curveTo(19f, 5.13f, 15.87f, 2f, 12f, 2f)
+            close()
+            moveTo(12f, 11.5f)
+            curveTo(10.62f, 11.5f, 9.5f, 10.38f, 9.5f, 9f)
+            curveTo(9.5f, 7.62f, 10.62f, 6.5f, 12f, 6.5f)
+            curveTo(13.38f, 6.5f, 14.5f, 7.62f, 14.5f, 9f)
+            curveTo(14.5f, 10.38f, 13.38f, 11.5f, 12f, 11.5f)
+            close()
+        }
+    }.build()
+
+val LayerGroupIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "LayerGroup",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(11.99f, 18.54f)
+            lineTo(4.62f, 12.81f)
+            lineTo(3f, 14.07f)
+            lineTo(12f, 21.07f)
+            lineTo(21f, 14.07f)
+            lineTo(19.37f, 12.8f)
+            lineTo(11.99f, 18.54f)
+            close()
+            moveTo(12f, 16f)
+            lineTo(19.36f, 10.27f)
+            lineTo(21f, 9f)
+            lineTo(12f, 2f)
+            lineTo(3f, 9f)
+            lineTo(4.63f, 10.27f)
+            lineTo(12f, 16f)
+            close()
+        }
+    }.build()
+
+val ClockIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Clock",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 2f)
+            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
+            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
+            close()
+            moveTo(15.5f, 15.5f)
+            lineTo(11f, 12.8f)
+            verticalLineTo(7f)
+            horizontalLineTo(12.8f)
+            verticalLineTo(11.8f)
+            lineTo(16.5f, 14f)
+            close()
+        }
+    }.build()
+
+val UsersRectangleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "UsersRectangle",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(20f, 4f)
+            horizontalLineTo(4f)
+            curveTo(2.9f, 4f, 2f, 4.9f, 2f, 6f)
+            verticalLineTo(18f)
+            curveTo(2f, 19.1f, 2.9f, 20f, 4f, 20f)
+            horizontalLineTo(20f)
+            curveTo(21.1f, 20f, 22f, 19.1f, 22f, 18f)
+            verticalLineTo(6f)
+            curveTo(22f, 4.9f, 21.1f, 4f, 20f, 4f)
+            close()
+            moveTo(9.5f, 11.5f)
+            curveTo(10.6f, 11.5f, 11.5f, 10.6f, 11.5f, 9.5f)
+            curveTo(11.5f, 8.4f, 10.6f, 7.5f, 9.5f, 7.5f)
+            curveTo(8.4f, 7.5f, 7.5f, 8.4f, 7.5f, 9.5f)
+            curveTo(7.5f, 10.6f, 8.4f, 11.5f, 9.5f, 11.5f)
+            close()
+            moveTo(13.5f, 16.5f)
+            horizontalLineTo(5.5f)
+            verticalLineTo(15.5f)
+            curveTo(5.5f, 14.1f, 7.3f, 13f, 9.5f, 13f)
+            curveTo(11.7f, 13f, 13.5f, 14.1f, 13.5f, 15.5f)
+            verticalLineTo(16.5f)
+            close()
+            moveTo(16f, 11.5f)
+            curveTo(16.8f, 11.5f, 17.5f, 10.8f, 17.5f, 10f)
+            curveTo(17.5f, 9.2f, 16.8f, 8.5f, 16f, 8.5f)
+            curveTo(15.2f, 8.5f, 14.5f, 9.2f, 14.5f, 10f)
+            curveTo(14.5f, 10.8f, 15.2f, 11.5f, 16f, 11.5f)
+            close()
+            moveTo(19f, 16.5f)
+            horizontalLineTo(15f)
+            verticalLineTo(15.2f)
+            curveTo(15f, 14.3f, 14.6f, 13.6f, 14.1f, 13.1f)
+            curveTo(16.6f, 13.1f, 19f, 14.1f, 19f, 15.5f)
+            verticalLineTo(16.5f)
+            close()
+        }
+    }.build()
+
+val IdCardIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "IdCard",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(20f, 4f)
+            horizontalLineTo(4f)
+            curveTo(2.9f, 4f, 2f, 4.9f, 2f, 6f)
+            verticalLineTo(18f)
+            curveTo(2f, 19.1f, 2.9f, 20f, 4f, 20f)
+            horizontalLineTo(20f)
+            curveTo(21.1f, 20f, 22f, 19.1f, 22f, 18f)
+            verticalLineTo(6f)
+            curveTo(22f, 4.9f, 21.1f, 4f, 20f, 4f)
+            close()
+            moveTo(8.5f, 8.5f)
+            curveTo(9.6f, 8.5f, 10.5f, 9.4f, 10.5f, 10.5f)
+            curveTo(10.5f, 11.6f, 9.6f, 12.5f, 8.5f, 12.5f)
+            curveTo(7.4f, 12.5f, 6.5f, 11.6f, 6.5f, 10.5f)
+            curveTo(6.5f, 9.4f, 7.4f, 8.5f, 8.5f, 8.5f)
+            close()
+            moveTo(12f, 16.5f)
+            horizontalLineTo(5f)
+            verticalLineTo(15.5f)
+            curveTo(5f, 14.3f, 6.6f, 13.5f, 8.5f, 13.5f)
+            curveTo(10.4f, 13.5f, 12f, 14.3f, 12f, 15.5f)
+            verticalLineTo(16.5f)
+            close()
+            moveTo(19f, 15f)
+            horizontalLineTo(14f)
+            verticalLineTo(13.2f)
+            horizontalLineTo(19f)
+            close()
+            moveTo(19f, 11.8f)
+            horizontalLineTo(14f)
+            verticalLineTo(10f)
+            horizontalLineTo(19f)
+            close()
+        }
+    }.build()
+
+val FileLinesIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "FileLines",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(14f, 2f)
+            horizontalLineTo(6f)
+            curveTo(4.9f, 2f, 4f, 2.9f, 4f, 4f)
+            verticalLineTo(20f)
+            curveTo(4f, 21.1f, 4.9f, 22f, 6f, 22f)
+            horizontalLineTo(18f)
+            curveTo(19.1f, 22f, 20f, 21.1f, 20f, 20f)
+            verticalLineTo(8f)
+            lineTo(14f, 2f)
+            close()
+            moveTo(16f, 18f)
+            horizontalLineTo(8f)
+            verticalLineTo(16f)
+            horizontalLineTo(16f)
+            verticalLineTo(18f)
+            close()
+            moveTo(16f, 14f)
+            horizontalLineTo(8f)
+            verticalLineTo(12f)
+            horizontalLineTo(16f)
+            verticalLineTo(14f)
+            close()
+            moveTo(13f, 9f)
+            verticalLineTo(3.5f)
+            lineTo(18.5f, 9f)
+            horizontalLineTo(13f)
+            close()
+        }
+    }.build()
+
+val DatabaseIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Database",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(12f, 3f)
+            curveTo(7.58f, 3f, 4f, 4.34f, 4f, 6f)
+            curveTo(4f, 7.66f, 7.58f, 9f, 12f, 9f)
+            curveTo(16.42f, 9f, 20f, 7.66f, 20f, 6f)
+            curveTo(20f, 4.34f, 16.42f, 3f, 12f, 3f)
+            close()
+            moveTo(4f, 9f)
+            verticalLineTo(12f)
+            curveTo(4f, 13.66f, 7.58f, 15f, 12f, 15f)
+            curveTo(16.42f, 15f, 20f, 13.66f, 20f, 12f)
+            verticalLineTo(9f)
+            curveTo(18.21f, 10.24f, 15.31f, 11f, 12f, 11f)
+            curveTo(8.69f, 11f, 5.79f, 10.24f, 4f, 9f)
+            close()
+            moveTo(4f, 15f)
+            verticalLineTo(18f)
+            curveTo(4f, 19.66f, 7.58f, 21f, 12f, 21f)
+            curveTo(16.42f, 21f, 20f, 19.66f, 20f, 18f)
+            verticalLineTo(15f)
+            curveTo(18.21f, 16.24f, 15.31f, 17f, 12f, 17f)
+            curveTo(8.69f, 17f, 5.79f, 16.24f, 4f, 15f)
+            close()
+        }
+    }.build()
+
+val TrashCanIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "TrashCan",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(9f, 3f)
+            verticalLineTo(4f)
+            horizontalLineTo(4f)
+            verticalLineTo(6f)
+            horizontalLineTo(5f)
+            verticalLineTo(19f)
+            curveTo(5f, 20.1f, 5.9f, 21f, 7f, 21f)
+            horizontalLineTo(17f)
+            curveTo(18.1f, 21f, 19f, 20.1f, 19f, 19f)
+            verticalLineTo(6f)
+            horizontalLineTo(20f)
+            verticalLineTo(4f)
+            horizontalLineTo(15f)
+            verticalLineTo(3f)
+            horizontalLineTo(9f)
+            close()
+            moveTo(9f, 8f)
+            horizontalLineTo(11f)
+            verticalLineTo(17f)
+            horizontalLineTo(9f)
+            verticalLineTo(8f)
+            close()
+            moveTo(13f, 8f)
+            horizontalLineTo(15f)
+            verticalLineTo(17f)
+            horizontalLineTo(13f)
+            verticalLineTo(8f)
+            close()
+        }
+    }.build()
+
+

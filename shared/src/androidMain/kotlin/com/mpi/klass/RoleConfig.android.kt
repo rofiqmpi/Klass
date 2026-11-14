@@ -322,6 +322,15 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         ?.putString("${cleanEmail}_student_blood", profile.bloodGroup)
         ?.putString("${cleanEmail}_student_address", profile.address)
         ?.putString("${cleanEmail}_student_roll", profile.rollNumber)
+        ?.putString("${cleanEmail}_student_father", profile.fatherName)
+        ?.putString("${cleanEmail}_student_mother", profile.motherName)
+        ?.putString("${cleanEmail}_student_dob", profile.dob)
+        ?.putString("${cleanEmail}_student_religion", profile.religion)
+        ?.putString("${cleanEmail}_student_gender", profile.gender)
+        ?.putString("${cleanEmail}_student_marital", profile.maritalStatus)
+        ?.putString("${cleanEmail}_student_contact_email", profile.contactEmail)
+        ?.putString("${cleanEmail}_student_permanent_address", profile.permanentAddress)
+        ?.putString("${cleanEmail}_student_registration", profile.registrationNumber)
         ?.putBoolean("${cleanEmail}_student_complete", profile.profileSetupComplete)
         ?.putLong("${cleanEmail}_student_time", System.currentTimeMillis())
     if (profile.name.isNotBlank()) {
@@ -347,6 +356,15 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         "blood_group" to profile.bloodGroup,
         "address" to profile.address,
         "roll_number" to profile.rollNumber,
+        "father_name" to profile.fatherName,
+        "mother_name" to profile.motherName,
+        "dob" to profile.dob,
+        "religion" to profile.religion,
+        "gender" to profile.gender,
+        "marital_status" to profile.maritalStatus,
+        "contact_email" to profile.contactEmail,
+        "permanent_address" to profile.permanentAddress,
+        "registration_number" to profile.registrationNumber,
         "profile_setup_complete" to profile.profileSetupComplete,
         "updated_at" to now,
     )
@@ -388,10 +406,12 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
     val localSemester = prefs?.getString("${cleanEmail}_student_semester", "") ?: ""
     val localDept = prefs?.getString("${cleanEmail}_student_department", "") ?: ""
     val localRoll = prefs?.getString("${cleanEmail}_student_roll", "") ?: ""
+    val localFather = prefs?.getString("${cleanEmail}_student_father", "") ?: ""
+    val localReg = prefs?.getString("${cleanEmail}_student_registration", "") ?: ""
     val localName = prefs?.getString("${cleanEmail}_student_name", "")?.ifBlank { prefs.getString("${cleanEmail}_name", "") } ?: ""
     val localPhoto = prefs?.getString("${cleanEmail}_student_photo", "")?.ifBlank { prefs.getString("${cleanEmail}_photo", "")?.ifBlank { null } }
 
-    if (localComplete || localSemester.isNotBlank() || localDept.isNotBlank() || localRoll.isNotBlank() || !localPhoto.isNullOrBlank() || localName.isNotBlank()) {
+    if (localComplete || localSemester.isNotBlank() || localDept.isNotBlank() || localRoll.isNotBlank() || localFather.isNotBlank() || localReg.isNotBlank() || !localPhoto.isNullOrBlank() || localName.isNotBlank()) {
         return StudentProfile(
             email = cleanEmail,
             name = localName,
@@ -404,6 +424,15 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
             bloodGroup = prefs?.getString("${cleanEmail}_student_blood", "") ?: "",
             address = prefs?.getString("${cleanEmail}_student_address", "") ?: "",
             rollNumber = localRoll,
+            fatherName = localFather,
+            motherName = prefs?.getString("${cleanEmail}_student_mother", "") ?: "",
+            dob = prefs?.getString("${cleanEmail}_student_dob", "") ?: "",
+            religion = prefs?.getString("${cleanEmail}_student_religion", "") ?: "",
+            gender = prefs?.getString("${cleanEmail}_student_gender", "") ?: "",
+            maritalStatus = prefs?.getString("${cleanEmail}_student_marital", "") ?: "",
+            contactEmail = prefs?.getString("${cleanEmail}_student_contact_email", "") ?: "",
+            permanentAddress = prefs?.getString("${cleanEmail}_student_permanent_address", "") ?: "",
+            registrationNumber = localReg,
             profileSetupComplete = localComplete,
         )
     }
@@ -428,6 +457,15 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         bloodGroup = (d["blood_group"] as? String) ?: "",
                         address = (d["address"] as? String) ?: "",
                         rollNumber = (d["roll_number"] as? String) ?: "",
+                        fatherName = (d["father_name"] as? String) ?: "",
+                        motherName = (d["mother_name"] as? String) ?: "",
+                        dob = (d["dob"] as? String) ?: "",
+                        religion = (d["religion"] as? String) ?: "",
+                        gender = (d["gender"] as? String) ?: "",
+                        maritalStatus = (d["marital_status"] as? String) ?: "",
+                        contactEmail = (d["contact_email"] as? String) ?: "",
+                        permanentAddress = (d["permanent_address"] as? String) ?: "",
+                        registrationNumber = (d["registration_number"] as? String) ?: "",
                         profileSetupComplete = (d["profile_setup_complete"] as? Boolean) ?: true,
                     )
                     // Cache locally
@@ -440,6 +478,15 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         ?.putString("${cleanEmail}_student_blood", p.bloodGroup)
                         ?.putString("${cleanEmail}_student_address", p.address)
                         ?.putString("${cleanEmail}_student_roll", p.rollNumber)
+                        ?.putString("${cleanEmail}_student_father", p.fatherName)
+                        ?.putString("${cleanEmail}_student_mother", p.motherName)
+                        ?.putString("${cleanEmail}_student_dob", p.dob)
+                        ?.putString("${cleanEmail}_student_religion", p.religion)
+                        ?.putString("${cleanEmail}_student_gender", p.gender)
+                        ?.putString("${cleanEmail}_student_marital", p.maritalStatus)
+                        ?.putString("${cleanEmail}_student_contact_email", p.contactEmail)
+                        ?.putString("${cleanEmail}_student_permanent_address", p.permanentAddress)
+                        ?.putString("${cleanEmail}_student_registration", p.registrationNumber)
                         ?.putBoolean("${cleanEmail}_student_complete", p.profileSetupComplete)
                     if (p.name.isNotBlank()) {
                         cacheEditor?.putString("${cleanEmail}_name", p.name)

@@ -1,5 +1,6 @@
 package com.mpi.klass
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -11,9 +12,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import java.io.ByteArrayOutputStream
+import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,6 +61,34 @@ actual fun resolveProfileImageModel(photoUrl: String?): Any? {
         }
     }
     return photoUrl
+}
+
+@Composable
+actual fun rememberDatePickerLauncher(initialDate: String, onDatePicked: (String) -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val currentOnDatePicked by rememberUpdatedState(onDatePicked)
+    val currentInitial by rememberUpdatedState(initialDate)
+
+    return {
+        val cal = Calendar.getInstance()
+        val parts = currentInitial.trim().split("-")
+        val initYear = parts.getOrNull(0)?.toIntOrNull() ?: 2005
+        val initMonth = (parts.getOrNull(1)?.toIntOrNull()?.minus(1))?.coerceIn(0, 11) ?: 7
+        val initDay = parts.getOrNull(2)?.toIntOrNull()?.coerceIn(1, 31) ?: 15
+
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val yStr = year.toString().padStart(4, '0')
+                val mStr = (month + 1).toString().padStart(2, '0')
+                val dStr = dayOfMonth.toString().padStart(2, '0')
+                currentOnDatePicked("$yStr-$mStr-$dStr")
+            },
+            initYear.coerceIn(1950, cal.get(Calendar.YEAR)),
+            initMonth,
+            initDay,
+        ).show()
+    }
 }
 
 private fun encodeImageUriToDataUri(context: Context, uri: Uri): String? {
