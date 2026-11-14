@@ -95,6 +95,7 @@ fun AiAssistantScreen(
         )
     )
 
+    val currentLang = LocalAppLanguage.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -143,7 +144,7 @@ fun AiAssistantScreen(
                 throw e
             } catch (e: Exception) {
                 uiState = AiUiState.Error(
-                    e.localizedMessage ?: "AI সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।"
+                    e.localizedMessage ?: "AI সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।".localized(currentLang)
                 )
             }
         }
@@ -179,16 +180,22 @@ fun AiAssistantScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        onClick = onBack,
+                    SwipeToCenterIconSurface(
+                        dragId = "ai_back",
+                        previewTitle = "ফিরে যান",
+                        accentColor = Color(0xFF8B5CF6),
+                        onTrigger = onBack,
+                        isLeftSide = true,
                         shape = CircleShape,
                         color = if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9),
+                        border = null,
+                        shadowElevation = 2.dp,
                         modifier = Modifier.size(48.dp).testTag("ai_back_button"),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = CloseIcon,
-                                contentDescription = "ফিরে যান",
+                                contentDescription = "ফিরে যান".localized(),
                                 tint = textColor,
                                 modifier = Modifier.size(22.dp),
                             )
@@ -374,7 +381,7 @@ fun AiAssistantScreen(
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)) {
                 Text(
-                    text = "দ্রুত জিজ্ঞাসা করুন:",
+                    text = "দ্রুত জিজ্ঞাসা করুন:".localized(),
                     fontSize = 12.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.SemiBold,
@@ -388,7 +395,7 @@ fun AiAssistantScreen(
                     itemsIndexed(promptSuggestions) { index, (label, promptPrefix) ->
                         Surface(
                             onClick = {
-                                inputText = promptPrefix
+                                inputText = promptPrefix.localized(currentLang)
                             },
                             shape = RoundedCornerShape(16.dp),
                             color = cardBg,
@@ -477,7 +484,7 @@ fun AiAssistantScreen(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = SendIcon,
-                            contentDescription = "পাঠান",
+                            contentDescription = "পাঠান".localized(),
                             tint = if (inputText.isNotBlank() && !isBusy) Color.White else subTextColor,
                             modifier = Modifier.size(20.dp),
                         )
@@ -536,8 +543,13 @@ private fun ChatMessageBubble(
             modifier = Modifier.widthIn(max = 310.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                val renderedMessage = if (message.id == "welcome" || message.id == "welcome_reset") {
+                    message.text.localized()
+                } else {
+                    message.text
+                }
                 Text(
-                    text = message.text,
+                    text = renderedMessage,
                     fontSize = 14.sp,
                     fontFamily = hindSiliguri,
                     color = if (message.isFromUser) Color.White else textColor,

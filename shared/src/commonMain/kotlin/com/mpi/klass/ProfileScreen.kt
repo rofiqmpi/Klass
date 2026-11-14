@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,8 +35,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,6 +77,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -112,6 +116,9 @@ import klass.shared.generated.resources.img_section
 import klass.shared.generated.resources.img_semester
 import klass.shared.generated.resources.img_shift
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -162,6 +169,7 @@ fun ProfileScreen(
     photoUrl: String? = null,
     onUpdateProfile: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
     onCategoryChanged: ((UserRole) -> Unit)? = null,
+    topContentPadding: Dp = 0.dp,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var signInControl by remember { mutableStateOf(SignInControlConfig()) }
@@ -236,7 +244,7 @@ fun ProfileScreen(
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 10.dp),
             ) {
                 Text(
-                    text = if (currentLang == AppLanguage.BENGALI) "সাইন ইন করুন" else "Sign In",
+                    text = "সাইন ইন করুন".localized(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = hindSiliguri,
@@ -260,9 +268,14 @@ fun ProfileScreen(
     var currentPhotoUrl by remember(photoUrl) { mutableStateOf(photoUrl ?: "") }
     var showAvatarPicker by remember { mutableStateOf(false) }
 
+    // Student profile state
+    var studentProfile by remember { mutableStateOf<StudentProfile?>(null) }
+    var isLoadingStudentProfile by remember { mutableStateOf(false) }
+
     // Native Device Gallery Photo Picker Launcher
     val launchPhotoPicker = rememberPhotoPickerLauncher { pickedUri ->
         currentPhotoUrl = pickedUri
+        studentProfile = studentProfile?.copy(photoUrl = pickedUri)
         onUpdateProfile?.invoke(userName, pickedUri)
         showAvatarPicker = false
     }
@@ -270,10 +283,6 @@ fun ProfileScreen(
     // Admin sign in control state
     // signInControl is already declared at the top of ProfileScreen
     var isUpdatingControl by remember { mutableStateOf(false) }
-
-    // Student profile state
-    var studentProfile by remember { mutableStateOf<StudentProfile?>(null) }
-    var isLoadingStudentProfile by remember { mutableStateOf(false) }
 
     // Student profile setup timer (5 minutes to complete setup)
     var setupRemainingSeconds by remember { mutableStateOf(300) }
@@ -288,6 +297,17 @@ fun ProfileScreen(
     var setupBloodGroup by remember { mutableStateOf("") }
     var setupAddress by remember { mutableStateOf("") }
     var setupRollNumber by remember { mutableStateOf("") }
+
+    // Saved state tracking for per-card individual Save Info buttons
+    var savedSemester by remember { mutableStateOf("") }
+    var savedShift by remember { mutableStateOf("") }
+    var savedDepartment by remember { mutableStateOf("") }
+    var savedSection by remember { mutableStateOf("") }
+    var savedPhone by remember { mutableStateOf("") }
+    var savedBloodGroup by remember { mutableStateOf("") }
+    var savedAddress by remember { mutableStateOf("") }
+    var savedRollNumber by remember { mutableStateOf("") }
+
     var isSavingStudentProfile by remember { mutableStateOf(false) }
     var studentProfileError by remember { mutableStateOf<String?>(null) }
     var isStudentEditing by remember { mutableStateOf(false) }
@@ -302,6 +322,18 @@ fun ProfileScreen(
     var expPhone by remember { mutableStateOf(false) }
     var expBlood by remember { mutableStateOf(false) }
     var expAddress by remember { mutableStateOf(false) }
+    var isDetectingLocation by remember { mutableStateOf(false) }
+    var showMapPickerModal by remember { mutableStateOf(false) }
+    var customAddressDetail by remember { mutableStateOf("") }
+
+    var pendingAutoSaveLocation by remember { mutableStateOf<String?>(null) }
+    val locationLauncher = rememberLocationPermissionLauncher { realAddress ->
+        isDetectingLocation = false
+        if (realAddress.isNotBlank()) {
+            setupAddress = realAddress
+            pendingAutoSaveLocation = realAddress
+        }
+    }
 
     val cleanEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
 
@@ -321,7 +353,25 @@ fun ProfileScreen(
                 setupBloodGroup = prof.bloodGroup
                 setupAddress = prof.address
                 setupRollNumber = prof.rollNumber
+
+                savedSemester = setupSemester
+                savedShift = setupShift
+                savedDepartment = setupDepartment
+                savedSection = setupSection
+                savedPhone = setupPhone
+                savedBloodGroup = setupBloodGroup
+                savedAddress = setupAddress
+                savedRollNumber = setupRollNumber
+
+                val profPhoto = prof.photoUrl
+                if (!profPhoto.isNullOrBlank() && (currentPhotoUrl.isBlank() || profPhoto.startsWith("data:image"))) {
+                    currentPhotoUrl = profPhoto
+                }
             }
+            if (setupAddress.isBlank()) {
+                isDetectingLocation = true
+            }
+            locationLauncher()
             isLoadingStudentProfile = false
         }
     }
@@ -366,6 +416,10 @@ fun ProfileScreen(
             .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (topContentPadding > 0.dp) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(topContentPadding))
+        }
         // Profile Picture Section with Staggered Wing Orbit Icons & Photo Upload Badge
         Box(
             modifier = Modifier
@@ -470,7 +524,7 @@ fun ProfileScreen(
                 ) {
                     if (currentPhotoUrl.isNotBlank()) {
                         AsyncImage(
-                            model = currentPhotoUrl,
+                            model = resolveProfileImageModel(currentPhotoUrl),
                             contentDescription = "Profile Photo",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
@@ -495,7 +549,7 @@ fun ProfileScreen(
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
                             imageVector = CameraIcon,
-                            contentDescription = "গ্যালারি থেকে ছবি আপলোড",
+                            contentDescription = "গ্যালারি থেকে ছবি আপলোড".localized(),
                             tint = Color.White,
                             modifier = Modifier.size(16.dp),
                         )
@@ -505,7 +559,6 @@ fun ProfileScreen(
         }
 
         // Profile Name display / Inline editing
-        val isBengaliLang = LocalAppLanguage.current == AppLanguage.BENGALI
 
         if (isEditingNameInline) {
             Row(
@@ -567,7 +620,7 @@ fun ProfileScreen(
                         ) {
                             Icon(
                                 imageVector = CheckIcon,
-                                contentDescription = if (isBengaliLang) "সেভ করুন" else "Save",
+                                contentDescription = "সেভ করুন".localized(),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp),
                             )
@@ -616,7 +669,7 @@ fun ProfileScreen(
                         ) {
                             Icon(
                                 imageVector = CloseIcon,
-                                contentDescription = if (isBengaliLang) "বাতিল" else "Cancel",
+                                contentDescription = "বাতিল".localized(),
                                 tint = textColor,
                                 modifier = Modifier.size(16.dp),
                             )
@@ -633,7 +686,7 @@ fun ProfileScreen(
                 horizontalArrangement = Arrangement.Center,
             ) {
                 Text(
-                    text = userName.ifEmpty { if (isBengaliLang) "গেস্ট ইউজার" else "Guest User" },
+                    text = userName.ifEmpty { "গেস্ট ইউজার" }.localized(),
                     fontSize = 20.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Bold,
@@ -687,12 +740,12 @@ fun ProfileScreen(
                             ) {
                                 Icon(
                                     imageVector = EditIcon,
-                                    contentDescription = if (isBengaliLang) "নাম এডিট করুন" else "Edit Name",
+                                    contentDescription = "নাম এডিট করুন".localized(),
                                     tint = Color.White,
                                     modifier = Modifier.size(13.dp),
                                 )
                                 Text(
-                                    text = if (isBengaliLang) "এডিট" else "Edit",
+                                    text = "এডিট".localized(),
                                     fontSize = 11.5.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Bold,
@@ -744,7 +797,7 @@ fun ProfileScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isBengali) "শিক্ষার্থী প্রোফাইল" else "Student Profile",
+                            text = "শিক্ষার্থী প্রোফাইল".localized(),
                             fontSize = 15.sp,
                             fontFamily = hindSiliguri,
                             fontWeight = FontWeight.Bold,
@@ -757,6 +810,7 @@ fun ProfileScreen(
                 if (!isSetupComplete && !setupTimerExpired) {
                     val timerMinutes = setupRemainingSeconds / 60
                     val timerSecs = setupRemainingSeconds % 60
+                    val timeDisplay = "${timerMinutes}:${timerSecs.toString().padStart(2, '0')}"
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -764,10 +818,7 @@ fun ProfileScreen(
                         border = BorderStroke(1.dp, Color(0xFFFFD600).copy(alpha = 0.5f)),
                     ) {
                         Text(
-                            text = if (isBengali)
-                                "⚠️ প্রোফাইল তথ্য প্রবেশের সময়সীমা: ${timerMinutes}:${timerSecs.toString().padStart(2, '0')}\nনির্দিষ্ট সময়ের পূর্বে সকল তথ্য সঠিকভাবে প্রদান করুন।"
-                            else
-                                "⚠️ Profile setup time remaining: ${timerMinutes}:${timerSecs.toString().padStart(2, '0')}\nPlease enter your details before time expires.",
+                            text = "⚠️ ${"প্রোফাইল তথ্য প্রবেশের সময়সীমা:".localized()} $timeDisplay\n${"নির্দিষ্ট সময়ের পূর্বে সকল তথ্য সঠিকভাবে প্রদান করুন।".localized()}",
                             fontSize = 12.5.sp,
                             fontFamily = hindSiliguri,
                             color = Color(0xFF856404),
@@ -790,9 +841,11 @@ fun ProfileScreen(
                     addr: String = setupAddress,
                 ) {
                     val shiftVal = if (sh.contains("Morning") || sh.contains("1") || sh.contains("সকাল")) "1" else if (sh.contains("Evening") || sh.contains("2") || sh.contains("বিকাল")) "2" else sh
+                    val preservedPhoto = currentPhotoUrl.ifBlank { studentProfile?.photoUrl ?: "" }.ifBlank { null }
                     val updatedProf = StudentProfile(
                         email = cleanEmail,
                         name = userName,
+                        photoUrl = preservedPhoto,
                         semester = sem,
                         shift = shiftVal,
                         department = dept,
@@ -804,18 +857,44 @@ fun ProfileScreen(
                         profileSetupComplete = true,
                     )
                     studentProfile = updatedProf
-                    coroutineScope.launch {
+                    savedSemester = sem
+                    savedShift = shiftVal
+                    savedDepartment = dept
+                    savedSection = sec
+                    savedRollNumber = roll
+                    savedPhone = ph
+                    savedBloodGroup = blood
+                    savedAddress = addr
+                    CoroutineScope(Dispatchers.IO + NonCancellable).launch {
                         RoleConfig.saveStudentProfile(updatedProf)
+                    }
+                }
+
+                fun detectAutoMapAddress(targetAddr: String? = null) {
+                    if (targetAddr != null && targetAddr.isNotBlank()) {
+                        setupAddress = targetAddr
+                        autoSaveStudentData(addr = targetAddr)
+                    } else {
+                        isDetectingLocation = true
+                        locationLauncher()
+                    }
+                }
+
+                LaunchedEffect(pendingAutoSaveLocation) {
+                    val loc = pendingAutoSaveLocation
+                    if (!loc.isNullOrBlank()) {
+                        autoSaveStudentData(addr = loc)
+                        pendingAutoSaveLocation = null
                     }
                 }
 
                 // Card 1: Semester - Options 1 to 7 Only (Compact Uniform 1:1 Buttons)
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "সেমিস্টার" else "Semester",
+                    title = "সেমিস্টার".localized(),
                     selectedValue = if (setupSemester.isNotBlank()) {
                         val semNum = setupSemester.filter { it.isDigit() }.ifEmpty { setupSemester }
-                        if (isBengali) "${semNum}ম সেমিস্টার" else "Semester $semNum"
-                    } else (if (isBengali) "সেমিস্টার নির্বাচন করুন" else "Select Semester"),
+                        if (isBengali) "${semNum}ম সেমিস্টার" else "${"সেমিস্টার".localized()} $semNum"
+                    } else "সেমিস্টার নির্বাচন করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_semester),
                     gradientColors = listOf(Color(0xFF0284C7), Color(0xFF0369A1)),
                     isExpanded = expSemester,
@@ -846,7 +925,6 @@ fun ProfileScreen(
                                     isSelected = isSelected,
                                     onClick = {
                                         setupSemester = sem
-                                        autoSaveStudentData(sem = sem)
                                     },
                                     modifier = Modifier.size(38.dp),
                                     activeColor = Color(0xFF0284C7),
@@ -868,7 +946,6 @@ fun ProfileScreen(
                                     isSelected = isSelected,
                                     onClick = {
                                         setupSemester = sem
-                                        autoSaveStudentData(sem = sem)
                                     },
                                     modifier = Modifier.size(38.dp),
                                     activeColor = Color(0xFF0284C7),
@@ -876,17 +953,22 @@ fun ProfileScreen(
                                 )
                             }
                         }
+                        CardSaveButton(
+                            isChanged = setupSemester != savedSemester && setupSemester.isNotBlank(),
+                            onSave = { autoSaveStudentData(sem = setupSemester) },
+                            hindSiliguri = hindSiliguri,
+                        )
                     }
                 }
 
                 // Card 2: Shift - 2 Choice Buttons ("1" & "2", Compact Uniform 1:1 Buttons)
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "শিফট" else "Shift",
-                    selectedValue = if (setupShift.contains("1") || setupShift.contains("Morning", ignoreCase = true) || setupShift.contains("সকাল")) {
-                        if (isBengali) "১ম শিফট" else "1st Shift"
-                    } else if (setupShift.contains("2") || setupShift.contains("Evening", ignoreCase = true) || setupShift.contains("বিকাল")) {
-                        if (isBengali) "২য় শিফট" else "2nd Shift"
-                    } else (if (isBengali) "শিফট নির্বাচন করুন" else "Select Shift"),
+                    title = "শিফট".localized(),
+                    selectedValue = if (setupShift.contains("1") || setupShift.contains("Morning", ignoreCase = true) || setupShift.contains("১ম")) {
+                        "১ম শিফট".localized()
+                    } else if (setupShift.contains("2") || setupShift.contains("Evening", ignoreCase = true) || setupShift.contains("২য়")) {
+                        "২য় শিফট".localized()
+                    } else "শিফট নির্বাচন করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_shift),
                     gradientColors = listOf(Color(0xFFD97706), Color(0xFFB45309)),
                     isExpanded = expShift,
@@ -898,36 +980,45 @@ fun ProfileScreen(
                     hindSiliguri = hindSiliguri,
                 ) {
                     val shifts = listOf("1", "2")
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        shifts.forEachIndexed { index, sh ->
-                            if (index > 0) Spacer(modifier = Modifier.width(14.dp))
-                            val isSelected = setupShift == sh || setupShift.contains(sh) ||
-                                (sh == "1" && (setupShift.contains("Morning", ignoreCase = true) || setupShift.contains("সকাল"))) ||
-                                (sh == "2" && (setupShift.contains("Evening", ignoreCase = true) || setupShift.contains("বিকাল")))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            shifts.forEachIndexed { index, sh ->
+                                if (index > 0) Spacer(modifier = Modifier.width(14.dp))
+                                val isSelected = setupShift == sh || setupShift.contains(sh) ||
+                                    (sh == "1" && (setupShift.contains("Morning", ignoreCase = true) || setupShift.contains("সকাল"))) ||
+                                    (sh == "2" && (setupShift.contains("Evening", ignoreCase = true) || setupShift.contains("বিকাল")))
 
-                            ThreeDOptionButton(
-                                label = sh,
-                                subLabel = null,
-                                isSelected = isSelected,
-                                onClick = {
-                                    setupShift = sh
-                                    autoSaveStudentData(sh = sh)
-                                },
-                                modifier = Modifier.size(38.dp),
-                                activeColor = if (sh == "1") Color(0xFFD97706) else Color(0xFF8B5CF6),
-                                isDark = isDark,
-                            )
+                                ThreeDOptionButton(
+                                    label = sh,
+                                    subLabel = null,
+                                    isSelected = isSelected,
+                                    onClick = {
+                                        setupShift = sh
+                                    },
+                                    modifier = Modifier.size(38.dp),
+                                    activeColor = if (sh == "1") Color(0xFFD97706) else Color(0xFF8B5CF6),
+                                    isDark = isDark,
+                                )
+                            }
                         }
+                        CardSaveButton(
+                            isChanged = setupShift != savedShift && setupShift.isNotBlank(),
+                            onSave = { autoSaveStudentData(sh = setupShift) },
+                            hindSiliguri = hindSiliguri,
+                        )
                     }
                 }
 
                 // Card 3: Department - 7 Choice Buttons (Compact Uniform 1:1 Buttons Grid)
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "ডিপার্টমেন্ট" else "Department",
-                    selectedValue = if (setupDepartment.isNotBlank()) setupDepartment else (if (isBengali) "ডিপার্টমেন্ট নির্বাচন করুন" else "Select Department"),
+                    title = "ডিপার্টমেন্ট".localized(),
+                    selectedValue = if (setupDepartment.isNotBlank()) setupDepartment else "ডিপার্টমেন্ট নির্বাচন করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_department),
                     gradientColors = listOf(Color(0xFF059669), Color(0xFF047857)),
                     isExpanded = expDept,
@@ -956,7 +1047,6 @@ fun ProfileScreen(
                                     isSelected = setupDepartment.equals(dept, ignoreCase = true),
                                     onClick = {
                                         setupDepartment = dept
-                                        autoSaveStudentData(dept = dept)
                                     },
                                     modifier = Modifier.size(38.dp),
                                     activeColor = Color(0xFF059669),
@@ -976,7 +1066,6 @@ fun ProfileScreen(
                                     isSelected = setupDepartment.equals(dept, ignoreCase = true),
                                     onClick = {
                                         setupDepartment = dept
-                                        autoSaveStudentData(dept = dept)
                                     },
                                     modifier = Modifier.size(38.dp),
                                     activeColor = Color(0xFF059669),
@@ -984,13 +1073,18 @@ fun ProfileScreen(
                                 )
                             }
                         }
+                        CardSaveButton(
+                            isChanged = setupDepartment != savedDepartment && setupDepartment.isNotBlank(),
+                            onSave = { autoSaveStudentData(dept = setupDepartment) },
+                            hindSiliguri = hindSiliguri,
+                        )
                     }
                 }
 
                 // Card 4: Section - 3 Choice Buttons (Compact Uniform 1:1 Buttons)
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "সেকশন" else "Section",
-                    selectedValue = if (setupSection.isNotBlank()) "সেকশন ${setupSection}" else (if (isBengali) "সেকশন নির্বাচন করুন" else "Select Section"),
+                    title = "সেকশন".localized(),
+                    selectedValue = if (setupSection.isNotBlank()) "${"সেকশন".localized()} $setupSection" else "সেকশন নির্বাচন করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_section),
                     gradientColors = listOf(Color(0xFFEC4899), Color(0xFFDB2777)),
                     isExpanded = expSection,
@@ -1002,32 +1096,62 @@ fun ProfileScreen(
                     hindSiliguri = hindSiliguri,
                 ) {
                     val sections = listOf("A", "B", "C")
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        sections.forEachIndexed { index, sec ->
-                            if (index > 0) Spacer(modifier = Modifier.width(14.dp))
-                            ThreeDOptionButton(
-                                label = sec,
-                                subLabel = null,
-                                isSelected = setupSection.equals(sec, ignoreCase = true),
-                                onClick = {
-                                    setupSection = sec
-                                    autoSaveStudentData(sec = sec)
-                                },
-                                modifier = Modifier.size(38.dp),
-                                activeColor = Color(0xFFEC4899),
-                                isDark = isDark,
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            sections.forEachIndexed { index, sec ->
+                                if (index > 0) Spacer(modifier = Modifier.width(14.dp))
+                                ThreeDOptionButton(
+                                    label = sec,
+                                    subLabel = null,
+                                    isSelected = setupSection.equals(sec, ignoreCase = true),
+                                    onClick = {
+                                        setupSection = sec
+                                    },
+                                    modifier = Modifier.size(38.dp),
+                                    activeColor = Color(0xFFEC4899),
+                                    isDark = isDark,
+                                )
+                            }
                         }
+                        CardSaveButton(
+                            isChanged = setupSection != savedSection && setupSection.isNotBlank(),
+                            onSave = { autoSaveStudentData(sec = setupSection) },
+                            hindSiliguri = hindSiliguri,
+                        )
                     }
+                }
+
+                // Section Title 1: একাডেমিক তথ্য / Academic Info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                ) {
+                    Icon(
+                        imageVector = GraduationCapIcon,
+                        contentDescription = null,
+                        tint = Color(0xFF6366F1),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "একাডেমিক তথ্য".localized(),
+                        fontSize = 14.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6366F1),
+                    )
                 }
 
                 // Card 5: Roll Number
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "রোল নম্বর" else "Roll Number",
-                    selectedValue = if (setupRollNumber.isNotBlank()) setupRollNumber else (if (isBengali) "রোল নম্বর প্রদান করুন" else "Enter Roll Number"),
+                    title = "রোল নম্বর".localized(),
+                    selectedValue = if (setupRollNumber.isNotBlank()) setupRollNumber else "রোল নম্বর প্রদান করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_roll),
                     gradientColors = listOf(Color(0xFF6366F1), Color(0xFF4F46E5)),
                     isExpanded = expRoll,
@@ -1038,24 +1162,54 @@ fun ProfileScreen(
                     subTextColor = subTextColor,
                     hindSiliguri = hindSiliguri,
                 ) {
-                    ProfileInputField(
-                        label = if (isBengali) "রোল নম্বর" else "Roll No",
-                        value = setupRollNumber,
-                        onValueChange = {
-                            setupRollNumber = it
-                            autoSaveStudentData(roll = it)
-                        },
-                        placeholder = if (isBengali) "যেমন: ১২৩৪৫৬" else "e.g. 123456",
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        textColor = textColor,
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ProfileInputField(
+                            label = "রোল নম্বর".localized(),
+                            value = setupRollNumber,
+                            onValueChange = {
+                                setupRollNumber = it
+                            },
+                            placeholder = "যেমন: ১২৩৪৫৬".localized(),
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            textColor = textColor,
+                        )
+                        CardSaveButton(
+                            isChanged = setupRollNumber != savedRollNumber && setupRollNumber.isNotBlank(),
+                            onSave = { autoSaveStudentData(roll = setupRollNumber) },
+                            hindSiliguri = hindSiliguri,
+                        )
+                    }
+                }
+
+                // Section Title 2: যোগাযোগের তথ্য / Contact Info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                ) {
+                    Icon(
+                        imageVector = GearIcon,
+                        contentDescription = null,
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "যোগাযোগের তথ্য".localized(),
+                        fontSize = 14.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF10B981),
                     )
                 }
 
                 // Card 6: Phone Number
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "ফোন নম্বর" else "Phone Number",
-                    selectedValue = if (setupPhone.isNotBlank()) setupPhone else (if (isBengali) "ফোন নম্বর প্রদান করুন" else "Enter Phone Number"),
+                    title = "ফোন নম্বর".localized(),
+                    selectedValue = if (setupPhone.isNotBlank()) setupPhone else "ফোন নম্বর প্রদান করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_phone),
                     gradientColors = listOf(Color(0xFF10B981), Color(0xFF059669)),
                     isExpanded = expPhone,
@@ -1066,24 +1220,54 @@ fun ProfileScreen(
                     subTextColor = subTextColor,
                     hindSiliguri = hindSiliguri,
                 ) {
-                    ProfileInputField(
-                        label = if (isBengali) "ফোন নম্বর" else "Phone No",
-                        value = setupPhone,
-                        onValueChange = {
-                            setupPhone = it
-                            autoSaveStudentData(ph = it)
-                        },
-                        placeholder = if (isBengali) "যেমন: ০১৭xxxxxxxx" else "e.g. 017xxxxxxxx",
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        textColor = textColor,
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        ProfileInputField(
+                            label = "ফোন নম্বর".localized(),
+                            value = setupPhone,
+                            onValueChange = {
+                                setupPhone = it
+                            },
+                            placeholder = "যেমন: ০১৭xxxxxxxx".localized(),
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            textColor = textColor,
+                        )
+                        CardSaveButton(
+                            isChanged = setupPhone != savedPhone && setupPhone.isNotBlank(),
+                            onSave = { autoSaveStudentData(ph = setupPhone) },
+                            hindSiliguri = hindSiliguri,
+                        )
+                    }
+                }
+
+                // Section Title 3: ডোনার তথ্য / Donor Info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                ) {
+                    Icon(
+                        imageVector = StarIcon,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "ডোনার তথ্য".localized(),
+                        fontSize = 14.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFEF4444),
                     )
                 }
 
                 // Card 7: Blood Group - 8 Choice Buttons (Compact Uniform 1:1 Buttons)
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "ব্লাড গ্রুপ" else "Blood Group",
-                    selectedValue = if (setupBloodGroup.isNotBlank()) setupBloodGroup else (if (isBengali) "ব্লাড গ্রুপ নির্বাচন করুন" else "Select Blood Group"),
+                    title = "ব্লাড গ্রুপ".localized(),
+                    selectedValue = if (setupBloodGroup.isNotBlank()) setupBloodGroup else "ব্লাড গ্রুপ নির্বাচন করুন".localized(),
                     imagePainter = painterResource(Res.drawable.img_blood),
                     gradientColors = listOf(Color(0xFFEF4444), Color(0xFFDC2626)),
                     isExpanded = expBlood,
@@ -1112,7 +1296,6 @@ fun ProfileScreen(
                                     isSelected = setupBloodGroup.equals(bg, ignoreCase = true),
                                     onClick = {
                                         setupBloodGroup = bg
-                                        autoSaveStudentData(blood = bg)
                                     },
                                     modifier = Modifier.size(38.dp),
                                     activeColor = Color(0xFFEF4444),
@@ -1132,7 +1315,6 @@ fun ProfileScreen(
                                     isSelected = setupBloodGroup.equals(bg, ignoreCase = true),
                                     onClick = {
                                         setupBloodGroup = bg
-                                        autoSaveStudentData(blood = bg)
                                     },
                                     modifier = Modifier.size(38.dp),
                                     activeColor = Color(0xFFEF4444),
@@ -1140,114 +1322,134 @@ fun ProfileScreen(
                                 )
                             }
                         }
+                        CardSaveButton(
+                            isChanged = setupBloodGroup != savedBloodGroup && setupBloodGroup.isNotBlank(),
+                            onSave = { autoSaveStudentData(blood = setupBloodGroup) },
+                            hindSiliguri = hindSiliguri,
+                        )
                     }
                 }
 
-                // Card 8: Address
+                // Section Title 4: ঠিকানা / Address
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                ) {
+                    Icon(
+                        imageVector = ShieldIcon,
+                        contentDescription = null,
+                        tint = Color(0xFF8B5CF6),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "ঠিকানা".localized(),
+                        fontSize = 14.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF8B5CF6),
+                    )
+                }
+
+                // Card 8: Auto Map Address
                 Collapsible3DProfileCard(
-                    title = if (isBengali) "বর্তমান ঠিকানা" else "Current Address",
-                    selectedValue = if (setupAddress.isNotBlank()) setupAddress else (if (isBengali) "বর্তমান ঠিকানা প্রদান করুন" else "Enter Current Address"),
+                    title = "বর্তমান ঠিকানা".localized(),
+                    selectedValue = if (isDetectingLocation) {
+                        "ডিভাইস জিপিএস থেকে ঠিকানা সনাক্ত করা হচ্ছে...".localized()
+                    } else if (setupAddress.isNotBlank()) {
+                        setupAddress.localized()
+                    } else {
+                        "অটো জিপিএস ঠিকানা পেতে পারমিশন অনুমোদন করুন".localized()
+                    },
                     imagePainter = painterResource(Res.drawable.img_address),
                     gradientColors = listOf(Color(0xFF8B5CF6), Color(0xFF7C3AED)),
                     isExpanded = expAddress,
-                    onToggleExpand = { expAddress = !expAddress },
+                    onToggleExpand = {
+                        val newExp = !expAddress
+                        expAddress = newExp
+                        if (newExp && setupAddress.isBlank()) {
+                            detectAutoMapAddress()
+                        }
+                    },
                     isDark = isDark,
                     cardBg = cardBg,
                     textColor = textColor,
                     subTextColor = subTextColor,
                     hindSiliguri = hindSiliguri,
                 ) {
-                    ProfileInputField(
-                        label = if (isBengali) "বর্তমান ঠিকানা" else "Address",
-                        value = setupAddress,
-                        onValueChange = {
-                            setupAddress = it
-                            autoSaveStudentData(addr = it)
-                        },
-                        placeholder = if (isBengali) "আপনার বর্তমান ঠিকানার বিবরণ লিখুন" else "Enter your current address",
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        textColor = textColor,
-                        singleLine = false,
-                    )
-                }
-
-                if (studentProfileError != null) {
-                    Text(
-                        text = studentProfileError!!,
-                        fontSize = 12.sp,
-                        fontFamily = hindSiliguri,
-                        color = Color(0xFFEF4444),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                // Save Profile Button (Allows saving partial or full fields without error)
-                Button(
-                    onClick = {
-                        studentProfileError = null
-                        isSavingStudentProfile = true
-                        coroutineScope.launch {
-                            val shiftVal = if (setupShift.contains("Morning") || setupShift.contains("1") || setupShift.contains("সকাল")) "1" else if (setupShift.contains("Evening") || setupShift.contains("2") || setupShift.contains("বিকাল")) "2" else setupShift
-                            val newProfile = StudentProfile(
-                                email = cleanEmail,
-                                name = userName,
-                                semester = setupSemester,
-                                shift = shiftVal,
-                                department = setupDepartment,
-                                section = setupSection,
-                                phone = setupPhone,
-                                bloodGroup = setupBloodGroup,
-                                address = setupAddress,
-                                rollNumber = setupRollNumber,
-                                profileSetupComplete = true,
-                            )
-                            val res = RoleConfig.saveStudentProfile(newProfile)
-                            isSavingStudentProfile = false
-                            if (res.isSuccess) {
-                                studentProfile = newProfile
-                                setupSemester = newProfile.semester.filter { it.isDigit() }.ifEmpty { newProfile.semester }
-                                setupShift = newProfile.shift
-                                setupDepartment = newProfile.department
-                                setupSection = newProfile.section
-                                setupPhone = newProfile.phone
-                                setupBloodGroup = newProfile.bloodGroup
-                                setupAddress = newProfile.address
-                                setupRollNumber = newProfile.rollNumber
-                                isStudentEditing = false
-                                // Collapse all cards after saving
-                                expSemester = false
-                                expShift = false
-                                expDept = false
-                                expSection = false
-                                expRoll = false
-                                expPhone = false
-                                expBlood = false
-                                expAddress = false
-                            } else {
-                                studentProfileError = if (isBengali) "সংরক্ষণ করতে ব্যর্থ হয়েছে। পুনরায় চেষ্টা করুন।" else "Save failed. Please try again."
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isDark) Color(0xFF2E1065) else Color(0xFFF3E8FF),
+                            border = BorderStroke(1.2.dp, Color(0xFF8B5CF6).copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = ShieldIcon,
+                                        contentDescription = null,
+                                        tint = Color(0xFF8B5CF6),
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "অটো ডিভাইস জিপিএস ঠিকানা".localized(),
+                                        fontSize = 13.sp,
+                                        fontFamily = hindSiliguri,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF8B5CF6),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                if (isDetectingLocation) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = Color(0xFF8B5CF6),
+                                            strokeWidth = 2.dp,
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "ডিভাইসের আসল জিপিএস থেকে ঠিকানা খোঁজা হচ্ছে...".localized(),
+                                            fontSize = 12.sp,
+                                            fontFamily = hindSiliguri,
+                                            color = textColor,
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = if (setupAddress.isNotBlank()) setupAddress.localized() else "অ্যান্ড্রয়েড জিপিএস পারমিশন অনুমোদন করুন".localized(),
+                                        fontSize = 13.5.sp,
+                                        fontFamily = hindSiliguri,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = textColor,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "✓ ${"অনলাইনে আসলে ও অবস্থান পরিবর্তনে অটো সিঙ্ক হয়".localized()}",
+                                    fontSize = 10.5.sp,
+                                    fontFamily = hindSiliguri,
+                                    color = Color(0xFF10B981),
+                                )
                             }
                         }
-                    },
-                    enabled = !isSavingStudentProfile,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-                ) {
-                    if (isSavingStudentProfile) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(
-                        text = if (isSavingStudentProfile) (if (isBengali) "সংরক্ষণ করা হচ্ছে..." else "Saving...") else (if (isBengali) "তথ্য সংরক্ষণ করুন" else "Save Information"),
-                        fontSize = 14.5.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Bold,
-                    )
                 }
             }
         }
@@ -1271,13 +1473,13 @@ fun ProfileScreen(
             ) {
                 Icon(
                     imageVector = LogoutIcon,
-                    contentDescription = "সাইন আউট",
+                    contentDescription = "সাইন আউট".localized(),
                     modifier = Modifier.size(18.dp),
                     tint = Color.White,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "সাইন আউট করুন",
+                    text = "সাইন আউট করুন".localized(),
                     fontSize = 14.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Bold,
@@ -1298,7 +1500,7 @@ fun ProfileScreen(
                 ),
             ) {
                 Text(
-                    text = "অ্যাকাউন্ট ডিলিট করুন",
+                    text = "অ্যাকাউন্ট ডিলিট করুন".localized(),
                     fontSize = 13.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Bold,
@@ -1325,7 +1527,7 @@ fun ProfileScreen(
                     Text(text = "⚠️", fontSize = 36.sp)
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "অ্যাকাউন্ট মুছে ফেলতে চান?",
+                        text = "অ্যাকাউন্ট মুছে ফেলতে চান?".localized(),
                         fontSize = 17.sp,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.Bold,
@@ -1334,7 +1536,7 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "আপনার অ্যাকাউন্ট, প্রোফাইল তথ্য এবং সমস্ত সেশন ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।",
+                        text = "আপনার অ্যাকাউন্ট, প্রোফাইল তথ্য এবং সমস্ত সেশন ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।".localized(),
                         fontSize = 13.sp,
                         fontFamily = hindSiliguri,
                         color = subTextColor,
@@ -1353,7 +1555,7 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(10.dp),
                         ) {
-                            Text(text = "বাতিল", fontFamily = hindSiliguri, fontSize = 13.sp)
+                            Text(text = "বাতিল".localized(), fontFamily = hindSiliguri, fontSize = 13.sp)
                         }
 
                         Button(
@@ -1377,7 +1579,7 @@ fun ProfileScreen(
                             if (isDeletingAccount) {
                                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Text(text = "ডিলিট করুন", fontFamily = hindSiliguri, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "ডিলিট করুন".localized(), fontFamily = hindSiliguri, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1503,7 +1705,7 @@ private fun ProfileDropdownField(
                         )
                     } else {
                         Text(
-                            text = "নির্বাচন করুন",
+                            text = "নির্বাচন করুন".localized(),
                             fontSize = 12.5.sp,
                             fontFamily = hindSiliguri,
                             color = subTextColor,
@@ -1594,12 +1796,17 @@ private fun ThreeDOptionButton(
     val shape = RoundedCornerShape(9.dp)
 
     val pressOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isPressed) 2.dp else 0.dp,
+        targetValue = if (isPressed) 3.5.dp else if (isSelected) 1.5.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessHigh)
+    )
+
+    val pressScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessHigh)
     )
 
     val shadowColor = if (isSelected) {
-        activeColor.copy(alpha = 0.5f)
+        activeColor.copy(alpha = 0.6f)
     } else {
         if (isDark) Color(0xFF0F172A) else Color(0xFFCBD5E1)
     }
@@ -1651,6 +1858,7 @@ private fun ThreeDOptionButton(
             border = BorderStroke(1.2.dp, borderColor),
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer(scaleX = pressScale, scaleY = pressScale)
                 .offset(y = pressOffset),
         ) {
             Box(
@@ -1736,7 +1944,7 @@ private fun Collapsible3DProfileCard(
                         Image(
                             painter = imagePainter,
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                            modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.45f),
                             contentScale = ContentScale.Crop,
                         )
                         // Gradient Overlay ensuring foreground text readability
@@ -1813,7 +2021,7 @@ private fun Collapsible3DProfileCard(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = if (selectedValue.isNotBlank()) selectedValue else "নির্বাচন করতে ট্যাপ করুন",
+                                text = if (selectedValue.isNotBlank()) selectedValue else "নির্বাচন করতে ট্যাপ করুন".localized(),
                                 fontSize = 12.sp,
                                 fontFamily = hindSiliguri,
                                 color = if (selectedValue.isNotBlank()) primaryColor else subTextColor,
@@ -1862,6 +2070,74 @@ private fun Collapsible3DProfileCard(
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardSaveButton(
+    isChanged: Boolean,
+    onSave: () -> Unit,
+    hindSiliguri: FontFamily,
+) {
+    AnimatedVisibility(
+        visible = isChanged,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        val interactionSource = remember { MutableInteractionSource() }
+        val isPressed by interactionSource.collectIsPressedAsState()
+
+        Box(
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onSave,
+                ),
+        ) {
+            Box(
+                modifier = Modifier
+                    .offset(y = 3.dp)
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF047857)),
+            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Transparent,
+                border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .offset(y = if (isPressed) 3.dp else 0.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(listOf(Color(0xFF10B981), Color(0xFF059669)))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = CheckIcon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "তথ্য সংরক্ষণ করুন".localized(),
+                            fontSize = 12.5.sp,
+                            fontFamily = hindSiliguri,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
                 }
             }
         }

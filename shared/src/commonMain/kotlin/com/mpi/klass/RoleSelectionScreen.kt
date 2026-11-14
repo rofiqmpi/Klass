@@ -52,7 +52,7 @@ fun RoleSelectionScreen(
         ) {
             // 1. Student Button
             RoleButton(
-                text = if (currentLanguage == AppLanguage.BENGALI) "শিক্ষার্থী" else "Student",
+                text = "শিক্ষার্থী".localized(),
                 painter = Res.drawable.student,
                 isDark = isDark,
                 fontFamily = hindSiliguri,
@@ -61,7 +61,7 @@ fun RoleSelectionScreen(
 
             // 2. Teacher Button
             RoleButton(
-                text = if (currentLanguage == AppLanguage.BENGALI) "শিক্ষক" else "Teacher",
+                text = "শিক্ষক".localized(),
                 painter = Res.drawable.teacher,
                 isDark = isDark,
                 fontFamily = hindSiliguri,
@@ -70,7 +70,7 @@ fun RoleSelectionScreen(
 
             // 3. Admin Button
             RoleButton(
-                text = if (currentLanguage == AppLanguage.BENGALI) "এডমিন" else "Admin",
+                text = "এডমিন".localized(),
                 painter = Res.drawable.admin,
                 isDark = isDark,
                 fontFamily = hindSiliguri,
@@ -88,7 +88,7 @@ fun RoleSelectionScreen(
 
 
                 Text(
-                    text = if (currentLanguage == AppLanguage.BENGALI) "আপনার অ্যাকাউন্ট ক্যাটাগরি নির্বাচন করুন। দয়া করে ভুল তথ্য দেওয়া থেকে বিরত থাকুন।" else "Select your account category",
+                    text = "আপনার অ্যাকাউন্ট ক্যাটাগরি নির্বাচন করুন। দয়া করে ভুল তথ্য দেওয়া থেকে বিরত থাকুন।".localized(),
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Medium,

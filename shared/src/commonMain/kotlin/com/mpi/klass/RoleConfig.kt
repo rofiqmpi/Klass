@@ -173,6 +173,7 @@ object RoleConfig {
     suspend fun saveAdminEmail(email: String, name: String, photoUrl: String?): Result<Unit> {
         if (email.isBlank()) return Result.failure(Exception("Invalid admin email"))
         val cleanEmail = email.trim().lowercase()
+        saveLocalProfile(cleanEmail, name, photoUrl, "google", UserRole.ADMIN.name)
         return saveAdminInFirestore(cleanEmail, name, photoUrl)
     }
 
@@ -181,15 +182,19 @@ object RoleConfig {
         val cleanEmail = email.trim().lowercase()
 
         val localProf = fetchLocalProfile(cleanEmail)
-        if (localProf != null) return localProf
+        if (localProf != null && !localProf.photoUrl.isNullOrBlank()) return localProf
 
         val remoteProf = fetchUserFromFirestore(cleanEmail)
         if (remoteProf != null) {
-            saveLocalProfile(cleanEmail, remoteProf.name, remoteProf.photoUrl, remoteProf.provider, remoteProf.category)
-            return remoteProf
+            val mergedName = localProf?.name?.ifBlank { null } ?: remoteProf.name
+            val mergedPhoto = localProf?.photoUrl?.ifBlank { null } ?: remoteProf.photoUrl
+            val mergedCategory = localProf?.category?.ifBlank { null } ?: remoteProf.category
+            val merged = remoteProf.copy(name = mergedName, photoUrl = mergedPhoto, category = mergedCategory)
+            saveLocalProfile(cleanEmail, merged.name, merged.photoUrl, merged.provider, merged.category)
+            return merged
         }
 
-        return null
+        return localProf
     }
 
     suspend fun updateUserCategory(email: String, category: String): Result<Unit> {
@@ -263,4 +268,6 @@ object RoleConfig {
     suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit> = com.mpi.klass.submitAdminRequestToFirestore(email, name, photoUrl)
     suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem> = com.mpi.klass.fetchPendingAdminRequestsFromFirestore()
     suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit> = com.mpi.klass.updateAdminRequestStatusInFirestore(email, newStatus)
+    fun fetchLocalProfile(email: String): UserProfile? = com.mpi.klass.fetchLocalProfile(email)
+    suspend fun fetchRemoteUserProfile(email: String): UserProfile? = fetchUserFromFirestore(email.trim().lowercase())
 }

@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
                     callback?.invoke(null, null, null, "Google did not return an ID token")
                 }
             } catch (e: ApiException) {
-                callback?.invoke(null, null, null, e.localizedMessage ?: "গুগল সাইন-ইন ব্যর্থ হয়েছে")
+                callback?.invoke(null, null, null, e.localizedMessage ?: "গুগল সাইন-ইন ব্যর্থ হয়েছে".localized(loadAppLanguage()))
             }
         } else {
             callback?.invoke(null, null, null, null) // Cancelled by user
@@ -69,6 +69,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initThemeContext(this)
+        AppStrings.preloadCacheSync()
         applyAppLocale(this, loadAppLanguage())
         installSplashScreen()
         enableEdgeToEdge()
@@ -114,7 +115,7 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             pendingCallback = null
-            callback(null, null, null, e.localizedMessage ?: "সাইন-ইন শুরু করা যায়নি")
+            callback(null, null, null, e.localizedMessage ?: "সাইন-ইন শুরু করা যায়নি".localized(loadAppLanguage()))
         }
     }
 
@@ -147,11 +148,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         .addOnFailureListener { error ->
-                            callback(null, null, null, error.localizedMessage ?: "ইমেইল সাইন-ইন ব্যর্থ হয়েছে")
+                            callback(null, null, null, error.localizedMessage ?: "ইমেইল সাইন-ইন ব্যর্থ হয়েছে".localized(loadAppLanguage()))
                         }
                 }
         } catch (error: Exception) {
-            callback(null, null, null, error.localizedMessage ?: "Firebase কনফিগারেশন অনুপস্থিত")
+            callback(null, null, null, error.localizedMessage ?: "Firebase কনফিগারেশন অনুপস্থিত".localized(loadAppLanguage()))
         }
     }
 

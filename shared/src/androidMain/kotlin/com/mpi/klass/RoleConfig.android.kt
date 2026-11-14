@@ -53,13 +53,17 @@ suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
 actual fun saveLocalProfile(email: String, name: String, photoUrl: String?, provider: String, category: String) {
     val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return
     val cleanEmail = email.trim().lowercase()
-    prefs.edit()
-        .putString("${cleanEmail}_name", name)
-        .putString("${cleanEmail}_photo", photoUrl ?: "")
+    val editor = prefs.edit()
         .putString("${cleanEmail}_provider", provider)
         .putString("${cleanEmail}_category", category)
         .putLong("${cleanEmail}_time", System.currentTimeMillis())
-        .apply()
+    if (name.isNotBlank()) {
+        editor.putString("${cleanEmail}_name", name)
+    }
+    if (!photoUrl.isNullOrBlank()) {
+        editor.putString("${cleanEmail}_photo", photoUrl)
+    }
+    editor.apply()
 }
 
 actual fun fetchLocalProfile(email: String): UserProfile? {
@@ -212,21 +216,25 @@ actual suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: S
     if (email.isBlank()) return Result.failure(Exception("Invalid email"))
     val cleanEmail = email.trim().lowercase()
     val now = System.currentTimeMillis()
-    val data = mapOf(
+    val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to name,
-        "photo_url" to (photoUrl ?: ""),
         "role" to "ADMIN",
         "status" to "APPROVED",
         "last_login_at" to now,
         "updated_at" to now,
     )
+    if (!photoUrl.isNullOrBlank()) {
+        data["photo_url"] = photoUrl
+    }
 
-    val instances = getFirestoreInstances()
-    for ((db, _) in instances) {
-        try {
-            db.collection("admins").document(cleanEmail).set(data, SetOptions.merge())
-        } catch (_: Exception) {}
+    withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("admins").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
     }
 
     return Result.success(Unit)
@@ -241,21 +249,25 @@ actual suspend fun saveTeacherInFirestore(
     if (email.isBlank()) return Result.failure(Exception("Invalid email"))
     val cleanEmail = email.trim().lowercase()
     val now = System.currentTimeMillis()
-    val data = mapOf(
+    val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to name,
-        "photo_url" to (photoUrl ?: ""),
         "role" to "TEACHER",
         "provider" to provider,
         "registered_at" to now,
         "updated_at" to now,
     )
+    if (!photoUrl.isNullOrBlank()) {
+        data["photo_url"] = photoUrl
+    }
 
-    val instances = getFirestoreInstances()
-    for ((db, _) in instances) {
-        try {
-            db.collection("teachers").document(cleanEmail).set(data, SetOptions.merge())
-        } catch (_: Exception) {}
+    withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("teachers").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
     }
 
     return Result.success(Unit)
@@ -270,21 +282,25 @@ actual suspend fun saveStudentInFirestore(
     if (email.isBlank()) return Result.failure(Exception("Invalid email"))
     val cleanEmail = email.trim().lowercase()
     val now = System.currentTimeMillis()
-    val data = mapOf(
+    val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to name,
-        "photo_url" to (photoUrl ?: ""),
         "role" to "STUDENT",
         "provider" to provider,
         "registered_at" to now,
         "updated_at" to now,
     )
+    if (!photoUrl.isNullOrBlank()) {
+        data["photo_url"] = photoUrl
+    }
 
-    val instances = getFirestoreInstances()
-    for ((db, _) in instances) {
-        try {
-            db.collection("students").document(cleanEmail).set(data, SetOptions.merge())
-        } catch (_: Exception) {}
+    withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("students").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
     }
 
     return Result.success(Unit)
@@ -296,10 +312,8 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
     val ctx = getAppContext()
     val prefs = ctx?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE)
 
-    // 1. Save locally in SharedPreferences
-    prefs?.edit()
-        ?.putString("${cleanEmail}_student_name", profile.name)
-        ?.putString("${cleanEmail}_student_photo", profile.photoUrl ?: "")
+    // 1. Save locally in SharedPreferences (never wipe existing photo with blank)
+    val editor = prefs?.edit()
         ?.putString("${cleanEmail}_student_semester", profile.semester)
         ?.putString("${cleanEmail}_student_shift", profile.shift)
         ?.putString("${cleanEmail}_student_department", profile.department)
@@ -310,14 +324,21 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         ?.putString("${cleanEmail}_student_roll", profile.rollNumber)
         ?.putBoolean("${cleanEmail}_student_complete", profile.profileSetupComplete)
         ?.putLong("${cleanEmail}_student_time", System.currentTimeMillis())
-        ?.apply()
+    if (profile.name.isNotBlank()) {
+        editor?.putString("${cleanEmail}_name", profile.name)
+        editor?.putString("${cleanEmail}_student_name", profile.name)
+    }
+    if (!profile.photoUrl.isNullOrBlank()) {
+        editor?.putString("${cleanEmail}_photo", profile.photoUrl)
+        editor?.putString("${cleanEmail}_student_photo", profile.photoUrl)
+    }
+    editor?.apply()
 
-    // 2. Save in Firestore 'students' collection
+    // 2. Save in Firestore 'students' and 'users' collections
     val now = System.currentTimeMillis()
-    val data = mapOf(
+    val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to profile.name,
-        "photo_url" to (profile.photoUrl ?: ""),
         "semester" to profile.semester,
         "shift" to profile.shift,
         "department" to profile.department,
@@ -329,12 +350,24 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         "profile_setup_complete" to profile.profileSetupComplete,
         "updated_at" to now,
     )
+    if (!profile.photoUrl.isNullOrBlank()) {
+        data["photo_url"] = profile.photoUrl
+    }
+
+    val userPatch = mutableMapOf<String, Any>(
+        "name" to profile.name,
+        "updated_at" to now,
+    )
+    if (!profile.photoUrl.isNullOrBlank()) {
+        userPatch["photo_url"] = profile.photoUrl
+    }
 
     withTimeoutOrNull(5.seconds) {
         val instances = getFirestoreInstances()
         for ((db, _) in instances) {
             try {
                 db.collection("students").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+                db.collection("users").document(cleanEmail).set(userPatch, SetOptions.merge()).awaitTask()
             } catch (e: Exception) {
                 Log.e("StudentProfile", "Failed saving to firestore: ${e.message}")
             }
@@ -355,14 +388,14 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
     val localSemester = prefs?.getString("${cleanEmail}_student_semester", "") ?: ""
     val localDept = prefs?.getString("${cleanEmail}_student_department", "") ?: ""
     val localRoll = prefs?.getString("${cleanEmail}_student_roll", "") ?: ""
+    val localName = prefs?.getString("${cleanEmail}_student_name", "")?.ifBlank { prefs.getString("${cleanEmail}_name", "") } ?: ""
+    val localPhoto = prefs?.getString("${cleanEmail}_student_photo", "")?.ifBlank { prefs.getString("${cleanEmail}_photo", "")?.ifBlank { null } }
 
-    if (localComplete || localSemester.isNotBlank() || localDept.isNotBlank() || localRoll.isNotBlank()) {
-        val name = prefs?.getString("${cleanEmail}_student_name", "")?.ifBlank { prefs.getString("${cleanEmail}_name", "") } ?: ""
-        val photoUrl = prefs?.getString("${cleanEmail}_student_photo", "")?.ifBlank { prefs.getString("${cleanEmail}_photo", "")?.ifBlank { null } }
+    if (localComplete || localSemester.isNotBlank() || localDept.isNotBlank() || localRoll.isNotBlank() || !localPhoto.isNullOrBlank() || localName.isNotBlank()) {
         return StudentProfile(
             email = cleanEmail,
-            name = name,
-            photoUrl = photoUrl,
+            name = localName,
+            photoUrl = localPhoto,
             semester = localSemester,
             shift = prefs?.getString("${cleanEmail}_student_shift", "") ?: "",
             department = localDept,
@@ -398,9 +431,7 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         profileSetupComplete = (d["profile_setup_complete"] as? Boolean) ?: true,
                     )
                     // Cache locally
-                    prefs?.edit()
-                        ?.putString("${cleanEmail}_student_name", p.name)
-                        ?.putString("${cleanEmail}_student_photo", p.photoUrl ?: "")
+                    val cacheEditor = prefs?.edit()
                         ?.putString("${cleanEmail}_student_semester", p.semester)
                         ?.putString("${cleanEmail}_student_shift", p.shift)
                         ?.putString("${cleanEmail}_student_department", p.department)
@@ -410,7 +441,15 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         ?.putString("${cleanEmail}_student_address", p.address)
                         ?.putString("${cleanEmail}_student_roll", p.rollNumber)
                         ?.putBoolean("${cleanEmail}_student_complete", p.profileSetupComplete)
-                        ?.apply()
+                    if (p.name.isNotBlank()) {
+                        cacheEditor?.putString("${cleanEmail}_name", p.name)
+                        cacheEditor?.putString("${cleanEmail}_student_name", p.name)
+                    }
+                    if (!p.photoUrl.isNullOrBlank()) {
+                        cacheEditor?.putString("${cleanEmail}_photo", p.photoUrl)
+                        cacheEditor?.putString("${cleanEmail}_student_photo", p.photoUrl)
+                    }
+                    cacheEditor?.apply()
                     return@withTimeoutOrNull p
                 }
             } catch (_: Exception) {}
@@ -434,19 +473,23 @@ actual suspend fun saveUserInFirestore(
     if (email.isBlank()) return Result.failure(Exception("Invalid email"))
     val cleanEmail = email.trim().lowercase()
     val now = System.currentTimeMillis()
-    val data = mapOf(
+    val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to name,
-        "photo_url" to (photoUrl ?: ""),
         "provider" to provider,
         "category" to category,
         "updated_at" to now,
     )
-    val instances = getFirestoreInstances()
-    for ((db, _) in instances) {
-        try {
-            db.collection("users").document(cleanEmail).set(data, SetOptions.merge())
-        } catch (_: Exception) {}
+    if (!photoUrl.isNullOrBlank()) {
+        data["photo_url"] = photoUrl
+    }
+    withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                db.collection("users").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+            } catch (_: Exception) {}
+        }
     }
     return Result.success(Unit)
 }
@@ -457,6 +500,29 @@ actual suspend fun fetchUserFromFirestore(email: String): UserProfile? {
     val instances = getFirestoreInstances()
 
     for ((db, _) in instances) {
+        // Try 'admins'
+        try {
+            val doc = db.collection("admins").document(cleanEmail).get().awaitTask()
+            if (doc.exists()) {
+                val data = doc.data
+                if (data != null) {
+                    val photo = (data["photo_url"] as? String)?.ifBlank { null }
+                    val name = (data["name"] as? String) ?: ""
+                    if (name.isNotBlank() || photo != null) {
+                        return UserProfile(
+                            email = (data["email"] as? String) ?: cleanEmail,
+                            name = name,
+                            photoUrl = photo,
+                            provider = (data["provider"] as? String) ?: "google",
+                            category = "ADMIN",
+                            registeredAt = (data["registered_at"] as? Long) ?: 0L,
+                            updatedAt = (data["updated_at"] as? Long) ?: 0L,
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
         // Try 'teachers'
         try {
             val doc = db.collection("teachers").document(cleanEmail).get().awaitTask()

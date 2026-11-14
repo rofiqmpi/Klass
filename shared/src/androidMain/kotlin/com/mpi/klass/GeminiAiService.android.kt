@@ -31,7 +31,7 @@ actual object GeminiAiService {
             return accumulated.toString()
         } catch (e: TimeoutCancellationException) {
             Log.e(TAG, "Streaming timed out", e)
-            throw IllegalStateException("AI প্রতিক্রিয়া সময়সীমা অতিক্রান্ত হয়েছে (Timeout). অনুগ্রহ করে আবার চেষ্টা করুন।")
+            throw IllegalStateException("AI প্রতিক্রিয়া সময়সীমা অতিক্রান্ত হয়েছে (Timeout). অনুগ্রহ করে আবার চেষ্টা করুন।".localized(loadAppLanguage()))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -52,7 +52,7 @@ actual object GeminiAiService {
             return text
         } catch (e: TimeoutCancellationException) {
             Log.e(TAG, "Generation timed out", e)
-            throw IllegalStateException("AI প্রতিক্রিয়া সময়সীমা অতিক্রান্ত হয়েছে (Timeout). অনুগ্রহ করে আবার চেষ্টা করুন।")
+            throw IllegalStateException("AI প্রতিক্রিয়া সময়সীমা অতিক্রান্ত হয়েছে (Timeout). অনুগ্রহ করে আবার চেষ্টা করুন।".localized(loadAppLanguage()))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

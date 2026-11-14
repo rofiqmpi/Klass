@@ -16,13 +16,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +51,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
@@ -98,6 +102,7 @@ fun MenuScreen(
     onClassroomClick: () -> Unit = {},
     onBooksClick: () -> Unit = {},
     onTeachersClick: () -> Unit = {},
+    topContentPadding: Dp = 0.dp,
 ) {
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
@@ -107,11 +112,17 @@ fun MenuScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top,
     ) {
-        Spacer(modifier = Modifier.height(4.dp))
+        if (topContentPadding > 0.dp) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(topContentPadding))
+        } else {
+            Spacer(modifier = Modifier.height(20.dp))
+        }
 
         // 1. Profile Settings Card (TOP-MOST - For Everyone)
         ProfessionalMenuCard(
@@ -256,7 +267,7 @@ fun MenuScreen(
                             Image(
                                 painter = painterResource(Res.drawable.bg_menu_security),
                                 contentDescription = null,
-                                modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                                modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.45f),
                                 contentScale = ContentScale.Crop,
                             )
                             // Gradient Overlay ensuring readability
@@ -311,7 +322,7 @@ fun MenuScreen(
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "নতুন সাইন ইন নিয়ন্ত্রণ",
+                                                text = "নতুন সাইন ইন নিয়ন্ত্রণ".localized(),
                                                 fontSize = 16.5.sp,
                                                 fontFamily = hindSiliguri,
                                                 fontWeight = FontWeight.Bold,
@@ -328,7 +339,7 @@ fun MenuScreen(
                                         }
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = if (isExpanded) "অ্যাডমিন, শিক্ষক ও শিক্ষার্থী সাইন ইন পারমিশন" else "ক্লিক করে সেটিংস প্যানেল খুলুন",
+                                            text = if (isExpanded) "অ্যাডমিন, শিক্ষক ও শিক্ষার্থী সাইন ইন পারমিশন".localized() else "ক্লিক করে সেটিংস প্যানেল খুলুন".localized(),
                                             fontSize = 12.sp,
                                             fontFamily = hindSiliguri,
                                             color = subTextColor,
@@ -384,7 +395,7 @@ fun MenuScreen(
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Text(
-                                text = "সাইন ইন বন্ধ রাখলে শুধুমাত্র পূর্বের রেজিস্টার্ড ব্যবহারকারীরা লগইন করতে পারবেন। নতুনদের জন্য প্রবেশ বন্ধ থাকবে।",
+                                text = "সাইন ইন বন্ধ রাখলে শুধুমাত্র পূর্বের রেজিস্টার্ড ব্যবহারকারীরা লগইন করতে পারবেন। নতুনদের জন্য প্রবেশ বন্ধ থাকবে।".localized(),
                                 fontSize = 11.5.sp,
                                 fontFamily = hindSiliguri,
                                 color = subTextColor,
@@ -394,7 +405,7 @@ fun MenuScreen(
                             Spacer(modifier = Modifier.height(14.dp))
 
                             ThreeDSignInControlRow(
-                                title = "এডমিন সাইন ইন",
+                                title = "এডমিন সাইন ইন".localized(),
                                 iconVector = CrownIcon,
                                 iconTint = Color(0xFFD97706),
                                 isEnabled = signInControl.adminSignInEnabled,
@@ -418,7 +429,7 @@ fun MenuScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             ThreeDSignInControlRow(
-                                title = "শিক্ষক সাইন ইন",
+                                title = "শিক্ষক সাইন ইন".localized(),
                                 iconVector = GraduationCapIcon,
                                 iconTint = Color(0xFF059669),
                                 isEnabled = signInControl.teacherSignInEnabled,
@@ -442,7 +453,7 @@ fun MenuScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             ThreeDSignInControlRow(
-                                title = "শিক্ষার্থী সাইন ইন",
+                                title = "শিক্ষার্থী সাইন ইন".localized(),
                                 iconVector = BookIcon,
                                 iconTint = Color(0xFF0284C7),
                                 isEnabled = signInControl.studentSignInEnabled,
@@ -495,7 +506,7 @@ fun MenuScreen(
                             Image(
                                 painter = painterResource(Res.drawable.bg_menu_requests),
                                 contentDescription = null,
-                                modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                                modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.45f),
                                 contentScale = ContentScale.Crop,
                             )
                             // Gradient Overlay ensuring readability
@@ -550,7 +561,7 @@ fun MenuScreen(
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "এডমিন রিকোয়েস্ট ও অনুমোদন",
+                                                text = "এডমিন রিকোয়েস্ট ও অনুমোদন".localized(),
                                                 fontSize = 16.5.sp,
                                                 fontFamily = hindSiliguri,
                                                 fontWeight = FontWeight.Bold,
@@ -582,7 +593,7 @@ fun MenuScreen(
                                         }
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = if (pendingRequests.isNotEmpty()) "${pendingRequests.size} টি আবেদন অনুমোদনের অপেক্ষায়" else "কোনো পেন্ডিং আবেদন নেই",
+                                            text = if (pendingRequests.isNotEmpty()) "${pendingRequests.size} ${"টি আবেদন অনুমোদনের অপেক্ষায়".localized()}" else "কোনো পেন্ডিং আবেদন নেই".localized(),
                                             fontSize = 12.sp,
                                             fontFamily = hindSiliguri,
                                             color = subTextColor,
@@ -639,7 +650,7 @@ fun MenuScreen(
 
                             if (pendingRequests.isEmpty()) {
                                 Text(
-                                    text = "বর্তমানে কোনো পেন্ডিং এডমিন অ্যাক্সেস রিকোয়েস্ট নেই।",
+                                    text = "বর্তমানে কোনো পেন্ডিং এডমিন অ্যাক্সেস রিকোয়েস্ট নেই।".localized(),
                                     fontSize = 12.sp,
                                     fontFamily = hindSiliguri,
                                     color = subTextColor,
@@ -749,7 +760,7 @@ private fun ThreeDThemeCard(
                     Image(
                         painter = painterResource(Res.drawable.bg_menu_theme),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                        modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.45f),
                         contentScale = ContentScale.Crop,
                     )
                     // Gradient Overlay ensuring readability
@@ -803,7 +814,7 @@ private fun ThreeDThemeCard(
 
                             Column {
                                 Text(
-                                    text = "অ্যাপ থিম পরিবর্তন",
+                                    text = "অ্যাপ থিম পরিবর্তন".localized(),
                                     fontSize = 16.5.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Bold,
@@ -811,7 +822,7 @@ private fun ThreeDThemeCard(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = if (isExpanded) "লাইট, ডার্ক অথবা অটো থিম সিলেক্ট করুন" else "ক্লিক করে থিম সেটিংস খুলুন",
+                                    text = if (isExpanded) "লাইট, ডার্ক অথবা অটো থিম সিলেক্ট করুন".localized() else "ক্লিক করে থিম সেটিংস খুলুন".localized(),
                                     fontSize = 12.sp,
                                     fontFamily = hindSiliguri,
                                     color = subTextColor,
@@ -880,12 +891,12 @@ private fun ThreeDThemeCard(
                             val isSelected = currentThemeMode == mode
 
                             ThreeDThemeOptionButton(
-                                text = label,
+                                text = label.localized(),
                                 iconVector = icon,
                                 isSelected = isSelected,
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.height(44.dp).weight(1f),
                                 onClick = { onThemeModeChange(mode) },
                             )
                         }
@@ -950,7 +961,7 @@ private fun ThreeDSignInControlRow(
                         color = textColor,
                     )
                     Text(
-                        text = if (isEnabled) "চালু আছে" else "বন্ধ রয়েছে",
+                        text = if (isEnabled) "চালু আছে".localized() else "বন্ধ রয়েছে".localized(),
                         fontSize = 11.5.sp,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.Medium,
@@ -1080,7 +1091,7 @@ private fun ProfessionalMenuCard(
                 Image(
                     painter = bgImagePainter,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.22f),
+                    modifier = Modifier.fillMaxSize().graphicsLayer(alpha = 0.45f),
                     contentScale = ContentScale.Crop,
                 )
                 // Smooth gradient overlay to keep text ultra-crisp and legible
@@ -1118,7 +1129,7 @@ private fun ProfessionalMenuCard(
                     ) {
                         Image(
                             painter = imagePainter,
-                            contentDescription = title,
+                            contentDescription = title.localized(),
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)),
                             contentScale = ContentScale.Crop,
                         )
@@ -1242,7 +1253,7 @@ private fun AdminRequestRowItem(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text = item.name.ifBlank { "এডমিন রিকোয়েস্টকারী" },
+                            text = item.name.ifBlank { "এডমিন রিকোয়েস্টকারী".localized() },
                             fontSize = 14.5.sp,
                             fontFamily = hindSiliguri,
                             fontWeight = FontWeight.Bold,
@@ -1268,7 +1279,7 @@ private fun AdminRequestRowItem(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "অপেক্ষমাণ",
+                                    text = "অপেক্ষমাণ".localized(),
                                     fontSize = 10.5.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Bold,
@@ -1306,7 +1317,7 @@ private fun AdminRequestRowItem(
             ) {
                 // Independent Approve Button (Green 3D)
                 ThreeDActionButton(
-                    text = "অনুমোদন করুন",
+                    text = "অনুমোদন করুন".localized(),
                     iconVector = CheckIcon,
                     baseColor = Color(0xFF047857),
                     surfaceColor = Color(0xFF10B981),
@@ -1320,7 +1331,7 @@ private fun AdminRequestRowItem(
 
                 // Independent Decline Button (Red 3D)
                 ThreeDActionButton(
-                    text = "প্রত্যাখ্যান করুন",
+                    text = "প্রত্যাখ্যান করুন".localized(),
                     iconVector = CloseIcon,
                     baseColor = Color(0xFFB91C1C),
                     surfaceColor = Color(0xFFEF4444),
@@ -1436,7 +1447,7 @@ private fun ThreeDThemeOptionButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(12.dp)
 
     val activeColor = Color(0xFF6366F1)
     val activeBaseColor = Color(0xFF4338CA)
@@ -1446,13 +1457,19 @@ private fun ThreeDThemeOptionButton(
     val borderColor = if (isSelected) activeColor.copy(alpha = 0.85f) else (if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1))
 
     val pressOffset by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isPressed) 3.5.dp else 0.dp,
+        targetValue = if (isPressed) 3.5.dp else if (isSelected) 1.5.dp else 0.dp,
         animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessHigh),
         label = "ThemeButtonPress",
     )
 
+    val pressScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessHigh),
+        label = "ThemeButtonScale",
+    )
+
     Box(
-        modifier = modifier.aspectRatio(1f),
+        modifier = modifier,
         contentAlignment = Alignment.TopCenter,
     ) {
         // 3D Shadow Base
@@ -1473,39 +1490,28 @@ private fun ThreeDThemeOptionButton(
             border = BorderStroke(1.2.dp, borderColor),
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer(scaleX = pressScale, scaleY = pressScale)
                 .offset(y = pressOffset),
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 6.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Icon circular container
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) Color.White.copy(alpha = 0.22f)
-                            else (if (isDark) Color(0xFF334155).copy(alpha = 0.5f) else Color(0xFFE2E8F0))
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = if (isSelected) Color.White else activeColor,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = if (isSelected) Color.White else activeColor,
+                    modifier = Modifier.size(17.dp),
+                )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 Text(
                     text = text,
-                    fontSize = 13.sp,
+                    fontSize = 12.5.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Bold,
                     color = contentColor,

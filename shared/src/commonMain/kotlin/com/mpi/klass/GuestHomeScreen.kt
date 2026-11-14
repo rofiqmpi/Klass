@@ -1,5 +1,11 @@
 package com.mpi.klass
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,12 +13,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.SparkleIcon
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,16 +46,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,270 +136,81 @@ fun GuestHomeScreen(
         bottomEnd = bottomRadius,
     )
 
+    val activeBaseTab = tabBackStack.lastOrNull { it == "home" || it == "menu" } ?: "home"
+    val overlayTab = if (selectedTab == "home" || selectedTab == "menu") null else selectedTab
+
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { 2 },
+    )
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                val pageTab = if (page == 0) "home" else "menu"
+                val current = tabBackStack.lastOrNull() ?: "home"
+                if ((current == "home" || current == "menu") && current != pageTab) {
+                    if (pageTab == "home" && tabBackStack.size >= 2 && tabBackStack[tabBackStack.lastIndex - 1] == "home") {
+                        tabBackStack.removeAt(tabBackStack.lastIndex)
+                    } else {
+                        tabBackStack.add(pageTab)
+                    }
+                }
+            }
+    }
+
+    LaunchedEffect(activeBaseTab) {
+        val targetPage = if (activeBaseTab == "menu") 1 else 0
+        if (pagerState.currentPage != targetPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
+    }
+
     AppBackHandler(enabled = true) {
         goBack()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
+    val dragController = rememberSwipeIconDragController()
+
+    CompositionLocalProvider(LocalSwipeIconDragController provides dragController) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .onGloballyPositioned { coords ->
+                    dragController.rootOffsetInWindow = coords.positionInWindow()
+                    dragController.rootSize = coords.size
+                },
         ) {
-            val darkerSkyBlue = Color(0xFF5B9BD5)
-            val headerGradient = Brush.verticalGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.background,
-                    darkerSkyBlue,
-                ),
-            )
-            val transparentBrush = Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
-
-            // Header
-            if (selectedTab != "ai") {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    color = Color.Transparent,
-                    shadowElevation = if (selectedTab == "home") 6.dp else 0.dp,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(if (selectedTab == "home") headerGradient else transparentBrush),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .statusBarsPadding()
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            when (selectedTab) {
-                                "home" -> {
-                                    // Left Side: Profile Button & Separated Bar with a subtle gap
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Surface(
-                                            onClick = { navigateTo("profile") },
-                                            shape = CircleShape,
-                                            color = cardBg,
-                                            border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                            modifier = Modifier.size(50.dp).clip(CircleShape),
-                                            shadowElevation = 5.dp,
-                                        ) {
-                                            if (!currentPhotoUrl.isNullOrBlank()) {
-                                                AsyncImage(
-                                                    model = currentPhotoUrl,
-                                                    contentDescription = "Profile Photo",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop,
-                                                )
-                                            } else {
-                                                DynamicAvatar(
-                                                    seed = guestSeed,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Surface(
-                                            onClick = { },
-                                            shape = CircleShape,
-                                            color = cardBg,
-                                            border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                            modifier = Modifier
-                                                .height(40.dp)
-                                                .width(160.dp),
-                                            shadowElevation = 2.dp,
-                                        ) {}
-                                    }
-                                }
-                                "menu" -> {
-                                    // Menu Screen Top Bar: Close button + "মেনু" text on left
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Surface(
-                                            onClick = { goBack() },
-                                            shape = CircleShape,
-                                            color = cardBg,
-                                            border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                            modifier = Modifier.size(50.dp), // Hubhu notification button size (50x50)
-                                            shadowElevation = 4.dp,
-                                        ) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Icon(
-                                                    imageVector = CloseIcon,
-                                                    contentDescription = "বন্ধ করুন",
-                                                    tint = if (isDark) Color.White else Color.Black,
-                                                    modifier = Modifier.size(24.dp),
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "মেনু",
-                                            fontSize = 20.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor,
-                                        )
-                                    }
-                                }
-                                "profile" -> {
-                                    // Profile Screen Top Bar: Close button + "প্রোফাইল" text on left
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Surface(
-                                            onClick = { goBack() },
-                                            shape = CircleShape,
-                                            color = cardBg,
-                                            border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                            modifier = Modifier.size(50.dp), // Hubhu notification button size (50x50)
-                                            shadowElevation = 4.dp,
-                                        ) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Icon(
-                                                    imageVector = CloseIcon,
-                                                    contentDescription = "বন্ধ করুন",
-                                                    tint = if (isDark) Color.White else Color.Black,
-                                                    modifier = Modifier.size(24.dp),
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "প্রোফাইল",
-                                            fontSize = 20.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textColor,
-                                        )
-                                    }
-                                }
-                                "notification" -> {
-                                    Text(
-                                        text = "নোটিফিকেশন",
-                                        fontSize = 20.sp,
-                                        fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Bold,
-                                        color = textColor,
-                                    )
-                                }
-                            }
-
-                            // Right Side: AI Assistant Button + Notification/Close Button
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                if (selectedTab != "ai") {
-                                    Surface(
-                                        onClick = { navigateTo("ai") },
-                                        shape = CircleShape,
-                                        color = cardBg,
-                                        border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                        modifier = Modifier.size(50.dp),
-                                        shadowElevation = 4.dp,
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Icon(
-                                                imageVector = SparkleIcon,
-                                                contentDescription = "AI সহকারী",
-                                                tint = Color(0xFF8B5CF6),
-                                                modifier = Modifier.size(24.dp),
-                                            )
-                                        }
-                                    }
-                                }
-
-                                if (selectedTab == "notification") {
-                                    Surface(
-                                        onClick = { goBack() },
-                                        shape = CircleShape,
-                                        color = cardBg,
-                                        border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                        modifier = Modifier.size(50.dp),
-                                        shadowElevation = 4.dp,
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Icon(
-                                                imageVector = CloseIcon,
-                                                contentDescription = "বন্ধ করুন",
-                                                tint = if (isDark) Color.White else Color.Black,
-                                                modifier = Modifier.size(24.dp),
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Surface(
-                                        onClick = { navigateTo("notification") },
-                                        shape = CircleShape,
-                                        color = cardBg,
-                                        border = BorderStroke(1.2.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                        modifier = Modifier.size(50.dp),
-                                        shadowElevation = 4.dp,
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(Res.drawable.notification),
-                                                contentDescription = "নোটিফিকেশন",
-                                                tint = if (isDark) Color.White else Color.Black,
-                                                modifier = Modifier.size(24.dp),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Bottom borderline (Visible ONLY on Home screen!)
-                if (selectedTab == "home") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .background(if (isDark) Color.White else Color.Black),
-                    )
-                }
-            }
-
-            // Center Content
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            ) {
-                when (selectedTab) {
-                    "home" -> {
+        // Base Layer: Only Home <-> Menu swipe left/right together with their headers & bottom bar
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = overlayTab == null,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
+            when (page) {
+                0 -> {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        HomeRoutineHeader(
+                            isDark = isDark,
+                            cardBg = cardBg,
+                            photoUrl = currentPhotoUrl,
+                            avatarSeed = guestSeed,
+                            onProfileClick = { navigateTo("profile") },
+                            onAiClick = { navigateTo("ai") },
+                            onNotificationClick = { navigateTo("notification") },
+                        )
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                                .height(0.5.dp)
+                                .background(if (isDark) Color.White else Color.Black),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
                                 .padding(3.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -394,30 +220,80 @@ fun GuestHomeScreen(
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
-                    }
-                    "menu" -> {
-                        MenuScreen(
+                        HomeMenuBottomBar(
+                            isHomeSelected = true,
                             isDark = isDark,
+                            cardBg = cardBg,
                             hindSiliguri = hindSiliguri,
-                            currentThemeMode = currentThemeMode,
-                            onThemeModeChange = onThemeModeChange,
-                            onProfileClick = { navigateTo("profile") },
-                            onAiClick = { navigateTo("ai") },
-                            onNoticeClick = { navigateTo("notification") },
+                            homeShape = homeShape,
+                            menuShape = menuShape,
+                            onHomeClick = { navigateTo("home") },
+                            onMenuClick = { navigateTo("menu") },
                         )
                     }
-                    "ai" -> {
-                        AiAssistantScreen(
+                }
+                else -> {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                        ) {
+                            MenuScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                currentThemeMode = currentThemeMode,
+                                onThemeModeChange = onThemeModeChange,
+                                onProfileClick = { navigateTo("profile") },
+                                onAiClick = { navigateTo("ai") },
+                                onNoticeClick = { navigateTo("notification") },
+                                topContentPadding = 72.dp,
+                            )
+                            FloatingFadeTopHeader(
+                                title = "মেনু".localized(),
+                                isDark = isDark,
+                                cardBg = cardBg,
+                                textColor = textColor,
+                                hindSiliguri = hindSiliguri,
+                                onCloseClick = { goBack() },
+                                onAiClick = { navigateTo("ai") },
+                                onNotificationClick = { navigateTo("notification") },
+                                modifier = Modifier.align(Alignment.TopCenter),
+                            )
+                        }
+                        HomeMenuBottomBar(
+                            isHomeSelected = false,
                             isDark = isDark,
+                            cardBg = cardBg,
                             hindSiliguri = hindSiliguri,
-                            onBack = { goBack() },
-                            userDisplayName = currentUserName,
+                            homeShape = homeShape,
+                            menuShape = menuShape,
+                            onHomeClick = { navigateTo("home") },
+                            onMenuClick = { navigateTo("menu") },
                         )
                     }
-                    "notification" -> {
-                        NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)
-                    }
-                    "profile" -> {
+                }
+            }
+        }
+
+        // Secondary Overlay Layer (Profile, Notification, AI) with fade in / fade out (no horizontal swipe)
+        AnimatedContent(
+            targetState = overlayTab,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(260)) togetherWith fadeOut(animationSpec = tween(220))
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(20f),
+            label = "GuestOverlayTabTransition",
+        ) { tab ->
+            when (tab) {
+                "profile" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
                         ProfileScreen(
                             userName = currentUserName,
                             role = null,
@@ -428,6 +304,7 @@ fun GuestHomeScreen(
                             hindSiliguri = hindSiliguri,
                             email = guestSeed,
                             photoUrl = currentPhotoUrl,
+                            topContentPadding = 72.dp,
                             onUpdateProfile = { newName, newPhotoUrl ->
                                 currentUserName = newName
                                 currentPhotoUrl = newPhotoUrl
@@ -441,150 +318,65 @@ fun GuestHomeScreen(
                                 )
                             },
                         )
+                        FloatingFadeTopHeader(
+                            title = "প্রোফাইল".localized(),
+                            isDark = isDark,
+                            cardBg = cardBg,
+                            textColor = textColor,
+                            hindSiliguri = hindSiliguri,
+                            onCloseClick = { goBack() },
+                            onAiClick = { navigateTo("ai") },
+                            onNotificationClick = { navigateTo("notification") },
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
                     }
                 }
-
-
-            }
-
-            // Bottom Navigation Bar (Visible on "home" and "menu" screens)
-            if (selectedTab == "home" || selectedTab == "menu") {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = cardBg,
-                    shadowElevation = 8.dp,
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
+                "notification" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(0.5.dp)
-                                .background(if (isDark) Color.White else Color.Black),
+                        NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)
+                        FloatingFadeTopHeader(
+                            title = "নোটিফিকেশন".localized(),
+                            isDark = isDark,
+                            cardBg = cardBg,
+                            textColor = textColor,
+                            hindSiliguri = hindSiliguri,
+                            showLeftClose = false,
+                            showRightClose = true,
+                            onCloseClick = { goBack() },
+                            onAiClick = { navigateTo("ai") },
+                            onNotificationClick = { navigateTo("notification") },
+                            modifier = Modifier.align(Alignment.TopCenter),
                         )
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(70.dp)
-                                .padding(horizontal = 2.dp, vertical = 2.dp),
-                        ) {
-                            val homeInteractionSource = remember { MutableInteractionSource() }
-                            val isHomePressed by homeInteractionSource.collectIsPressedAsState()
-
-                            val menuInteractionSource = remember { MutableInteractionSource() }
-                            val isMenuPressed by menuInteractionSource.collectIsPressedAsState()
-
-                            val isHomeSelected = selectedTab == "home"
-                            val isMenuSelected = selectedTab == "menu"
-
-                            Row(
-                                modifier = Modifier
-                                    .offset(y = 3.dp)
-                                    .fillMaxWidth()
-                                    .height(63.dp),
-                                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(63.dp)
-                                        .clip(homeShape)
-                                        .background(if (isHomeSelected) Color(0xFF8E7864) else Color(0xFF94A3B8)),
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(63.dp)
-                                        .clip(menuShape)
-                                        .background(if (isMenuSelected) Color(0xFF8E7864) else Color(0xFF94A3B8)),
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(63.dp),
-                                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Button(
-                                    onClick = { navigateTo("home") },
-                                    interactionSource = homeInteractionSource,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(63.dp)
-                                        .offset(y = if (isHomePressed) 3.dp else 0.dp),
-                                    shape = homeShape,
-                                    border = BorderStroke(0.5.dp, if (isHomeSelected) Color(0xFF8E7864) else Color(0xFF94A3B8)),
-                                    contentPadding = PaddingValues(2.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isHomeSelected) Color(0xFF8CB9D9) else (if (isDark) Color(0xFF1E293B) else Color.White),
-                                        contentColor = if (isDark) Color.White else Color.Black,
-                                    ),
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.home),
-                                            contentDescription = "রুটিন",
-                                            tint = if (isDark) Color.White else Color.Black,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                        Text(
-                                            text = "রুটিন",
-                                            fontSize = 11.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDark) Color.White else Color.Black,
-                                        )
-                                    }
-                                }
-
-                                Button(
-                                    onClick = { navigateTo("menu") },
-                                    interactionSource = menuInteractionSource,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(63.dp)
-                                        .offset(y = if (isMenuPressed) 3.dp else 0.dp),
-                                    shape = menuShape,
-                                    border = BorderStroke(0.5.dp, if (isMenuSelected) Color(0xFF8E7864) else Color(0xFF94A3B8)),
-                                    contentPadding = PaddingValues(0.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isMenuSelected) Color(0xFF8CB9D9) else (if (isDark) Color(0xFF1E293B) else Color.White),
-                                        contentColor = if (isDark) Color.White else Color.Black,
-                                    ),
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(Res.drawable.menu),
-                                            contentDescription = "মেনু",
-                                            tint = if (isDark) Color.White else Color.Black,
-                                            modifier = Modifier.size(22.dp),
-                                        )
-                                        Text(
-                                            text = "মেনু",
-                                            fontSize = 12.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDark) Color.White else Color.Black,
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                    }
+                }
+                "ai" -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
+                        AiAssistantScreen(
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onBack = { goBack() },
+                            userDisplayName = currentUserName,
+                        )
                     }
                 }
             }
         }
+
+        // Top-most floating screen-window morph overlay above ALL UI layers
+        SwipeDragWindowOverlay(
+            controller = dragController,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+        )
+    }
     }
 }
 

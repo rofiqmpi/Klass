@@ -10,8 +10,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -160,8 +158,12 @@ fun App(
         activeErrorType = type
     }
 
-    // Verify saved session in background silently without blocking or logging out on network failure
+    // Verify saved session & initialize online dynamic language dictionary on startup
     LaunchedEffect(Unit) {
+        AppStrings.preloadCacheSync()
+        coroutineScope.launch {
+            AppStrings.initializeOnlineDictionary()
+        }
         val session = loadUserSession() ?: return@LaunchedEffect
         if (session.role.trim().uppercase() == "GUEST") return@LaunchedEffect
         try {
@@ -200,18 +202,30 @@ fun App(
                                 }
                             }
 
-                            val userName = name ?: cleanEmail.substringBefore("@")
+                            val localAdminProf = RoleConfig.fetchLocalProfile(cleanEmail)
+                            val remoteAdminProf = RoleConfig.fetchRemoteUserProfile(cleanEmail)
+                            val savedAdminName = localAdminProf?.name?.ifBlank { null }
+                                ?: remoteAdminProf?.name?.ifBlank { null }
+                            val adminPhotoCandidates = listOfNotNull(
+                                localAdminProf?.photoUrl?.ifBlank { null },
+                                remoteAdminProf?.photoUrl?.ifBlank { null },
+                            )
+                            val savedAdminPhoto = adminPhotoCandidates.firstOrNull { it.startsWith("data:image") }
+                                ?: adminPhotoCandidates.firstOrNull()
+
+                            val userName = savedAdminName ?: name ?: cleanEmail.substringBefore("@")
+                            val finalAdminPhoto = savedAdminPhoto ?: photoUrl
                             val adminStatus = RoleConfig.getAdminStatusFromFirestore(cleanEmail)
                             when (adminStatus) {
                                 AdminStatus.APPROVED -> {
-                                    RoleConfig.saveAdminEmail(cleanEmail, userName, photoUrl)
-                                    RoleConfig.saveUserProfile(cleanEmail, userName, photoUrl, "google", UserRole.ADMIN.name)
-                                    saveUserSession(UserSession(role = UserRole.ADMIN.name, email = cleanEmail, name = userName, photoUrl = photoUrl))
+                                    RoleConfig.saveAdminEmail(cleanEmail, userName, finalAdminPhoto)
+                                    RoleConfig.saveUserProfile(cleanEmail, userName, finalAdminPhoto, "google", UserRole.ADMIN.name)
+                                    saveUserSession(UserSession(role = UserRole.ADMIN.name, email = cleanEmail, name = userName, photoUrl = finalAdminPhoto))
                                     currentScreen = AppScreen.RoleHome(
                                         role = UserRole.ADMIN,
                                         email = cleanEmail,
                                         name = userName,
-                                        photoUrl = photoUrl,
+                                        photoUrl = finalAdminPhoto,
                                     )
                                     isLoadingOverlay = false
                                 }
@@ -226,7 +240,7 @@ fun App(
                                     showError(ErrorImageType.ADMIN_REQUEST_DECLINED)
                                 }
                                 AdminStatus.NOT_REQUESTED -> {
-                                    RoleConfig.submitAdminRequestToFirestore(cleanEmail, userName, photoUrl)
+                                    RoleConfig.submitAdminRequestToFirestore(cleanEmail, userName, finalAdminPhoto)
                                     isLoadingOverlay = false
                                     onSignOutGoogle()
                                     showError(ErrorImageType.ADMIN_REQUEST_PENDING)
@@ -265,11 +279,23 @@ fun App(
                             }
                         }
 
+                        val localProfile = RoleConfig.fetchLocalProfile(cleanEmail)
+                        val remoteProfile = RoleConfig.fetchRemoteUserProfile(cleanEmail)
                         val studentProf = if (actualRole == UserRole.STUDENT) RoleConfig.fetchStudentProfile(cleanEmail) else null
-                        val savedName = studentProf?.name?.takeIf { it.isNotBlank() } 
-                            ?: existingProfile?.name?.takeIf { it.isNotBlank() }
-                        val savedPhoto = studentProf?.photoUrl?.takeIf { it.isNotBlank() } 
-                            ?: existingProfile?.photoUrl?.takeIf { it.isNotBlank() }
+
+                        val savedName = localProfile?.name?.ifBlank { null }
+                            ?: studentProf?.name?.ifBlank { null }
+                            ?: existingProfile?.name?.ifBlank { null }
+                            ?: remoteProfile?.name?.ifBlank { null }
+
+                        val photoCandidates = listOfNotNull(
+                            localProfile?.photoUrl?.ifBlank { null },
+                            studentProf?.photoUrl?.ifBlank { null },
+                            existingProfile?.photoUrl?.ifBlank { null },
+                            remoteProfile?.photoUrl?.ifBlank { null },
+                        )
+                        val savedPhoto = photoCandidates.firstOrNull { it.startsWith("data:image") }
+                            ?: photoCandidates.firstOrNull()
 
                         val finalName = savedName ?: name ?: cleanEmail.substringBefore("@")
                         val finalPhoto = savedPhoto ?: photoUrl
@@ -335,8 +361,7 @@ fun App(
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
-                        (fadeIn(animationSpec = tween(400)) + slideInHorizontally(animationSpec = tween(400)) { it }) togetherWith
-                            (fadeOut(animationSpec = tween(400)) + slideOutHorizontally(animationSpec = tween(400)) { -it })
+                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(250))
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) { screen ->
@@ -352,6 +377,11 @@ fun App(
                                 onLanguageChange = { newLanguage ->
                                     appLanguage = newLanguage
                                     saveAppLanguage(newLanguage)
+                                    if (newLanguage == AppLanguage.ENGLISH) {
+                                        coroutineScope.launch {
+                                            AppStrings.initializeOnlineDictionary()
+                                        }
+                                    }
                                 },
                                 onGuestClick = { launchGuestMode() },
                                 onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
@@ -596,7 +626,7 @@ fun ErrorImagePopup(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = title,
+                        text = title.localized(),
                         fontFamily = fontBengali,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
@@ -607,7 +637,7 @@ fun ErrorImagePopup(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = description,
+                        text = description.localized(),
                         fontFamily = fontBengali,
                         fontWeight = FontWeight.Normal,
                         fontSize = 13.sp,
@@ -626,7 +656,7 @@ fun ErrorImagePopup(
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Text(
-                                text = "করণীয়:",
+                                text = "করণীয়:".localized(),
                                 fontFamily = fontBengali,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
@@ -648,7 +678,7 @@ fun ErrorImagePopup(
                                         color = titleColor,
                                     )
                                     Text(
-                                        text = stepText,
+                                        text = stepText.localized(),
                                         fontFamily = fontBengali,
                                         fontWeight = FontWeight.Medium,
                                         fontSize = 12.sp,
