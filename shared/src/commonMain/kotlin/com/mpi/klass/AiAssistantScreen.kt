@@ -5,9 +5,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,14 +29,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,10 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mpi.klass.theme.CloseIcon
@@ -85,8 +85,10 @@ fun AiAssistantScreen(
     userDisplayName: String = "User",
 ) {
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
+    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val accent = Color(0xFF8B5CF6)
     val geminiGradient = Brush.linearGradient(
         colors = listOf(
             Color(0xFF4285F4),
@@ -95,7 +97,6 @@ fun AiAssistantScreen(
         )
     )
 
-    val currentLang = LocalAppLanguage.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -105,18 +106,20 @@ fun AiAssistantScreen(
         mutableStateListOf(
             AiChatMessage(
                 id = "welcome",
-                text = "স্বাগতম! আমি আপনার Klass Gemini AI স্টাডি সহকারী। ক্লাস নোটের সারাংশ, গণিত-বিজ্ঞান সমাধান, কুইজ প্রস্তুতি বা যেকোনো পড়াশোনার বিষয়ে আমাকে প্রশ্ন করতে পারেন।",
+                text = "Hi${if (userDisplayName.isNotBlank() && userDisplayName != "User") " $userDisplayName" else ""}! I am your AI study assistant. Ask me for lecture summaries, problem solving, or exam prep.",
                 isFromUser = false,
             )
         )
     }
 
-    val promptSuggestions = listOf(
-        "ক্লাস নোটের সারাংশ তৈরি করুন" to "দয়া করে আমার পড়া বিষয়ের একটি পরিষ্কার ও পয়েন্ট ভিত্তিক সারাংশ তৈরি করুন:",
-        "কঠিন বিষয় সহজে ব্যাখ্যা" to "একটি জটিল বৈজ্ঞানিক বা গাণিতিক বিষয় সহজ উদাহরণ দিয়ে ব্যাখ্যা করুন:",
-        "অনুশীলনী প্রশ্ন তৈরি" to "পরীক্ষার প্রস্তুতির জন্য ৫টি গুরুত্বপূর্ণ প্রশ্ন এবং উত্তর তৈরি করুন:",
-        "পড়ার রুটিন তৈরি করুন" to "প্রতিদিনের পড়ার একটি কার্যকরী ও ভারসাম্যপূর্ণ সময়সূচি সাজিয়ে দিন।",
-    )
+    val promptSuggestions = remember {
+        listOf(
+            "Summarize Notes" to "Summarize my class topic into clear bullet points:",
+            "Explain Topic" to "Explain this engineering concept with a simple example:",
+            "Practice Quiz" to "Create 5 exam practice questions with short answers about:",
+            "Study Plan" to "Organize a balanced weekly study plan for my semester courses.",
+        )
+    }
 
     fun sendMessage(userPrompt: String) {
         val trimmed = userPrompt.trim()
@@ -132,7 +135,6 @@ fun AiAssistantScreen(
         scope.launch {
             try {
                 var accumulated = ""
-                // Start streaming with Gemini 3.8 Flash via Firebase AI Logic
                 val finalAnswer = GeminiAiService.generateStream(trimmed) { chunk ->
                     accumulated += chunk
                     uiState = AiUiState.Streaming(accumulated)
@@ -144,7 +146,7 @@ fun AiAssistantScreen(
                 throw e
             } catch (e: Exception) {
                 uiState = AiUiState.Error(
-                    e.localizedMessage ?: "AI সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।".localized(currentLang)
+                    e.localizedMessage ?: "AI connection error. Please try again."
                 )
             }
         }
@@ -158,336 +160,340 @@ fun AiAssistantScreen(
 
     AppBackHandler(enabled = true, onBack = onBack)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding(),
-    ) {
-        // Top Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = cardBg,
-            shadowElevation = 3.dp,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SwipeToCenterIconSurface(
-                        dragId = "ai_back",
-                        previewTitle = "ফিরে যান",
-                        accentColor = Color(0xFF8B5CF6),
-                        onTrigger = onBack,
-                        isLeftSide = true,
-                        shape = CircleShape,
-                        color = if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9),
-                        border = null,
-                        shadowElevation = 2.dp,
-                        modifier = Modifier.size(48.dp).testTag("ai_back_button"),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = CloseIcon,
-                                contentDescription = "ফিরে যান".localized(),
-                                tint = textColor,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = SparkleIcon,
-                                contentDescription = null,
-                                tint = Color(0xFF8B5CF6),
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Gemini AI সহকারী".localized(),
-                                fontSize = 17.sp,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor,
-                            )
-                        }
-                        Text(
-                            text = "Powered by Gemini 3.8 Flash",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = subTextColor,
-                        )
-                    }
-                }
-
-                // Clear Chat Button
-                Surface(
-                    onClick = {
-                        messages.clear()
-                        messages.add(
-                            AiChatMessage(
-                                id = "welcome_reset",
-                                text = "নতুন চ্যাট শুরু হয়েছে। আপনি কী জানতে চান?",
-                                isFromUser = false,
-                            )
-                        )
-                        uiState = AiUiState.Idle
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isDark) Color(0xFF334155) else Color(0xFFF1F5F9),
-                    modifier = Modifier.testTag("ai_clear_chat_button"),
-                ) {
-                    Text(
-                        text = "নতুন চ্যাট".localized(),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        fontSize = 12.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textColor,
-                    )
-                }
-            }
-        }
-
-        // Message List
-        LazyColumn(
-            state = listState,
+    MinimalBackdrop(isDark = isDark) {
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp),
-            contentPadding = PaddingValues(vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            items(messages, key = { it.id }) { msg ->
-                ChatMessageBubble(
-                    message = msg,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                    geminiGradient = geminiGradient,
-                )
-            }
-
-            // Streaming or Loading active indicator
-            if (uiState is AiUiState.Loading) {
-                item(key = "loading_indicator") {
+            // Clean Full-Width Header with Centered Controls
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = cardBg,
+                shadowElevation = 2.dp,
+            ) {
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 860.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFF8B5CF6).copy(alpha = 0.15f),
-                            modifier = Modifier.size(36.dp),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f),
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = SparkleIcon,
-                                    contentDescription = null,
-                                    tint = Color(0xFF8B5CF6),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = Color(0xFF8B5CF6),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Gemini চিন্তা করছে...".localized(),
-                                fontSize = 13.sp,
-                                fontFamily = hindSiliguri,
-                                color = subTextColor,
-                            )
-                        }
-                    }
-                }
-            } else if (uiState is AiUiState.Streaming) {
-                val streamText = (uiState as AiUiState.Streaming).partialText
-                item(key = "streaming_bubble") {
-                    ChatMessageBubble(
-                        message = AiChatMessage(id = "streaming_active", text = streamText, isFromUser = false),
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        geminiGradient = geminiGradient,
-                        isStreaming = true,
-                    )
-                }
-            }
-
-            // Error banner with retry
-            if (uiState is AiUiState.Error) {
-                val errorMsg = (uiState as AiUiState.Error).message
-                item(key = "error_banner") {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFEF4444).copy(alpha = 0.1f),
-                        border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text(
-                                text = errorMsg,
-                                color = Color(0xFFDC2626),
-                                fontSize = 13.sp,
-                                fontFamily = hindSiliguri,
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Surface(
-                                onClick = {
-                                    val lastUserMsg = messages.lastOrNull { it.isFromUser }
-                                    if (lastUserMsg != null) {
-                                        sendMessage(lastUserMsg.text)
-                                    } else {
-                                        uiState = AiUiState.Idle
-                                    }
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFEF4444),
-                                modifier = Modifier.testTag("ai_retry_button"),
+                            SwipeToCenterIconSurface(
+                                dragId = "ai_back",
+                                previewTitle = "Back",
+                                accentColor = accent,
+                                onTrigger = onBack,
+                                isLeftSide = true,
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, borderCol),
+                                shadowElevation = 1.dp,
+                                modifier = Modifier.size(48.dp).testTag("ai_back_button"),
                             ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = CloseIcon,
+                                        contentDescription = "Back",
+                                        tint = textColor,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = accent.copy(alpha = if (isDark) 0.16f else 0.10f),
+                                border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
+                                modifier = Modifier.size(38.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = SparkleIcon,
+                                        contentDescription = null,
+                                        tint = accent,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+
+                            Column {
                                 Text(
-                                    text = "আবার চেষ্টা করুন".localized(),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    color = Color.White,
-                                    fontSize = 12.sp,
+                                    text = "AI Study Assistant",
+                                    fontSize = 16.5.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Prompt Suggestions (Chips)
-        AnimatedVisibility(
-            visible = messages.size <= 2 && uiState !is AiUiState.Loading && uiState !is AiUiState.Streaming,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)) {
-                Text(
-                    text = "দ্রুত জিজ্ঞাসা করুন:".localized(),
-                    fontSize = 12.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.SemiBold,
-                    color = subTextColor,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 2.dp),
-                ) {
-                    itemsIndexed(promptSuggestions) { index, (label, promptPrefix) ->
-                        Surface(
-                            onClick = {
-                                inputText = promptPrefix.localized(currentLang)
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                            modifier = Modifier.testTag("ai_prompt_chip_$index"),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    imageVector = SparkleIcon,
-                                    contentDescription = null,
-                                    tint = Color(0xFF8B5CF6),
-                                    modifier = Modifier.size(14.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = label.localized(),
-                                    fontSize = 12.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Medium,
                                     color = textColor,
                                 )
+                                Text(
+                                    text = "Instant help & summaries",
+                                    fontSize = 11.sp,
+                                    fontFamily = hindSiliguri,
+                                    fontWeight = FontWeight.Medium,
+                                    color = subTextColor,
+                                )
+                            }
+                        }
+
+                        MinimalIconChip(
+                            label = "New Chat",
+                            selected = false,
+                            accent = accent,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            testTag = "ai_clear_chat_button",
+                            onClick = {
+                                messages.clear()
+                                messages.add(
+                                    AiChatMessage(
+                                        id = "welcome_reset",
+                                        text = "New conversation started. How can I help you study?",
+                                        isFromUser = false,
+                                    )
+                                )
+                                uiState = AiUiState.Idle
+                            },
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(0.5.dp)
+                            .background(borderCol),
+                    )
+                }
+            }
+
+            // Responsive Centered Conversation Pane
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                val bubbleMaxWidth: Dp = if (maxWidth >= 680.dp) 520.dp else 310.dp
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .widthIn(max = 820.dp),
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        contentPadding = PaddingValues(vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(messages, key = { it.id }) { msg ->
+                            ChatMessageBubble(
+                                message = msg,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                geminiGradient = geminiGradient,
+                                maxBubbleWidth = bubbleMaxWidth,
+                            )
+                        }
+
+                        if (uiState is AiUiState.Loading) {
+                            item(key = "loading_indicator") {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = accent.copy(alpha = 0.14f),
+                                        modifier = Modifier.size(34.dp),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = SparkleIcon,
+                                                contentDescription = null,
+                                                tint = accent,
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = accent,
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Thinking...",
+                                        fontSize = 13.sp,
+                                        fontFamily = hindSiliguri,
+                                        color = subTextColor,
+                                    )
+                                }
+                            }
+                        } else if (uiState is AiUiState.Streaming) {
+                            val streamText = (uiState as AiUiState.Streaming).partialText
+                            item(key = "streaming_bubble") {
+                                ChatMessageBubble(
+                                    message = AiChatMessage(
+                                        id = "streaming_active",
+                                        text = streamText,
+                                        isFromUser = false,
+                                    ),
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    geminiGradient = geminiGradient,
+                                    maxBubbleWidth = bubbleMaxWidth,
+                                    isStreaming = true,
+                                )
+                            }
+                        }
+
+                        if (uiState is AiUiState.Error) {
+                            val errorMsg = (uiState as AiUiState.Error).message
+                            item(key = "error_banner") {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFFEF4444).copy(alpha = 0.10f),
+                                    border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.35f)),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text = errorMsg,
+                                            color = Color(0xFFDC2626),
+                                            fontSize = 13.sp,
+                                            fontFamily = hindSiliguri,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        WelcomeMinimal3DButton(
+                                            text = "Retry",
+                                            hindSiliguri = hindSiliguri,
+                                            isDestructive = true,
+                                            isDark = isDark,
+                                            height = 36.dp,
+                                            cornerRadius = 9.dp,
+                                            testTag = "ai_retry_button",
+                                            modifier = Modifier.width(84.dp),
+                                            onClick = {
+                                                val lastUserMsg = messages.lastOrNull { it.isFromUser }
+                                                if (lastUserMsg != null) {
+                                                    sendMessage(lastUserMsg.text)
+                                                } else {
+                                                    uiState = AiUiState.Idle
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-        }
 
-        // Input Bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = cardBg,
-            shadowElevation = 8.dp,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("ai_prompt_input"),
-                    placeholder = {
-                        Text(
-                            text = "AI-কে যেকোনো প্রশ্ন করুন...".localized(),
-                            fontSize = 14.sp,
-                            fontFamily = hindSiliguri,
-                            color = subTextColor,
-                        )
-                    },
-                    maxLines = 4,
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        fontSize = 14.sp,
-                        fontFamily = hindSiliguri,
-                        color = textColor,
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF8B5CF6),
-                        unfocusedBorderColor = if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1),
-                        focusedContainerColor = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-                        unfocusedContainerColor = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
-                )
+                    // Prompt Suggestions
+                    AnimatedVisibility(
+                        visible = messages.size <= 2 && uiState !is AiUiState.Loading && uiState !is AiUiState.Streaming,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                        ) {
+                            itemsIndexed(promptSuggestions) { index, (label, promptPrefix) ->
+                                MinimalIconChip(
+                                    label = label,
+                                    selected = false,
+                                    accent = accent,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    icon = SparkleIcon,
+                                    testTag = "ai_prompt_chip_$index",
+                                    onClick = { inputText = promptPrefix },
+                                )
+                            }
+                        }
+                    }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    // Clean Minimal Composer Bar (single hairline border, zero nested boxes)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = cardBg,
+                        border = BorderStroke(1.dp, borderCol),
+                        shadowElevation = 2.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
+                                if (inputText.isEmpty()) {
+                                    Text(
+                                        text = "Ask anything about your studies...",
+                                        fontSize = 14.sp,
+                                        fontFamily = hindSiliguri,
+                                        color = subTextColor,
+                                    )
+                                }
+                                BasicTextField(
+                                    value = inputText,
+                                    onValueChange = { inputText = it },
+                                    maxLines = 4,
+                                    textStyle = TextStyle(
+                                        fontSize = 14.sp,
+                                        fontFamily = hindSiliguri,
+                                        color = textColor,
+                                    ),
+                                    cursorBrush = SolidColor(accent),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                    keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("ai_prompt_input"),
+                                )
+                            }
 
-                val isBusy = uiState is AiUiState.Loading || uiState is AiUiState.Streaming
-                Surface(
-                    onClick = { sendMessage(inputText) },
-                    enabled = inputText.isNotBlank() && !isBusy,
-                    shape = CircleShape,
-                    color = if (inputText.isNotBlank() && !isBusy) Color(0xFF8B5CF6) else if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0),
-                    modifier = Modifier.size(48.dp).testTag("ai_send_button"),
-                    shadowElevation = if (inputText.isNotBlank()) 4.dp else 0.dp,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = SendIcon,
-                            contentDescription = "পাঠান".localized(),
-                            tint = if (inputText.isNotBlank() && !isBusy) Color.White else subTextColor,
-                            modifier = Modifier.size(20.dp),
-                        )
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            val isBusy = uiState is AiUiState.Loading || uiState is AiUiState.Streaming
+                            val canSend = inputText.isNotBlank() && !isBusy
+                            WelcomeMinimal3DIconButton(
+                                icon = SendIcon,
+                                contentDescription = "Send",
+                                isDark = isDark,
+                                containerColor = if (canSend) accent else cardBg,
+                                iconTint = if (canSend) Color.White else subTextColor,
+                                enabled = canSend,
+                                testTag = "ai_send_button",
+                                onClick = { sendMessage(inputText) },
+                            )
+                        }
                     }
                 }
             }
@@ -501,11 +507,13 @@ private fun ChatMessageBubble(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     geminiGradient: Brush,
+    maxBubbleWidth: Dp,
     isStreaming: Boolean = false,
 ) {
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val userBubbleBg = Color(0xFF2563EB)
-    val aiBubbleBg = if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+    val aiBubbleBg = if (isDark) Color(0xFF1E293B) else Color.White
+    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -515,16 +523,16 @@ private fun ChatMessageBubble(
         if (!message.isFromUser) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
                     .background(geminiGradient),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = SparkleIcon,
-                    contentDescription = "Gemini",
+                    contentDescription = "AI",
                     tint = Color.White,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -538,18 +546,13 @@ private fun ChatMessageBubble(
                 bottomEnd = if (message.isFromUser) 4.dp else 16.dp,
             ),
             color = if (message.isFromUser) userBubbleBg else aiBubbleBg,
-            border = if (!message.isFromUser) BorderStroke(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)) else null,
+            border = if (!message.isFromUser) BorderStroke(1.dp, borderCol) else null,
             shadowElevation = 1.dp,
-            modifier = Modifier.widthIn(max = 310.dp),
+            modifier = Modifier.widthIn(max = maxBubbleWidth),
         ) {
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                val renderedMessage = if (message.id == "welcome" || message.id == "welcome_reset") {
-                    message.text.localized()
-                } else {
-                    message.text
-                }
                 Text(
-                    text = renderedMessage,
+                    text = message.text,
                     fontSize = 14.sp,
                     fontFamily = hindSiliguri,
                     color = if (message.isFromUser) Color.White else textColor,

@@ -33,5 +33,30 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if isAuthenticated();
     }
+
+    // Books library collection
+    match /books/{bookId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Classrooms & Labs collection
+    match /classrooms/{roomId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Generated & Published Class Routines collection
+    match /routines/{routineId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Teacher manual edit/swap requests collection
+    match /routine_edit_requests/{requestId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // App notifications & announcements collection
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

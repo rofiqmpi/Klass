@@ -93,6 +93,7 @@ fun ProfileScreen(
     photoUrl: String? = null,
     onUpdateProfile: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
     onCategoryChanged: ((UserRole) -> Unit)? = null,
+    onOpenTeachingPrefs: (() -> Unit)? = null,
     topContentPadding: Dp = 0.dp,
 ) {
     // Guest mode animated sign-in portal
@@ -106,6 +107,7 @@ fun ProfileScreen(
     }
 
     val coroutineScope = rememberCoroutineScope()
+    val currentLang = LocalAppLanguage.current
     val cleanEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
 
     var isEditingMode by remember { mutableStateOf(false) }
@@ -116,8 +118,13 @@ fun ProfileScreen(
     var currentPhotoUrl by remember(cleanEmail, photoUrl) { mutableStateOf(photoUrl ?: "") }
 
     var profileData by remember(cleanEmail) {
+        val cached = if (cleanEmail.isNotBlank()) fetchLocalStudentProfile(cleanEmail) else null
         mutableStateOf(
-            StudentProfile(
+            cached?.copy(
+                name = cached.name.ifBlank { userName },
+                photoUrl = cached.photoUrl?.ifBlank { null } ?: photoUrl,
+                contactEmail = cached.contactEmail.ifBlank { cleanEmail },
+            ) ?: StudentProfile(
                 email = cleanEmail,
                 name = userName,
                 photoUrl = photoUrl,
@@ -133,32 +140,24 @@ fun ProfileScreen(
             val updated = profileData.copy(photoUrl = pickedUri)
             profileData = updated
             val activeName = updated.name.ifBlank { userName }
-            onUpdateProfile?.invoke(activeName, pickedUri)
             coroutineScope.launch {
-                if (role == UserRole.STUDENT) {
-                    RoleConfig.saveStudentProfile(updated)
+                val result = RoleConfig.saveStudentProfile(updated)
+                onUpdateProfile?.invoke(activeName, pickedUri)
+                if (result.isSuccess) {
+                    showToast(AppStrings.translate("প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!", currentLang))
                 } else {
-                    saveStudentProfileDataInFirestore(updated)
+                    showToast(AppStrings.translate("তথ্য সংরক্ষণ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।", currentLang))
                 }
             }
-            showToast("প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!")
         }
     }
 
-    // Auto GPS location tracker for Current Address (matches previous auto-tracking logic)
+    // Auto GPS location tracker for Current Address (updates only address field safely)
     val locationLauncher = rememberLocationPermissionLauncher { realAddress ->
-        if (realAddress.isNotBlank() && realAddress != profileData.address) {
-            val updated = profileData.copy(
-                address = realAddress,
-                photoUrl = currentPhotoUrl.ifBlank { profileData.photoUrl ?: photoUrl ?: "" }.ifBlank { null },
-            )
-            profileData = updated
+        if (realAddress.isNotBlank() && realAddress != profileData.address && cleanEmail.isNotBlank()) {
+            profileData = profileData.copy(address = realAddress)
             coroutineScope.launch {
-                if (role == UserRole.STUDENT) {
-                    RoleConfig.saveStudentProfile(updated)
-                } else {
-                    saveStudentProfileDataInFirestore(updated)
-                }
+                RoleConfig.saveStudentAddress(cleanEmail, realAddress)
             }
         }
     }
@@ -216,9 +215,11 @@ fun ProfileScreen(
                 photoUrl = activePhotoUrl,
                 fallbackName = userName,
                 fallbackEmail = cleanEmail,
+                role = role,
                 hindSiliguri = hindSiliguri,
                 topContentPadding = topContentPadding,
                 isSaving = isSavingProfile,
+                isDark = isDark,
                 onAvatarClick = { launchPhotoPicker() },
                 onViewProfileClick = { isEditingMode = false },
                 onSaveProfile = { updated ->
@@ -229,19 +230,15 @@ fun ProfileScreen(
                             photoUrl = preservedPhoto,
                             address = updated.address.ifBlank { profileData.address },
                         )
-                        val result = if (role == UserRole.STUDENT) {
-                            RoleConfig.saveStudentProfile(finalProfile)
-                        } else {
-                            saveStudentProfileDataInFirestore(finalProfile)
-                        }
+                        val result = RoleConfig.saveStudentProfile(finalProfile)
                         profileData = finalProfile
-                        onUpdateProfile?.invoke(finalProfile.name, preservedPhoto)
                         isSavingProfile = false
                         if (result.isSuccess) {
-                            showToast("প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!")
+                            onUpdateProfile?.invoke(finalProfile.name, preservedPhoto)
+                            showToast(AppStrings.translate("প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!", currentLang))
                             isEditingMode = false
                         } else {
-                            showToast("তথ্য সংরক্ষণ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।")
+                            showToast(AppStrings.translate("তথ্য সংরক্ষণ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।", currentLang))
                         }
                     }
                 },
@@ -254,6 +251,7 @@ fun ProfileScreen(
                 cleanEmail = cleanEmail,
                 role = role,
                 isLoading = isLoadingProfile,
+                isDark = isDark,
                 hindSiliguri = hindSiliguri,
                 topContentPadding = topContentPadding,
                 onAvatarClick = { launchPhotoPicker() },
@@ -263,18 +261,20 @@ fun ProfileScreen(
                     onSignOut()
                 },
                 onDeleteAccountClick = { showDeleteDialog = true },
+                onOpenTeachingPrefs = onOpenTeachingPrefs,
             )
         }
     }
 
     if (showDeleteDialog) {
+        val dialogPalette = HtmlProfilePalette.of(isDark)
         AlertDialog(
             onDismissRequest = { if (!isDeletingAccount) showDeleteDialog = false },
-            containerColor = Color.White,
+            containerColor = dialogPalette.cardBg,
             title = {
                 Text(
                     text = "ডিলিট একাউন্ট".localized(),
-                    color = HtmlProfileColors.BsDanger,
+                    color = dialogPalette.bsDanger,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Bold,
                     fontSize = 19.sp,
@@ -283,7 +283,7 @@ fun ProfileScreen(
             text = {
                 Text(
                     text = "আপনি কি নিশ্চিতভাবে আপনার অ্যাকাউন্টটি চিরতরে ডিলিট করতে চান? এটি করলে আপনার সকল তথ্য মুছে যাবে।".localized(),
-                    color = HtmlProfileColors.SubheadingSlate,
+                    color = dialogPalette.subheadingColor,
                     fontFamily = hindSiliguri,
                     fontSize = 15.sp,
                 )
@@ -305,7 +305,7 @@ fun ProfileScreen(
                         }
                     },
                     enabled = !isDeletingAccount,
-                    colors = ButtonDefaults.buttonColors(containerColor = HtmlProfileColors.BsDanger),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isDark) Color(0xFFEF4444) else HtmlProfileColors.BsDanger),
                     modifier = Modifier.testTag("confirm_delete_account_button"),
                 ) {
                     Text(
@@ -324,7 +324,7 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "বাতিল".localized(),
-                        color = HtmlProfileColors.SubheadingSlate,
+                        color = dialogPalette.subheadingColor,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -342,13 +342,16 @@ private fun ProfileViewContent(
     cleanEmail: String,
     role: UserRole,
     isLoading: Boolean,
+    isDark: Boolean,
     hindSiliguri: FontFamily,
     topContentPadding: Dp,
     onAvatarClick: () -> Unit,
     onEditClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onDeleteAccountClick: () -> Unit,
+    onOpenTeachingPrefs: (() -> Unit)? = null,
 ) {
+    val palette = remember(isDark) { HtmlProfilePalette.of(isDark) }
     val isBengali = LocalAppLanguage.current == AppLanguage.BENGALI
     val displayName = profile.name.ifBlank { userName }
         .ifBlank { cleanEmail.substringBefore("@") }
@@ -364,6 +367,7 @@ private fun ProfileViewContent(
 
     HtmlProfilePageWrapper(
         topContentPadding = topContentPadding,
+        isDark = isDark,
         brandBar = { collapseProgress ->
             HtmlBrandCardBar(
                 photoUrl = photoUrl,
@@ -373,6 +377,7 @@ private fun ProfileViewContent(
                 hindSiliguri = hindSiliguri,
                 testTag = "profile_edit_button",
                 collapseProgress = collapseProgress,
+                isSyncing = isLoading,
                 onAvatarClick = onAvatarClick,
                 onButtonClick = onEditClick,
             )
@@ -381,7 +386,7 @@ private fun ProfileViewContent(
         // Header Section (h1 & p)
         Text(
             text = displayName,
-            color = HtmlProfileColors.HeadingDark,
+            color = palette.headingColor,
             fontSize = 27.sp,
             lineHeight = 34.sp,
             fontFamily = hindSiliguri,
@@ -392,23 +397,14 @@ private fun ProfileViewContent(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = roleSubtitle,
-            color = HtmlProfileColors.BsSecondary,
+            color = palette.bsSecondary,
             fontSize = 18.sp,
             fontFamily = hindSiliguri,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
         )
 
-        if (isLoading) {
-            Spacer(modifier = Modifier.height(14.dp))
-            CircularProgressIndicator(
-                color = HtmlProfileColors.PurpleAccent,
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.5.dp,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cols = when {
@@ -427,106 +423,131 @@ private fun ProfileViewContent(
                 val dobDisplay = formatProfileDob(profile.dob, isBengali).ifBlank { emptyText }
                 val emailDisplay = profile.contactEmail.ifBlank { cleanEmail }.ifBlank { emptyText }
 
+                val showPersonalExtended = role != UserRole.ADMIN
+                val showFamilySection = role == UserRole.STUDENT
+                val showAcademicSection = role != UserRole.ADMIN
+                val showFullAcademicFields = role == UserRole.STUDENT
+
+                val contactSectionNum = if (showFamilySection) "৩" else "২"
+                val addressSectionNum = if (showFamilySection) "৪" else "৩"
+                val academicSectionNum = if (showFamilySection) "৫" else "৪"
+
                 // Section 1: Personal Information
                 HtmlSectionTitle(
                     title = "১. ব্যক্তিগত তথ্য (Personal Information)".localized(),
                     hindSiliguri = hindSiliguri,
                 )
 
-                val personalCards: List<Pair<Int, @Composable () -> Unit>> = listOf(
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "জন্ম তারিখ".localized(),
-                            value = dobDisplay,
-                            isEmpty = profile.dob.isBlank(),
-                            icon = CalendarDaysIcon,
-                            iconTint = HtmlProfileColors.BsWarning,
-                            hindSiliguri = hindSiliguri,
+                val personalCards = buildList<Pair<Int, @Composable () -> Unit>> {
+                    add(
+                        spanFor(4, 1) to {
+                            HtmlInfoCard(
+                                label = "জন্ম তারিখ".localized(),
+                                value = dobDisplay,
+                                isEmpty = profile.dob.isBlank(),
+                                icon = CalendarDaysIcon,
+                                iconTint = HtmlProfileColors.BsWarning,
+                                hindSiliguri = hindSiliguri,
+                            )
+                        }
+                    )
+                    add(
+                        spanFor(4, 1) to {
+                            HtmlInfoCard(
+                                label = "রক্তের গ্রুপ".localized(),
+                                value = profile.bloodGroup.ifBlank { emptyText },
+                                isEmpty = profile.bloodGroup.isBlank(),
+                                icon = DropletIcon,
+                                iconTint = HtmlProfileColors.BsDanger,
+                                valueColor = if (profile.bloodGroup.isNotBlank()) palette.bsDanger else palette.emptyValueColor,
+                                hindSiliguri = hindSiliguri,
+                            )
+                        }
+                    )
+                    if (showPersonalExtended) {
+                        add(
+                            spanFor(4, 1) to {
+                                HtmlInfoCard(
+                                    label = "ধর্ম".localized(),
+                                    value = if (profile.religion.isNotBlank()) profile.religion.localized() else emptyText,
+                                    isEmpty = profile.religion.isBlank(),
+                                    icon = PrayingHandsIcon,
+                                    iconTint = HtmlProfileColors.BsInfo,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                            }
                         )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "রক্তের গ্রুপ".localized(),
-                            value = profile.bloodGroup.ifBlank { emptyText },
-                            isEmpty = profile.bloodGroup.isBlank(),
-                            icon = DropletIcon,
-                            iconTint = HtmlProfileColors.BsDanger,
-                            valueColor = if (profile.bloodGroup.isNotBlank()) HtmlProfileColors.BsDanger else Color(0xFF94A3B8),
-                            hindSiliguri = hindSiliguri,
+                    }
+                    add(
+                        spanFor(if (showPersonalExtended) 6 else 4, 1) to {
+                            HtmlInfoCard(
+                                label = "লিঙ্গ".localized(),
+                                value = if (profile.gender.isNotBlank()) profile.gender.localized() else emptyText,
+                                isEmpty = profile.gender.isBlank(),
+                                icon = VenusMarsIcon,
+                                iconTint = HtmlProfileColors.BsDanger,
+                                hindSiliguri = hindSiliguri,
+                            )
+                        }
+                    )
+                    if (showPersonalExtended) {
+                        add(
+                            spanFor(6, 1) to {
+                                HtmlInfoCard(
+                                    label = "বৈবাহিক অবস্থা".localized(),
+                                    value = if (profile.maritalStatus.isNotBlank()) profile.maritalStatus.localized() else emptyText,
+                                    isEmpty = profile.maritalStatus.isBlank(),
+                                    icon = RingIcon,
+                                    iconTint = HtmlProfileColors.BsSecondary,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                            }
                         )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "ধর্ম".localized(),
-                            value = if (profile.religion.isNotBlank()) profile.religion.localized() else emptyText,
-                            isEmpty = profile.religion.isBlank(),
-                            icon = PrayingHandsIcon,
-                            iconTint = HtmlProfileColors.BsInfo,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(6, 1) to {
-                        HtmlInfoCard(
-                            label = "লিঙ্গ".localized(),
-                            value = if (profile.gender.isNotBlank()) profile.gender.localized() else emptyText,
-                            isEmpty = profile.gender.isBlank(),
-                            icon = VenusMarsIcon,
-                            iconTint = HtmlProfileColors.BsDanger,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(6, 1) to {
-                        HtmlInfoCard(
-                            label = "বৈবাহিক অবস্থা".localized(),
-                            value = if (profile.maritalStatus.isNotBlank()) profile.maritalStatus.localized() else emptyText,
-                            isEmpty = profile.maritalStatus.isBlank(),
-                            icon = RingIcon,
-                            iconTint = HtmlProfileColors.BsSecondary,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                )
+                    }
+                }
 
                 HtmlResponsiveGrid(columns = cols, items = personalCards, spacing = 14.dp)
 
+                if (showFamilySection) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Section 2: Family Information (Students only)
+                    HtmlSectionTitle(
+                        title = "২. পারিবারিক তথ্য (Family Information)".localized(),
+                        hindSiliguri = hindSiliguri,
+                    )
+
+                    val familyCards: List<Pair<Int, @Composable () -> Unit>> = listOf(
+                        spanFor(6, 1) to {
+                            HtmlInfoCard(
+                                label = "পিতার নাম".localized(),
+                                value = profile.fatherName.ifBlank { emptyText },
+                                isEmpty = profile.fatherName.isBlank(),
+                                icon = UserTieIcon,
+                                iconTint = HtmlProfileColors.BsSuccess,
+                                hindSiliguri = hindSiliguri,
+                            )
+                        },
+                        spanFor(6, 1) to {
+                            HtmlInfoCard(
+                                label = "মাতার নাম".localized(),
+                                value = profile.motherName.ifBlank { emptyText },
+                                isEmpty = profile.motherName.isBlank(),
+                                icon = UserNurseIcon,
+                                iconTint = HtmlProfileColors.BsDanger,
+                                hindSiliguri = hindSiliguri,
+                            )
+                        },
+                    )
+
+                    HtmlResponsiveGrid(columns = cols, items = familyCards, spacing = 14.dp)
+                }
+
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Section 2: Family Information
+                // Contact Information
                 HtmlSectionTitle(
-                    title = "২. পারিবারিক তথ্য (Family Information)".localized(),
-                    hindSiliguri = hindSiliguri,
-                )
-
-                val familyCards: List<Pair<Int, @Composable () -> Unit>> = listOf(
-                    spanFor(6, 1) to {
-                        HtmlInfoCard(
-                            label = "পিতার নাম".localized(),
-                            value = profile.fatherName.ifBlank { emptyText },
-                            isEmpty = profile.fatherName.isBlank(),
-                            icon = UserTieIcon,
-                            iconTint = HtmlProfileColors.BsSuccess,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(6, 1) to {
-                        HtmlInfoCard(
-                            label = "মাতার নাম".localized(),
-                            value = profile.motherName.ifBlank { emptyText },
-                            isEmpty = profile.motherName.isBlank(),
-                            icon = UserNurseIcon,
-                            iconTint = HtmlProfileColors.BsDanger,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                )
-
-                HtmlResponsiveGrid(columns = cols, items = familyCards, spacing = 14.dp)
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Section 3: Contact Information
-                HtmlSectionTitle(
-                    title = "৩. যোগাযোগের তথ্য (Contact Information)".localized(),
+                    title = "$contactSectionNum. যোগাযোগের তথ্য (Contact Information)".localized(),
                     hindSiliguri = hindSiliguri,
                 )
 
@@ -557,9 +578,9 @@ private fun ProfileViewContent(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Section 4: Address Information
+                // Address Information
                 HtmlSectionTitle(
-                    title = "৪. ঠিকানার তথ্য (Address Information)".localized(),
+                    title = "$addressSectionNum. ঠিকানার তথ্য (Address Information)".localized(),
                     hindSiliguri = hindSiliguri,
                 )
 
@@ -588,78 +609,114 @@ private fun ProfileViewContent(
 
                 HtmlResponsiveGrid(columns = cols, items = addressCards, spacing = 14.dp)
 
-                Spacer(modifier = Modifier.height(6.dp))
+                if (showAcademicSection) {
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                // Section 5: Academic Information
-                HtmlSectionTitle(
-                    title = "৫. একাডেমিক তথ্য (Academic Information)".localized(),
-                    hindSiliguri = hindSiliguri,
-                )
+                    // Academic Information
+                    HtmlSectionTitle(
+                        title = "$academicSectionNum. একাডেমিক তথ্য (Academic Information)".localized(),
+                        hindSiliguri = hindSiliguri,
+                    )
 
-                val academicCards: List<Pair<Int, @Composable () -> Unit>> = listOf(
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "ডিপার্টমেন্ট (Department)".localized(),
-                            value = profile.department.ifBlank { emptyText },
-                            isEmpty = profile.department.isBlank(),
+                    val academicCards = buildList<Pair<Int, @Composable () -> Unit>> {
+                        add(
+                            spanFor(if (showFullAcademicFields) 4 else 6, 1) to {
+                                val deptValue = when {
+                                    profile.department.isBlank() -> emptyText
+                                    profile.department == "নন টেক" -> "নন টেক".localized()
+                                    else -> profile.department
+                                }
+                                HtmlInfoCard(
+                                    label = "ডিপার্টমেন্ট (Department)".localized(),
+                                    value = deptValue,
+                                    isEmpty = profile.department.isBlank(),
+                                    icon = GraduationCapIcon,
+                                    iconTint = HtmlProfileColors.BsPrimary,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                            }
+                        )
+                        if (showFullAcademicFields) {
+                            val isValidSem = profile.semester.isNotBlank() && !profile.semester.contains("৮ম") && !profile.semester.startsWith("8")
+                            add(
+                                spanFor(4, 1) to {
+                                    HtmlInfoCard(
+                                        label = "সেমিস্টার".localized(),
+                                        value = if (isValidSem) profile.semester.localized() else emptyText,
+                                        isEmpty = !isValidSem,
+                                        icon = LayerGroupIcon,
+                                        iconTint = HtmlProfileColors.BsSuccess,
+                                        hindSiliguri = hindSiliguri,
+                                    )
+                                }
+                            )
+                        }
+                        add(
+                            spanFor(if (showFullAcademicFields) 4 else 6, 1) to {
+                                HtmlInfoCard(
+                                    label = "শিফট".localized(),
+                                    value = if (profile.shift.isNotBlank()) profile.shift.localized() else emptyText,
+                                    isEmpty = profile.shift.isBlank(),
+                                    icon = ClockIcon,
+                                    iconTint = HtmlProfileColors.BsWarning,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                            }
+                        )
+                        if (showFullAcademicFields) {
+                            add(
+                                spanFor(4, 1) to {
+                                    HtmlInfoCard(
+                                        label = "সেকশন (Section)".localized(),
+                                        value = profile.section.ifBlank { emptyText },
+                                        isEmpty = profile.section.isBlank(),
+                                        icon = UsersRectangleIcon,
+                                        iconTint = HtmlProfileColors.BsSecondary,
+                                        hindSiliguri = hindSiliguri,
+                                    )
+                                }
+                            )
+                            add(
+                                spanFor(4, 1) to {
+                                    HtmlInfoCard(
+                                        label = "বোর্ড রোল নম্বর (Roll)".localized(),
+                                        value = profile.rollNumber.ifBlank { emptyText },
+                                        isEmpty = profile.rollNumber.isBlank(),
+                                        icon = IdCardIcon,
+                                        iconTint = HtmlProfileColors.BsDanger,
+                                        hindSiliguri = hindSiliguri,
+                                    )
+                                }
+                            )
+                            add(
+                                spanFor(4, 1) to {
+                                    HtmlInfoCard(
+                                        label = "রেজিস্ট্রেশন নম্বর (Registration)".localized(),
+                                        value = profile.registrationNumber.ifBlank { emptyText },
+                                        isEmpty = profile.registrationNumber.isBlank(),
+                                        icon = FileLinesIcon,
+                                        iconTint = HtmlProfileColors.BsInfo,
+                                        hindSiliguri = hindSiliguri,
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    HtmlResponsiveGrid(columns = cols, items = academicCards, spacing = 14.dp)
+
+                    if (role == UserRole.TEACHER && onOpenTeachingPrefs != null) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        WelcomeMinimal3DButton(
+                            text = "Manage Teaching Subjects & Preferences",
                             icon = GraduationCapIcon,
-                            iconTint = HtmlProfileColors.BsPrimary,
                             hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            testTag = "profile_teaching_prefs_button",
+                            onClick = onOpenTeachingPrefs,
                         )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "সেমিস্টার".localized(),
-                            value = if (profile.semester.isNotBlank()) profile.semester.localized() else emptyText,
-                            isEmpty = profile.semester.isBlank(),
-                            icon = LayerGroupIcon,
-                            iconTint = HtmlProfileColors.BsSuccess,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "শিফট".localized(),
-                            value = if (profile.shift.isNotBlank()) profile.shift.localized() else emptyText,
-                            isEmpty = profile.shift.isBlank(),
-                            icon = ClockIcon,
-                            iconTint = HtmlProfileColors.BsWarning,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "সেকশন (Section)".localized(),
-                            value = profile.section.ifBlank { emptyText },
-                            isEmpty = profile.section.isBlank(),
-                            icon = UsersRectangleIcon,
-                            iconTint = HtmlProfileColors.BsSecondary,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "বোর্ড রোল নম্বর (Roll)".localized(),
-                            value = profile.rollNumber.ifBlank { emptyText },
-                            isEmpty = profile.rollNumber.isBlank(),
-                            icon = IdCardIcon,
-                            iconTint = HtmlProfileColors.BsDanger,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                    spanFor(4, 1) to {
-                        HtmlInfoCard(
-                            label = "রেজিস্ট্রেশন নম্বর (Registration)".localized(),
-                            value = profile.registrationNumber.ifBlank { emptyText },
-                            isEmpty = profile.registrationNumber.isBlank(),
-                            icon = FileLinesIcon,
-                            iconTint = HtmlProfileColors.BsInfo,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    },
-                )
-
-                HtmlResponsiveGrid(columns = cols, items = academicCards, spacing = 14.dp)
+                    }
+                }
             }
         }
 
@@ -697,13 +754,29 @@ private fun HtmlInfoCard(
     icon: ImageVector,
     iconTint: Color,
     hindSiliguri: FontFamily,
-    valueColor: Color = HtmlProfileColors.HeadingDark,
+    valueColor: Color? = null,
 ) {
+    val palette = LocalHtmlProfilePalette.current
+    val effectiveTint = if (palette.isDark) {
+        when (iconTint) {
+            HtmlProfileColors.BsPrimary -> palette.bsPrimary
+            HtmlProfileColors.BsSuccess -> palette.bsSuccess
+            HtmlProfileColors.BsDanger -> palette.bsDanger
+            HtmlProfileColors.BsWarning -> palette.bsWarning
+            HtmlProfileColors.BsInfo -> palette.bsInfo
+            HtmlProfileColors.BsSecondary -> palette.bsSecondary
+            else -> iconTint
+        }
+    } else {
+        iconTint
+    }
+    val resolvedValueColor = valueColor ?: palette.headingColor
+
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, HtmlProfileColors.CardBorderGray),
-        shadowElevation = 2.dp,
+        color = palette.cardBg,
+        border = BorderStroke(1.dp, palette.cardBorder),
+        shadowElevation = if (palette.isDark) 4.dp else 2.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -715,13 +788,13 @@ private fun HtmlInfoCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = effectiveTint,
                     modifier = Modifier.size(14.dp),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = label,
-                    color = HtmlProfileColors.InfoLabelGray,
+                    color = palette.infoLabelColor,
                     fontSize = 14.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.SemiBold,
@@ -730,7 +803,7 @@ private fun HtmlInfoCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
-                color = if (isEmpty) Color(0xFF94A3B8) else valueColor,
+                color = if (isEmpty) palette.emptyValueColor else resolvedValueColor,
                 fontSize = 16.5.sp,
                 lineHeight = 23.sp,
                 fontFamily = hindSiliguri,

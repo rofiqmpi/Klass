@@ -168,10 +168,10 @@ private fun fetchRealAndroidDeviceLocation(
 }
 
 private fun geocodeLocation(context: Context, lat: Double, lon: Double): String {
-    val activeLang = loadAppLanguage()
+    val activeLang = AppLanguage.ENGLISH
     val gpsFallback = "${"জিপিএস লোকেশন".localized(activeLang)} (${lat.toString().take(7)}°, ${lon.toString().take(7)}°)"
     return try {
-        val locale = if (activeLang == AppLanguage.BENGALI) Locale("bn", "BD") else Locale.ENGLISH
+        val locale = Locale.ENGLISH
         val geocoder = Geocoder(context, locale)
         @Suppress("DEPRECATION")
         val addresses = geocoder.getFromLocation(lat, lon, 1)

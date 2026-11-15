@@ -1,50 +1,35 @@
 package com.mpi.klass
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.font.FontFamily
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.zIndex
-import com.mpi.klass.theme.SparkleIcon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,6 +38,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,25 +48,32 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mpi.klass.theme.CloseIcon
+import androidx.compose.ui.zIndex
+import com.mpi.klass.theme.BookIcon
+import com.mpi.klass.theme.CalendarDaysIcon
+import com.mpi.klass.theme.CheckIcon
+import com.mpi.klass.theme.ClockIcon
+import com.mpi.klass.theme.DoorOpenIcon
+import com.mpi.klass.theme.EditIcon
+import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
-import androidx.compose.runtime.mutableStateListOf
-import coil3.compose.AsyncImage
-import klass.shared.generated.resources.Res
-import klass.shared.generated.resources.home
-import klass.shared.generated.resources.menu
-import klass.shared.generated.resources.notification
-import klass.shared.generated.resources.welcome
-import org.jetbrains.compose.resources.painterResource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 @Composable
 fun RoleHomeScreen(
@@ -99,40 +93,21 @@ fun RoleHomeScreen(
     var currentPhotoUrl by remember(photoUrl) { mutableStateOf(photoUrl) }
     var currentRole by remember(role) { mutableStateOf(role) }
 
+    var studentProfile by remember(email) {
+        mutableStateOf(if (email.isNotBlank()) fetchLocalStudentProfile(email.trim().lowercase()) else null)
+    }
+    var teacherPref by remember(email) { mutableStateOf<TeacherSchedulingPref?>(null) }
+    var teacherOnboardingDismissed by remember(email) { mutableStateOf(false) }
+    var publishedPlan by remember { mutableStateOf<RoutinePlan?>(null) }
+    var classrooms by remember { mutableStateOf<List<ClassroomItem>>(emptyList()) }
+
+    // Selected slot modal (for Teacher Edit Request or Details)
+    var inspectedEntry by remember { mutableStateOf<RoutineEntry?>(null) }
+
     val autoLocationSyncLauncher = rememberLocationPermissionLauncher { realAddress ->
         if (realAddress.isNotBlank() && email.isNotBlank() && currentRole == UserRole.STUDENT) {
             CoroutineScope(Dispatchers.IO + NonCancellable).launch {
-                val cleanEm = email.trim().lowercase()
-                val existing = RoleConfig.fetchStudentProfile(cleanEm)
-                if (existing == null || existing.address != realAddress) {
-                    val toSave = (existing ?: StudentProfile(
-                        email = cleanEm,
-                        name = currentUserName,
-                        photoUrl = currentPhotoUrl,
-                    )).copy(address = realAddress)
-                    RoleConfig.saveStudentProfile(toSave)
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(email) {
-        if (email.isNotBlank()) {
-            val prof = RoleConfig.fetchUserProfile(email)
-            if (prof != null) {
-                UserRole.fromRaw(prof.category)?.let {
-                    currentRole = it
-                }
-                val fetchedPhoto = prof.photoUrl
-                if (!fetchedPhoto.isNullOrBlank() && (currentPhotoUrl.isNullOrBlank() || fetchedPhoto.startsWith("data:image"))) {
-                    currentPhotoUrl = fetchedPhoto
-                }
-                if (currentUserName.isBlank() && prof.name.isNotBlank()) {
-                    currentUserName = prof.name
-                }
-            }
-            if (currentRole == UserRole.STUDENT) {
-                autoLocationSyncLauncher()
+                RoleConfig.saveStudentAddress(email.trim().lowercase(), realAddress)
             }
         }
     }
@@ -149,6 +124,10 @@ fun RoleHomeScreen(
     val tabBackStack = remember { mutableStateListOf(initialTab) }
     val selectedTab = tabBackStack.lastOrNull() ?: "home"
     var lastBackPressTime by remember { mutableStateOf(0L) }
+    var isTeachersSubOverlayOpen by remember { mutableStateOf(false) }
+    var isBooksSubOverlayOpen by remember { mutableStateOf(false) }
+    var isClassroomSubOverlayOpen by remember { mutableStateOf(false) }
+    var isRoutineSubOverlayOpen by remember { mutableStateOf(false) }
 
     fun navigateTo(tab: String) {
         if (selectedTab != tab) {
@@ -160,21 +139,54 @@ fun RoleHomeScreen(
         if (tabBackStack.size > 1) {
             tabBackStack.removeAt(tabBackStack.lastIndex)
         } else {
-            // At root "home" tab - double back to exit
             val now = getCurrentTimeMillis()
             if (now - lastBackPressTime < 2000L) {
                 onCloseApp()
             } else {
                 lastBackPressTime = now
-                showToast("অ্যাপ থেকে বের হতে আবার ব্যাক প্রেস করুন".localized(currentLang))
+                showToast("Press back again to exit".localized(currentLang))
             }
         }
+    }
+
+    LaunchedEffect(email) {
+        val cleanEmail = email.trim().lowercase()
+        if (cleanEmail.isNotBlank()) {
+            val prof = RoleConfig.fetchUserProfile(cleanEmail)
+            if (prof != null) {
+                UserRole.fromRaw(prof.category)?.let { currentRole = it }
+                val fetchedPhoto = prof.photoUrl
+                if (!fetchedPhoto.isNullOrBlank() && (currentPhotoUrl.isNullOrBlank() || fetchedPhoto.startsWith("data:image"))) {
+                    currentPhotoUrl = fetchedPhoto
+                }
+                if (currentUserName.isBlank() && prof.name.isNotBlank()) {
+                    currentUserName = prof.name
+                }
+            }
+            studentProfile = RoleConfig.fetchStudentProfile(cleanEmail)
+            if (currentRole == UserRole.TEACHER) {
+                val loadedPref = fetchTeacherSchedulingPrefFromFirestore(cleanEmail)
+                teacherPref = loadedPref
+                if ((loadedPref == null || !loadedPref.schedulingSetupComplete) && !teacherOnboardingDismissed) {
+                    navigateTo("teacher_prefs")
+                }
+            }
+            if (currentRole == UserRole.STUDENT) {
+                autoLocationSyncLauncher()
+            }
+            CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+                RoleConfig.seedBtebLibraryBooks(forceReseed = false)
+            }
+        }
+        publishedPlan = fetchRoutinePlanFromFirestore("master_6m_published")
+        classrooms = fetchClassroomsFromFirestore()
     }
 
     val coroutineScope = rememberCoroutineScope()
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
 
     val isGesture = remember { isGestureNavigation() }
     val exactCornerRadiusDp = remember { getDisplayBottomCornerRadiusDp() }
@@ -241,77 +253,241 @@ fun RoleHomeScreen(
                     dragController.rootSize = coords.size
                 },
         ) {
-        // Base Layer: Only Home <-> Menu swipe left/right together with their headers & bottom bar
-        HorizontalPager(
-            state = pagerState,
-            userScrollEnabled = overlayTab == null,
-            modifier = Modifier.fillMaxSize(),
-        ) { page ->
-            when (page) {
-                0 -> {
-                    // Page 0: Complete Home Screen (Header + Divider + Routine Table + Bottom Bar)
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        HomeRoutineHeader(
-                            isDark = isDark,
-                            cardBg = cardBg,
-                            photoUrl = currentPhotoUrl,
-                            avatarSeed = email.ifBlank { currentUserName },
-                            onProfileClick = { navigateTo("profile") },
-                            onAiClick = { navigateTo("ai") },
-                            onNotificationClick = { navigateTo("notification") },
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(0.5.dp)
-                                .background(if (isDark) Color.White else Color.Black),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(3.dp),
-                            contentAlignment = Alignment.Center,
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = overlayTab == null,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                when (page) {
+                    0 -> {
+                        // Compute role-filtered routine entries
+                        val plan = publishedPlan
+                        val allEntries = plan?.entries ?: emptyList()
+                        val activeConfig = plan?.config ?: RoutineConfig()
+                        val cleanEmail = email.trim().lowercase()
+
+                        val homeFiltered = remember(
+                            allEntries,
+                            currentRole,
+                            studentProfile,
+                            cleanEmail,
                         ) {
-                            ClassRoutineTable(
-                                hindSiliguri = hindSiliguri,
-                                isDark = isDark,
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                            when (currentRole) {
+                                UserRole.STUDENT -> {
+                                    val sp = studentProfile
+                                    if (sp == null || sp.department.isBlank() || sp.semester.isBlank()) {
+                                        emptyList()
+                                    } else {
+                                        val dept = RoutineRules.normalizeDepartmentShort(sp.department)
+                                        val shift = RoutineRules.normalizeShift(sp.shift)
+                                        val sem = RoutineRules.canonicalSemesterKey(sp.semester)
+                                        val grp = RoutineRules.normalizeGroup(dept, sp.section)
+                                        allEntries.filter {
+                                            it.department == dept &&
+                                                RoutineRules.normalizeShift(it.shift) == shift &&
+                                                RoutineRules.canonicalSemesterKey(it.semester) == sem &&
+                                                RoutineRules.normalizeGroup(dept, it.group) == grp
+                                        }
+                                    }
+                                }
+                                UserRole.TEACHER -> {
+                                    allEntries.filter {
+                                        it.teacherEmail.trim().lowercase() == cleanEmail
+                                    }
+                                }
+                                UserRole.ADMIN -> {
+                                    allEntries.filter {
+                                        it.department == "CST" &&
+                                            RoutineRules.normalizeShift(it.shift) == RoutineRules.SHIFT_1 &&
+                                            RoutineRules.canonicalSemesterKey(it.semester) == RoutineRules.ALL_SEMESTER_KEYS.first() &&
+                                            RoutineRules.normalizeGroup("CST", it.group) == "Group A"
+                                    }
+                                }
+                            }
                         }
-                        HomeMenuBottomBar(
-                            isHomeSelected = true,
-                            isDark = isDark,
-                            cardBg = cardBg,
-                            hindSiliguri = hindSiliguri,
-                            homeShape = homeShape,
-                            menuShape = menuShape,
-                            onHomeClick = { navigateTo("home") },
-                            onMenuClick = { navigateTo("menu") },
-                        )
-                    }
-                }
-                else -> {
-                    // Page 1: Complete Menu Screen (Transparent Header + Scrollable Cards + Bottom Bar)
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                        ) {
-                            MenuScreen(
+
+                        val activeShiftForTime = when (currentRole) {
+                            UserRole.STUDENT -> RoutineRules.normalizeShift(studentProfile?.shift ?: RoutineRules.SHIFT_1)
+                            UserRole.TEACHER -> RoutineRules.normalizeShift(teacherPref?.shift ?: RoutineRules.SHIFT_1)
+                            UserRole.ADMIN -> RoutineRules.SHIFT_1
+                        }
+
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            HomeRoutineHeader(
                                 isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                role = currentRole,
-                                currentThemeMode = currentThemeMode,
-                                onThemeModeChange = onThemeModeChange,
+                                cardBg = cardBg,
+                                photoUrl = currentPhotoUrl,
+                                avatarSeed = email.ifBlank { currentUserName },
                                 onProfileClick = { navigateTo("profile") },
                                 onAiClick = { navigateTo("ai") },
-                                onNoticeClick = { navigateTo("notification") },
+                                onNotificationClick = { navigateTo("notification") },
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(0.5.dp)
+                                    .background(if (isDark) Color.White else Color.Black),
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(3.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                ClassRoutineTable(
+                                    hindSiliguri = hindSiliguri,
+                                    isDark = isDark,
+                                    entries = homeFiltered,
+                                    periodsPerDay = activeConfig.periodsPerDay,
+                                    shift = activeShiftForTime,
+                                    config = activeConfig,
+                                    showGroupOrRoomHint = currentRole == UserRole.TEACHER,
+                                    onSlotClick = { entry -> inspectedEntry = entry },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+
+                            HomeMenuBottomBar(
+                                isHomeSelected = true,
+                                isDark = isDark,
+                                cardBg = cardBg,
+                                hindSiliguri = hindSiliguri,
+                                homeShape = homeShape,
+                                menuShape = menuShape,
+                                onHomeClick = { navigateTo("home") },
+                                onMenuClick = { navigateTo("menu") },
+                            )
+                        }
+                    }
+
+                    else -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                            ) {
+                                MenuScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    role = currentRole,
+                                    currentThemeMode = currentThemeMode,
+                                    onThemeModeChange = onThemeModeChange,
+                                    onProfileClick = { navigateTo("profile") },
+                                    onAiClick = { navigateTo("ai") },
+                                    onNoticeClick = { navigateTo("notification") },
+                                    onClassroomClick = { navigateTo("classrooms") },
+                                    onBooksClick = { navigateTo("books") },
+                                    onTeachersClick = { navigateTo("teachers") },
+                                    onRoutineManagerClick = { navigateTo("routine_manager") },
+                                    onTeacherPreferencesClick = { navigateTo("teacher_prefs") },
+                                    onBloodFinderClick = { navigateTo("blood_finder") },
+                                    topContentPadding = 72.dp,
+                                )
+                                FloatingFadeTopHeader(
+                                    title = "Menu",
+                                    isDark = isDark,
+                                    cardBg = cardBg,
+                                    textColor = textColor,
+                                    hindSiliguri = hindSiliguri,
+                                    onCloseClick = { goBack() },
+                                    onAiClick = { navigateTo("ai") },
+                                    onNotificationClick = { navigateTo("notification") },
+                                    modifier = Modifier.align(Alignment.TopCenter),
+                                )
+                            }
+                            HomeMenuBottomBar(
+                                isHomeSelected = false,
+                                isDark = isDark,
+                                cardBg = cardBg,
+                                hindSiliguri = hindSiliguri,
+                                homeShape = homeShape,
+                                menuShape = menuShape,
+                                onHomeClick = { navigateTo("home") },
+                                onMenuClick = { navigateTo("menu") },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Secondary Overlay Layer
+            AnimatedContent(
+                targetState = overlayTab,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(260)) togetherWith fadeOut(animationSpec = tween(220))
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(20f),
+                label = "RoleOverlayTabTransition",
+            ) { tab ->
+                when (tab) {
+                    "profile" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            ProfileScreen(
+                                userName = currentUserName,
+                                role = currentRole,
+                                isDark = isDark,
+                                currentThemeMode = currentThemeMode,
+                                onThemeModeChange = onThemeModeChange,
+                                onSignOut = onSignOut,
+                                hindSiliguri = hindSiliguri,
+                                email = email,
+                                photoUrl = currentPhotoUrl,
                                 topContentPadding = 72.dp,
+                                onOpenTeachingPrefs = if (currentRole == UserRole.TEACHER) {
+                                    { navigateTo("teacher_prefs") }
+                                } else {
+                                    null
+                                },
+                                onUpdateProfile = { newName, newPhotoUrl ->
+                                    currentUserName = newName
+                                    currentPhotoUrl = newPhotoUrl
+                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
+                                    if (sessionEmail.isNotBlank()) {
+                                        saveLocalProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                        saveUserSession(
+                                            UserSession(
+                                                role = currentRole.name,
+                                                email = sessionEmail,
+                                                name = newName,
+                                                photoUrl = newPhotoUrl,
+                                            )
+                                        )
+                                        CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+                                            if (currentRole == UserRole.ADMIN) {
+                                                RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
+                                            }
+                                            RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                            studentProfile = RoleConfig.fetchStudentProfile(sessionEmail)
+                                        }
+                                    }
+                                    onProfileUpdated?.invoke(newName, newPhotoUrl)
+                                },
+                                onCategoryChanged = { newRole ->
+                                    currentRole = newRole
+                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
+                                    if (sessionEmail.isNotBlank()) {
+                                        saveUserSession(
+                                            UserSession(
+                                                role = newRole.name,
+                                                email = sessionEmail,
+                                                name = currentUserName,
+                                                photoUrl = currentPhotoUrl,
+                                            )
+                                        )
+                                    }
+                                },
                             )
                             FloatingFadeTopHeader(
-                                title = "মেনু".localized(),
+                                title = "Profile",
                                 isDark = isDark,
                                 cardBg = cardBg,
                                 textColor = textColor,
@@ -322,159 +498,682 @@ fun RoleHomeScreen(
                                 modifier = Modifier.align(Alignment.TopCenter),
                             )
                         }
-                        HomeMenuBottomBar(
-                            isHomeSelected = false,
-                            isDark = isDark,
-                            cardBg = cardBg,
-                            hindSiliguri = hindSiliguri,
-                            homeShape = homeShape,
-                            menuShape = menuShape,
-                            onHomeClick = { navigateTo("home") },
-                            onMenuClick = { navigateTo("menu") },
-                        )
+                    }
+                    "notification" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            NotificationScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                role = currentRole,
+                                email = email,
+                                studentProfile = studentProfile,
+                                teacherPref = teacherPref,
+                                publishedPlan = publishedPlan,
+                            )
+                            FloatingFadeTopHeader(
+                                title = "Notifications",
+                                isDark = isDark,
+                                cardBg = cardBg,
+                                textColor = textColor,
+                                hindSiliguri = hindSiliguri,
+                                showLeftClose = false,
+                                showRightClose = true,
+                                onCloseClick = { goBack() },
+                                onAiClick = { navigateTo("ai") },
+                                onNotificationClick = { navigateTo("notification") },
+                                modifier = Modifier.align(Alignment.TopCenter),
+                            )
+                        }
+                    }
+                    "teachers" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            TeachersDirectoryScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                topContentPadding = 72.dp,
+                                onFullScreenOverlayChange = { isTeachersSubOverlayOpen = it },
+                            )
+                            AnimatedVisibility(
+                                visible = !isTeachersSubOverlayOpen,
+                                enter = fadeIn(tween(180)),
+                                exit = fadeOut(tween(150)),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .zIndex(15f),
+                            ) {
+                                FloatingFadeTopHeader(
+                                    title = "Teachers Directory",
+                                    isDark = isDark,
+                                    cardBg = cardBg,
+                                    textColor = textColor,
+                                    hindSiliguri = hindSiliguri,
+                                    onCloseClick = { goBack() },
+                                    onAiClick = { navigateTo("ai") },
+                                    onNotificationClick = { navigateTo("notification") },
+                                )
+                            }
+                        }
+                    }
+                    "books" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            BooksLibraryScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                topContentPadding = 72.dp,
+                                onFullScreenOverlayChange = { isBooksSubOverlayOpen = it },
+                            )
+                            AnimatedVisibility(
+                                visible = !isBooksSubOverlayOpen,
+                                enter = fadeIn(tween(180)),
+                                exit = fadeOut(tween(150)),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .zIndex(15f),
+                            ) {
+                                FloatingFadeTopHeader(
+                                    title = "Books Library",
+                                    isDark = isDark,
+                                    cardBg = cardBg,
+                                    textColor = textColor,
+                                    hindSiliguri = hindSiliguri,
+                                    onCloseClick = { goBack() },
+                                    onAiClick = { navigateTo("ai") },
+                                    onNotificationClick = { navigateTo("notification") },
+                                )
+                            }
+                        }
+                    }
+                    "classrooms" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            ClassroomManagementScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                canEdit = currentRole == UserRole.ADMIN,
+                                topContentPadding = 72.dp,
+                                onFullScreenOverlayChange = { isClassroomSubOverlayOpen = it },
+                            )
+                            AnimatedVisibility(
+                                visible = !isClassroomSubOverlayOpen,
+                                enter = fadeIn(tween(180)),
+                                exit = fadeOut(tween(150)),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .zIndex(15f),
+                            ) {
+                                FloatingFadeTopHeader(
+                                    title = "Classrooms & Labs",
+                                    isDark = isDark,
+                                    cardBg = cardBg,
+                                    textColor = textColor,
+                                    hindSiliguri = hindSiliguri,
+                                    onCloseClick = { goBack() },
+                                    onAiClick = { navigateTo("ai") },
+                                    onNotificationClick = { navigateTo("notification") },
+                                )
+                            }
+                        }
+                    }
+                    "routine_manager" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            RoutineGeneratorScreen(
+                                adminEmail = email,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                topContentPadding = 72.dp,
+                                onFullScreenOverlayChange = { isRoutineSubOverlayOpen = it },
+                                onPlanPublished = { updated -> publishedPlan = updated },
+                            )
+                            AnimatedVisibility(
+                                visible = !isRoutineSubOverlayOpen,
+                                enter = fadeIn(tween(180)),
+                                exit = fadeOut(tween(150)),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .zIndex(15f),
+                            ) {
+                                FloatingFadeTopHeader(
+                                    title = "Routine Generator",
+                                    isDark = isDark,
+                                    cardBg = cardBg,
+                                    textColor = textColor,
+                                    hindSiliguri = hindSiliguri,
+                                    onCloseClick = { goBack() },
+                                    onAiClick = { navigateTo("ai") },
+                                    onNotificationClick = { navigateTo("notification") },
+                                )
+                            }
+                        }
+                    }
+                    "teacher_prefs" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            TeacherPreferencesScreen(
+                                email = email,
+                                userName = currentUserName,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                topContentPadding = 72.dp,
+                                isOnboardingPrompt = !(teacherPref?.schedulingSetupComplete ?: true),
+                                onDismissOnboarding = {
+                                    teacherOnboardingDismissed = true
+                                    goBack()
+                                },
+                                onSaved = { saved ->
+                                    teacherPref = saved
+                                    teacherOnboardingDismissed = true
+                                    goBack()
+                                },
+                            )
+                            FloatingFadeTopHeader(
+                                title = "Teaching Preferences",
+                                isDark = isDark,
+                                cardBg = cardBg,
+                                textColor = textColor,
+                                hindSiliguri = hindSiliguri,
+                                onCloseClick = {
+                                    teacherOnboardingDismissed = true
+                                    goBack()
+                                },
+                                onAiClick = { navigateTo("ai") },
+                                onNotificationClick = { navigateTo("notification") },
+                                modifier = Modifier.align(Alignment.TopCenter),
+                            )
+                        }
+                    }
+                    "blood_finder" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            BloodFinderScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                topContentPadding = 72.dp,
+                            )
+                            FloatingFadeTopHeader(
+                                title = "Blood Donor Finder",
+                                isDark = isDark,
+                                cardBg = cardBg,
+                                textColor = textColor,
+                                hindSiliguri = hindSiliguri,
+                                onCloseClick = { goBack() },
+                                onAiClick = { navigateTo("ai") },
+                                onNotificationClick = { navigateTo("notification") },
+                                modifier = Modifier.align(Alignment.TopCenter),
+                            )
+                        }
+                    }
+                    "ai" -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            AiAssistantScreen(
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onBack = { goBack() },
+                                userDisplayName = currentUserName,
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // Secondary Overlay Layer (Profile, Notification, AI) with fade in / fade out (no horizontal swipe)
-        AnimatedContent(
-            targetState = overlayTab,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(260)) togetherWith fadeOut(animationSpec = tween(220))
-            },
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(20f),
-            label = "RoleOverlayTabTransition",
-        ) { tab ->
-            when (tab) {
-                "profile" -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background),
-                    ) {
-                        ProfileScreen(
-                            userName = currentUserName,
-                            role = currentRole,
-                            isDark = isDark,
-                            currentThemeMode = currentThemeMode,
-                            onThemeModeChange = onThemeModeChange,
-                            onSignOut = onSignOut,
-                            hindSiliguri = hindSiliguri,
-                            email = email,
-                            photoUrl = currentPhotoUrl,
-                            topContentPadding = 72.dp,
-                            onUpdateProfile = { newName, newPhotoUrl ->
-                                currentUserName = newName
-                                currentPhotoUrl = newPhotoUrl
-                                val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
-                                if (sessionEmail.isNotBlank()) {
-                                    saveLocalProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
-                                    saveUserSession(
-                                        UserSession(
-                                            role = currentRole.name,
-                                            email = sessionEmail,
-                                            name = newName,
-                                            photoUrl = newPhotoUrl,
-                                        )
-                                    )
-                                    CoroutineScope(Dispatchers.IO + NonCancellable).launch {
-                                        if (currentRole == UserRole.TEACHER) {
-                                            RoleConfig.saveTeacherProfile(sessionEmail, newName, newPhotoUrl)
-                                        } else if (currentRole == UserRole.ADMIN) {
-                                            RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
-                                        } else if (currentRole == UserRole.STUDENT) {
-                                            val existing = RoleConfig.fetchStudentProfile(sessionEmail)
-                                            val studentProfileToSave = if (existing != null) {
-                                                existing.copy(name = newName, photoUrl = newPhotoUrl)
-                                            } else {
-                                                StudentProfile(email = sessionEmail, name = newName, photoUrl = newPhotoUrl)
-                                            }
-                                            RoleConfig.saveStudentProfile(studentProfileToSave)
-                                        }
-                                        RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
-                                    }
-                                }
-                                onProfileUpdated?.invoke(newName, newPhotoUrl)
-                            },
-                            onCategoryChanged = { newRole ->
-                                currentRole = newRole
-                                val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
-                                if (sessionEmail.isNotBlank()) {
-                                    saveUserSession(
-                                        UserSession(
-                                            role = newRole.name,
-                                            email = sessionEmail,
-                                            name = currentUserName,
-                                            photoUrl = currentPhotoUrl,
-                                        )
-                                    )
-                                }
-                            },
-                        )
-                        FloatingFadeTopHeader(
-                            title = "প্রোফাইল".localized(),
-                            isDark = isDark,
-                            cardBg = cardBg,
-                            textColor = textColor,
-                            hindSiliguri = hindSiliguri,
-                            onCloseClick = { goBack() },
-                            onAiClick = { navigateTo("ai") },
-                            onNotificationClick = { navigateTo("notification") },
-                            modifier = Modifier.align(Alignment.TopCenter),
-                        )
-                    }
-                }
-                "notification" -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background),
-                    ) {
-                        NotificationScreen(isDark = isDark, hindSiliguri = hindSiliguri)
-                        FloatingFadeTopHeader(
-                            title = "নোটিফিকেশন".localized(),
-                            isDark = isDark,
-                            cardBg = cardBg,
-                            textColor = textColor,
-                            hindSiliguri = hindSiliguri,
-                            showLeftClose = false,
-                            showRightClose = true,
-                            onCloseClick = { goBack() },
-                            onAiClick = { navigateTo("ai") },
-                            onNotificationClick = { navigateTo("notification") },
-                            modifier = Modifier.align(Alignment.TopCenter),
-                        )
-                    }
-                }
-                "ai" -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background),
-                    ) {
-                        AiAssistantScreen(
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            onBack = { goBack() },
-                            userDisplayName = currentUserName,
-                        )
-                    }
-                }
-            }
+            SwipeDragWindowOverlay(
+                controller = dragController,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+            )
         }
+    }
 
-        // Top-most floating screen-window morph overlay above ALL UI layers
-        SwipeDragWindowOverlay(
-            controller = dragController,
+    // Slot Inspection / Teacher Edit Request Dialog
+    val slot = inspectedEntry
+    if (slot != null) {
+        SlotInspectionDialog(
+            entry = slot,
+            role = currentRole,
+            teacherName = currentUserName,
+            teacherEmail = email,
+            classrooms = classrooms,
+            periodsPerDay = publishedPlan?.config?.periodsPerDay ?: 7,
             isDark = isDark,
             hindSiliguri = hindSiliguri,
+            onDismiss = { inspectedEntry = null },
+            onOpenRoutineManager = {
+                inspectedEntry = null
+                navigateTo("routine_manager")
+            },
         )
-    }
     }
 }
 
+private data class SlotMetaField(
+    val label: String,
+    val value: String,
+    val icon: ImageVector,
+    val accent: Color,
+)
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SlotInspectionDialog(
+    entry: RoutineEntry,
+    role: UserRole,
+    teacherName: String,
+    teacherEmail: String,
+    classrooms: List<ClassroomItem>,
+    periodsPerDay: Int,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onDismiss: () -> Unit,
+    onOpenRoutineManager: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
+    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
+    val accent = Color(0xFF0284C7)
 
+    var showEditForm by remember { mutableStateOf(false) }
+    var reqDay by remember(entry) { mutableStateOf(entry.day) }
+    var reqPeriod by remember(entry) { mutableIntStateOf(entry.periodIndex) }
+    var reqRoom by remember(entry) { mutableStateOf(entry.roomNumber) }
+    var reqReason by remember(entry) { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    val metaFields = remember(entry) {
+        listOf(
+            SlotMetaField(
+                label = "Schedule",
+                value = "${entry.day}, Period ${entry.periodIndex + 1} (${entry.startTime} – ${entry.endTime})",
+                icon = ClockIcon,
+                accent = Color(0xFF0284C7),
+            ),
+            SlotMetaField(
+                label = "Department & Batch",
+                value = "${entry.department} • ${RoutineRules.semesterDisplayLabel(entry.semester)} • ${entry.group}",
+                icon = GraduationCapIcon,
+                accent = Color(0xFF2563EB),
+            ),
+            SlotMetaField(
+                label = "Classroom / Lab",
+                value = "Room ${entry.roomNumber} (${entry.shift})",
+                icon = DoorOpenIcon,
+                accent = Color(0xFF7C3AED),
+            ),
+            SlotMetaField(
+                label = "Instructor",
+                value = entry.teacherName.ifBlank { entry.teacherEmail.ifBlank { "Assigned Faculty" } },
+                icon = PersonIcon,
+                accent = Color(0xFF059669),
+            ),
+            SlotMetaField(
+                label = "Subject Code & Format",
+                value = "${entry.subjectCode} • ${if (entry.isPractical) "Practical / Lab" else "Theory"}",
+                icon = BookIcon,
+                accent = Color(0xFFD97706),
+            ),
+        )
+    }
+
+    fun submitEditRequest() {
+        scope.launch {
+            isSubmitting = true
+            try {
+                val now = getCurrentTimeMillis()
+                val roomObj = classrooms.firstOrNull { it.roomNumber.equals(reqRoom, true) }
+                val req = RoutineEditRequest(
+                    id = "req_$now",
+                    requestedByEmail = teacherEmail.trim().lowercase(),
+                    requestedByName = teacherName,
+                    targetEntryId = entry.id,
+                    department = entry.department,
+                    semester = entry.semester,
+                    shift = entry.shift,
+                    group = entry.group,
+                    subjectCode = entry.subjectCode,
+                    subjectTitle = entry.subjectTitle,
+                    originalDay = entry.day,
+                    originalPeriod = entry.periodIndex,
+                    originalRoomNumber = entry.roomNumber,
+                    requestedDay = reqDay,
+                    requestedPeriod = reqPeriod,
+                    requestedRoomId = roomObj?.id ?: entry.roomId,
+                    requestedRoomNumber = reqRoom.ifBlank { entry.roomNumber },
+                    reason = reqReason.trim().ifBlank { "Schedule adjustment requested" },
+                    status = EditRequestStatus.PENDING,
+                    createdAt = now,
+                )
+                val res = submitRoutineEditRequestInFirestore(req)
+                if (res.isSuccess) {
+                    publishNotificationInFirestore(
+                        AppNotificationItem(
+                            id = "noti_req_new_$now",
+                            title = "New Teacher Edit Request",
+                            body = "$teacherName requested moving ${entry.subjectTitle} to $reqDay P${reqPeriod + 1} (Room ${req.requestedRoomNumber}).",
+                            category = "REQUEST",
+                            targetRole = "ADMIN",
+                            createdAt = now,
+                        )
+                    )
+                    showToast("Request submitted for Admin approval!")
+                    onDismiss()
+                } else {
+                    showToast("Could not submit request.")
+                }
+            } finally {
+                isSubmitting = false
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().zIndex(90f)) {
+        MinimalFullScreenSheet(
+            title = if (showEditForm) "Request Slot Change" else entry.subjectTitle,
+            subtitle = "${entry.subjectCode} • ${if (entry.isPractical) "Practical / Lab" else "Theory"}",
+            icon = CalendarDaysIcon,
+            accent = accent,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            onDismiss = {
+                if (showEditForm && !isSubmitting) {
+                    showEditForm = false
+                } else if (!isSubmitting) {
+                    onDismiss()
+                }
+            },
+            dismissEnabled = !isSubmitting,
+            maxContentWidth = 760.dp,
+            bottomBar = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    WelcomeMinimal3DButton(
+                        text = if (showEditForm) "Back" else "Close",
+                        hindSiliguri = hindSiliguri,
+                        isPrimaryAccent = false,
+                        isDark = isDark,
+                        enabled = !isSubmitting,
+                        height = 46.dp,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (showEditForm) showEditForm = false else onDismiss()
+                        },
+                    )
+                    if (showEditForm) {
+                        WelcomeMinimal3DButton(
+                            text = if (isSubmitting) "Submitting..." else "Submit Request",
+                            icon = CheckIcon,
+                            hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            isLoading = isSubmitting,
+                            enabled = !isSubmitting,
+                            height = 46.dp,
+                            modifier = Modifier.weight(1.3f),
+                            onClick = { submitEditRequest() },
+                        )
+                    } else if (role == UserRole.TEACHER) {
+                        WelcomeMinimal3DButton(
+                            text = "Request Edit",
+                            icon = EditIcon,
+                            hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            height = 46.dp,
+                            modifier = Modifier.weight(1.3f),
+                            onClick = { showEditForm = true },
+                        )
+                    } else if (role == UserRole.ADMIN) {
+                        WelcomeMinimal3DButton(
+                            text = "Edit in Manager",
+                            icon = EditIcon,
+                            hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            height = 46.dp,
+                            modifier = Modifier.weight(1.3f),
+                            onClick = onOpenRoutineManager,
+                        )
+                    }
+                }
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                if (!showEditForm) {
+                    MinimalResponsiveGrid(
+                        items = metaFields,
+                        twoColMinWidth = 560.dp,
+                        spacing = 10.dp,
+                    ) { _, field ->
+                        MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(9.dp))
+                                        .background(field.accent.copy(alpha = if (isDark) 0.16f else 0.10f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = field.icon,
+                                        contentDescription = null,
+                                        tint = field.accent,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = field.label,
+                                        fontSize = 11.5.sp,
+                                        fontFamily = hindSiliguri,
+                                        fontWeight = FontWeight.Medium,
+                                        color = subTextColor,
+                                    )
+                                    Text(
+                                        text = field.value,
+                                        fontSize = 13.5.sp,
+                                        fontFamily = hindSiliguri,
+                                        fontWeight = FontWeight.Bold,
+                                        color = textColor,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    MinimalStatBadge(
+                        icon = ClockIcon,
+                        text = "Current: ${entry.day} P${entry.periodIndex + 1} • Room ${entry.roomNumber}",
+                        accent = accent,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "Requested Working Day",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = textColor,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            RoutineRules.WORKING_DAYS.forEach { d ->
+                                MinimalIconChip(
+                                    label = d.take(3),
+                                    selected = reqDay.equals(d, true),
+                                    accent = accent,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    onClick = { reqDay = d },
+                                )
+                            }
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "Requested Period",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = textColor,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            for (p in 0 until periodsPerDay.coerceIn(4, 10)) {
+                                MinimalIconChip(
+                                    label = "P${p + 1}",
+                                    selected = reqPeriod == p,
+                                    accent = Color(0xFF7C3AED),
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    onClick = { reqPeriod = p },
+                                )
+                            }
+                        }
+                    }
+
+                    if (classrooms.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Requested Classroom / Lab",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = hindSiliguri,
+                                color = textColor,
+                            )
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(classrooms) { r ->
+                                    MinimalIconChip(
+                                        label = r.roomNumber,
+                                        selected = reqRoom.equals(r.roomNumber, true),
+                                        accent = Color(0xFF059669),
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        onClick = { reqRoom = r.roomNumber },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "Reason",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = textColor,
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, borderCol),
+                            modifier = Modifier.fillMaxWidth().height(100.dp),
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+                                if (reqReason.isEmpty()) {
+                                    Text(
+                                        text = "Reason for change request...",
+                                        color = subTextColor,
+                                        fontSize = 13.sp,
+                                        fontFamily = hindSiliguri,
+                                    )
+                                }
+                                BasicTextField(
+                                    value = reqReason,
+                                    onValueChange = { reqReason = it },
+                                    textStyle = TextStyle(
+                                        color = textColor,
+                                        fontSize = 13.5.sp,
+                                        fontFamily = hindSiliguri,
+                                        lineHeight = 19.sp,
+                                    ),
+                                    cursorBrush = SolidColor(accent),
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun HomeFilterPill(
+    label: String,
+    active: Boolean,
+    cardBg: Color,
+    borderCol: Color,
+    activeColor: Color,
+    textColor: Color,
+    hindSiliguri: FontFamily,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = if (active) activeColor else cardBg,
+        border = BorderStroke(1.dp, if (active) activeColor else borderCol),
+        modifier = Modifier.height(30.dp),
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 9.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = hindSiliguri,
+                color = if (active) Color.White else textColor,
+            )
+        }
+    }
+}

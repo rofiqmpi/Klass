@@ -1,16 +1,14 @@
 package com.mpi.klass
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -66,13 +63,20 @@ fun ClassRoutineTable(
     hindSiliguri: FontFamily,
     isDark: Boolean,
     modifier: Modifier = Modifier,
+    entries: List<RoutineEntry> = emptyList(),
+    periodsPerDay: Int = 7,
+    shift: String = RoutineRules.SHIFT_1,
+    config: RoutineConfig = RoutineConfig(),
+    showGroupOrRoomHint: Boolean = false,
+    emptyMessage: String = "",
+    onSlotClick: ((RoutineEntry) -> Unit)? = null,
 ) {
     val slateHeaderBg = Color(0xFF355470)
     val orangeTimeBg = Color(0xFFEA6C13)
     val orangeCodeBg = Color(0xFFEB7C24)
-    val dataCellBg = Color(0xFFDFEAF4)
-    val cardBackground = Color(0xFFF1F5F9) // Distinct card background for individual items
-    val gapThickness = 2.dp // Gap between individual floating cells/cards
+    val dataCellBg = if (isDark) Color(0xFF1E293B) else Color(0xFFDFEAF4)
+    val cellTextColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val gapThickness = 2.dp
 
     val colDayWeight = 0.65f
     val colTimeWeight = 1.55f
@@ -81,17 +85,24 @@ fun ClassRoutineTable(
     val colRoomWeight = 0.95f
     val totalDataWeight = colTimeWeight + colSubjectWeight + colCodeWeight + colRoomWeight
 
-    val days = remember {
-        listOf(
-            DayRoutineConfig("রবিবার", 4),
-            DayRoutineConfig("সোমবার", 4),
-            DayRoutineConfig("মঙ্গলবার", 3),
-            DayRoutineConfig("বুধবার", 5),
-            DayRoutineConfig("বৃহস্পতিবার", 4),
-        )
+    val entriesByDay = remember(entries) {
+        entries.groupBy { it.day.trim().lowercase() }
+            .mapValues { (_, list) -> list.sortedBy { it.periodIndex } }
     }
 
-    val slotsMap = remember { mapOf<String, RoutineSlot>() }
+    val defaultRowCounts = remember { listOf(4, 4, 3, 5, 4) }
+
+    val days = remember(entriesByDay) {
+        RoutineRules.WORKING_DAYS.mapIndexed { idx, dayName ->
+            val daySlots = entriesByDay[dayName.lowercase()] ?: emptyList()
+            val count = if (entries.isEmpty()) {
+                defaultRowCounts.getOrElse(idx) { 4 }
+            } else {
+                daySlots.size.coerceAtLeast(3)
+            }
+            DayRoutineConfig(dayName, count)
+        }
+    }
 
     Box(
         modifier = modifier
@@ -100,17 +111,17 @@ fun ClassRoutineTable(
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gapThickness),
+            verticalArrangement = Arrangement.spacedBy(gapThickness),
         ) {
             // Header Row (Individual Card Headers)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.9f),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gapThickness),
+                horizontalArrangement = Arrangement.spacedBy(gapThickness),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // দিন
+                // Day
                 Surface(
                     modifier = Modifier.weight(colDayWeight).fillMaxHeight(),
                     shape = RoundedCornerShape(3.dp),
@@ -119,7 +130,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "দিন".localized(),
+                            text = "Day",
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -130,7 +141,7 @@ fun ClassRoutineTable(
                     }
                 }
 
-                // সময়
+                // Time
                 Surface(
                     modifier = Modifier.weight(colTimeWeight).fillMaxHeight(),
                     shape = RoundedCornerShape(3.dp),
@@ -139,7 +150,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "সময়".localized(),
+                            text = "Time",
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -150,7 +161,7 @@ fun ClassRoutineTable(
                     }
                 }
 
-                // বিষয়
+                // Subject
                 Surface(
                     modifier = Modifier.weight(colSubjectWeight).fillMaxHeight(),
                     shape = RoundedCornerShape(3.dp),
@@ -159,7 +170,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "বিষয়".localized(),
+                            text = "Subject",
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -170,7 +181,7 @@ fun ClassRoutineTable(
                     }
                 }
 
-                // কোড
+                // Code
                 Surface(
                     modifier = Modifier.weight(colCodeWeight).fillMaxHeight(),
                     shape = RoundedCornerShape(3.dp),
@@ -179,7 +190,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "কোড".localized(),
+                            text = "Code",
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -190,7 +201,7 @@ fun ClassRoutineTable(
                     }
                 }
 
-                // কক্ষ
+                // Room
                 Surface(
                     modifier = Modifier.weight(colRoomWeight).fillMaxHeight(),
                     shape = RoundedCornerShape(3.dp),
@@ -199,7 +210,7 @@ fun ClassRoutineTable(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "কক্ষ".localized(),
+                            text = "Room",
                             color = Color.White,
                             fontSize = 11.sp,
                             fontFamily = hindSiliguri,
@@ -214,15 +225,16 @@ fun ClassRoutineTable(
 
             days.forEach { dayConfig ->
                 val dayWeight = dayConfig.rowCount.toFloat()
+                val dayEntries = entriesByDay[dayConfig.name.lowercase()] ?: emptyList()
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(dayWeight),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gapThickness),
+                    horizontalArrangement = Arrangement.spacedBy(gapThickness),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Day column as individual styled card
+                    // Day column card
                     Surface(
                         modifier = Modifier
                             .weight(colDayWeight)
@@ -236,7 +248,7 @@ fun ClassRoutineTable(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = dayConfig.name.localized(),
+                                text = dayConfig.name,
                                 color = Color.White,
                                 fontSize = 10.sp,
                                 fontFamily = hindSiliguri,
@@ -249,29 +261,53 @@ fun ClassRoutineTable(
                         }
                     }
 
-                    // Periods Column (Individual cards for each cell)
+                    // Periods Column
                     Column(
                         modifier = Modifier
                             .weight(totalDataWeight)
                             .fillMaxHeight(),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gapThickness),
+                        verticalArrangement = Arrangement.spacedBy(gapThickness),
                     ) {
-                        for (periodIndex in 0 until dayConfig.rowCount) {
-                            val slotKey = "${dayConfig.name}_$periodIndex"
-                            val slotData = slotsMap[slotKey] ?: RoutineSlot()
+                        for (rowIndex in 0 until dayConfig.rowCount) {
+                            val entry = dayEntries.getOrNull(rowIndex)
+                            val slotData = if (entry != null) {
+                                val timeText = if (entry.startTime.isNotBlank() && entry.endTime.isNotBlank()) {
+                                    "${entry.startTime.replace(" AM", "").replace(" PM", "")}-${entry.endTime}"
+                                } else {
+                                    ""
+                                }
+                                val subjText = if (showGroupOrRoomHint) {
+                                    "${entry.subjectTitle} (${entry.department} ${entry.group})"
+                                } else {
+                                    entry.subjectTitle
+                                }
+                                RoutineSlot(
+                                    time = timeText,
+                                    subject = subjText,
+                                    code = entry.subjectCode,
+                                    room = entry.roomNumber,
+                                )
+                            } else {
+                                RoutineSlot()
+                            }
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f),
-                                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gapThickness),
+                                    .weight(1f)
+                                    .then(
+                                        if (entry != null && onSlotClick != null) {
+                                            Modifier.clickable { onSlotClick(entry) }
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(gapThickness),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                // 1. সময় Card
+                                // 1. Time Card
                                 Surface(
-                                    modifier = Modifier
-                                        .weight(colTimeWeight)
-                                        .fillMaxHeight(),
+                                    modifier = Modifier.weight(colTimeWeight).fillMaxHeight(),
                                     shape = RoundedCornerShape(3.dp),
                                     color = dataCellBg,
                                     shadowElevation = 0.5.dp,
@@ -282,10 +318,10 @@ fun ClassRoutineTable(
                                     ) {
                                         Text(
                                             text = slotData.time,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontFamily = hindSiliguri,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF0F172A),
+                                            color = cellTextColor,
                                             textAlign = TextAlign.Center,
                                             maxLines = 1,
                                             softWrap = false,
@@ -294,38 +330,33 @@ fun ClassRoutineTable(
                                     }
                                 }
 
-                                // 2. বিষয় Card
+                                // 2. Subject Card
                                 Surface(
-                                    modifier = Modifier
-                                        .weight(colSubjectWeight)
-                                        .fillMaxHeight(),
+                                    modifier = Modifier.weight(colSubjectWeight).fillMaxHeight(),
                                     shape = RoundedCornerShape(3.dp),
                                     color = dataCellBg,
                                     shadowElevation = 0.5.dp,
                                 ) {
                                     Box(
-                                        modifier = Modifier.padding(horizontal = 2.dp),
+                                        modifier = Modifier.padding(horizontal = 3.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
                                             text = slotData.subject,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontFamily = hindSiliguri,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF0F172A),
+                                            color = cellTextColor,
                                             textAlign = TextAlign.Center,
                                             maxLines = 1,
-                                            softWrap = false,
-                                            overflow = TextOverflow.Clip,
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
                                 }
 
-                                // 3. কোড Card
+                                // 3. Code Card
                                 Surface(
-                                    modifier = Modifier
-                                        .weight(colCodeWeight)
-                                        .fillMaxHeight(),
+                                    modifier = Modifier.weight(colCodeWeight).fillMaxHeight(),
                                     shape = RoundedCornerShape(3.dp),
                                     color = dataCellBg,
                                     shadowElevation = 0.5.dp,
@@ -336,10 +367,10 @@ fun ClassRoutineTable(
                                     ) {
                                         Text(
                                             text = slotData.code,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontFamily = hindSiliguri,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF0F172A),
+                                            color = cellTextColor,
                                             textAlign = TextAlign.Center,
                                             maxLines = 1,
                                             softWrap = false,
@@ -348,11 +379,9 @@ fun ClassRoutineTable(
                                     }
                                 }
 
-                                // 4. কক্ষ Card
+                                // 4. Room Card
                                 Surface(
-                                    modifier = Modifier
-                                        .weight(colRoomWeight)
-                                        .fillMaxHeight(),
+                                    modifier = Modifier.weight(colRoomWeight).fillMaxHeight(),
                                     shape = RoundedCornerShape(3.dp),
                                     color = dataCellBg,
                                     shadowElevation = 0.5.dp,
@@ -363,10 +392,10 @@ fun ClassRoutineTable(
                                     ) {
                                         Text(
                                             text = slotData.room,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontFamily = hindSiliguri,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF0F172A),
+                                            color = cellTextColor,
                                             textAlign = TextAlign.Center,
                                             maxLines = 1,
                                             softWrap = false,

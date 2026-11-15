@@ -301,14 +301,6 @@ fun App(
                         val finalPhoto = savedPhoto ?: photoUrl
 
                         RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
-                        if (actualRole == UserRole.STUDENT) {
-                            if (studentProf != null) {
-                                RoleConfig.saveStudentProfile(studentProf.copy(name = finalName, photoUrl = finalPhoto))
-                            } else {
-                                RoleConfig.saveStudentProfile(StudentProfile(email = cleanEmail, name = finalName, photoUrl = finalPhoto))
-                            }
-                        }
-
                         saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = finalName, photoUrl = finalPhoto))
                         currentScreen = AppScreen.RoleHome(
                             role = actualRole,
@@ -392,37 +384,41 @@ fun App(
                         }
 
                         AppScreen.GuestHome -> {
-                            GuestHomeScreen(
-                                currentThemeMode = themeMode,
-                                onThemeModeChange = { newMode ->
-                                    themeMode = newMode
-                                    saveThemeMode(newMode)
-                                },
-                                onSwitchToLogin = { signOutAndReturnToWelcome() },
-                                onCloseApp = onCloseApp,
-                                onBackToWelcome = { navigateBackToWelcomeWithoutSignOut() },
-                            )
+                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                                GuestHomeScreen(
+                                    currentThemeMode = themeMode,
+                                    onThemeModeChange = { newMode ->
+                                        themeMode = newMode
+                                        saveThemeMode(newMode)
+                                    },
+                                    onSwitchToLogin = { signOutAndReturnToWelcome() },
+                                    onCloseApp = onCloseApp,
+                                    onBackToWelcome = { navigateBackToWelcomeWithoutSignOut() },
+                                )
+                            }
                         }
 
                         is AppScreen.RoleHome -> {
-                            RoleHomeScreen(
-                                role = screen.role,
-                                userName = screen.name,
-                                photoUrl = screen.photoUrl,
-                                email = screen.email,
-                                currentThemeMode = themeMode,
-                                onThemeModeChange = { newMode ->
-                                    themeMode = newMode
-                                    saveThemeMode(newMode)
-                                },
-                                onSignOut = { signOutAndReturnToWelcome() },
-                                onCloseApp = onCloseApp,
-                                onBackToWelcome = { navigateBackToWelcomeWithoutSignOut() },
-                                onProfileUpdated = { newName, newPhotoUrl ->
-                                    currentScreen = screen.copy(name = newName, photoUrl = newPhotoUrl)
-                                },
-                                initialTab = screen.initialTab,
-                            )
+                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                                RoleHomeScreen(
+                                    role = screen.role,
+                                    userName = screen.name,
+                                    photoUrl = screen.photoUrl,
+                                    email = screen.email,
+                                    currentThemeMode = themeMode,
+                                    onThemeModeChange = { newMode ->
+                                        themeMode = newMode
+                                        saveThemeMode(newMode)
+                                    },
+                                    onSignOut = { signOutAndReturnToWelcome() },
+                                    onCloseApp = onCloseApp,
+                                    onBackToWelcome = { navigateBackToWelcomeWithoutSignOut() },
+                                    onProfileUpdated = { newName, newPhotoUrl ->
+                                        currentScreen = screen.copy(name = newName, photoUrl = newPhotoUrl)
+                                    },
+                                    initialTab = screen.initialTab,
+                                )
+                            }
                         }
                     }
                 }
@@ -475,11 +471,14 @@ fun App(
                     exit = fadeOut(animationSpec = tween(300)),
                     modifier = Modifier.zIndex(100f),
                 ) {
-                    ErrorImagePopup(
-                        errorType = activeErrorType ?: lastErrorType,
-                        isDark = isDark,
-                        onDismiss = { activeErrorType = null },
-                    )
+                    val errorLang = if (currentScreen is AppScreen.Welcome) appLanguage else AppLanguage.ENGLISH
+                    CompositionLocalProvider(LocalAppLanguage provides errorLang) {
+                        ErrorImagePopup(
+                            errorType = activeErrorType ?: lastErrorType,
+                            isDark = isDark,
+                            onDismiss = { activeErrorType = null },
+                        )
+                    }
                 }
             }
         }

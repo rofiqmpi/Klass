@@ -1672,4 +1672,171 @@ val TrashCanIcon: ImageVector
         }
     }.build()
 
+val SearchIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Search",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(11f, 19f)
+            curveTo(15.42f, 19f, 19f, 15.42f, 19f, 11f)
+            curveTo(19f, 6.58f, 15.42f, 3f, 11f, 3f)
+            curveTo(6.58f, 3f, 3f, 6.58f, 3f, 11f)
+            curveTo(3f, 15.42f, 6.58f, 19f, 11f, 19f)
+            close()
+            moveTo(21f, 21f)
+            lineTo(16.65f, 16.65f)
+        }
+    }.build()
+
+val RefreshIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Refresh",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(21f, 12f)
+            curveTo(21f, 16.97f, 16.97f, 21f, 12f, 21f)
+            curveTo(8.56f, 21f, 5.57f, 19.07f, 4.06f, 16.24f)
+            moveTo(3f, 12f)
+            curveTo(3f, 7.03f, 7.03f, 3f, 12f, 3f)
+            curveTo(15.44f, 3f, 18.43f, 4.93f, 19.94f, 7.76f)
+            moveTo(21f, 3f)
+            verticalLineTo(8f)
+            horizontalLineTo(16f)
+            moveTo(3f, 21f)
+            verticalLineTo(16f)
+            horizontalLineTo(8f)
+        }
+    }.build()
+
+val PlusIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Plus",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.4f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 5f)
+            verticalLineTo(19f)
+            moveTo(5f, 12f)
+            horizontalLineTo(19f)
+        }
+    }.build()
+
+val WarningIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Warning",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(10.29f, 3.86f)
+            lineTo(1.82f, 18f)
+            curveTo(1.64f, 18.3f, 1.55f, 18.65f, 1.55f, 19f)
+            curveTo(1.55f, 20.1f, 2.45f, 21f, 3.55f, 21f)
+            horizontalLineTo(20.45f)
+            curveTo(21.55f, 21f, 22.45f, 20.1f, 22.45f, 19f)
+            curveTo(22.45f, 18.65f, 22.36f, 18.3f, 22.18f, 18f)
+            lineTo(13.71f, 3.86f)
+            curveTo(13.33f, 3.22f, 12.66f, 2.86f, 12f, 2.86f)
+            curveTo(11.34f, 2.86f, 10.67f, 3.22f, 10.29f, 3.86f)
+            close()
+            moveTo(12f, 9f)
+            verticalLineTo(13f)
+            moveTo(12f, 17f)
+            horizontalLineTo(12.01f)
+        }
+    }.build()
+
+val DoorOpenIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "DoorOpen",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(3f, 21f)
+            horizontalLineTo(21f)
+            moveTo(5f, 21f)
+            verticalLineTo(5f)
+            curveTo(5f, 3.9f, 5.9f, 3f, 7f, 3f)
+            horizontalLineTo(15f)
+            curveTo(16.1f, 3f, 17f, 3.9f, 17f, 5f)
+            verticalLineTo(21f)
+            moveTo(17f, 8f)
+            horizontalLineTo(19f)
+            curveTo(20.1f, 8f, 21f, 8.9f, 21f, 10f)
+            verticalLineTo(21f)
+            moveTo(13f, 12f)
+            horizontalLineTo(13.01f)
+        }
+    }.build()
+
+val SwapIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Swap",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(7f, 16f)
+            lineTo(3f, 12f)
+            lineTo(7f, 8f)
+            moveTo(3f, 12f)
+            horizontalLineTo(17f)
+            moveTo(17f, 8f)
+            lineTo(21f, 12f)
+            lineTo(17f, 16f)
+            moveTo(21f, 12f)
+            horizontalLineTo(7f)
+        }
+    }.build()
+
+
+
 

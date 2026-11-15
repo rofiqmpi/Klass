@@ -1,8 +1,11 @@
 package com.mpi.klass
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -46,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.lerp as lerpOffset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -100,6 +104,17 @@ class SwipeIconDragController(
 
     var currentCenterInRoot by mutableStateOf(Offset.Zero)
         private set
+    var isAtCenter by mutableStateOf(false)
+        private set
+    var axisFraction by mutableStateOf(0f)
+        private set
+    var isOpeningDestination by mutableStateOf(false)
+        private set
+    var openExpandProgress by mutableStateOf(0f)
+        private set
+    private var rawAccumulatedDelta by mutableStateOf(Offset.Zero)
+    private var hasVibratedLeaveOrigin = false
+    private var hasVibratedCenterArrival = false
     private var settleJob: Job? = null
 
     fun startDrag(
@@ -112,7 +127,14 @@ class SwipeIconDragController(
         iconContent: @Composable () -> Unit,
         onTrigger: () -> Unit,
     ) {
+        if (isOpeningDestination) return
         settleJob?.cancel()
+        openExpandProgress = 0f
+        axisFraction = 0f
+        isAtCenter = false
+        rawAccumulatedDelta = Offset.Zero
+        hasVibratedLeaveOrigin = false
+        hasVibratedCenterArrival = false
         currentCenterInRoot = originCenterInRoot
         activeDrag = ActiveSwipeIconDrag(
             id = id,
@@ -127,80 +149,132 @@ class SwipeIconDragController(
     }
 
     fun updateDrag(dragAmount: Offset) {
-        if (activeDrag == null) return
-        val maxW = rootSize.width.toFloat().coerceAtLeast(1f)
-        val maxH = rootSize.height.toFloat().coerceAtLeast(1f)
-        currentCenterInRoot = Offset(
-            x = (currentCenterInRoot.x + dragAmount.x).coerceIn(24f, maxW - 24f),
-            y = (currentCenterInRoot.y + dragAmount.y).coerceIn(24f, maxH - 24f),
-        )
+        val drag = activeDrag ?: return
+        if (isOpeningDestination || rootSize.width <= 0 || rootSize.height <= 0) return
+
+        rawAccumulatedDelta += dragAmount
+        val screenCenter = Offset(rootSize.width / 2f, rootSize.height / 2f)
+        val toCenter = screenCenter - drag.originCenterInRoot
+        val totalDist = hypot(toCenter.x, toCenter.y).coerceAtLeast(120f)
+        val unitX = toCenter.x / totalDist
+        val unitY = toCenter.y / totalDist
+
+        // Project movement strictly onto the straight line between Origin and Screen Center
+        val projectedPx = rawAccumulatedDelta.x * unitX + rawAccumulatedDelta.y * unitY
+        val rawT = (projectedPx / totalDist).coerceIn(0f, 1f)
+        axisFraction = rawT
+
+        // Subtle haptic feedback when shifting away from resting position
+        if (!hasVibratedLeaveOrigin && rawT >= 0.04f) {
+            hasVibratedLeaveOrigin = true
+            triggerLightHaptic(isCenterArrival = false)
+        }
+
+        // Two-position snap: Origin <-> Equal Top/Side inset preview near source button + light vibration
+        if (!isAtCenter && rawT >= 0.15f) {
+            isAtCenter = true
+            if (!hasVibratedCenterArrival) {
+                hasVibratedCenterArrival = true
+                triggerLightHaptic(isCenterArrival = true)
+            }
+        } else if (isAtCenter && rawT <= 0.08f) {
+            isAtCenter = false
+            hasVibratedCenterArrival = false
+            triggerLightHaptic(isCenterArrival = false)
+        }
+
+        val constrainedT = if (isAtCenter) 1f else (rawT * 0.25f).coerceIn(0f, 0.06f)
+        val anchorNearButton = lerpOffset(drag.originCenterInRoot, screenCenter, 0.28f)
+        currentCenterInRoot = lerpOffset(drag.originCenterInRoot, anchorNearButton, constrainedT)
     }
 
     fun computeProgress(): Float {
-        val drag = activeDrag ?: return 0f
-        if (rootSize.width <= 0 || rootSize.height <= 0) return 0f
-
-        val screenCenter = Offset(rootSize.width / 2f, rootSize.height / 2f)
-        val origin = drag.originCenterInRoot
-        val current = currentCenterInRoot
-
-        val totalDistToCenter = hypot(screenCenter.x - origin.x, screenCenter.y - origin.y).coerceAtLeast(120f)
-        val currentDistToCenter = hypot(screenCenter.x - current.x, screenCenter.y - current.y)
-
-        return ((totalDistToCenter - currentDistToCenter) / totalDistToCenter).coerceIn(0f, 1f)
+        if (activeDrag == null) return 0f
+        return if (isAtCenter) 1f else (axisFraction * 0.25f).coerceIn(0f, 0.06f)
     }
 
-    fun isReadyToOpen(): Boolean {
-        if (activeDrag == null) return false
-        return computeProgress() >= 0.48f
-    }
+    fun isReadyToOpen(): Boolean = activeDrag != null && isAtCenter
 
     fun endDrag() {
         val drag = activeDrag ?: return
+        if (isOpeningDestination) return
         settleJob?.cancel()
-        if (isReadyToOpen()) {
-            // Only open on finger release! Clear overlay and navigate immediately.
-            activeDrag = null
+        if (isAtCenter) {
+            // Smoothly glide toward center while expanding to fill the entire screen on release
+            isOpeningDestination = true
+            openExpandProgress = 0f
             drag.onTrigger()
-        } else {
-            val startPos = currentCenterInRoot
-            val endPos = drag.originCenterInRoot
             settleJob = scope.launch {
                 animate(
-                    typeConverter = Offset.VectorConverter,
-                    initialValue = startPos,
-                    targetValue = endPos,
-                    animationSpec = spring(dampingRatio = 0.80f, stiffness = 460f),
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
                 ) { value, _ ->
-                    currentCenterInRoot = value
+                    openExpandProgress = value
                 }
                 activeDrag = null
+                isAtCenter = false
+                axisFraction = 0f
+                isOpeningDestination = false
+                openExpandProgress = 0f
+            }
+        } else {
+            val startT = axisFraction
+            isAtCenter = false
+            settleJob = scope.launch {
+                animate(
+                    initialValue = startT,
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 130, easing = FastOutSlowInEasing),
+                ) { value, _ ->
+                    axisFraction = value
+                    val screenCenter = Offset(rootSize.width / 2f, rootSize.height / 2f)
+                    val anchorNearButton = lerpOffset(drag.originCenterInRoot, screenCenter, 0.28f)
+                    currentCenterInRoot = lerpOffset(
+                        drag.originCenterInRoot,
+                        anchorNearButton,
+                        (value * 0.25f).coerceIn(0f, 0.06f),
+                    )
+                }
+                activeDrag = null
+                axisFraction = 0f
             }
         }
     }
 
     fun cancelDrag() {
         val drag = activeDrag ?: return
+        if (isOpeningDestination) return
         settleJob?.cancel()
-        val startPos = currentCenterInRoot
-        val endPos = drag.originCenterInRoot
+        val wasAtCenter = isAtCenter
+        isAtCenter = false
+        val startT = if (wasAtCenter) 1f else axisFraction
         settleJob = scope.launch {
             animate(
-                typeConverter = Offset.VectorConverter,
-                initialValue = startPos,
-                targetValue = endPos,
-                animationSpec = spring(dampingRatio = 0.80f, stiffness = 460f),
+                initialValue = startT,
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
             ) { value, _ ->
-                currentCenterInRoot = value
+                axisFraction = value
+                val screenCenter = Offset(rootSize.width / 2f, rootSize.height / 2f)
+                val anchorNearButton = lerpOffset(drag.originCenterInRoot, screenCenter, 0.28f)
+                currentCenterInRoot = lerpOffset(
+                    drag.originCenterInRoot,
+                    anchorNearButton,
+                    value,
+                )
             }
             activeDrag = null
+            axisFraction = 0f
         }
     }
 
     fun forceClearIfMatches(id: String) {
-        if (activeDrag?.id == id) {
+        if (activeDrag?.id == id && !isOpeningDestination) {
             settleJob?.cancel()
             activeDrag = null
+            isAtCenter = false
+            axisFraction = 0f
         }
     }
 }
@@ -215,8 +289,9 @@ fun rememberSwipeIconDragController(): SwipeIconDragController {
 
 /**
  * Root-level overlay rendered above ALL headers, buttons, tables, and bars (zIndex 100f).
- * Smoothly morphs the dragged icon directly under the touch point into an expanding floating
- * screen window as it approaches center, and ONLY opens the destination when touch is released.
+ * Morphs into a miniature portrait phone-shaped window with generous rounded corners (30.dp)
+ * anchored at an equal distance (36.dp) from the screen's top and side edges, then glides
+ * toward screen center while expanding to full screen on release.
  */
 @Composable
 fun SwipeDragWindowOverlay(
@@ -229,61 +304,114 @@ fun SwipeDragWindowOverlay(
     val rootW = controller.rootSize.width.toFloat().coerceAtLeast(1f)
     val rootH = controller.rootSize.height.toFloat().coerceAtLeast(1f)
 
-    val rawProgress = controller.computeProgress()
+    val targetMorphProgress = if (controller.isAtCenter) 1f else (controller.axisFraction * 0.25f).coerceIn(0f, 0.06f)
+    val smoothProgress by animateFloatAsState(
+        targetValue = targetMorphProgress,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 480f),
+        label = "SwipeWindowSmoothProgress",
+    )
     val isReady = controller.isReadyToOpen()
+    val expandT = if (controller.isOpeningDestination) controller.openExpandProgress.coerceIn(0f, 1f) else 0f
+    // Move to center & spread out to 100% fullscreen (0f..0.78f), then dissolve into live screen (0.68f..1f)
+    val expandGeometryT = (expandT / 0.78f).coerceIn(0f, 1f)
+    val openingOverlayAlpha = if (controller.isOpeningDestination) {
+        (1f - ((expandT - 0.68f) / 0.32f)).coerceIn(0f, 1f)
+    } else 1f
 
     val rootWDp = with(density) { rootW.toDp() }
     val rootHDp = with(density) { rootH.toDp() }
 
     val startW = with(density) { drag.originSizePx.width.toDp().coerceAtLeast(48.dp) }
     val startH = with(density) { drag.originSizePx.height.toDp().coerceAtLeast(48.dp) }
-    val targetWinW = (rootWDp * 0.72f).coerceIn(220.dp, 300.dp)
-    val targetWinH = (rootHDp * 0.48f).coerceIn(280.dp, 420.dp)
 
-    // Strictly proportional to distance toward center so growth is smooth and gradual
-    val cardW = lerp(startW, targetWinW, rawProgress)
-    val cardH = lerp(startH, targetWinH, rawProgress)
-    val cardCorner = lerp(startW / 2f, 24.dp, rawProgress)
+    // Standard balanced miniature portrait phone-proportioned window (~1:1.48 ratio)
+    val dragWinW = (rootWDp * 0.37f).coerceIn(136.dp, 176.dp)
+    val dragWinH = (dragWinW * 1.48f)
+        .coerceIn(196.dp, 256.dp)
+        .coerceAtMost((rootHDp * 0.28f).coerceAtLeast(190.dp))
 
-    // Anchor window center directly at the touch/finger position without shifting away
-    val fingerCenter = controller.currentCenterInRoot
+    val previewW = lerp(startW, dragWinW, smoothProgress)
+    val previewH = lerp(startH, dragWinH, smoothProgress)
+    val previewCorner = lerp(startW / 2f, 30.dp, smoothProgress)
+
+    val cardW = lerp(previewW, rootWDp, expandGeometryT)
+    val cardH = lerp(previewH, rootHDp, expandGeometryT)
+    val cardCorner = lerp(previewCorner, 0.dp, expandGeometryT)
+
+    // Preview sits at equal distance (36.dp) from screen top edge and corresponding side edge,
+    // then glides smoothly toward exact screen center while spreading to full screen on release.
+    val edgeGapPx = with(density) { 36.dp.toPx() }
+    val dragWinWPx = with(density) { dragWinW.toPx() }
+    val dragWinHPx = with(density) { dragWinH.toPx() }
+
+    val targetAnchorX = if (drag.isLeftSide) {
+        edgeGapPx + dragWinWPx / 2f
+    } else {
+        rootW - edgeGapPx - dragWinWPx / 2f
+    }
+    val targetAnchorY = edgeGapPx + dragWinHPx / 2f
+    val equalEdgeAnchor = Offset(targetAnchorX, targetAnchorY)
+
+    val screenCenter = Offset(rootW / 2f, rootH / 2f)
+    val morphCenter = lerpOffset(drag.originCenterInRoot, equalEdgeAnchor, smoothProgress.coerceIn(0f, 1f))
+    val cardCenter = lerpOffset(morphCenter, screenCenter, expandGeometryT)
     val cardWPx = with(density) { cardW.toPx() }
     val cardHPx = with(density) { cardH.toPx() }
+
+    // Clamp strictly within visible screen bounds so neither icon nor window ever clips off-screen
+    val safeMarginPx = with(density) { 8.dp.toPx() } * (1f - expandGeometryT)
+    val rawLeft = cardCenter.x - cardWPx / 2f
+    val rawTop = cardCenter.y - cardHPx / 2f
+    val maxLeft = (rootW - cardWPx - safeMarginPx).coerceAtLeast(safeMarginPx)
+    val maxTop = (rootH - cardHPx - safeMarginPx).coerceAtLeast(safeMarginPx)
+    val clampedLeft = rawLeft.coerceIn(safeMarginPx.coerceAtMost(maxLeft), maxLeft)
+    val clampedTop = rawTop.coerceIn(safeMarginPx.coerceAtMost(maxTop), maxTop)
 
     val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
     val subSurface = if (isDark) Color(0xFF0F172A).copy(alpha = 0.7f) else Color(0xFFF1F5F9)
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val scrimAlpha = if (controller.isOpeningDestination) {
+        (0.32f + 0.16f * expandGeometryT) * openingOverlayAlpha
+    } else {
+        (0.28f * smoothProgress).coerceIn(0f, 0.28f)
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(100f)
-            .background(Color.Black.copy(alpha = (0.40f * rawProgress).coerceIn(0f, 0.40f))),
+            .background(Color.Black.copy(alpha = scrimAlpha.coerceIn(0f, 0.48f))),
     ) {
         Surface(
             modifier = Modifier
                 .offset {
                     IntOffset(
-                        x = (fingerCenter.x - cardWPx / 2f).roundToInt(),
-                        y = (fingerCenter.y - cardHPx / 2f).roundToInt(),
+                        x = clampedLeft.roundToInt(),
+                        y = clampedTop.roundToInt(),
                     )
                 }
-                .size(width = cardW, height = cardH),
+                .size(width = cardW, height = cardH)
+                .alpha(openingOverlayAlpha),
             shape = RoundedCornerShape(cardCorner),
             color = cardBg,
             border = BorderStroke(
-                width = if (isReady) 2.2.dp else 1.2.dp,
-                color = if (isReady) drag.accentColor else drag.accentColor.copy(alpha = 0.45f),
+                width = 0.6.dp, // Fine hairline border
+                color = (if (isReady) drag.accentColor.copy(alpha = 0.55f) else drag.accentColor.copy(alpha = 0.28f))
+                    .let { c -> c.copy(alpha = c.alpha * (1f - expandGeometryT * 1.35f).coerceIn(0f, 1f)) },
             ),
-            shadowElevation = lerp(6.dp, 24.dp, rawProgress),
+            shadowElevation = lerp(6.dp, 20.dp, smoothProgress) * (1f - expandGeometryT),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(cardCorner)),
             ) {
-                // Phase 1: Pure circular icon gradually inflating during early drag
-                val iconOnlyAlpha = (1f - (rawProgress / 0.42f)).coerceIn(0f, 1f)
+                // Phase 1: Pure circular icon fading cleanly as it leaves origin
+                val iconOnlyAlpha = if (controller.isOpeningDestination) {
+                    0f
+                } else {
+                    (1f - (smoothProgress / 0.40f)).coerceIn(0f, 1f)
+                }
                 if (iconOnlyAlpha > 0.01f) {
                     Box(
                         modifier = Modifier
@@ -302,136 +430,145 @@ fun SwipeDragWindowOverlay(
                     }
                 }
 
-                // Phase 2: Expanding Floating Screen Window Preview fading in gradually
-                val windowAlpha = ((rawProgress - 0.26f) / 0.44f).coerceIn(0f, 1f)
+                // Phase 2: Portrait Phone-Proportioned Mini Window Preview
+                val baseWindowAlpha = ((smoothProgress - 0.24f) / 0.46f).coerceIn(0f, 1f)
+                val windowAlpha = if (controller.isOpeningDestination) {
+                    (baseWindowAlpha + expandT * 1.5f).coerceIn(0f, 1f) * (1f - ((expandT - 0.45f) / 0.45f).coerceIn(0f, 1f))
+                } else {
+                    baseWindowAlpha
+                }
                 if (windowAlpha > 0.01f) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .alpha(windowAlpha)
-                            .padding(14.dp),
+                            .padding(horizontal = 11.dp, vertical = 10.dp),
                     ) {
-                        // Simulated Top Window Bar
+                        // Mini Phone Top Status Pill + App Header Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = drag.accentColor.copy(alpha = 0.14f),
-                                    border = BorderStroke(1.dp, drag.accentColor.copy(alpha = 0.4f)),
-                                    modifier = Modifier.size(34.dp).clip(CircleShape),
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        drag.iconContent()
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = drag.title.localized(),
-                                    fontSize = 14.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-
                             Surface(
-                                shape = RoundedCornerShape(50),
-                                color = if (isReady) drag.accentColor else subSurface,
+                                shape = CircleShape,
+                                color = drag.accentColor.copy(alpha = 0.14f),
+                                border = BorderStroke(0.6.dp, drag.accentColor.copy(alpha = 0.35f)),
+                                modifier = Modifier.size(22.dp).clip(CircleShape),
                             ) {
-                                Text(
-                                    text = if (isReady) "খুলতে ছেড়ে দিন".localized() else "মাঝখানে আনুন".localized(),
-                                    fontSize = 10.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isReady) Color.White else textColor.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    maxLines = 1,
-                                )
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    drag.iconContent()
+                                }
                             }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = drag.title.localized(),
+                                fontSize = 11.sp,
+                                fontFamily = hindSiliguri,
+                                fontWeight = FontWeight.Bold,
+                                color = textColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-                        HorizontalDivider(color = drag.accentColor.copy(alpha = 0.18f), thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+                        HorizontalDivider(color = drag.accentColor.copy(alpha = 0.15f), thickness = 0.6.dp)
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                        // Simulated Mini Window Cards matching a real screen preview
+                        // Portrait Phone Hero Banner Card
                         Surface(
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            shape = RoundedCornerShape(11.dp),
                             color = drag.accentColor.copy(alpha = 0.10f),
-                            border = BorderStroke(1.dp, drag.accentColor.copy(alpha = 0.25f)),
+                            border = BorderStroke(0.6.dp, drag.accentColor.copy(alpha = 0.22f)),
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(28.dp)
+                                        .size(18.dp)
                                         .clip(CircleShape)
-                                        .background(drag.accentColor.copy(alpha = 0.25f)),
+                                        .background(drag.accentColor.copy(alpha = 0.28f)),
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Box(
                                         modifier = Modifier
-                                            .width(100.dp)
-                                            .height(10.dp)
-                                            .clip(RoundedCornerShape(5.dp))
-                                            .background(drag.accentColor.copy(alpha = 0.35f)),
+                                            .fillMaxWidth(0.75f)
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(drag.accentColor.copy(alpha = 0.36f)),
                                     )
                                     Box(
                                         modifier = Modifier
-                                            .width(65.dp)
-                                            .height(8.dp)
-                                            .clip(RoundedCornerShape(4.dp))
+                                            .fillMaxWidth(0.48f)
+                                            .height(5.dp)
+                                            .clip(RoundedCornerShape(3.dp))
                                             .background(textColor.copy(alpha = 0.15f)),
                                     )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
+                        // Stacked Portrait Screen Skeleton Cards
                         repeat(2) { idx ->
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
-                                shape = RoundedCornerShape(14.dp),
+                                shape = RoundedCornerShape(11.dp),
                                 color = subSurface,
                             ) {
                                 Column(
-                                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth(if (idx == 0) 0.72f else 0.56f)
-                                            .height(10.dp)
-                                            .clip(RoundedCornerShape(5.dp))
+                                            .fillMaxWidth(if (idx == 0) 0.72f else 0.54f)
+                                            .height(5.5.dp)
+                                            .clip(RoundedCornerShape(3.dp))
                                             .background(textColor.copy(alpha = 0.16f)),
                                     )
-                                    Spacer(modifier = Modifier.height(7.dp))
+                                    Spacer(modifier = Modifier.height(3.5.dp))
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth(0.88f)
-                                            .height(8.dp)
-                                            .clip(RoundedCornerShape(4.dp))
+                                            .height(4.5.dp)
+                                            .clip(RoundedCornerShape(3.dp))
                                             .background(textColor.copy(alpha = 0.09f)),
                                     )
                                 }
                             }
-                            if (idx == 0) Spacer(modifier = Modifier.height(8.dp))
+                            if (idx == 0) Spacer(modifier = Modifier.height(5.dp))
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Bottom Release Action Pill inside Portrait Phone Window
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = if (isReady) drag.accentColor else subSurface,
+                            ) {
+                                Text(
+                                    text = if (isReady) "ছেড়ে দিন".localized() else "মাঝখানে".localized(),
+                                    fontSize = 8.5.sp,
+                                    fontFamily = hindSiliguri,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isReady) Color.White else textColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                    maxLines = 1,
+                                )
+                            }
                         }
                     }
                 }

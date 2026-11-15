@@ -85,8 +85,37 @@ data class AdminRequestItem(
     val requestedAt: Long = 0L,
 )
 
+data class TeacherDirectoryItem(
+    val email: String = "",
+    val name: String = "",
+    val photoUrl: String? = null,
+    val phone: String = "",
+    val contactEmail: String = "",
+    val department: String = "",
+    val shift: String = "",
+    val bloodGroup: String = "",
+    val gender: String = "",
+    val address: String = "",
+    val permanentAddress: String = "",
+    val registeredAt: Long = 0L,
+    val updatedAt: Long = 0L,
+)
+
+data class LibraryBook(
+    val id: String = "",
+    val title: String = "",
+    val subjectCode: String = "",
+    val departmentSemesters: Map<String, List<String>> = emptyMap(),
+    val theoryClassesPerWeek: Int = 0,
+    val practicalClassesPerWeek: Int = 0,
+    val credit: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+)
+
 expect fun saveLocalProfile(email: String, name: String, photoUrl: String?, provider: String, category: String)
 expect fun fetchLocalProfile(email: String): UserProfile?
+expect fun fetchLocalStudentProfile(email: String): StudentProfile?
 expect fun deleteLocalProfile(email: String)
 expect fun updateLocalCategory(email: String, category: String)
 expect suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean
@@ -95,6 +124,7 @@ expect suspend fun saveTeacherInFirestore(email: String, name: String, photoUrl:
 expect suspend fun saveStudentInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
 expect suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): Result<Unit>
 expect suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentProfile?
+expect suspend fun updateStudentAddressInFirestore(email: String, address: String): Result<Unit>
 expect suspend fun saveUserInFirestore(email: String, name: String, photoUrl: String?, provider: String, category: String): Result<Unit>
 expect suspend fun fetchUserFromFirestore(email: String): UserProfile?
 expect suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit>
@@ -104,6 +134,12 @@ expect suspend fun getAdminStatusFromFirestore(email: String): AdminStatus
 expect suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
 expect suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem>
 expect suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit>
+expect suspend fun fetchLoggedInTeachersFromFirestore(): List<TeacherDirectoryItem>
+expect suspend fun deleteTeacherFromDatabaseInFirestore(email: String): Result<Unit>
+expect suspend fun fetchLibraryBooksFromFirestore(): List<LibraryBook>
+expect suspend fun saveLibraryBookInFirestore(book: LibraryBook): Result<Unit>
+expect suspend fun deleteLibraryBookFromFirestore(bookId: String): Result<Unit>
+expect suspend fun seedBtebLibraryBooksInFirestore(forceReseed: Boolean = false): Result<Int>
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
@@ -191,13 +227,17 @@ object RoleConfig {
         val cleanEmail = email.trim().lowercase()
 
         val localProf = fetchLocalProfile(cleanEmail)
-        if (localProf != null && !localProf.photoUrl.isNullOrBlank()) return localProf
-
         val remoteProf = fetchUserFromFirestore(cleanEmail)
         if (remoteProf != null) {
-            val mergedName = localProf?.name?.ifBlank { null } ?: remoteProf.name
-            val mergedPhoto = localProf?.photoUrl?.ifBlank { null } ?: remoteProf.photoUrl
-            val mergedCategory = localProf?.category?.ifBlank { null } ?: remoteProf.category
+            val mergedName = remoteProf.name.ifBlank { localProf?.name ?: "" }
+            val remotePhoto = remoteProf.photoUrl?.ifBlank { null }
+            val localPhoto = localProf?.photoUrl?.ifBlank { null }
+            val mergedPhoto = when {
+                remotePhoto != null && remotePhoto.startsWith("data:image", ignoreCase = true) -> remotePhoto
+                localPhoto != null && localPhoto.startsWith("data:image", ignoreCase = true) -> localPhoto
+                else -> remotePhoto ?: localPhoto
+            }
+            val mergedCategory = remoteProf.category.ifBlank { localProf?.category ?: "STUDENT" }
             val merged = remoteProf.copy(name = mergedName, photoUrl = mergedPhoto, category = mergedCategory)
             saveLocalProfile(cleanEmail, merged.name, merged.photoUrl, merged.provider, merged.category)
             return merged
@@ -266,8 +306,12 @@ object RoleConfig {
 
     suspend fun saveStudentProfile(profile: StudentProfile): Result<Unit> {
         if (profile.email.isBlank()) return Result.failure(Exception("Invalid email"))
-        saveStudentProfile(profile.email, profile.name, profile.photoUrl)
         return saveStudentProfileDataInFirestore(profile)
+    }
+
+    suspend fun saveStudentAddress(email: String, address: String): Result<Unit> {
+        if (email.isBlank() || address.isBlank()) return Result.failure(Exception("Invalid address"))
+        return updateStudentAddressInFirestore(email.trim().lowercase(), address.trim())
     }
     suspend fun deleteStudentSignInData(email: String): Result<Unit> = deleteUserAccount(email, UserRole.STUDENT)
     suspend fun fetchSignInControl(): SignInControlConfig = fetchSignInControlFromFirestore()
@@ -279,4 +323,15 @@ object RoleConfig {
     suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit> = com.mpi.klass.updateAdminRequestStatusInFirestore(email, newStatus)
     fun fetchLocalProfile(email: String): UserProfile? = com.mpi.klass.fetchLocalProfile(email)
     suspend fun fetchRemoteUserProfile(email: String): UserProfile? = fetchUserFromFirestore(email.trim().lowercase())
+    suspend fun fetchLoggedInTeachers(): List<TeacherDirectoryItem> = fetchLoggedInTeachersFromFirestore()
+    suspend fun deleteTeacherFromDatabase(email: String): Result<Unit> {
+        if (email.isBlank()) return Result.failure(Exception("Invalid email"))
+        val cleanEmail = email.trim().lowercase()
+        deleteLocalProfile(cleanEmail)
+        return deleteTeacherFromDatabaseInFirestore(cleanEmail)
+    }
+    suspend fun fetchLibraryBooks(): List<LibraryBook> = fetchLibraryBooksFromFirestore()
+    suspend fun saveLibraryBook(book: LibraryBook): Result<Unit> = saveLibraryBookInFirestore(book)
+    suspend fun deleteLibraryBook(bookId: String): Result<Unit> = deleteLibraryBookFromFirestore(bookId)
+    suspend fun seedBtebLibraryBooks(forceReseed: Boolean = false): Result<Int> = seedBtebLibraryBooksInFirestore(forceReseed)
 }
