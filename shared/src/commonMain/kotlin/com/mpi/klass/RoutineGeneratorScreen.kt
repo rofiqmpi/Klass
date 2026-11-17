@@ -26,13 +26,23 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -56,14 +65,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CalendarDaysIcon
 import com.mpi.klass.theme.CheckIcon
-import com.mpi.klass.theme.ClockIcon
+import com.mpi.klass.theme.ChevronDownIcon
 import com.mpi.klass.theme.CloseIcon
-import com.mpi.klass.theme.DoorOpenIcon
 import com.mpi.klass.theme.EditIcon
-import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.FilterIcon
 import com.mpi.klass.theme.PlusIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.SparkleIcon
@@ -71,7 +78,7 @@ import com.mpi.klass.theme.SwapIcon
 import com.mpi.klass.theme.WarningIcon
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineGeneratorScreen(
     adminEmail: String,
@@ -82,6 +89,7 @@ fun RoutineGeneratorScreen(
     onPlanPublished: (RoutinePlan) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
     var activeTab by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
     var isProcessing by remember { mutableStateOf(false) }
@@ -105,6 +113,7 @@ fun RoutineGeneratorScreen(
     var filterGroup by remember { mutableStateOf("Group A") }
     var filterTeacherEmail by remember { mutableStateOf("") }
     var filterRoomNumber by remember { mutableStateOf("") }
+    var showExplorerFilterSheet by remember { mutableStateOf(false) }
 
     var editingSlot by remember { mutableStateOf<RoutineEntry?>(null) }
     var resolvingConflict by remember { mutableStateOf<RoutineConflict?>(null) }
@@ -115,12 +124,6 @@ fun RoutineGeneratorScreen(
     DisposableEffect(Unit) {
         onDispose { onFullScreenOverlayChange(false) }
     }
-
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF0284C7)
 
     fun refreshAll() {
         scope.launch {
@@ -173,7 +176,7 @@ fun RoutineGeneratorScreen(
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
                 } else {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 Column(
@@ -182,71 +185,64 @@ fun RoutineGeneratorScreen(
                         .widthIn(max = 980.dp)
                         .padding(horizontal = 16.dp),
                 ) {
-                    // Minimal Iconic 3-Segment Switcher
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = cardBg,
-                        border = BorderStroke(1.dp, borderCol),
-                        modifier = Modifier.fillMaxWidth(),
+                    val tabs: List<Triple<Int, String, ImageVector>> = listOf(
+                        Triple(0, "Generate", SparkleIcon),
+                        Triple(1, "Explorer", CalendarDaysIcon),
+                        Triple(
+                            2,
+                            if (pendingRequestsCount > 0) "Requests ($pendingRequestsCount)" else "Requests",
+                            SwapIcon,
+                        ),
+                    )
+
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            val tabs: List<Triple<Int, String, ImageVector>> = listOf(
-                                Triple(0, "Generate", SparkleIcon),
-                                Triple(1, "Explorer", CalendarDaysIcon),
-                                Triple(
-                                    2,
-                                    if (pendingRequestsCount > 0) "Requests ($pendingRequestsCount)" else "Requests",
-                                    SwapIcon,
+                        tabs.forEachIndexed { index, (tabIdx, title, icon) ->
+                            val selected = activeTab == tabIdx
+                            SegmentedButton(
+                                selected = selected,
+                                onClick = { activeTab = tabIdx },
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = tabs.size,
                                 ),
-                            )
-                            tabs.forEach { (idx, title, icon) ->
-                                val selected = activeTab == idx
-                                Surface(
-                                    onClick = { activeTab = idx },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = if (selected) accent else Color.Transparent,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(40.dp)
-                                        .testTag("routine_tab_$idx"),
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
-                                        modifier = Modifier.padding(horizontal = 8.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = null,
-                                            tint = if (selected) Color.White else accent,
-                                            modifier = Modifier.size(14.dp),
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = title,
-                                            fontSize = 12.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            color = if (selected) Color.White else textColor,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
+                                colors = SegmentedButtonDefaults.colors(
+                                    activeContainerColor = cs.primaryContainer,
+                                    activeContentColor = cs.primary,
+                                    inactiveContainerColor = cs.surfaceContainerLow,
+                                    inactiveContentColor = cs.onSurfaceVariant,
+                                    activeBorderColor = cs.primary.copy(alpha = 0.4f),
+                                    inactiveBorderColor = cs.outlineVariant,
+                                ),
+                                icon = {
+                                    Icon(
+                                        imageVector = if (selected) CheckIcon else icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                },
+                                modifier = Modifier.testTag("routine_tab_$tabIdx"),
+                            ) {
+                                Text(
+                                    text = title,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = hindSiliguri,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     if (isLoading && currentPlan == null && books.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = accent, strokeWidth = 2.5.dp)
+                            CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
                         }
                         return@Column
                     }
@@ -263,53 +259,29 @@ fun RoutineGeneratorScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
                                 contentPadding = PaddingValues(bottom = 24.dp),
                             ) {
-                                // Clean Iconic Readiness Badges Strip + Refresh
+                                // Compact 1-line Readiness Summary + Refresh
                                 item {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                     ) {
-                                        LazyRow(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            modifier = Modifier.weight(1f),
-                                        ) {
-                                            item {
-                                                MinimalStatBadge(
-                                                    icon = GraduationCapIcon,
-                                                    text = "$readyTeachers Faculty",
-                                                    accent = Color(0xFF059669),
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                )
-                                            }
-                                            item {
-                                                MinimalStatBadge(
-                                                    icon = DoorOpenIcon,
-                                                    text = "${theoryRooms}T / ${labRooms}L",
-                                                    accent = Color(0xFF7C3AED),
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                )
-                                            }
-                                            item {
-                                                MinimalStatBadge(
-                                                    icon = BookIcon,
-                                                    text = "${books.size} Books",
-                                                    accent = accent,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "$readyTeachers Faculty • ${theoryRooms}T / ${labRooms}L Rooms • ${books.size} Books",
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            fontFamily = hindSiliguri,
+                                            color = cs.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f).padding(start = 4.dp),
+                                        )
 
                                         WelcomeMinimal3DIconButton(
                                             icon = RefreshIcon,
                                             contentDescription = "Refresh data",
                                             isDark = isDark,
-                                            iconTint = accent,
+                                            iconTint = cs.onSurfaceVariant,
                                             isLoading = isLoading,
                                             enabled = !isLoading,
                                             onClick = { refreshAll() },
@@ -323,31 +295,24 @@ fun RoutineGeneratorScreen(
                                         val twoCol = maxWidth >= 640.dp
 
                                         val timingsCard: @Composable (Modifier) -> Unit = { mod ->
-                                            MinimalCardSurface(isDark = isDark, modifier = mod) {
+                                            MinimalCardSurface(
+                                                isDark = isDark,
+                                                shape = RoundedCornerShape(14.dp),
+                                                modifier = mod,
+                                            ) {
                                                 Column(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .padding(14.dp),
                                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                                 ) {
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = ClockIcon,
-                                                            contentDescription = null,
-                                                            tint = accent,
-                                                            modifier = Modifier.size(16.dp),
-                                                        )
-                                                        Text(
-                                                            text = "Shift Timings & Periods",
-                                                            fontSize = 14.5.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontFamily = hindSiliguri,
-                                                            color = textColor,
-                                                        )
-                                                    }
+                                                    Text(
+                                                        text = "Shift Timings & Periods",
+                                                        fontSize = 14.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontFamily = hindSiliguri,
+                                                        color = cs.onSurface,
+                                                    )
 
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth(),
@@ -360,7 +325,6 @@ fun RoutineGeneratorScreen(
                                                                 RoutineRules.parseMinutesFromHhMm(shift1Start, 8 * 60)
                                                             ),
                                                             onValueChange = { shift1Start = it },
-                                                            isDark = isDark,
                                                             hindSiliguri = hindSiliguri,
                                                             modifier = Modifier.weight(1f),
                                                         )
@@ -371,7 +335,6 @@ fun RoutineGeneratorScreen(
                                                                 RoutineRules.parseMinutesFromHhMm(shift2Start, 13 * 60 + 30)
                                                             ),
                                                             onValueChange = { shift2Start = it },
-                                                            isDark = isDark,
                                                             hindSiliguri = hindSiliguri,
                                                             modifier = Modifier.weight(1f),
                                                         )
@@ -386,7 +349,6 @@ fun RoutineGeneratorScreen(
                                                             valueText = "$periodDuration min",
                                                             onMinus = { if (periodDuration > 30) periodDuration -= 5 },
                                                             onPlus = { if (periodDuration < 75) periodDuration += 5 },
-                                                            isDark = isDark,
                                                             hindSiliguri = hindSiliguri,
                                                             modifier = Modifier.weight(1f),
                                                         )
@@ -395,7 +357,6 @@ fun RoutineGeneratorScreen(
                                                             valueText = "$periodsPerDay",
                                                             onMinus = { if (periodsPerDay > 4) periodsPerDay -= 1 },
                                                             onPlus = { if (periodsPerDay < 10) periodsPerDay += 1 },
-                                                            isDark = isDark,
                                                             hindSiliguri = hindSiliguri,
                                                             modifier = Modifier.weight(1f),
                                                         )
@@ -405,7 +366,11 @@ fun RoutineGeneratorScreen(
                                         }
 
                                         val semestersAndActionsCard: @Composable (Modifier) -> Unit = { mod ->
-                                            MinimalCardSurface(isDark = isDark, modifier = mod) {
+                                            MinimalCardSurface(
+                                                isDark = isDark,
+                                                shape = RoundedCornerShape(14.dp),
+                                                modifier = mod,
+                                            ) {
                                                 Column(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
@@ -419,17 +384,17 @@ fun RoutineGeneratorScreen(
                                                     ) {
                                                         Text(
                                                             text = "Active Semesters (1–7)",
-                                                            fontSize = 14.5.sp,
-                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 15.sp,
+                                                            fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
-                                                            color = textColor,
+                                                            color = cs.onSurface,
                                                         )
                                                         Text(
                                                             text = "Sun–Thu • 5 Days",
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.SemiBold,
+                                                            fontSize = 11.5.sp,
+                                                            fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
-                                                            color = subTextColor,
+                                                            color = cs.onSurfaceVariant,
                                                         )
                                                     }
 
@@ -442,7 +407,7 @@ fun RoutineGeneratorScreen(
                                                             MinimalIconChip(
                                                                 label = RoutineRules.semesterShortLabel(sem),
                                                                 selected = selected,
-                                                                accent = accent,
+                                                                accent = cs.primary,
                                                                 isDark = isDark,
                                                                 hindSiliguri = hindSiliguri,
                                                                 onClick = {
@@ -468,6 +433,7 @@ fun RoutineGeneratorScreen(
                                                             hindSiliguri = hindSiliguri,
                                                             isDark = isDark,
                                                             isLoading = isProcessing,
+                                                            cornerRadius = 23.dp,
                                                             modifier = Modifier.weight(1f),
                                                             testTag = "generate_routine_button",
                                                             onClick = {
@@ -518,6 +484,7 @@ fun RoutineGeneratorScreen(
                                                             isPrimaryAccent = false,
                                                             isDark = isDark,
                                                             enabled = planToPub != null && !isProcessing,
+                                                            cornerRadius = 23.dp,
                                                             modifier = Modifier.weight(1f),
                                                             testTag = "publish_routine_button",
                                                             onClick = {
@@ -582,37 +549,41 @@ fun RoutineGeneratorScreen(
                                 if (plan != null) {
                                     item {
                                         val isPub = plan.status == "PUBLISHED"
-                                        val statusColor = if (isPub) Color(0xFF059669) else Color(0xFFD97706)
                                         MinimalCardSurface(
                                             isDark = isDark,
-                                            borderColor = statusColor.copy(alpha = 0.4f),
+                                            shape = RoundedCornerShape(18.dp),
+                                            containerColor = if (isPub) cs.secondaryContainer else cs.tertiaryContainer,
                                         ) {
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .padding(14.dp),
+                                                    .padding(16.dp),
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                             ) {
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
                                                         text = "Plan Status: ${plan.status}",
-                                                        fontSize = 14.5.sp,
-                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 15.sp,
+                                                        fontWeight = FontWeight.Medium,
                                                         fontFamily = hindSiliguri,
-                                                        color = statusColor,
+                                                        color = if (isPub) cs.onSecondaryContainer else cs.onTertiaryContainer,
                                                     )
                                                     Text(
                                                         text = "${plan.entries.size} scheduled slots • ${plan.conflicts.size} conflict(s)",
-                                                        fontSize = 12.sp,
+                                                        fontSize = 12.5.sp,
                                                         fontFamily = hindSiliguri,
-                                                        color = subTextColor,
+                                                        color = if (isPub) {
+                                                            cs.onSecondaryContainer.copy(alpha = 0.8f)
+                                                        } else {
+                                                            cs.onTertiaryContainer.copy(alpha = 0.8f)
+                                                        },
                                                     )
                                                 }
                                                 MinimalIconChip(
                                                     label = "Explore",
                                                     selected = true,
-                                                    accent = accent,
+                                                    accent = cs.primary,
                                                     isDark = isDark,
                                                     hindSiliguri = hindSiliguri,
                                                     onClick = { activeTab = 1 },
@@ -626,9 +597,10 @@ fun RoutineGeneratorScreen(
                                             Text(
                                                 text = "Detected Conflicts (${plan.conflicts.size})",
                                                 fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontWeight = FontWeight.Medium,
                                                 fontFamily = hindSiliguri,
-                                                color = Color(0xFFEF4444),
+                                                color = cs.error,
+                                                modifier = Modifier.padding(horizontal = 4.dp),
                                             )
                                         }
                                         item {
@@ -639,50 +611,52 @@ fun RoutineGeneratorScreen(
                                             ) { _, conf ->
                                                 MinimalCardSurface(
                                                     isDark = isDark,
-                                                    borderColor = Color(0xFFEF4444).copy(alpha = 0.45f),
+                                                    shape = RoundedCornerShape(18.dp),
+                                                    containerColor = cs.errorContainer,
                                                 ) {
                                                     Row(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .padding(12.dp),
+                                                            .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                     ) {
                                                         Icon(
                                                             imageVector = WarningIcon,
                                                             contentDescription = null,
-                                                            tint = Color(0xFFEF4444),
-                                                            modifier = Modifier.size(19.dp),
+                                                            tint = cs.onErrorContainer,
+                                                            modifier = Modifier.size(20.dp),
                                                         )
-                                                        Spacer(modifier = Modifier.width(10.dp))
+                                                        Spacer(modifier = Modifier.width(12.dp))
                                                         Column(modifier = Modifier.weight(1f)) {
                                                             Text(
                                                                 text = "${conf.department} • ${RoutineRules.semesterShortLabel(conf.semester)} • ${conf.shift} • ${conf.group}",
-                                                                fontSize = 12.sp,
-                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 12.5.sp,
+                                                                fontWeight = FontWeight.Medium,
                                                                 fontFamily = hindSiliguri,
-                                                                color = textColor,
+                                                                color = cs.onErrorContainer,
                                                             )
                                                             Text(
                                                                 text = "${conf.subjectTitle} (${conf.subjectCode})",
-                                                                fontSize = 12.sp,
+                                                                fontSize = 13.sp,
                                                                 fontWeight = FontWeight.SemiBold,
                                                                 fontFamily = hindSiliguri,
-                                                                color = accent,
+                                                                color = cs.onErrorContainer,
                                                             )
                                                             Text(
                                                                 text = conf.reason,
-                                                                fontSize = 11.5.sp,
+                                                                fontSize = 12.sp,
                                                                 fontFamily = hindSiliguri,
-                                                                color = subTextColor,
+                                                                color = cs.onErrorContainer.copy(alpha = 0.85f),
                                                             )
                                                         }
                                                         WelcomeMinimal3DIconButton(
                                                             icon = PlusIcon,
                                                             contentDescription = "Assign slot manually",
                                                             isDark = isDark,
-                                                            iconTint = accent,
-                                                            visualSize = 34.dp,
-                                                            iconSize = 15.dp,
+                                                            containerColor = cs.surface,
+                                                            iconTint = cs.onSurface,
+                                                            visualSize = 36.dp,
+                                                            iconSize = 16.dp,
                                                             onClick = { resolvingConflict = conf },
                                                         )
                                                     }
@@ -701,32 +675,41 @@ fun RoutineGeneratorScreen(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     MinimalCardSurface(
                                         isDark = isDark,
+                                        shape = RoundedCornerShape(24.dp),
                                         modifier = Modifier.widthIn(max = 380.dp),
                                     ) {
                                         Column(
                                             modifier = Modifier.fillMaxWidth().padding(24.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
-                                            Icon(
-                                                imageVector = CalendarDaysIcon,
-                                                contentDescription = null,
-                                                tint = accent,
-                                                modifier = Modifier.size(38.dp),
-                                            )
-                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = cs.primaryContainer,
+                                                modifier = Modifier.size(56.dp),
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = CalendarDaysIcon,
+                                                        contentDescription = null,
+                                                        tint = cs.onPrimaryContainer,
+                                                        modifier = Modifier.size(24.dp),
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(14.dp))
                                             Text(
                                                 text = "No Routine Generated Yet",
-                                                fontSize = 15.5.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Medium,
                                                 fontFamily = hindSiliguri,
-                                                color = textColor,
+                                                color = cs.onSurface,
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = "Create your 6-month draft in the Generate tab first.",
-                                                fontSize = 12.5.sp,
+                                                fontSize = 13.sp,
                                                 fontFamily = hindSiliguri,
-                                                color = subTextColor,
+                                                color = cs.onSurfaceVariant,
                                             )
                                         }
                                     }
@@ -734,155 +717,99 @@ fun RoutineGeneratorScreen(
                                 return@Column
                             }
 
+                            val filteredEntries = remember(
+                                plan.entries,
+                                explorerMode,
+                                filterDept,
+                                filterShift,
+                                filterSem,
+                                filterGroup,
+                                filterTeacherEmail,
+                                filterRoomNumber,
+                            ) {
+                                when (explorerMode) {
+                                    0 -> plan.entries.filter {
+                                        it.department == filterDept &&
+                                            RoutineRules.normalizeShift(it.shift) == filterShift &&
+                                            RoutineRules.canonicalSemesterKey(it.semester) == filterSem &&
+                                            RoutineRules.normalizeGroup(filterDept, it.group) == filterGroup
+                                    }
+                                    1 -> plan.entries.filter {
+                                        it.teacherEmail.equals(filterTeacherEmail, ignoreCase = true) &&
+                                            RoutineRules.normalizeShift(it.shift) == filterShift
+                                    }
+                                    else -> plan.entries.filter {
+                                        it.roomNumber.trim().equals(filterRoomNumber.trim(), ignoreCase = true) &&
+                                            RoutineRules.normalizeShift(it.shift) == filterShift
+                                    }
+                                }
+                            }
+
+                            val activeTeacherName = remember(teachers, filterTeacherEmail) {
+                                teachers.firstOrNull { it.email.equals(filterTeacherEmail, true) }
+                                    ?.name?.ifBlank { filterTeacherEmail.substringBefore("@") }
+                                    ?: "Select Teacher"
+                            }
+                            val explorerSummaryText = when (explorerMode) {
+                                0 -> "$filterDept • ${RoutineRules.semesterShortLabel(filterSem)} • $filterShift • $filterGroup"
+                                1 -> "$activeTeacherName • $filterShift"
+                                else -> "Room ${filterRoomNumber.ifBlank { "-" }} • $filterShift"
+                            }
+
                             Column(modifier = Modifier.fillMaxSize()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                // Single compact filter summary bar opening the Explorer filter sheet
+                                MinimalCardSurface(
+                                    isDark = isDark,
+                                    shape = RoundedCornerShape(12.dp),
+                                    onClick = { showExplorerFilterSheet = true },
+                                    testTag = "routine_explorer_filter_button",
                                 ) {
-                                    listOf(0 to "By Group", 1 to "By Teacher", 2 to "By Room").forEach { (m, label) ->
-                                        MinimalIconChip(
-                                            label = label,
-                                            selected = explorerMode == m,
-                                            accent = Color(0xFF7C3AED),
-                                            isDark = isDark,
-                                            hindSiliguri = hindSiliguri,
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = FilterIcon,
+                                            contentDescription = "Filter routine",
+                                            tint = cs.primary,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = explorerSummaryText,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            fontFamily = hindSiliguri,
+                                            color = cs.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.weight(1f),
-                                            onClick = { explorerMode = m },
+                                        )
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = cs.primaryContainer,
+                                        ) {
+                                            Text(
+                                                text = "${filteredEntries.size} slots",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontFamily = hindSiliguri,
+                                                color = cs.primary,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = ChevronDownIcon,
+                                            contentDescription = null,
+                                            tint = cs.onSurfaceVariant,
+                                            modifier = Modifier.size(15.dp),
                                         )
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
-
-                                when (explorerMode) {
-                                    0 -> {
-                                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            items(RoutineRules.TECH_DEPARTMENTS) { d ->
-                                                FilterPill(d, filterDept == d, cardBg, borderCol, accent, textColor, hindSiliguri) {
-                                                    filterDept = d
-                                                    filterGroup = RoutineRules.normalizeGroup(d, filterGroup)
-                                                }
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            items(listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2)) { sh ->
-                                                FilterPill(sh, filterShift == sh, cardBg, borderCol, Color(0xFF059669), textColor, hindSiliguri) {
-                                                    filterShift = sh
-                                                }
-                                            }
-                                            items(RoutineRules.groupsForDepartment(filterDept)) { g ->
-                                                FilterPill(g, filterGroup == g, cardBg, borderCol, Color(0xFFD97706), textColor, hindSiliguri) {
-                                                    filterGroup = g
-                                                }
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            items(RoutineRules.ALL_SEMESTER_KEYS) { s ->
-                                                FilterPill(
-                                                    RoutineRules.semesterShortLabel(s),
-                                                    filterSem == s,
-                                                    cardBg,
-                                                    borderCol,
-                                                    Color(0xFF7C3AED),
-                                                    textColor,
-                                                    hindSiliguri,
-                                                ) {
-                                                    filterSem = s
-                                                }
-                                            }
-                                        }
-                                    }
-                                    1 -> {
-                                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            items(teachers) { t ->
-                                                FilterPill(
-                                                    t.name.ifBlank { t.email.substringBefore("@") },
-                                                    filterTeacherEmail.equals(t.email, true),
-                                                    cardBg,
-                                                    borderCol,
-                                                    accent,
-                                                    textColor,
-                                                    hindSiliguri,
-                                                ) {
-                                                    filterTeacherEmail = t.email
-                                                }
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
-                                                FilterPill(sh, filterShift == sh, cardBg, borderCol, Color(0xFF059669), textColor, hindSiliguri) {
-                                                    filterShift = sh
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else -> {
-                                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            items(classrooms) { r ->
-                                                FilterPill(
-                                                    "Room ${r.roomNumber}",
-                                                    filterRoomNumber.equals(r.roomNumber, true),
-                                                    cardBg,
-                                                    borderCol,
-                                                    Color(0xFF7C3AED),
-                                                    textColor,
-                                                    hindSiliguri,
-                                                ) {
-                                                    filterRoomNumber = r.roomNumber
-                                                }
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
-                                                FilterPill(sh, filterShift == sh, cardBg, borderCol, Color(0xFF059669), textColor, hindSiliguri) {
-                                                    filterShift = sh
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                val filteredEntries = remember(
-                                    plan.entries,
-                                    explorerMode,
-                                    filterDept,
-                                    filterShift,
-                                    filterSem,
-                                    filterGroup,
-                                    filterTeacherEmail,
-                                    filterRoomNumber,
-                                ) {
-                                    when (explorerMode) {
-                                        0 -> plan.entries.filter {
-                                            it.department == filterDept &&
-                                                RoutineRules.normalizeShift(it.shift) == filterShift &&
-                                                RoutineRules.canonicalSemesterKey(it.semester) == filterSem &&
-                                                RoutineRules.normalizeGroup(filterDept, it.group) == filterGroup
-                                        }
-                                        1 -> plan.entries.filter {
-                                            it.teacherEmail.equals(filterTeacherEmail, ignoreCase = true) &&
-                                                RoutineRules.normalizeShift(it.shift) == filterShift
-                                        }
-                                        else -> plan.entries.filter {
-                                            it.roomNumber.trim().equals(filterRoomNumber.trim(), ignoreCase = true) &&
-                                                RoutineRules.normalizeShift(it.shift) == filterShift
-                                        }
-                                    }
-                                }
-
-                                Text(
-                                    text = "Tap any slot to override • ${filteredEntries.size} classes shown",
-                                    fontSize = 11.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    color = subTextColor,
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
 
                                 Box(
                                     modifier = Modifier
@@ -897,7 +824,6 @@ fun RoutineGeneratorScreen(
                                         shift = filterShift,
                                         config = plan.config,
                                         showGroupOrRoomHint = explorerMode != 0,
-                                        emptyMessage = "No classes scheduled for this filter.",
                                         onSlotClick = { entry -> editingSlot = entry },
                                         modifier = Modifier.fillMaxSize(),
                                     )
@@ -911,32 +837,41 @@ fun RoutineGeneratorScreen(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     MinimalCardSurface(
                                         isDark = isDark,
+                                        shape = RoundedCornerShape(24.dp),
                                         modifier = Modifier.widthIn(max = 380.dp),
                                     ) {
                                         Column(
                                             modifier = Modifier.fillMaxWidth().padding(24.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                         ) {
-                                            Icon(
-                                                imageVector = SwapIcon,
-                                                contentDescription = null,
-                                                tint = accent,
-                                                modifier = Modifier.size(38.dp),
-                                            )
-                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = cs.primaryContainer,
+                                                modifier = Modifier.size(56.dp),
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = SwapIcon,
+                                                        contentDescription = null,
+                                                        tint = cs.onPrimaryContainer,
+                                                        modifier = Modifier.size(24.dp),
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(14.dp))
                                             Text(
                                                 text = "No Teacher Edit Requests",
-                                                fontSize = 15.5.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Medium,
                                                 fontFamily = hindSiliguri,
-                                                color = textColor,
+                                                color = cs.onSurface,
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = "Teacher slot swap requests appear here with live clash checking.",
-                                                fontSize = 12.5.sp,
+                                                fontSize = 13.sp,
                                                 fontFamily = hindSiliguri,
-                                                color = subTextColor,
+                                                color = cs.onSurfaceVariant,
                                             )
                                         }
                                     }
@@ -963,10 +898,10 @@ fun RoutineGeneratorScreen(
                                                 verticalAlignment = Alignment.Top,
                                             ) {
                                                 rowItems.forEach { req ->
-                                                    val statusColor = when (req.status) {
-                                                        EditRequestStatus.PENDING -> Color(0xFFD97706)
-                                                        EditRequestStatus.APPROVED -> Color(0xFF059669)
-                                                        EditRequestStatus.DECLINED -> Color(0xFFEF4444)
+                                                    val (pillBg, pillFg) = when (req.status) {
+                                                        EditRequestStatus.PENDING -> cs.tertiaryContainer to cs.onTertiaryContainer
+                                                        EditRequestStatus.APPROVED -> cs.secondaryContainer to cs.onSecondaryContainer
+                                                        EditRequestStatus.DECLINED -> cs.errorContainer to cs.onErrorContainer
                                                     }
                                                     val targetEntry = currentPlan?.entries?.firstOrNull { it.id == req.targetEntryId }
                                                     val clashes = remember(req, currentPlan, targetEntry) {
@@ -992,13 +927,13 @@ fun RoutineGeneratorScreen(
                                                     Box(modifier = Modifier.weight(1f)) {
                                                         MinimalCardSurface(
                                                             isDark = isDark,
-                                                            borderColor = statusColor.copy(alpha = 0.4f),
+                                                            shape = RoundedCornerShape(18.dp),
                                                         ) {
                                                             Column(
                                                                 modifier = Modifier
                                                                     .fillMaxWidth()
-                                                                    .padding(14.dp),
-                                                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                                                    .padding(16.dp),
+                                                                verticalArrangement = Arrangement.spacedBy(8.dp),
                                                             ) {
                                                                 Row(
                                                                     modifier = Modifier.fillMaxWidth(),
@@ -1007,78 +942,75 @@ fun RoutineGeneratorScreen(
                                                                 ) {
                                                                     Text(
                                                                         text = "${req.requestedByName.ifBlank { req.requestedByEmail }} • ${req.subjectTitle}",
-                                                                        fontSize = 14.sp,
-                                                                        fontWeight = FontWeight.Bold,
+                                                                        fontSize = 15.sp,
+                                                                        fontWeight = FontWeight.Medium,
                                                                         fontFamily = hindSiliguri,
-                                                                        color = textColor,
+                                                                        color = cs.onSurface,
                                                                         modifier = Modifier.weight(1f),
                                                                     )
+                                                                    Spacer(modifier = Modifier.width(8.dp))
                                                                     Surface(
-                                                                        shape = RoundedCornerShape(8.dp),
-                                                                        color = statusColor.copy(alpha = 0.14f),
+                                                                        shape = CircleShape,
+                                                                        color = pillBg,
                                                                     ) {
                                                                         Text(
                                                                             text = req.status.label,
-                                                                            fontSize = 10.5.sp,
-                                                                            fontWeight = FontWeight.Bold,
+                                                                            fontSize = 11.sp,
+                                                                            fontWeight = FontWeight.Medium,
                                                                             fontFamily = hindSiliguri,
-                                                                            color = statusColor,
-                                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                                            color = pillFg,
+                                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
                                                                         )
                                                                     }
                                                                 }
 
                                                                 Text(
                                                                     text = "${req.department} • ${RoutineRules.semesterShortLabel(req.semester)} • ${req.shift} • ${req.group}",
-                                                                    fontSize = 12.sp,
+                                                                    fontSize = 12.5.sp,
                                                                     fontFamily = hindSiliguri,
-                                                                    color = accent,
-                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    color = cs.primary,
+                                                                    fontWeight = FontWeight.Medium,
                                                                 )
 
                                                                 Text(
                                                                     text = "${req.originalDay} P${req.originalPeriod + 1} (${req.originalRoomNumber}) → ${req.requestedDay} P${req.requestedPeriod + 1} (${req.requestedRoomNumber})",
-                                                                    fontSize = 12.sp,
+                                                                    fontSize = 12.5.sp,
                                                                     fontWeight = FontWeight.Medium,
                                                                     fontFamily = hindSiliguri,
-                                                                    color = textColor,
+                                                                    color = cs.onSurface,
                                                                 )
 
                                                                 if (req.reason.isNotBlank()) {
                                                                     Text(
                                                                         text = req.reason,
-                                                                        fontSize = 11.5.sp,
+                                                                        fontSize = 12.sp,
                                                                         fontFamily = hindSiliguri,
-                                                                        color = subTextColor,
+                                                                        color = cs.onSurfaceVariant,
                                                                     )
                                                                 }
 
                                                                 if (req.status == EditRequestStatus.PENDING) {
                                                                     Surface(
-                                                                        shape = RoundedCornerShape(10.dp),
-                                                                        color = if (clashes.isEmpty()) {
-                                                                            Color(0xFF10B981).copy(alpha = 0.12f)
-                                                                        } else {
-                                                                            Color(0xFFEF4444).copy(alpha = 0.12f)
-                                                                        },
+                                                                        shape = RoundedCornerShape(12.dp),
+                                                                        color = if (clashes.isEmpty()) cs.secondaryContainer else cs.errorContainer,
                                                                         modifier = Modifier.fillMaxWidth(),
                                                                     ) {
-                                                                        Column(modifier = Modifier.padding(10.dp)) {
+                                                                        Column(modifier = Modifier.padding(12.dp)) {
                                                                             if (clashes.isEmpty()) {
                                                                                 Text(
                                                                                     text = "Clash Check: Clear",
-                                                                                    fontSize = 11.5.sp,
-                                                                                    fontWeight = FontWeight.Bold,
+                                                                                    fontSize = 12.sp,
+                                                                                    fontWeight = FontWeight.Medium,
                                                                                     fontFamily = hindSiliguri,
-                                                                                    color = Color(0xFF059669),
+                                                                                    color = cs.onSecondaryContainer,
                                                                                 )
                                                                             } else {
                                                                                 clashes.forEach { msg ->
                                                                                     Text(
                                                                                         text = "• $msg",
-                                                                                        fontSize = 11.5.sp,
+                                                                                        fontSize = 12.sp,
                                                                                         fontFamily = hindSiliguri,
-                                                                                        color = Color(0xFFEF4444),
+                                                                                        color = cs.onErrorContainer,
                                                                                     )
                                                                                 }
                                                                             }
@@ -1096,6 +1028,7 @@ fun RoutineGeneratorScreen(
                                                                             isDark = isDark,
                                                                             enabled = !isProcessing,
                                                                             height = 42.dp,
+                                                                            cornerRadius = 21.dp,
                                                                             modifier = Modifier.weight(1f),
                                                                             onClick = {
                                                                                 scope.launch {
@@ -1162,15 +1095,13 @@ fun RoutineGeneratorScreen(
                                                                             },
                                                                         )
 
-                                                                        WelcomeMinimal3DButton(
+                                                                        GoogleOutlinedButton(
                                                                             text = "Decline",
                                                                             icon = CloseIcon,
                                                                             hindSiliguri = hindSiliguri,
-                                                                            isPrimaryAccent = false,
-                                                                            isDestructive = true,
-                                                                            isDark = isDark,
                                                                             enabled = !isProcessing,
                                                                             height = 42.dp,
+                                                                            contentColor = cs.error,
                                                                             modifier = Modifier.weight(1f),
                                                                             onClick = {
                                                                                 scope.launch {
@@ -1280,6 +1211,127 @@ fun RoutineGeneratorScreen(
                 )
             }
         }
+        if (showExplorerFilterSheet) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { showExplorerFilterSheet = false },
+                sheetState = sheetState,
+                containerColor = cs.surfaceContainerLow,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Explore Routine",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = hindSiliguri,
+                            color = cs.onSurface,
+                        )
+                        TextButton(onClick = { showExplorerFilterSheet = false }) {
+                            Text("Done", color = cs.primary, fontFamily = hindSiliguri)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(0 to "By Group", 1 to "By Teacher", 2 to "By Room").forEach { (m, label) ->
+                            MinimalIconChip(
+                                label = label,
+                                selected = explorerMode == m,
+                                accent = cs.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                modifier = Modifier.weight(1f),
+                                onClick = { explorerMode = m },
+                            )
+                        }
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Shift", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant, fontFamily = hindSiliguri)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
+                                FilterPill(sh, filterShift == sh, hindSiliguri) { filterShift = sh }
+                            }
+                        }
+                    }
+
+                    when (explorerMode) {
+                        0 -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Department", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant, fontFamily = hindSiliguri)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    RoutineRules.TECH_DEPARTMENTS.forEach { d ->
+                                        FilterPill(d, filterDept == d, hindSiliguri) {
+                                            filterDept = d
+                                            filterGroup = RoutineRules.normalizeGroup(d, filterGroup)
+                                        }
+                                    }
+                                }
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Semester", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant, fontFamily = hindSiliguri)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    RoutineRules.ALL_SEMESTER_KEYS.forEach { s ->
+                                        FilterPill(RoutineRules.semesterShortLabel(s), filterSem == s, hindSiliguri) { filterSem = s }
+                                    }
+                                }
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Group", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant, fontFamily = hindSiliguri)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    RoutineRules.groupsForDepartment(filterDept).forEach { g ->
+                                        FilterPill(g, filterGroup == g, hindSiliguri) { filterGroup = g }
+                                    }
+                                }
+                            }
+                        }
+                        1 -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Teacher", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant, fontFamily = hindSiliguri)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    teachers.forEach { t ->
+                                        FilterPill(
+                                            t.name.ifBlank { t.email.substringBefore("@") },
+                                            filterTeacherEmail.equals(t.email, true),
+                                            hindSiliguri,
+                                        ) { filterTeacherEmail = t.email }
+                                    }
+                                }
+                            }
+                        }
+                        else -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Classroom / Lab", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant, fontFamily = hindSiliguri)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    classrooms.forEach { r ->
+                                        FilterPill(
+                                            "Room ${r.roomNumber}",
+                                            filterRoomNumber.equals(r.roomNumber, true),
+                                            hindSiliguri,
+                                        ) { filterRoomNumber = r.roomNumber }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1297,6 +1349,7 @@ private fun ManualSlotEditorOverlay(
     onDismiss: () -> Unit,
     onSaveSlot: (RoutineEntry, removeConflictId: String?) -> Unit,
 ) {
+    val cs = MaterialTheme.colorScheme
     val shift = initialEntry?.shift ?: conflict?.shift ?: RoutineRules.SHIFT_1
     val dept = initialEntry?.department ?: conflict?.department ?: "CST"
     val sem = initialEntry?.semester ?: conflict?.semester ?: RoutineRules.ALL_SEMESTER_KEYS.first()
@@ -1335,16 +1388,11 @@ private fun ManualSlotEditorOverlay(
         )
     }
 
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF0284C7)
-
     MinimalFullScreenSheet(
         title = if (conflict != null) "Resolve Conflict Slot" else "Manual Slot Override",
         subtitle = "$subjectTitle ($subjectCode) • $dept ${RoutineRules.semesterShortLabel(sem)} $group • $shift",
         icon = CalendarDaysIcon,
-        accent = accent,
+        accent = cs.primary,
         isDark = isDark,
         hindSiliguri = hindSiliguri,
         onDismiss = onDismiss,
@@ -1355,13 +1403,12 @@ private fun ManualSlotEditorOverlay(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                WelcomeMinimal3DButton(
+                GoogleOutlinedButton(
                     text = "Cancel",
                     hindSiliguri = hindSiliguri,
-                    isPrimaryAccent = false,
-                    isDark = isDark,
                     enabled = !isSaving,
                     height = 46.dp,
+                    contentColor = cs.onSurface,
                     modifier = Modifier.weight(1f),
                     onClick = onDismiss,
                 )
@@ -1372,6 +1419,7 @@ private fun ManualSlotEditorOverlay(
                     isDark = isDark,
                     isLoading = isSaving,
                     height = 46.dp,
+                    cornerRadius = 23.dp,
                     modifier = Modifier.weight(1.3f),
                     onClick = {
                         val teacherObj = teachers.firstOrNull { it.email.equals(selectedTeacherEmail, true) }
@@ -1409,44 +1457,36 @@ private fun ManualSlotEditorOverlay(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (liveClashes.isEmpty()) {
-                    Color(0xFF10B981).copy(alpha = 0.14f)
-                } else {
-                    Color(0xFFEF4444).copy(alpha = 0.14f)
-                },
-                border = BorderStroke(
-                    1.dp,
-                    if (liveClashes.isEmpty()) Color(0xFF10B981) else Color(0xFFEF4444),
-                ),
+                shape = RoundedCornerShape(16.dp),
+                color = if (liveClashes.isEmpty()) cs.secondaryContainer else cs.errorContainer,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     if (liveClashes.isEmpty()) {
                         Text(
                             text = "Clash Check: Clear (No overlaps detected)",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
-                            color = Color(0xFF059669),
+                            color = cs.onSecondaryContainer,
                         )
                     } else {
                         Text(
                             text = "Overlap Warning:",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
-                            color = Color(0xFFEF4444),
+                            color = cs.onErrorContainer,
                         )
                         liveClashes.forEach { msg ->
                             Text(
                                 text = "• $msg",
-                                fontSize = 12.sp,
+                                fontSize = 12.5.sp,
                                 fontFamily = hindSiliguri,
-                                color = Color(0xFFEF4444),
+                                color = cs.onErrorContainer,
                             )
                         }
                     }
@@ -1454,20 +1494,14 @@ private fun ManualSlotEditorOverlay(
             }
 
             Column {
-                Text(
-                    text = "Working Day (Sun–Thu)",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = hindSiliguri,
-                    color = textColor,
-                )
+                GoogleSectionHeader(title = "Working Day (Sun–Thu)", hindSiliguri = hindSiliguri)
                 Spacer(modifier = Modifier.height(6.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     RoutineRules.WORKING_DAYS.forEach { day ->
-                        FilterPill(day, selectedDay.equals(day, true), cardBg, borderCol, accent, textColor, hindSiliguri) {
+                        FilterPill(day, selectedDay.equals(day, true), hindSiliguri) {
                             selectedDay = day
                         }
                     }
@@ -1475,13 +1509,7 @@ private fun ManualSlotEditorOverlay(
             }
 
             Column {
-                Text(
-                    text = "Period",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = hindSiliguri,
-                    color = textColor,
-                )
+                GoogleSectionHeader(title = "Period", hindSiliguri = hindSiliguri)
                 Spacer(modifier = Modifier.height(6.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1492,10 +1520,6 @@ private fun ManualSlotEditorOverlay(
                         FilterPill(
                             "P${p + 1} ($st)",
                             selectedPeriod == p,
-                            cardBg,
-                            borderCol,
-                            Color(0xFF7C3AED),
-                            textColor,
                             hindSiliguri,
                         ) {
                             selectedPeriod = p
@@ -1509,13 +1533,7 @@ private fun ManualSlotEditorOverlay(
 
                 val roomPicker: @Composable (Modifier) -> Unit = { mod ->
                     Column(modifier = mod) {
-                        Text(
-                            text = "Classroom / Lab",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                            color = textColor,
-                        )
+                        GoogleSectionHeader(title = "Classroom / Lab", hindSiliguri = hindSiliguri)
                         Spacer(modifier = Modifier.height(6.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1525,10 +1543,6 @@ private fun ManualSlotEditorOverlay(
                                 FilterPill(
                                     "${room.roomNumber} (${room.roomType.key.take(1)})",
                                     selectedRoomNumber.equals(room.roomNumber, true),
-                                    cardBg,
-                                    borderCol,
-                                    Color(0xFF059669),
-                                    textColor,
                                     hindSiliguri,
                                 ) {
                                     selectedRoomNumber = room.roomNumber
@@ -1540,13 +1554,7 @@ private fun ManualSlotEditorOverlay(
 
                 val teacherPicker: @Composable (Modifier) -> Unit = { mod ->
                     Column(modifier = mod) {
-                        Text(
-                            text = "Assigned Teacher",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                            color = textColor,
-                        )
+                        GoogleSectionHeader(title = "Assigned Teacher", hindSiliguri = hindSiliguri)
                         Spacer(modifier = Modifier.height(6.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1556,10 +1564,6 @@ private fun ManualSlotEditorOverlay(
                                 FilterPill(
                                     t.name.ifBlank { t.email.substringBefore("@") },
                                     selectedTeacherEmail.equals(t.email, true),
-                                    cardBg,
-                                    borderCol,
-                                    Color(0xFFD97706),
-                                    textColor,
                                     hindSiliguri,
                                 ) {
                                     selectedTeacherEmail = t.email
@@ -1593,30 +1597,36 @@ private fun ManualSlotEditorOverlay(
 private fun FilterPill(
     label: String,
     active: Boolean,
-    cardBg: Color,
-    borderCol: Color,
-    activeColor: Color,
-    textColor: Color,
     hindSiliguri: FontFamily,
     onClick: () -> Unit,
 ) {
+    val cs = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = if (active) activeColor else cardBg,
-        border = BorderStroke(1.dp, if (active) activeColor else borderCol),
-        modifier = Modifier.height(36.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = if (active) cs.secondaryContainer else cs.surface,
+        border = if (active) null else BorderStroke(1.dp, cs.outlineVariant),
+        modifier = Modifier.height(34.dp),
     ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
+            if (active) {
+                Icon(
+                    imageVector = CheckIcon,
+                    contentDescription = null,
+                    tint = cs.onSecondaryContainer,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
             Text(
                 text = label,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Medium,
                 fontFamily = hindSiliguri,
-                color = if (active) Color.White else textColor,
+                color = if (active) cs.onSecondaryContainer else cs.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1630,58 +1640,46 @@ private fun RoutineConfigTimeField(
     value: String,
     preview: String,
     onValueChange: (String) -> Unit,
-    isDark: Boolean,
     hindSiliguri: FontFamily,
     modifier: Modifier = Modifier,
 ) {
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val bg = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.SemiBold,
+    val cs = MaterialTheme.colorScheme
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        label = {
+            Text(
+                text = label,
+                fontFamily = hindSiliguri,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        trailingIcon = {
+            Text(
+                text = preview,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = hindSiliguri,
+                color = cs.primary,
+                modifier = Modifier.padding(end = 10.dp),
+            )
+        },
+        textStyle = TextStyle(
+            fontSize = 14.5.sp,
+            fontWeight = FontWeight.Medium,
             fontFamily = hindSiliguri,
-            color = subTextColor,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = bg,
-            border = BorderStroke(1.dp, borderCol),
-            modifier = Modifier.fillMaxWidth().height(42.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = hindSiliguri,
-                        color = textColor,
-                    ),
-                    cursorBrush = SolidColor(Color(0xFF0284C7)),
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = preview,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = hindSiliguri,
-                    color = Color(0xFF0284C7),
-                )
-            }
-        }
-    }
+        ),
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = cs.primary,
+            unfocusedBorderColor = cs.outlineVariant,
+            focusedLabelColor = cs.primary,
+            unfocusedLabelColor = cs.onSurfaceVariant,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -1690,30 +1688,24 @@ private fun StepperChipCard(
     valueText: String,
     onMinus: () -> Unit,
     onPlus: () -> Unit,
-    isDark: Boolean,
     hindSiliguri: FontFamily,
     modifier: Modifier = Modifier,
 ) {
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val bg = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-
+    val cs = MaterialTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = bg,
-        border = BorderStroke(1.dp, borderCol),
+        shape = RoundedCornerShape(14.dp),
+        color = cs.surfaceContainer,
         modifier = modifier,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(
                 text = label,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
                 fontFamily = hindSiliguri,
-                color = subTextColor,
+                color = cs.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1721,31 +1713,39 @@ private fun StepperChipCard(
             ) {
                 Surface(
                     onClick = onMinus,
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isDark) Color(0xFF1E293B) else Color.White,
-                    border = BorderStroke(1.dp, borderCol),
-                    modifier = Modifier.size(34.dp),
+                    shape = CircleShape,
+                    color = cs.secondaryContainer,
+                    modifier = Modifier.size(36.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor)
+                        Text(
+                            text = "−",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = cs.onSecondaryContainer,
+                        )
                     }
                 }
                 Text(
                     text = valueText,
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
                     fontFamily = hindSiliguri,
-                    color = textColor,
+                    color = cs.onSurface,
                 )
                 Surface(
                     onClick = onPlus,
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isDark) Color(0xFF1E293B) else Color.White,
-                    border = BorderStroke(1.dp, borderCol),
-                    modifier = Modifier.size(34.dp),
+                    shape = CircleShape,
+                    color = cs.secondaryContainer,
+                    modifier = Modifier.size(36.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textColor)
+                        Text(
+                            text = "+",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = cs.onSecondaryContainer,
+                        )
                     }
                 }
             }

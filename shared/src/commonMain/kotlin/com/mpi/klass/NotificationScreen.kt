@@ -11,9 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,11 +33,16 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,11 +54,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -64,13 +65,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.mpi.klass.theme.CalendarDaysIcon
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.ClockIcon
 import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.PlusIcon
 import com.mpi.klass.theme.RefreshIcon
 import klass.shared.generated.resources.Res
+import klass.shared.generated.resources.notification
 import klass.shared.generated.resources.notiscreen
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -87,11 +88,7 @@ fun NotificationScreen(
     publishedPlan: RoutinePlan? = null,
 ) {
     val scope = rememberCoroutineScope()
-    val headingColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF0284C7)
+    val cs = MaterialTheme.colorScheme
 
     var notifications by remember { mutableStateOf<List<AppNotificationItem>>(emptyList()) }
     var activePlan by remember(publishedPlan) { mutableStateOf(publishedPlan) }
@@ -184,7 +181,7 @@ fun NotificationScreen(
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
                 } else {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 Column(
@@ -193,72 +190,47 @@ fun NotificationScreen(
                         .widthIn(max = 960.dp)
                         .padding(horizontal = 16.dp),
                 ) {
-                    // Clean Minimal Top Bar
+                    // Minimal 1-line header status + refresh
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            MinimalStatBadge(
-                                icon = CalendarDaysIcon,
-                                text = if (todayName in RoutineRules.WORKING_DAYS) {
-                                    "Today • $todayName"
-                                } else {
-                                    "Weekend • $todayName"
-                                },
-                                accent = accent,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                            )
-                            if (visibleNotices.isNotEmpty()) {
-                                MinimalStatBadge(
-                                    icon = NotificationIcon,
-                                    text = "${visibleNotices.size}",
-                                    accent = Color(0xFFD97706),
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                )
-                            }
+                        val dayStatus = if (todayName in RoutineRules.WORKING_DAYS) {
+                            "Today • $todayName"
+                        } else {
+                            "Weekend • $todayName"
                         }
+                        val countSuffix = if (visibleNotices.isNotEmpty()) {
+                            " • ${visibleNotices.size} notice(s)"
+                        } else {
+                            ""
+                        }
+                        Text(
+                            text = "$dayStatus$countSuffix",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = hindSiliguri,
+                            color = cs.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (role == UserRole.ADMIN) {
-                                WelcomeMinimal3DButton(
-                                    text = "Post Notice",
-                                    icon = PlusIcon,
-                                    hindSiliguri = hindSiliguri,
-                                    isDark = isDark,
-                                    height = 40.dp,
-                                    cornerRadius = 11.dp,
-                                    modifier = Modifier.width(128.dp),
-                                    testTag = "admin_post_notice_button",
-                                    onClick = { showComposeSheet = true },
-                                )
-                            }
-                            WelcomeMinimal3DIconButton(
-                                icon = RefreshIcon,
-                                contentDescription = "Refresh notifications",
-                                isDark = isDark,
-                                iconTint = accent,
-                                isLoading = isLoading,
-                                enabled = !isLoading,
-                                onClick = { refreshNotices() },
-                            )
-                        }
+                        WelcomeMinimal3DIconButton(
+                            icon = RefreshIcon,
+                            contentDescription = "Refresh notifications",
+                            isDark = isDark,
+                            iconTint = cs.onSurfaceVariant,
+                            isLoading = isLoading,
+                            enabled = !isLoading,
+                            onClick = { refreshNotices() },
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     if (isLoading && visibleNotices.isEmpty() && todaysClasses.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = accent, strokeWidth = 2.5.dp)
+                            CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
                         }
                     } else if (visibleNotices.isEmpty() && todaysClasses.isEmpty()) {
                         Box(
@@ -270,6 +242,7 @@ fun NotificationScreen(
                             AnimatedStaggeredItem(index = 0) {
                                 MinimalCardSurface(
                                     isDark = isDark,
+                                    shape = RoundedCornerShape(24.dp),
                                     modifier = Modifier.widthIn(max = 380.dp),
                                 ) {
                                     Column(
@@ -291,16 +264,16 @@ fun NotificationScreen(
                                             text = "No New Notifications",
                                             fontSize = 16.sp,
                                             fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
-                                            color = headingColor,
+                                            fontWeight = FontWeight.Medium,
+                                            color = cs.onSurface,
                                             textAlign = TextAlign.Center,
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = "Today's classes and institute notices appear here automatically.",
-                                            fontSize = 12.5.sp,
+                                            fontSize = 13.sp,
                                             fontFamily = hindSiliguri,
-                                            color = subTextColor,
+                                            color = cs.onSurfaceVariant,
                                             textAlign = TextAlign.Center,
                                             lineHeight = 18.sp,
                                         )
@@ -314,23 +287,21 @@ fun NotificationScreen(
                                 todaysClasses.isNotEmpty() &&
                                 visibleNotices.isNotEmpty()
 
+                            val bottomListPad = if (role == UserRole.ADMIN) 88.dp else 24.dp
                             if (showSplitPane) {
                                 Row(
                                     modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     LazyColumn(
                                         modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                        contentPadding = PaddingValues(bottom = 24.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        contentPadding = PaddingValues(bottom = bottomListPad),
                                     ) {
                                         item {
-                                            Text(
-                                                text = "Today's Classes (${todaysClasses.size})",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = headingColor,
+                                            GoogleSectionHeader(
+                                                title = "Today's Classes (${todaysClasses.size})",
+                                                hindSiliguri = hindSiliguri,
                                             )
                                         }
                                         itemsIndexed(todaysClasses, key = { _, e -> "cls_${e.id}" }) { idx, cls ->
@@ -339,8 +310,6 @@ fun NotificationScreen(
                                                     cls = cls,
                                                     role = role,
                                                     isDark = isDark,
-                                                    headingColor = headingColor,
-                                                    subTextColor = subTextColor,
                                                     hindSiliguri = hindSiliguri,
                                                 )
                                             }
@@ -349,16 +318,13 @@ fun NotificationScreen(
 
                                     LazyColumn(
                                         modifier = Modifier.weight(1.15f),
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                        contentPadding = PaddingValues(bottom = 24.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        contentPadding = PaddingValues(bottom = bottomListPad),
                                     ) {
                                         item {
-                                            Text(
-                                                text = "Notices & Updates (${visibleNotices.size})",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = headingColor,
+                                            GoogleSectionHeader(
+                                                title = "Notices & Updates (${visibleNotices.size})",
+                                                hindSiliguri = hindSiliguri,
                                             )
                                         }
                                         itemsIndexed(
@@ -369,8 +335,6 @@ fun NotificationScreen(
                                                 AnnouncementNoticeCard(
                                                     item = item,
                                                     isDark = isDark,
-                                                    headingColor = headingColor,
-                                                    subTextColor = subTextColor,
                                                     hindSiliguri = hindSiliguri,
                                                 )
                                             }
@@ -380,17 +344,14 @@ fun NotificationScreen(
                             } else {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                                    contentPadding = PaddingValues(bottom = 24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(bottom = bottomListPad),
                                 ) {
                                     if (todaysClasses.isNotEmpty()) {
                                         item {
-                                            Text(
-                                                text = "Today's Classes (${todaysClasses.size})",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = headingColor,
+                                            GoogleSectionHeader(
+                                                title = "Today's Classes (${todaysClasses.size})",
+                                                hindSiliguri = hindSiliguri,
                                             )
                                         }
                                         itemsIndexed(todaysClasses, key = { _, e -> "cls_${e.id}" }) { idx, cls ->
@@ -399,8 +360,6 @@ fun NotificationScreen(
                                                     cls = cls,
                                                     role = role,
                                                     isDark = isDark,
-                                                    headingColor = headingColor,
-                                                    subTextColor = subTextColor,
                                                     hindSiliguri = hindSiliguri,
                                                 )
                                             }
@@ -412,12 +371,9 @@ fun NotificationScreen(
                                             if (todaysClasses.isNotEmpty()) {
                                                 Spacer(modifier = Modifier.height(4.dp))
                                             }
-                                            Text(
-                                                text = "Notices & Updates (${visibleNotices.size})",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = headingColor,
+                                            GoogleSectionHeader(
+                                                title = "Notices & Updates (${visibleNotices.size})",
+                                                hindSiliguri = hindSiliguri,
                                             )
                                         }
                                         itemsIndexed(
@@ -428,8 +384,6 @@ fun NotificationScreen(
                                                 AnnouncementNoticeCard(
                                                     item = item,
                                                     isDark = isDark,
-                                                    headingColor = headingColor,
-                                                    subTextColor = subTextColor,
                                                     hindSiliguri = hindSiliguri,
                                                 )
                                             }
@@ -440,6 +394,26 @@ fun NotificationScreen(
                         }
                     }
                 }
+            }
+        }
+
+        if (role == UserRole.ADMIN && !showComposeSheet) {
+            FloatingActionButton(
+                onClick = { showComposeSheet = true },
+                containerColor = cs.primary,
+                contentColor = cs.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                    .testTag("admin_post_notice_button"),
+            ) {
+                Icon(
+                    imageVector = PlusIcon,
+                    contentDescription = "Post Notice",
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
@@ -455,7 +429,7 @@ fun NotificationScreen(
                 title = "Post Notice",
                 subtitle = "Broadcast to All Users",
                 icon = NotificationIcon,
-                accent = accent,
+                accent = cs.primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
                 onDismiss = { if (!isPosting) showComposeSheet = false },
@@ -466,13 +440,12 @@ fun NotificationScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        WelcomeMinimal3DButton(
+                        GoogleOutlinedButton(
                             text = "Cancel",
                             hindSiliguri = hindSiliguri,
-                            isPrimaryAccent = false,
-                            isDark = isDark,
                             enabled = !isPosting,
                             height = 46.dp,
+                            contentColor = cs.onSurface,
                             modifier = Modifier.weight(1f),
                             onClick = { showComposeSheet = false },
                         )
@@ -525,92 +498,44 @@ fun NotificationScreen(
                         .padding(horizontal = 16.dp, vertical = 18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Column {
-                        Text(
-                            text = "Notice Title *",
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                            color = headingColor,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, borderCol),
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.CenterStart,
-                            ) {
-                                if (noticeTitle.isEmpty()) {
-                                    Text(
-                                        text = "e.g. Exam Schedule Update",
-                                        color = subTextColor,
-                                        fontSize = 13.5.sp,
-                                        fontFamily = hindSiliguri,
-                                    )
-                                }
-                                BasicTextField(
-                                    value = noticeTitle,
-                                    onValueChange = { noticeTitle = it },
-                                    singleLine = true,
-                                    textStyle = TextStyle(
-                                        color = headingColor,
-                                        fontSize = 14.sp,
-                                        fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Medium,
-                                    ),
-                                    cursorBrush = SolidColor(accent),
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
+                    OutlinedTextField(
+                        value = noticeTitle,
+                        onValueChange = { noticeTitle = it },
+                        singleLine = true,
+                        label = { Text("Notice Title *", fontFamily = hindSiliguri) },
+                        placeholder = { Text("e.g. Exam Schedule Update", fontFamily = hindSiliguri) },
+                        textStyle = TextStyle(fontSize = 15.sp, fontFamily = hindSiliguri),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = cs.primary,
+                            unfocusedBorderColor = cs.outlineVariant,
+                            focusedLabelColor = cs.primary,
+                            unfocusedLabelColor = cs.onSurfaceVariant,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
-                    Column {
-                        Text(
-                            text = "Notice Message *",
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
+                    OutlinedTextField(
+                        value = noticeBody,
+                        onValueChange = { noticeBody = it },
+                        minLines = 5,
+                        maxLines = 10,
+                        label = { Text("Notice Message *", fontFamily = hindSiliguri) },
+                        placeholder = { Text("Write the announcement details...", fontFamily = hindSiliguri) },
+                        textStyle = TextStyle(
+                            fontSize = 15.sp,
                             fontFamily = hindSiliguri,
-                            color = headingColor,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, borderCol),
-                            modifier = Modifier.fillMaxWidth().height(160.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize().padding(14.dp),
-                                contentAlignment = Alignment.TopStart,
-                            ) {
-                                if (noticeBody.isEmpty()) {
-                                    Text(
-                                        text = "Write the announcement details...",
-                                        color = subTextColor,
-                                        fontSize = 13.5.sp,
-                                        fontFamily = hindSiliguri,
-                                    )
-                                }
-                                BasicTextField(
-                                    value = noticeBody,
-                                    onValueChange = { noticeBody = it },
-                                    textStyle = TextStyle(
-                                        color = headingColor,
-                                        fontSize = 14.sp,
-                                        fontFamily = hindSiliguri,
-                                        lineHeight = 20.sp,
-                                    ),
-                                    cursorBrush = SolidColor(accent),
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
-                    }
+                            lineHeight = 22.sp,
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = cs.primary,
+                            unfocusedBorderColor = cs.outlineVariant,
+                            focusedLabelColor = cs.primary,
+                            unfocusedLabelColor = cs.onSurfaceVariant,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -622,47 +547,45 @@ private fun TodayClassNoticeCard(
     cls: RoutineEntry,
     role: UserRole?,
     isDark: Boolean,
-    headingColor: Color,
-    subTextColor: Color,
     hindSiliguri: FontFamily,
 ) {
-    val emerald = Color(0xFF059669)
-    MinimalCardSurface(isDark = isDark) {
+    val cs = MaterialTheme.colorScheme
+    MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(emerald.copy(alpha = if (isDark) 0.16f else 0.10f)),
-                contentAlignment = Alignment.Center,
+            Surface(
+                shape = CircleShape,
+                color = cs.primaryContainer,
+                modifier = Modifier.size(38.dp),
             ) {
-                Icon(
-                    imageVector = ClockIcon,
-                    contentDescription = null,
-                    tint = emerald,
-                    modifier = Modifier.size(18.dp),
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = ClockIcon,
+                        contentDescription = null,
+                        tint = cs.primary,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "${cls.subjectTitle} (${cls.subjectCode})",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = hindSiliguri,
-                    color = headingColor,
+                    color = cs.onSurface,
                 )
                 Text(
                     text = "${cls.startTime} – ${cls.endTime} • Room ${cls.roomNumber}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium,
                     fontFamily = hindSiliguri,
-                    color = emerald,
+                    color = cs.primary,
                 )
                 Text(
                     text = if (role == UserRole.TEACHER) {
@@ -670,9 +593,9 @@ private fun TodayClassNoticeCard(
                     } else {
                         "Instructor: ${cls.teacherName.ifBlank { "Faculty" }}"
                     },
-                    fontSize = 11.5.sp,
+                    fontSize = 12.sp,
                     fontFamily = hindSiliguri,
-                    color = subTextColor,
+                    color = cs.onSurfaceVariant,
                 )
             }
         }
@@ -683,51 +606,50 @@ private fun TodayClassNoticeCard(
 private fun AnnouncementNoticeCard(
     item: AppNotificationItem,
     isDark: Boolean,
-    headingColor: Color,
-    subTextColor: Color,
     hindSiliguri: FontFamily,
 ) {
-    val badgeColor = when (item.category) {
-        "ROUTINE" -> Color(0xFF0284C7)
-        "REQUEST" -> Color(0xFF7C3AED)
-        else -> Color(0xFFD97706)
+    val cs = MaterialTheme.colorScheme
+    val (container, onContainer) = when (item.category) {
+        "ROUTINE" -> cs.primaryContainer to cs.onPrimaryContainer
+        "REQUEST" -> cs.tertiaryContainer to cs.onTertiaryContainer
+        else -> cs.secondaryContainer to cs.onSecondaryContainer
     }
-    MinimalCardSurface(isDark = isDark) {
+    MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(badgeColor.copy(alpha = if (isDark) 0.16f else 0.10f)),
-                contentAlignment = Alignment.Center,
+            Surface(
+                shape = CircleShape,
+                color = container,
+                modifier = Modifier.size(36.dp),
             ) {
-                Icon(
-                    imageVector = NotificationIcon,
-                    contentDescription = null,
-                    tint = badgeColor,
-                    modifier = Modifier.size(17.dp),
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(Res.drawable.notification),
+                        contentDescription = null,
+                        tint = onContainer,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
                     fontSize = 14.5.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = hindSiliguri,
-                    color = headingColor,
+                    color = cs.onSurface,
                 )
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.body,
-                    fontSize = 12.5.sp,
+                    fontSize = 13.sp,
                     fontFamily = hindSiliguri,
-                    color = subTextColor,
+                    color = cs.onSurfaceVariant,
                     lineHeight = 18.sp,
                 )
             }

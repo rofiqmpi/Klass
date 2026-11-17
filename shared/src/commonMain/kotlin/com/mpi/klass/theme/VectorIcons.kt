@@ -184,59 +184,6 @@ val RightArrowIcon: ImageVector
         }
     }.build()
 
-val HomeIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Home",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(3f, 10f)
-            lineTo(12f, 3f)
-            lineTo(21f, 10f)
-            moveTo(5f, 8.5f)
-            verticalLineTo(19f)
-            curveTo(5f, 20.1f, 5.9f, 21f, 7f, 21f)
-            horizontalLineTo(17f)
-            curveTo(18.1f, 21f, 19f, 20.1f, 19f, 19f)
-            verticalLineTo(8.5f)
-            moveTo(10f, 21f)
-            verticalLineTo(14f)
-            horizontalLineTo(14f)
-            verticalLineTo(21f)
-        }
-    }.build()
-
-val MenuIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Menu",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(3f, 6f)
-            horizontalLineTo(21f)
-            moveTo(3f, 12f)
-            horizontalLineTo(21f)
-            moveTo(3f, 18f)
-            horizontalLineTo(21f)
-        }
-    }.build()
-
 val LogoutIcon: ImageVector
     get() = ImageVector.Builder(
         name = "Logout",
@@ -368,42 +315,6 @@ val CameraIcon: ImageVector
             curveTo(9.79f, 9f, 8f, 10.79f, 8f, 13f)
             curveTo(8f, 15.21f, 9.79f, 17f, 12f, 17f)
             close()
-        }
-    }.build()
-
-val GalleryIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Gallery",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(19f, 3f)
-            horizontalLineTo(5f)
-            curveTo(3.9f, 3f, 3f, 3.9f, 3f, 5f)
-            verticalLineTo(19f)
-            curveTo(3f, 20.1f, 3.9f, 21f, 5f, 21f)
-            horizontalLineTo(19f)
-            curveTo(20.1f, 21f, 21f, 20.1f, 21f, 19f)
-            verticalLineTo(5f)
-            curveTo(21f, 3.9f, 20.1f, 3f, 19f, 3f)
-            close()
-            moveTo(8.5f, 10f)
-            curveTo(9.33f, 10f, 10f, 9.33f, 10f, 8.5f)
-            curveTo(10f, 7.67f, 9.33f, 7f, 8.5f, 7f)
-            curveTo(7.67f, 7f, 7f, 7.67f, 7f, 8.5f)
-            curveTo(7f, 9.33f, 7.67f, 10f, 8.5f, 10f)
-            close()
-            moveTo(21f, 15f)
-            lineTo(16f, 10f)
-            lineTo(5f, 21f)
         }
     }.build()
 
@@ -546,128 +457,6 @@ val AwardIcon: ImageVector
         }
     }.build()
 
-val StarIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Star",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(12f, 2f)
-            lineTo(15.09f, 8.26f)
-            lineTo(22f, 9.27f)
-            lineTo(17f, 14.14f)
-            lineTo(18.18f, 21.02f)
-            lineTo(12f, 17.77f)
-            lineTo(5.82f, 21.02f)
-            lineTo(7f, 14.14f)
-            lineTo(2f, 9.27f)
-            lineTo(8.91f, 8.26f)
-            lineTo(12f, 2f)
-            close()
-        }
-    }.build()
-
-val GearIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Gear",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(12f, 15f)
-            curveTo(13.66f, 15f, 15f, 13.66f, 15f, 12f)
-            curveTo(15f, 10.34f, 13.66f, 9f, 12f, 9f)
-            curveTo(10.34f, 9f, 9f, 10.34f, 9f, 12f)
-            curveTo(9f, 13.66f, 10.34f, 15f, 12f, 15f)
-            close()
-            moveTo(19.4f, 15f)
-            curveTo(19.27f, 15.46f, 19.18f, 15.93f, 19.06f, 16.39f)
-            lineTo(20.3f, 17.36f)
-            lineTo(18.3f, 20.82f)
-            lineTo(16.78f, 20.21f)
-            curveTo(16.39f, 20.52f, 15.98f, 20.79f, 15.54f, 21.02f)
-            lineTo(15.31f, 22.64f)
-            horizontalLineTo(11.31f)
-            lineTo(11.08f, 21.02f)
-            curveTo(10.64f, 20.79f, 10.23f, 20.52f, 9.84f, 20.21f)
-            lineTo(8.32f, 20.82f)
-            lineTo(6.32f, 17.36f)
-            lineTo(7.56f, 16.39f)
-            curveTo(7.44f, 15.93f, 7.35f, 15.46f, 7.22f, 15f)
-            lineTo(5.6f, 14.77f)
-            verticalLineTo(10.77f)
-            lineTo(7.22f, 10.54f)
-            curveTo(7.35f, 10.08f, 7.44f, 9.61f, 7.56f, 9.15f)
-            lineTo(6.32f, 8.18f)
-            lineTo(8.32f, 4.72f)
-            lineTo(9.84f, 5.33f)
-            curveTo(10.23f, 5.02f, 10.64f, 4.75f, 11.08f, 4.52f)
-            lineTo(11.31f, 2.9f)
-            horizontalLineTo(15.31f)
-            lineTo(15.54f, 4.52f)
-            curveTo(15.98f, 4.75f, 16.39f, 5.02f, 16.78f, 5.33f)
-            lineTo(18.32f, 4.72f)
-            lineTo(20.32f, 8.18f)
-            lineTo(19.08f, 9.15f)
-            curveTo(19.2f, 9.61f, 19.29f, 10.08f, 19.42f, 10.54f)
-            lineTo(21.04f, 10.77f)
-            verticalLineTo(14.77f)
-            lineTo(19.4f, 15f)
-            close()
-        }
-    }.build()
-
-val PenIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Pen",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(12f, 19f)
-            lineTo(19f, 12f)
-            lineTo(22f, 15f)
-            lineTo(15f, 22f)
-            lineTo(12f, 19f)
-            close()
-            moveTo(18f, 13f)
-            lineTo(11f, 6f)
-            lineTo(14f, 3f)
-            lineTo(21f, 10f)
-            lineTo(18f, 13f)
-            close()
-            moveTo(2f, 22f)
-            lineTo(7f, 21f)
-            lineTo(17f, 11f)
-            lineTo(12f, 6f)
-            lineTo(2f, 16f)
-            lineTo(2f, 22f)
-            close()
-        }
-    }.build()
-
 // ─── New Icons ───────────────────────────────────────────────────────────────
 
 val CheckIcon: ImageVector
@@ -715,153 +504,6 @@ val PersonIcon: ImageVector
             curveTo(16f, 4.79f, 14.21f, 3f, 12f, 3f)
             curveTo(9.79f, 3f, 8f, 4.79f, 8f, 7f)
             curveTo(8f, 9.21f, 9.79f, 11f, 12f, 11f)
-            close()
-        }
-    }.build()
-
-val ToggleOnIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "ToggleOn",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(17f, 7f)
-            horizontalLineTo(7f)
-            curveTo(4.24f, 7f, 2f, 9.24f, 2f, 12f)
-            curveTo(2f, 14.76f, 4.24f, 17f, 7f, 17f)
-            horizontalLineTo(17f)
-            curveTo(19.76f, 17f, 22f, 14.76f, 22f, 12f)
-            curveTo(22f, 9.24f, 19.76f, 7f, 17f, 7f)
-            close()
-            moveTo(17f, 15f)
-            curveTo(15.34f, 15f, 14f, 13.66f, 14f, 12f)
-            curveTo(14f, 10.34f, 15.34f, 9f, 17f, 9f)
-            curveTo(18.66f, 9f, 20f, 10.34f, 20f, 12f)
-            curveTo(20f, 13.66f, 18.66f, 15f, 17f, 15f)
-            close()
-        }
-    }.build()
-
-val ToggleOffIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "ToggleOff",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(17f, 7f)
-            horizontalLineTo(7f)
-            curveTo(4.24f, 7f, 2f, 9.24f, 2f, 12f)
-            curveTo(2f, 14.76f, 4.24f, 17f, 7f, 17f)
-            horizontalLineTo(17f)
-            curveTo(19.76f, 17f, 22f, 14.76f, 22f, 12f)
-            curveTo(22f, 9.24f, 19.76f, 7f, 17f, 7f)
-            close()
-            moveTo(7f, 15f)
-            curveTo(5.34f, 15f, 4f, 13.66f, 4f, 12f)
-            curveTo(4f, 10.34f, 5.34f, 9f, 7f, 9f)
-            curveTo(8.66f, 9f, 10f, 10.34f, 10f, 12f)
-            curveTo(10f, 13.66f, 8.66f, 15f, 7f, 15f)
-            close()
-        }
-    }.build()
-
-val GoogleIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Google",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            fill = SolidColor(Color.Black),
-            pathFillType = PathFillType.NonZero,
-        ) {
-            moveTo(12f, 2f)
-            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
-            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
-            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
-            curveTo(22f, 11.3f, 21.93f, 10.63f, 21.8f, 10f)
-            horizontalLineTo(12f)
-            verticalLineTo(14f)
-            horizontalLineTo(17.65f)
-            curveTo(17.39f, 15.35f, 16.35f, 18f, 12f, 18f)
-            curveTo(8.69f, 18f, 6f, 15.31f, 6f, 12f)
-            curveTo(6f, 8.69f, 8.69f, 6f, 12f, 6f)
-            curveTo(13.66f, 6f, 15.14f, 6.62f, 16.24f, 7.64f)
-            lineTo(19.07f, 4.81f)
-            curveTo(17.38f, 3.25f, 15.11f, 2f, 12f, 2f)
-            close()
-        }
-    }.build()
-
-val FacebookIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Facebook",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(24f, 12.073f)
-            curveTo(24f, 5.405f, 18.627f, 0f, 12f, 0f)
-            curveTo(5.373f, 0f, 0f, 5.405f, 0f, 12.073f)
-            curveTo(0f, 18.1f, 4.388f, 23.094f, 10.125f, 24f)
-            verticalLineTo(15.563f)
-            horizontalLineTo(7.078f)
-            verticalLineTo(12.073f)
-            horizontalLineTo(10.125f)
-            verticalLineTo(9.413f)
-            curveTo(10.125f, 6.405f, 11.916f, 4.723f, 14.656f, 4.723f)
-            curveTo(15.969f, 4.723f, 17.344f, 4.955f, 17.344f, 4.955f)
-            verticalLineTo(7.93f)
-            horizontalLineTo(15.83f)
-            curveTo(14.34f, 7.93f, 13.875f, 8.853f, 13.875f, 9.795f)
-            verticalLineTo(12.073f)
-            horizontalLineTo(17.203f)
-            lineTo(16.671f, 15.563f)
-            horizontalLineTo(13.875f)
-            verticalLineTo(24f)
-            curveTo(19.612f, 23.094f, 24f, 18.1f, 24f, 12.073f)
-            close()
-        }
-    }.build()
-
-val AppleIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Apple",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(18.71f, 19.5f)
-            curveTo(17.88f, 20.74f, 17f, 21.95f, 15.66f, 21.97f)
-            curveTo(14.32f, 22f, 13.89f, 21.18f, 12.37f, 21.18f)
-            curveTo(10.85f, 21.18f, 10.37f, 21.95f, 9.1f, 22.03f)
-            curveTo(7.77f, 22.1f, 6.8f, 20.73f, 5.96f, 19.5f)
-            curveTo(4.25f, 17f, 2.94f, 12.45f, 4.7f, 9.39f)
-            curveTo(5.57f, 7.87f, 7.13f, 6.91f, 8.82f, 6.88f)
-            curveTo(10.1f, 6.86f, 11.32f, 7.75f, 12.11f, 7.75f)
-            curveTo(12.9f, 7.75f, 14.35f, 6.64f, 15.88f, 6.81f)
-            curveTo(16.52f, 6.84f, 18.3f, 7.08f, 19.45f, 8.76f)
-            curveTo(19.36f, 8.82f, 17.3f, 10.05f, 17.33f, 12.5f)
-            curveTo(17.36f, 15.35f, 19.82f, 16.32f, 19.85f, 16.34f)
-            curveTo(19.83f, 16.4f, 19.46f, 17.7f, 18.71f, 19.5f)
-            close()
-            moveTo(15.13f, 4.88f)
-            curveTo(15.82f, 4.04f, 16.28f, 2.87f, 16.15f, 1.7f)
-            curveTo(15.12f, 1.74f, 13.84f, 2.39f, 13.14f, 3.23f)
-            curveTo(12.51f, 3.99f, 11.97f, 5.18f, 12.12f, 6.34f)
-            curveTo(13.27f, 6.43f, 14.44f, 5.72f, 15.13f, 4.88f)
             close()
         }
     }.build()
@@ -932,68 +574,6 @@ val RegistrationIcon: ImageVector
 
             moveTo(17f, 11f)
             horizontalLineTo(23f)
-        }
-    }.build()
-
-val EmailIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Email",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.8f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(4f, 4f)
-            horizontalLineTo(20f)
-            curveTo(21.1f, 4f, 22f, 4.9f, 22f, 6f)
-            verticalLineTo(18f)
-            curveTo(22f, 19.1f, 21.1f, 20f, 20f, 20f)
-            horizontalLineTo(4f)
-            curveTo(2.9f, 20f, 2f, 19.1f, 2f, 18f)
-            verticalLineTo(6f)
-            curveTo(2f, 4.9f, 2.9f, 4f, 4f, 4f)
-            close()
-            moveTo(22f, 6f)
-            lineTo(12f, 13f)
-            lineTo(2f, 6f)
-        }
-    }.build()
-
-val LockIcon: ImageVector
-    get() = ImageVector.Builder(
-        name = "Lock",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.8f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round,
-        ) {
-            moveTo(19f, 11f)
-            horizontalLineTo(5f)
-            curveTo(3.895f, 11f, 3f, 11.895f, 3f, 13f)
-            verticalLineTo(20f)
-            curveTo(3f, 21.105f, 3.895f, 22f, 5f, 22f)
-            horizontalLineTo(19f)
-            curveTo(20.105f, 22f, 21f, 21.105f, 21f, 20f)
-            verticalLineTo(13f)
-            curveTo(21f, 11.895f, 20.105f, 11f, 19f, 11f)
-            close()
-            moveTo(7f, 11f)
-            verticalLineTo(7f)
-            curveTo(7f, 4.239f, 9.239f, 2f, 12f, 2f)
-            curveTo(14.761f, 2f, 17f, 4.239f, 17f, 7f)
-            verticalLineTo(11f)
         }
     }.build()
 
@@ -1837,6 +1417,84 @@ val SwapIcon: ImageVector
         }
     }.build()
 
+val BackArrowIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "BackArrow",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(19f, 12f)
+            horizontalLineTo(5f)
+            moveTo(12f, 19f)
+            lineTo(5f, 12f)
+            lineTo(12f, 5f)
+        }
+    }.build()
 
+val FilterIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Filter",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(4f, 6f)
+            horizontalLineTo(20f)
+            moveTo(7f, 12f)
+            horizontalLineTo(17f)
+            moveTo(10f, 18f)
+            horizontalLineTo(14f)
+        }
+    }.build()
 
+val MoreVertIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "MoreVert",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            fill = SolidColor(Color.Black),
+            pathFillType = PathFillType.NonZero,
+        ) {
+            // Top dot (12, 5)
+            moveTo(12f, 3.5f)
+            curveTo(12.83f, 3.5f, 13.5f, 4.17f, 13.5f, 5f)
+            curveTo(13.5f, 5.83f, 12.83f, 6.5f, 12f, 6.5f)
+            curveTo(11.17f, 6.5f, 10.5f, 5.83f, 10.5f, 5f)
+            curveTo(10.5f, 4.17f, 11.17f, 3.5f, 12f, 3.5f)
+            close()
+            // Middle dot (12, 12)
+            moveTo(12f, 10.5f)
+            curveTo(12.83f, 10.5f, 13.5f, 11.17f, 13.5f, 12f)
+            curveTo(13.5f, 12.83f, 12.83f, 13.5f, 12f, 13.5f)
+            curveTo(11.17f, 13.5f, 10.5f, 12.83f, 10.5f, 12f)
+            curveTo(10.5f, 11.17f, 11.17f, 10.5f, 12f, 10.5f)
+            close()
+            // Bottom dot (12, 19)
+            moveTo(12f, 17.5f)
+            curveTo(12.83f, 17.5f, 13.5f, 18.17f, 13.5f, 19f)
+            curveTo(13.5f, 19.83f, 12.83f, 20.5f, 12f, 20.5f)
+            curveTo(11.17f, 20.5f, 10.5f, 19.83f, 10.5f, 19f)
+            curveTo(10.5f, 18.17f, 11.17f, 17.5f, 12f, 17.5f)
+            close()
+        }
+    }.build()
 

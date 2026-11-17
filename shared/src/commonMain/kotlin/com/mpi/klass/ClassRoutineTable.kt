@@ -1,5 +1,6 @@
 package com.mpi.klass
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,13 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -68,19 +69,22 @@ fun ClassRoutineTable(
     shift: String = RoutineRules.SHIFT_1,
     config: RoutineConfig = RoutineConfig(),
     showGroupOrRoomHint: Boolean = false,
-    emptyMessage: String = "",
     onSlotClick: ((RoutineEntry) -> Unit)? = null,
 ) {
-    val slateHeaderBg = Color(0xFF355470)
-    val orangeTimeBg = Color(0xFFEA6C13)
-    val orangeCodeBg = Color(0xFFEB7C24)
-    val dataCellBg = if (isDark) Color(0xFF1E293B) else Color(0xFFDFEAF4)
-    val cellTextColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val gapThickness = 2.dp
+    val cs = MaterialTheme.colorScheme
+    val dayHeaderBg = cs.primaryContainer
+    val dayHeaderFg = cs.onPrimaryContainer
+    val headerBg = cs.surfaceContainerHigh
+    val headerTextColor = cs.onSurfaceVariant
+    val theoryCellBg = cs.surfaceContainerLow
+    val practicalCellBg = cs.tertiaryContainer.copy(alpha = if (isDark) 0.48f else 0.55f)
+    val emptyCellBg = cs.surfaceContainer.copy(alpha = 0.6f)
+    val gapThickness = 3.dp
+    val cellShape = RoundedCornerShape(6.dp)
 
     val colDayWeight = 0.65f
-    val colTimeWeight = 1.55f
-    val colSubjectWeight = 2.65f
+    val colTimeWeight = 1.50f
+    val colSubjectWeight = 2.70f
     val colCodeWeight = 0.95f
     val colRoomWeight = 0.95f
     val totalDataWeight = colTimeWeight + colSubjectWeight + colCodeWeight + colRoomWeight
@@ -92,7 +96,7 @@ fun ClassRoutineTable(
 
     val defaultRowCounts = remember { listOf(4, 4, 3, 5, 4) }
 
-    val days = remember(entriesByDay) {
+    val days = remember(entriesByDay, entries.isEmpty()) {
         RoutineRules.WORKING_DAYS.mapIndexed { idx, dayName ->
             val daySlots = entriesByDay[dayName.lowercase()] ?: emptyList()
             val count = if (entries.isEmpty()) {
@@ -104,310 +108,240 @@ fun ClassRoutineTable(
         }
     }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .testTag("routine_table"),
+        verticalArrangement = Arrangement.spacedBy(gapThickness),
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(gapThickness),
+        // Header Row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.75f),
+            horizontalArrangement = Arrangement.spacedBy(gapThickness),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Header Row (Individual Card Headers)
+            RoutineHeaderCell("Day", colDayWeight, dayHeaderBg, dayHeaderFg, hindSiliguri, cellShape)
+            RoutineHeaderCell("Time", colTimeWeight, headerBg, headerTextColor, hindSiliguri, cellShape)
+            RoutineHeaderCell("Subject", colSubjectWeight, headerBg, headerTextColor, hindSiliguri, cellShape)
+            RoutineHeaderCell("Code", colCodeWeight, headerBg, headerTextColor, hindSiliguri, cellShape)
+            RoutineHeaderCell("Room", colRoomWeight, headerBg, headerTextColor, hindSiliguri, cellShape)
+        }
+
+        days.forEach { dayConfig ->
+            val dayWeight = dayConfig.rowCount.toFloat()
+            val dayEntries = entriesByDay[dayConfig.name.lowercase()] ?: emptyList()
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.9f),
+                    .weight(dayWeight),
                 horizontalArrangement = Arrangement.spacedBy(gapThickness),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Day
+                // Day column card
                 Surface(
-                    modifier = Modifier.weight(colDayWeight).fillMaxHeight(),
-                    shape = RoundedCornerShape(3.dp),
-                    color = slateHeaderBg,
-                    shadowElevation = 1.dp,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Day",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-
-                // Time
-                Surface(
-                    modifier = Modifier.weight(colTimeWeight).fillMaxHeight(),
-                    shape = RoundedCornerShape(3.dp),
-                    color = orangeTimeBg,
-                    shadowElevation = 1.dp,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Time",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-
-                // Subject
-                Surface(
-                    modifier = Modifier.weight(colSubjectWeight).fillMaxHeight(),
-                    shape = RoundedCornerShape(3.dp),
-                    color = slateHeaderBg,
-                    shadowElevation = 1.dp,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Subject",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-
-                // Code
-                Surface(
-                    modifier = Modifier.weight(colCodeWeight).fillMaxHeight(),
-                    shape = RoundedCornerShape(3.dp),
-                    color = orangeCodeBg,
-                    shadowElevation = 1.dp,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Code",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-
-                // Room
-                Surface(
-                    modifier = Modifier.weight(colRoomWeight).fillMaxHeight(),
-                    shape = RoundedCornerShape(3.dp),
-                    color = slateHeaderBg,
-                    shadowElevation = 1.dp,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Room",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-            }
-
-            days.forEach { dayConfig ->
-                val dayWeight = dayConfig.rowCount.toFloat()
-                val dayEntries = entriesByDay[dayConfig.name.lowercase()] ?: emptyList()
-
-                Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(dayWeight),
-                    horizontalArrangement = Arrangement.spacedBy(gapThickness),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .weight(colDayWeight)
+                        .fillMaxHeight(),
+                    shape = cellShape,
+                    color = dayHeaderBg,
+                    shadowElevation = 0.dp,
                 ) {
-                    // Day column card
-                    Surface(
-                        modifier = Modifier
-                            .weight(colDayWeight)
-                            .fillMaxHeight(),
-                        shape = RoundedCornerShape(3.dp),
-                        color = slateHeaderBg,
-                        shadowElevation = 1.dp,
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
+                        Text(
+                            text = dayConfig.name.uppercase(),
+                            color = dayHeaderFg,
+                            fontSize = 10.sp,
+                            letterSpacing = 0.5.sp,
+                            fontFamily = hindSiliguri,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            softWrap = false,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.verticalDayText(),
+                        )
+                    }
+                }
+
+                // Periods Column
+                Column(
+                    modifier = Modifier
+                        .weight(totalDataWeight)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(gapThickness),
+                ) {
+                    for (rowIndex in 0 until dayConfig.rowCount) {
+                        val entry = dayEntries.getOrNull(rowIndex)
+                        val slotData = if (entry != null) {
+                            val timeText = if (entry.startTime.isNotBlank() && entry.endTime.isNotBlank()) {
+                                "${entry.startTime.replace(" AM", "").replace(" PM", "")}-${entry.endTime}"
+                            } else {
+                                ""
+                            }
+                            val subjText = if (showGroupOrRoomHint) {
+                                "${entry.subjectTitle} (${entry.department} ${entry.group})"
+                            } else {
+                                entry.subjectTitle
+                            }
+                            RoutineSlot(
+                                time = timeText,
+                                subject = subjText,
+                                code = entry.subjectCode,
+                                room = entry.roomNumber,
+                            )
+                        } else {
+                            RoutineSlot()
+                        }
+
+                        val isPractical = entry?.isPractical == true
+                        val rowBg = when {
+                            entry == null -> emptyCellBg
+                            isPractical -> practicalCellBg
+                            else -> theoryCellBg
+                        }
+                        val cellBorder = if (entry != null && !isPractical) {
+                            BorderStroke(0.5.dp, cs.outlineVariant.copy(alpha = 0.6f))
+                        } else {
+                            null
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .then(
+                                    if (entry != null && onSlotClick != null) {
+                                        Modifier.clickable { onSlotClick(entry) }
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
+                            horizontalArrangement = Arrangement.spacedBy(gapThickness),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                text = dayConfig.name,
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                softWrap = false,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.verticalDayText(),
+                            RoutineDataCell(
+                                text = slotData.time,
+                                weight = colTimeWeight,
+                                bg = rowBg,
+                                border = cellBorder,
+                                textColor = cs.onSurfaceVariant,
+                                hindSiliguri = hindSiliguri,
+                                shape = cellShape,
+                                singleLineClip = true,
+                            )
+                            RoutineDataCell(
+                                text = slotData.subject,
+                                weight = colSubjectWeight,
+                                bg = rowBg,
+                                border = cellBorder,
+                                textColor = if (isPractical) cs.onTertiaryContainer else cs.onSurface,
+                                fontWeight = if (isPractical) FontWeight.SemiBold else FontWeight.Medium,
+                                hindSiliguri = hindSiliguri,
+                                shape = cellShape,
+                                singleLineClip = false,
+                            )
+                            RoutineDataCell(
+                                text = slotData.code,
+                                weight = colCodeWeight,
+                                bg = rowBg,
+                                border = cellBorder,
+                                textColor = cs.onSurfaceVariant,
+                                hindSiliguri = hindSiliguri,
+                                shape = cellShape,
+                                singleLineClip = true,
+                            )
+                            RoutineDataCell(
+                                text = slotData.room,
+                                weight = colRoomWeight,
+                                bg = rowBg,
+                                border = cellBorder,
+                                textColor = if (entry != null) cs.primary else cs.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold,
+                                hindSiliguri = hindSiliguri,
+                                shape = cellShape,
+                                singleLineClip = true,
                             )
                         }
                     }
-
-                    // Periods Column
-                    Column(
-                        modifier = Modifier
-                            .weight(totalDataWeight)
-                            .fillMaxHeight(),
-                        verticalArrangement = Arrangement.spacedBy(gapThickness),
-                    ) {
-                        for (rowIndex in 0 until dayConfig.rowCount) {
-                            val entry = dayEntries.getOrNull(rowIndex)
-                            val slotData = if (entry != null) {
-                                val timeText = if (entry.startTime.isNotBlank() && entry.endTime.isNotBlank()) {
-                                    "${entry.startTime.replace(" AM", "").replace(" PM", "")}-${entry.endTime}"
-                                } else {
-                                    ""
-                                }
-                                val subjText = if (showGroupOrRoomHint) {
-                                    "${entry.subjectTitle} (${entry.department} ${entry.group})"
-                                } else {
-                                    entry.subjectTitle
-                                }
-                                RoutineSlot(
-                                    time = timeText,
-                                    subject = subjText,
-                                    code = entry.subjectCode,
-                                    room = entry.roomNumber,
-                                )
-                            } else {
-                                RoutineSlot()
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .then(
-                                        if (entry != null && onSlotClick != null) {
-                                            Modifier.clickable { onSlotClick(entry) }
-                                        } else {
-                                            Modifier
-                                        }
-                                    ),
-                                horizontalArrangement = Arrangement.spacedBy(gapThickness),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                // 1. Time Card
-                                Surface(
-                                    modifier = Modifier.weight(colTimeWeight).fillMaxHeight(),
-                                    shape = RoundedCornerShape(3.dp),
-                                    color = dataCellBg,
-                                    shadowElevation = 0.5.dp,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 1.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            text = slotData.time,
-                                            fontSize = 9.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Medium,
-                                            color = cellTextColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            overflow = TextOverflow.Clip,
-                                        )
-                                    }
-                                }
-
-                                // 2. Subject Card
-                                Surface(
-                                    modifier = Modifier.weight(colSubjectWeight).fillMaxHeight(),
-                                    shape = RoundedCornerShape(3.dp),
-                                    color = dataCellBg,
-                                    shadowElevation = 0.5.dp,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 3.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            text = slotData.subject,
-                                            fontSize = 9.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Medium,
-                                            color = cellTextColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-
-                                // 3. Code Card
-                                Surface(
-                                    modifier = Modifier.weight(colCodeWeight).fillMaxHeight(),
-                                    shape = RoundedCornerShape(3.dp),
-                                    color = dataCellBg,
-                                    shadowElevation = 0.5.dp,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 1.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            text = slotData.code,
-                                            fontSize = 9.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Medium,
-                                            color = cellTextColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            overflow = TextOverflow.Clip,
-                                        )
-                                    }
-                                }
-
-                                // 4. Room Card
-                                Surface(
-                                    modifier = Modifier.weight(colRoomWeight).fillMaxHeight(),
-                                    shape = RoundedCornerShape(3.dp),
-                                    color = dataCellBg,
-                                    shadowElevation = 0.5.dp,
-                                ) {
-                                    Box(
-                                        modifier = Modifier.padding(horizontal = 1.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            text = slotData.room,
-                                            fontSize = 9.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Medium,
-                                            color = cellTextColor,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            overflow = TextOverflow.Clip,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.RoutineHeaderCell(
+    label: String,
+    weight: Float,
+    bg: androidx.compose.ui.graphics.Color,
+    fg: androidx.compose.ui.graphics.Color,
+    hindSiliguri: FontFamily,
+    shape: RoundedCornerShape,
+) {
+    Surface(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight(),
+        shape = shape,
+        color = bg,
+        shadowElevation = 0.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                color = fg,
+                fontSize = 11.sp,
+                fontFamily = hindSiliguri,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.RoutineDataCell(
+    text: String,
+    weight: Float,
+    bg: androidx.compose.ui.graphics.Color,
+    border: BorderStroke?,
+    textColor: androidx.compose.ui.graphics.Color,
+    hindSiliguri: FontFamily,
+    shape: RoundedCornerShape,
+    singleLineClip: Boolean,
+    fontWeight: FontWeight = FontWeight.Normal,
+) {
+    Surface(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight(),
+        shape = shape,
+        color = bg,
+        border = border,
+        shadowElevation = 0.dp,
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = if (singleLineClip) 1.dp else 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = text,
+                fontSize = 9.5.sp,
+                fontFamily = hindSiliguri,
+                fontWeight = fontWeight,
+                color = textColor,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = !singleLineClip,
+                overflow = if (singleLineClip) TextOverflow.Clip else TextOverflow.Ellipsis,
+            )
         }
     }
 }

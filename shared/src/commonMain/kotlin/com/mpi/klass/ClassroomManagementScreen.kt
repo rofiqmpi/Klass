@@ -1,8 +1,5 @@
 package com.mpi.klass
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,13 +25,21 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,9 +53,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -65,6 +67,7 @@ import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.DoorOpenIcon
 import com.mpi.klass.theme.EditIcon
+import com.mpi.klass.theme.MoreVertIcon
 import com.mpi.klass.theme.PlusIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.TrashCanIcon
@@ -79,6 +82,7 @@ fun ClassroomManagementScreen(
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
     var rooms by remember { mutableStateOf<List<ClassroomItem>>(emptyList()) }
     var routinePlan by remember { mutableStateOf<RoutinePlan?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -99,11 +103,6 @@ fun ClassroomManagementScreen(
     DisposableEffect(Unit) {
         onDispose { onFullScreenOverlayChange(false) }
     }
-
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val accent = Color(0xFF7C3AED)
 
     fun refreshAll() {
         scope.launch {
@@ -134,9 +133,6 @@ fun ClassroomManagementScreen(
         }
     }
 
-    val theoryCount = remember(rooms) { rooms.count { it.roomType == ClassroomType.THEORY } }
-    val labCount = remember(rooms) { rooms.count { it.roomType == ClassroomType.LAB } }
-
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalBackdrop(isDark = isDark) {
             Column(
@@ -149,7 +145,7 @@ fun ClassroomManagementScreen(
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
                 } else {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 Column(
@@ -158,35 +154,27 @@ fun ClassroomManagementScreen(
                         .widthIn(max = 960.dp)
                         .padding(horizontal = 16.dp),
                 ) {
-                    // Row 1: Minimal Search + Stat Badge + Refresh + Optional Reset
+                    // Single Search + Actions Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         MinimalSearchBar(
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
-                            placeholder = "Search room, building or department...",
-                            accent = accent,
+                            placeholder = "Search rooms & labs (${filteredRooms.size})",
+                            accent = cs.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             modifier = Modifier.weight(1f),
-                        )
-
-                        MinimalStatBadge(
-                            icon = DoorOpenIcon,
-                            text = "${theoryCount}T • ${labCount}L",
-                            accent = accent,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
                         )
 
                         WelcomeMinimal3DIconButton(
                             icon = RefreshIcon,
                             contentDescription = "Refresh classrooms",
                             isDark = isDark,
-                            iconTint = accent,
+                            iconTint = cs.onSurfaceVariant,
                             isLoading = isLoading,
                             enabled = !isLoading,
                             testTag = "classroom_refresh_button",
@@ -198,69 +186,48 @@ fun ClassroomManagementScreen(
                                 icon = TrashCanIcon,
                                 contentDescription = "Reset all rooms",
                                 isDark = isDark,
-                                iconTint = Color(0xFFEF4444),
+                                containerColor = cs.errorContainer,
+                                iconTint = cs.onErrorContainer,
+                                visualSize = 38.dp,
+                                iconSize = 16.dp,
                                 testTag = "reset_classrooms_button",
                                 onClick = { confirmFreshReset = true },
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Row 2: Filter Chips + Add Room CTA
-                    Row(
+                    // Slim Filter Row
+                    val chips = remember {
+                        listOf(
+                            null to "All",
+                            ClassroomType.THEORY to "Theory",
+                            ClassroomType.LAB to "Labs",
+                        )
+                    }
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        val chips = remember {
-                            listOf(
-                                null to "All",
-                                ClassroomType.THEORY to "Theory",
-                                ClassroomType.LAB to "Labs",
-                            )
-                        }
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            items(chips) { (typeVal, label) ->
-                                MinimalIconChip(
-                                    label = label,
-                                    selected = typeFilter == typeVal,
-                                    accent = accent,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    onClick = { typeFilter = typeVal },
-                                )
-                            }
-                        }
-
-                        if (canEdit) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            WelcomeMinimal3DButton(
-                                text = "Add Room",
-                                icon = PlusIcon,
-                                hindSiliguri = hindSiliguri,
+                        items(chips) { (typeVal, label) ->
+                            MinimalIconChip(
+                                label = label,
+                                selected = typeFilter == typeVal,
+                                accent = cs.primary,
                                 isDark = isDark,
-                                height = 40.dp,
-                                cornerRadius = 11.dp,
-                                modifier = Modifier.width(126.dp),
-                                testTag = "add_classroom_button",
-                                onClick = {
-                                    editingRoom = null
-                                    isAddEditorOpen = true
-                                },
+                                hindSiliguri = hindSiliguri,
+                                onClick = { typeFilter = typeVal },
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     when {
                         isLoading && rooms.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = accent, strokeWidth = 2.5.dp)
+                                CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
                             }
                         }
 
@@ -268,12 +235,13 @@ fun ClassroomManagementScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 28.dp),
+                                    .padding(bottom = 48.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 MinimalCardSurface(
                                     isDark = isDark,
-                                    modifier = Modifier.widthIn(max = 380.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.widthIn(max = 360.dp),
                                 ) {
                                     Column(
                                         modifier = Modifier
@@ -282,16 +250,15 @@ fun ClassroomManagementScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
                                         Surface(
-                                            shape = RoundedCornerShape(14.dp),
-                                            color = accent.copy(alpha = if (isDark) 0.16f else 0.10f),
-                                            border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
+                                            shape = CircleShape,
+                                            color = cs.tertiaryContainer,
                                             modifier = Modifier.size(52.dp),
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
                                                     imageVector = DoorOpenIcon,
                                                     contentDescription = null,
-                                                    tint = accent,
+                                                    tint = cs.onTertiaryContainer,
                                                     modifier = Modifier.size(22.dp),
                                                 )
                                             }
@@ -300,21 +267,21 @@ fun ClassroomManagementScreen(
                                         Text(
                                             text = "No Classrooms Found",
                                             fontSize = 15.5.sp,
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.SemiBold,
                                             fontFamily = hindSiliguri,
-                                            color = textColor,
+                                            color = cs.onSurface,
                                             textAlign = TextAlign.Center,
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = if (canEdit) {
-                                                "Add theory rooms and labs for automated zero-overlap scheduling."
+                                                "Tap + to add theory rooms and labs."
                                             } else {
                                                 "No classroom schedule data is available yet."
                                             },
-                                            fontSize = 12.5.sp,
+                                            fontSize = 13.sp,
                                             fontFamily = hindSiliguri,
-                                            color = subTextColor,
+                                            color = cs.onSurfaceVariant,
                                             textAlign = TextAlign.Center,
                                         )
                                     }
@@ -332,8 +299,8 @@ fun ClassroomManagementScreen(
 
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                                    contentPadding = PaddingValues(top = 2.dp, bottom = 24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(top = 2.dp, bottom = if (canEdit) 88.dp else 24.dp),
                                 ) {
                                     itemsIndexed(
                                         items = indexedRows,
@@ -343,7 +310,7 @@ fun ClassroomManagementScreen(
                                     ) { rowIdx, rowItems ->
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                                             verticalAlignment = Alignment.Top,
                                         ) {
                                             rowItems.forEach { indexed ->
@@ -353,120 +320,126 @@ fun ClassroomManagementScreen(
                                                         it.roomNumber.trim().equals(room.roomNumber.trim(), ignoreCase = true)
                                                     }
                                                 }
-                                                val typeColor = if (room.roomType == ClassroomType.LAB) {
-                                                    Color(0xFF7C3AED)
-                                                } else {
-                                                    Color(0xFF0284C7)
-                                                }
+                                                val isLab = room.roomType == ClassroomType.LAB
+                                                val badgeBg = if (isLab) cs.tertiaryContainer else cs.secondaryContainer
+                                                val badgeFg = if (isLab) cs.onTertiaryContainer else cs.onSecondaryContainer
 
                                                 Box(modifier = Modifier.weight(1f)) {
                                                     AnimatedStaggeredItem(index = rowIdx) {
+                                                        var menuExpanded by remember { mutableStateOf(false) }
+
                                                         MinimalCardSurface(
                                                             isDark = isDark,
+                                                            shape = RoundedCornerShape(14.dp),
                                                             onClick = { inspectScheduleRoom = room },
                                                             testTag = "room_card_${room.roomNumber}",
                                                         ) {
                                                             Row(
                                                                 modifier = Modifier
                                                                     .fillMaxWidth()
-                                                                    .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+                                                                    .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                                                                 verticalAlignment = Alignment.CenterVertically,
                                                             ) {
-                                                                Surface(
-                                                                    shape = RoundedCornerShape(12.dp),
-                                                                    color = typeColor.copy(alpha = if (isDark) 0.16f else 0.10f),
-                                                                    border = BorderStroke(1.dp, typeColor.copy(alpha = 0.24f)),
-                                                                    modifier = Modifier.size(44.dp),
-                                                                ) {
-                                                                    Box(contentAlignment = Alignment.Center) {
-                                                                        Icon(
-                                                                            imageVector = DoorOpenIcon,
-                                                                            contentDescription = room.roomNumber,
-                                                                            tint = typeColor,
-                                                                            modifier = Modifier.size(19.dp),
-                                                                        )
-                                                                    }
-                                                                }
-
-                                                                Spacer(modifier = Modifier.width(12.dp))
-
                                                                 Column(
                                                                     modifier = Modifier.weight(1f),
                                                                     verticalArrangement = Arrangement.spacedBy(3.dp),
                                                                 ) {
                                                                     Row(
                                                                         verticalAlignment = Alignment.CenterVertically,
-                                                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                                                                     ) {
                                                                         Text(
                                                                             text = "Room ${room.roomNumber}",
                                                                             fontSize = 15.sp,
-                                                                            fontWeight = FontWeight.Bold,
+                                                                            fontWeight = FontWeight.SemiBold,
                                                                             fontFamily = hindSiliguri,
-                                                                            color = textColor,
+                                                                            color = cs.onSurface,
                                                                             maxLines = 1,
                                                                             overflow = TextOverflow.Ellipsis,
                                                                         )
                                                                         Surface(
                                                                             shape = RoundedCornerShape(6.dp),
-                                                                            color = typeColor.copy(alpha = if (isDark) 0.18f else 0.11f),
+                                                                            color = badgeBg,
                                                                         ) {
                                                                             Text(
-                                                                                text = if (room.roomType == ClassroomType.LAB) "Lab" else "Theory",
-                                                                                fontSize = 10.sp,
-                                                                                fontWeight = FontWeight.Bold,
+                                                                                text = if (isLab) "Lab" else "Theory",
+                                                                                fontSize = 11.sp,
+                                                                                fontWeight = FontWeight.Medium,
                                                                                 fontFamily = hindSiliguri,
-                                                                                color = typeColor,
+                                                                                color = badgeFg,
                                                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                                                             )
                                                                         }
                                                                     }
 
-                                                                    if (room.buildingOrFloor.isNotBlank()) {
-                                                                        Text(
-                                                                            text = room.buildingOrFloor,
-                                                                            fontSize = 11.5.sp,
-                                                                            fontFamily = hindSiliguri,
-                                                                            color = subTextColor,
-                                                                            maxLines = 1,
-                                                                            overflow = TextOverflow.Ellipsis,
-                                                                        )
-                                                                    }
+                                                                    val subtitle = listOfNotNull(
+                                                                        room.buildingOrFloor.takeIf { it.isNotBlank() },
+                                                                        room.department,
+                                                                        "Cap ${room.capacity}",
+                                                                        "$occupiedCount slots/wk",
+                                                                    ).joinToString(" • ")
 
                                                                     Text(
-                                                                        text = "${room.department} • Cap ${room.capacity} • $occupiedCount slots/wk",
-                                                                        fontSize = 11.5.sp,
+                                                                        text = subtitle,
+                                                                        fontSize = 12.sp,
                                                                         fontFamily = hindSiliguri,
-                                                                        fontWeight = FontWeight.Medium,
-                                                                        color = subTextColor,
+                                                                        color = cs.onSurfaceVariant,
                                                                         maxLines = 1,
                                                                         overflow = TextOverflow.Ellipsis,
                                                                     )
                                                                 }
 
                                                                 if (canEdit) {
-                                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                        WelcomeMinimal3DIconButton(
-                                                                            icon = EditIcon,
-                                                                            contentDescription = "Edit room",
-                                                                            isDark = isDark,
-                                                                            iconTint = Color(0xFF0284C7),
-                                                                            visualSize = 34.dp,
-                                                                            iconSize = 14.dp,
-                                                                            onClick = {
-                                                                                editingRoom = room
-                                                                                isAddEditorOpen = true
-                                                                            },
-                                                                        )
-                                                                        WelcomeMinimal3DIconButton(
-                                                                            icon = TrashCanIcon,
-                                                                            contentDescription = "Delete room",
-                                                                            isDark = isDark,
-                                                                            iconTint = Color(0xFFEF4444),
-                                                                            visualSize = 34.dp,
-                                                                            iconSize = 14.dp,
-                                                                            onClick = { confirmDeleteRoom = room },
-                                                                        )
+                                                                    Box {
+                                                                        IconButton(
+                                                                            onClick = { menuExpanded = true },
+                                                                            modifier = Modifier.size(44.dp),
+                                                                        ) {
+                                                                            Icon(
+                                                                                imageVector = MoreVertIcon,
+                                                                                contentDescription = "Room actions",
+                                                                                tint = cs.onSurfaceVariant,
+                                                                                modifier = Modifier.size(18.dp),
+                                                                            )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                            expanded = menuExpanded,
+                                                                            onDismissRequest = { menuExpanded = false },
+                                                                            containerColor = cs.surfaceContainerLow,
+                                                                        ) {
+                                                                            DropdownMenuItem(
+                                                                                text = { Text("Edit", fontFamily = hindSiliguri) },
+                                                                                leadingIcon = {
+                                                                                    Icon(
+                                                                                        imageVector = EditIcon,
+                                                                                        contentDescription = null,
+                                                                                        tint = cs.primary,
+                                                                                        modifier = Modifier.size(18.dp),
+                                                                                    )
+                                                                                },
+                                                                                onClick = {
+                                                                                    menuExpanded = false
+                                                                                    editingRoom = room
+                                                                                    isAddEditorOpen = true
+                                                                                },
+                                                                            )
+                                                                            DropdownMenuItem(
+                                                                                text = { Text("Delete", color = cs.error, fontFamily = hindSiliguri) },
+                                                                                leadingIcon = {
+                                                                                    Icon(
+                                                                                        imageVector = TrashCanIcon,
+                                                                                        contentDescription = null,
+                                                                                        tint = cs.error,
+                                                                                        modifier = Modifier.size(18.dp),
+                                                                                    )
+                                                                                },
+                                                                                onClick = {
+                                                                                    menuExpanded = false
+                                                                                    confirmDeleteRoom = room
+                                                                                },
+                                                                            )
+                                                                        }
                                                                     }
                                                                 }
                                                             }
@@ -484,6 +457,29 @@ fun ClassroomManagementScreen(
                         }
                     }
                 }
+            }
+        }
+
+        if (canEdit && !anyOverlay) {
+            FloatingActionButton(
+                onClick = {
+                    editingRoom = null
+                    isAddEditorOpen = true
+                },
+                containerColor = cs.primary,
+                contentColor = cs.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                    .testTag("add_classroom_button"),
+            ) {
+                Icon(
+                    imageVector = PlusIcon,
+                    contentDescription = "Add room",
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
 
@@ -540,20 +536,22 @@ fun ClassroomManagementScreen(
     if (toDelete != null) {
         AlertDialog(
             onDismissRequest = { if (!isBusy) confirmDeleteRoom = null },
-            containerColor = cardBg,
+            containerColor = cs.surfaceContainerHigh,
+            titleContentColor = cs.onSurface,
+            textContentColor = cs.onSurfaceVariant,
             title = {
                 Text(
                     text = "Delete Room ${toDelete.roomNumber}?",
                     fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFEF4444),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 19.sp,
                 )
             },
             text = {
                 Text(
                     text = "This removes Room ${toDelete.roomNumber} from the classroom inventory.",
                     fontFamily = hindSiliguri,
-                    color = subTextColor,
+                    fontSize = 14.sp,
                 )
             },
             confirmButton = {
@@ -564,8 +562,7 @@ fun ClassroomManagementScreen(
                     isDark = isDark,
                     isLoading = isBusy,
                     height = 40.dp,
-                    cornerRadius = 10.dp,
-                    modifier = Modifier.width(96.dp),
+                    cornerRadius = 20.dp,
                     onClick = {
                         scope.launch {
                             isBusy = true
@@ -583,7 +580,7 @@ fun ClassroomManagementScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeleteRoom = null }, enabled = !isBusy) {
-                    Text("Cancel", color = subTextColor, fontFamily = hindSiliguri, fontWeight = FontWeight.Bold)
+                    Text("Cancel", color = cs.primary, fontFamily = hindSiliguri, fontWeight = FontWeight.Medium)
                 }
             },
         )
@@ -592,20 +589,22 @@ fun ClassroomManagementScreen(
     if (confirmFreshReset) {
         AlertDialog(
             onDismissRequest = { if (!isBusy) confirmFreshReset = false },
-            containerColor = cardBg,
+            containerColor = cs.surfaceContainerHigh,
+            titleContentColor = cs.onSurface,
+            textContentColor = cs.onSurfaceVariant,
             title = {
                 Text(
                     text = "Clear All Rooms?",
                     fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFEF4444),
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 19.sp,
                 )
             },
             text = {
                 Text(
                     text = "All existing classrooms and labs will be deleted for fresh entry.",
                     fontFamily = hindSiliguri,
-                    color = subTextColor,
+                    fontSize = 14.sp,
                 )
             },
             confirmButton = {
@@ -616,8 +615,7 @@ fun ClassroomManagementScreen(
                     isDark = isDark,
                     isLoading = isBusy,
                     height = 40.dp,
-                    cornerRadius = 10.dp,
-                    modifier = Modifier.width(108.dp),
+                    cornerRadius = 20.dp,
                     onClick = {
                         scope.launch {
                             isBusy = true
@@ -635,7 +633,7 @@ fun ClassroomManagementScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmFreshReset = false }, enabled = !isBusy) {
-                    Text("Cancel", color = subTextColor, fontFamily = hindSiliguri, fontWeight = FontWeight.Bold)
+                    Text("Cancel", color = cs.primary, fontFamily = hindSiliguri, fontWeight = FontWeight.Medium)
                 }
             },
         )
@@ -652,8 +650,7 @@ private fun RoomEditorFullScreen(
     onDismiss: () -> Unit,
     onSave: (ClassroomItem) -> Unit,
 ) {
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val accent = Color(0xFF7C3AED)
+    val cs = MaterialTheme.colorScheme
 
     var roomNumber by remember(initialRoom) { mutableStateOf(initialRoom?.roomNumber ?: "") }
     var buildingOrFloor by remember(initialRoom) { mutableStateOf(initialRoom?.buildingOrFloor ?: "") }
@@ -697,7 +694,7 @@ private fun RoomEditorFullScreen(
         title = if (initialRoom == null) "Add Classroom / Lab" else "Edit Room ${initialRoom.roomNumber}",
         subtitle = "Classroom Inventory",
         icon = DoorOpenIcon,
-        accent = accent,
+        accent = cs.primary,
         isDark = isDark,
         hindSiliguri = hindSiliguri,
         onDismiss = onDismiss,
@@ -708,13 +705,12 @@ private fun RoomEditorFullScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                WelcomeMinimal3DButton(
+                GoogleOutlinedButton(
                     text = "Cancel",
                     hindSiliguri = hindSiliguri,
-                    isPrimaryAccent = false,
-                    isDark = isDark,
                     enabled = !isSaving,
                     height = 46.dp,
+                    contentColor = cs.onSurface,
                     modifier = Modifier.weight(1f),
                     onClick = onDismiss,
                 )
@@ -725,6 +721,7 @@ private fun RoomEditorFullScreen(
                     isDark = isDark,
                     isLoading = isSaving,
                     height = 46.dp,
+                    cornerRadius = 23.dp,
                     modifier = Modifier.weight(1.3f),
                     testTag = "save_room_button",
                     onClick = { submitRoom() },
@@ -739,6 +736,8 @@ private fun RoomEditorFullScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            GoogleSectionHeader(title = "Room Details", hindSiliguri = hindSiliguri)
+
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val twoCol = maxWidth >= 560.dp
                 if (twoCol) {
@@ -751,7 +750,6 @@ private fun RoomEditorFullScreen(
                             value = roomNumber,
                             placeholder = "e.g. 301 or CST-Lab-1",
                             onValueChange = { roomNumber = it },
-                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             modifier = Modifier.weight(1f),
                         )
@@ -760,7 +758,6 @@ private fun RoomEditorFullScreen(
                             value = buildingOrFloor,
                             placeholder = "e.g. Academic Bldg 2, 3F",
                             onValueChange = { buildingOrFloor = it },
-                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             modifier = Modifier.weight(1f),
                         )
@@ -772,7 +769,6 @@ private fun RoomEditorFullScreen(
                             value = roomNumber,
                             placeholder = "e.g. 301 or CST-Lab-1",
                             onValueChange = { roomNumber = it },
-                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                         )
                         ClassroomTextInput(
@@ -780,7 +776,6 @@ private fun RoomEditorFullScreen(
                             value = buildingOrFloor,
                             placeholder = "e.g. Academic Bldg 2, 3F",
                             onValueChange = { buildingOrFloor = it },
-                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                         )
                     }
@@ -796,13 +791,7 @@ private fun RoomEditorFullScreen(
                         verticalAlignment = Alignment.Top,
                     ) {
                         Column(modifier = Modifier.weight(1.4f)) {
-                            Text(
-                                text = "Room Category",
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                                color = textColor,
-                            )
+                            GoogleSectionHeader(title = "Room Category", hindSiliguri = hindSiliguri)
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -812,7 +801,7 @@ private fun RoomEditorFullScreen(
                                     MinimalIconChip(
                                         label = t.label,
                                         selected = roomType == t,
-                                        accent = accent,
+                                        accent = cs.primary,
                                         isDark = isDark,
                                         hindSiliguri = hindSiliguri,
                                         modifier = Modifier.weight(1f),
@@ -828,7 +817,6 @@ private fun RoomEditorFullScreen(
                             placeholder = "40",
                             keyboardType = KeyboardType.Number,
                             onValueChange = { capacityStr = it.filter { c -> c.isDigit() } },
-                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             modifier = Modifier.weight(0.8f),
                         )
@@ -836,13 +824,7 @@ private fun RoomEditorFullScreen(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column {
-                            Text(
-                                text = "Room Category",
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                                color = textColor,
-                            )
+                            GoogleSectionHeader(title = "Room Category", hindSiliguri = hindSiliguri)
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -852,7 +834,7 @@ private fun RoomEditorFullScreen(
                                     MinimalIconChip(
                                         label = t.label,
                                         selected = roomType == t,
-                                        accent = accent,
+                                        accent = cs.primary,
                                         isDark = isDark,
                                         hindSiliguri = hindSiliguri,
                                         modifier = Modifier.weight(1f),
@@ -868,7 +850,6 @@ private fun RoomEditorFullScreen(
                             placeholder = "40",
                             keyboardType = KeyboardType.Number,
                             onValueChange = { capacityStr = it.filter { c -> c.isDigit() } },
-                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                         )
                     }
@@ -876,13 +857,7 @@ private fun RoomEditorFullScreen(
             }
 
             Column {
-                Text(
-                    text = "Assigned Department",
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = hindSiliguri,
-                    color = textColor,
-                )
+                GoogleSectionHeader(title = "Assigned Department", hindSiliguri = hindSiliguri)
                 Spacer(modifier = Modifier.height(6.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -892,7 +867,7 @@ private fun RoomEditorFullScreen(
                         MinimalIconChip(
                             label = if (d == "ALL") "ALL (Shared)" else d,
                             selected = department.equals(d, ignoreCase = true),
-                            accent = Color(0xFF0284C7),
+                            accent = cs.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             onClick = { department = d },
@@ -902,13 +877,7 @@ private fun RoomEditorFullScreen(
             }
 
             Column {
-                Text(
-                    text = "Available Shifts",
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = hindSiliguri,
-                    color = textColor,
-                )
+                GoogleSectionHeader(title = "Available Shifts", hindSiliguri = hindSiliguri)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -917,7 +886,7 @@ private fun RoomEditorFullScreen(
                     MinimalIconChip(
                         label = RoutineRules.SHIFT_1,
                         selected = shift1Enabled,
-                        accent = Color(0xFF10B981),
+                        accent = cs.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                         modifier = Modifier.weight(1f),
@@ -926,7 +895,7 @@ private fun RoomEditorFullScreen(
                     MinimalIconChip(
                         label = RoutineRules.SHIFT_2,
                         selected = shift2Enabled,
-                        accent = Color(0xFF10B981),
+                        accent = cs.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                         modifier = Modifier.weight(1f),
@@ -946,14 +915,10 @@ private fun RoomScheduleViewerFullScreen(
     hindSiliguri: FontFamily,
     onDismiss: () -> Unit,
 ) {
+    val cs = MaterialTheme.colorScheme
     var selectedShift by remember {
         mutableStateOf(room.shifts.firstOrNull() ?: RoutineRules.SHIFT_1)
     }
-
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF7C3AED)
 
     val config = plan?.config ?: RoutineConfig()
     val periodsCount = config.periodsPerDay.coerceIn(4, 10)
@@ -968,7 +933,7 @@ private fun RoomScheduleViewerFullScreen(
         title = "Room ${room.roomNumber} Schedule",
         subtitle = "${room.roomType.label} • ${room.department} • Cap ${room.capacity}",
         icon = DoorOpenIcon,
-        accent = accent,
+        accent = cs.primary,
         isDark = isDark,
         hindSiliguri = hindSiliguri,
         onDismiss = onDismiss,
@@ -987,7 +952,7 @@ private fun RoomScheduleViewerFullScreen(
                     MinimalIconChip(
                         label = sh,
                         selected = selectedShift == sh,
-                        accent = accent,
+                        accent = cs.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                         modifier = Modifier.weight(1f),
@@ -1015,7 +980,7 @@ private fun RoomScheduleViewerFullScreen(
                         ) {
                             rowDays.forEach { day ->
                                 Box(modifier = Modifier.weight(1f)) {
-                                    MinimalCardSurface(isDark = isDark) {
+                                    MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(18.dp)) {
                                         Column(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -1024,10 +989,10 @@ private fun RoomScheduleViewerFullScreen(
                                         ) {
                                             Text(
                                                 text = day,
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Medium,
                                                 fontFamily = hindSiliguri,
-                                                color = accent,
+                                                color = cs.primary,
                                             )
                                             for (p in 0 until periodsCount) {
                                                 val slot = roomEntries.firstOrNull {
@@ -1035,56 +1000,52 @@ private fun RoomScheduleViewerFullScreen(
                                                 }
                                                 val (st, et) = RoutineRules.periodTimeRange(selectedShift, p, config)
                                                 Surface(
-                                                    shape = RoundedCornerShape(10.dp),
+                                                    shape = RoundedCornerShape(12.dp),
                                                     color = if (slot == null) {
-                                                        Color(0xFF10B981).copy(alpha = if (isDark) 0.14f else 0.08f)
+                                                        cs.secondaryContainer
                                                     } else {
-                                                        if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
+                                                        cs.surfaceContainerHigh
                                                     },
-                                                    border = BorderStroke(
-                                                        0.8.dp,
-                                                        if (slot == null) Color(0xFF10B981).copy(alpha = 0.36f) else borderCol,
-                                                    ),
                                                     modifier = Modifier.fillMaxWidth(),
                                                 ) {
                                                     Row(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                                            .padding(horizontal = 12.dp, vertical = 9.dp),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                     ) {
                                                         Text(
                                                             text = "P${p + 1} • $st",
-                                                            fontSize = 10.5.sp,
-                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
-                                                            color = subTextColor,
+                                                            color = if (slot == null) cs.onSecondaryContainer else cs.onSurfaceVariant,
                                                             modifier = Modifier.width(82.dp),
                                                         )
                                                         if (slot == null) {
                                                             Text(
                                                                 text = "Free ($st–$et)",
-                                                                fontSize = 12.sp,
-                                                                fontWeight = FontWeight.SemiBold,
+                                                                fontSize = 12.5.sp,
+                                                                fontWeight = FontWeight.Medium,
                                                                 fontFamily = hindSiliguri,
-                                                                color = Color(0xFF059669),
+                                                                color = cs.onSecondaryContainer,
                                                             )
                                                         } else {
                                                             Column(modifier = Modifier.weight(1f)) {
                                                                 Text(
                                                                     text = "${slot.subjectTitle} (${slot.subjectCode})",
-                                                                    fontSize = 12.5.sp,
-                                                                    fontWeight = FontWeight.Bold,
+                                                                    fontSize = 13.sp,
+                                                                    fontWeight = FontWeight.Medium,
                                                                     fontFamily = hindSiliguri,
-                                                                    color = textColor,
+                                                                    color = cs.onSurface,
                                                                     maxLines = 1,
                                                                     overflow = TextOverflow.Ellipsis,
                                                                 )
                                                                 Text(
                                                                     text = "${slot.department} • ${RoutineRules.semesterShortLabel(slot.semester)} • ${slot.group} • ${slot.teacherName}",
-                                                                    fontSize = 11.sp,
+                                                                    fontSize = 11.5.sp,
                                                                     fontFamily = hindSiliguri,
-                                                                    color = subTextColor,
+                                                                    color = cs.onSurfaceVariant,
                                                                     maxLines = 1,
                                                                     overflow = TextOverflow.Ellipsis,
                                                                 )
@@ -1114,73 +1075,43 @@ private fun ClassroomTextInput(
     value: String,
     placeholder: String,
     onValueChange: (String) -> Unit,
-    isDark: Boolean,
     hindSiliguri: FontFamily,
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
 ) {
-    var isFocused by remember { mutableStateOf(false) }
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val bg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF7C3AED)
-    val animBorder by animateColorAsState(
-        targetValue = if (isFocused) accent else borderCol,
-        animationSpec = tween(160),
-        label = "ClassroomInputBorder",
-    )
-
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            fontSize = 12.5.sp,
-            fontWeight = FontWeight.Bold,
+    val cs = MaterialTheme.colorScheme
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        label = {
+            Text(
+                text = label,
+                fontFamily = hindSiliguri,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        placeholder = {
+            Text(
+                text = placeholder,
+                fontFamily = hindSiliguri,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        textStyle = TextStyle(
+            fontSize = 15.sp,
             fontFamily = hindSiliguri,
-            color = textColor,
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = bg,
-            border = BorderStroke(if (isFocused) 1.4.dp else 1.dp, animBorder),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (value.isEmpty()) {
-                    Text(
-                        text = placeholder,
-                        fontSize = 13.sp,
-                        fontFamily = hindSiliguri,
-                        color = subTextColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                    textStyle = TextStyle(
-                        fontSize = 14.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
-                        color = textColor,
-                    ),
-                    cursorBrush = SolidColor(accent),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { isFocused = it.isFocused },
-                )
-            }
-        }
-    }
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = cs.primary,
+            unfocusedBorderColor = cs.outlineVariant,
+            focusedLabelColor = cs.primary,
+            unfocusedLabelColor = cs.onSurfaceVariant,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    )
 }

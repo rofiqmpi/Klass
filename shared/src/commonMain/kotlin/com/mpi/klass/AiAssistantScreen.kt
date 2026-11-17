@@ -3,7 +3,6 @@ package com.mpi.klass
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,10 +30,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,7 +61,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.SendIcon
 import com.mpi.klass.theme.SparkleIcon
 import kotlinx.coroutines.CancellationException
@@ -82,20 +84,19 @@ fun AiAssistantScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     onBack: () -> Unit,
+    onNotificationClick: (() -> Unit)? = null,
     userDisplayName: String = "User",
 ) {
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val accent = Color(0xFF8B5CF6)
-    val geminiGradient = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF4285F4),
-            Color(0xFF9B72CF),
-            Color(0xFFD96570),
+    val cs = MaterialTheme.colorScheme
+    val geminiGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF4285F4),
+                Color(0xFF9B72CF),
+                Color(0xFFD96570),
+            )
         )
-    )
+    }
 
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -106,7 +107,7 @@ fun AiAssistantScreen(
         mutableStateListOf(
             AiChatMessage(
                 id = "welcome",
-                text = "Hi${if (userDisplayName.isNotBlank() && userDisplayName != "User") " $userDisplayName" else ""}! I am your AI study assistant. Ask me for lecture summaries, problem solving, or exam prep.",
+                text = "Hi${if (userDisplayName.isNotBlank() && userDisplayName != "User") " $userDisplayName" else ""}! Ask me for lecture summaries, concept explanations, or exam prep.",
                 isFromUser = false,
             )
         )
@@ -146,7 +147,7 @@ fun AiAssistantScreen(
                 throw e
             } catch (e: Exception) {
                 uiState = AiUiState.Error(
-                    e.localizedMessage ?: "AI connection error. Please try again."
+                    e.localizedMessage ?: "Connection error. Please try again."
                 )
             }
         }
@@ -164,124 +165,56 @@ fun AiAssistantScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Clean Full-Width Header with Centered Controls
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = cardBg,
-                shadowElevation = 2.dp,
-            ) {
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 860.dp)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+            GoogleTopAppBar(
+                title = "Study Assistant",
+                hindSiliguri = hindSiliguri,
+                onNavigationClick = onBack,
+                navigationTestTag = "ai_back_button",
+                actions = {
+                    TextButton(
+                        onClick = {
+                            messages.clear()
+                            messages.add(
+                                AiChatMessage(
+                                    id = "welcome_reset",
+                                    text = "New conversation started. How can I help you study?",
+                                    isFromUser = false,
+                                )
+                            )
+                            uiState = AiUiState.Idle
+                        },
+                        shape = CircleShape,
+                        modifier = Modifier.testTag("ai_clear_chat_button"),
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            SwipeToCenterIconSurface(
-                                dragId = "ai_back",
-                                previewTitle = "Back",
-                                accentColor = accent,
-                                onTrigger = onBack,
-                                isLeftSide = true,
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-                                border = BorderStroke(1.dp, borderCol),
-                                shadowElevation = 1.dp,
-                                modifier = Modifier.size(48.dp).testTag("ai_back_button"),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = CloseIcon,
-                                        contentDescription = "Back",
-                                        tint = textColor,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = accent.copy(alpha = if (isDark) 0.16f else 0.10f),
-                                border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
-                                modifier = Modifier.size(38.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = SparkleIcon,
-                                        contentDescription = null,
-                                        tint = accent,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-
-                            Column {
-                                Text(
-                                    text = "AI Study Assistant",
-                                    fontSize = 16.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor,
-                                )
-                                Text(
-                                    text = "Instant help & summaries",
-                                    fontSize = 11.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Medium,
-                                    color = subTextColor,
-                                )
-                            }
-                        }
-
-                        MinimalIconChip(
-                            label = "New Chat",
-                            selected = false,
-                            accent = accent,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            testTag = "ai_clear_chat_button",
-                            onClick = {
-                                messages.clear()
-                                messages.add(
-                                    AiChatMessage(
-                                        id = "welcome_reset",
-                                        text = "New conversation started. How can I help you study?",
-                                        isFromUser = false,
-                                    )
-                                )
-                                uiState = AiUiState.Idle
-                            },
+                        Text(
+                            text = "New chat",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = hindSiliguri,
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .background(borderCol),
-                    )
-                }
-            }
+                    if (onNotificationClick != null) {
+                        HeaderAiNotificationActions(
+                            isDark = isDark,
+                            showAi = false,
+                            showNotification = true,
+                            onNotificationClick = onNotificationClick,
+                        )
+                    }
+                },
+            )
 
-            // Responsive Centered Conversation Pane
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                val bubbleMaxWidth: Dp = if (maxWidth >= 680.dp) 520.dp else 310.dp
+                val bubbleMaxWidth: Dp = if (maxWidth >= 680.dp) 560.dp else 320.dp
 
                 Column(
                     modifier = Modifier
@@ -294,13 +227,12 @@ fun AiAssistantScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(vertical = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         items(messages, key = { it.id }) { msg ->
                             ChatMessageBubble(
                                 message = msg,
-                                isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 geminiGradient = geminiGradient,
                                 maxBubbleWidth = bubbleMaxWidth,
@@ -313,32 +245,32 @@ fun AiAssistantScreen(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = accent.copy(alpha = 0.14f),
-                                        modifier = Modifier.size(34.dp),
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(geminiGradient),
+                                        contentAlignment = Alignment.Center,
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = SparkleIcon,
-                                                contentDescription = null,
-                                                tint = accent,
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = SparkleIcon,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp),
+                                        )
                                     }
                                     Spacer(modifier = Modifier.width(10.dp))
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(16.dp),
                                         strokeWidth = 2.dp,
-                                        color = accent,
+                                        color = cs.primary,
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Thinking...",
-                                        fontSize = 13.sp,
+                                        fontSize = 13.5.sp,
                                         fontFamily = hindSiliguri,
-                                        color = subTextColor,
+                                        color = cs.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -351,7 +283,6 @@ fun AiAssistantScreen(
                                         text = streamText,
                                         isFromUser = false,
                                     ),
-                                    isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     geminiGradient = geminiGradient,
                                     maxBubbleWidth = bubbleMaxWidth,
@@ -365,9 +296,8 @@ fun AiAssistantScreen(
                             item(key = "error_banner") {
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFFEF4444).copy(alpha = 0.10f),
-                                    border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.35f)),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = cs.errorContainer,
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(14.dp),
@@ -376,21 +306,13 @@ fun AiAssistantScreen(
                                     ) {
                                         Text(
                                             text = errorMsg,
-                                            color = Color(0xFFDC2626),
-                                            fontSize = 13.sp,
+                                            color = cs.onErrorContainer,
+                                            fontSize = 13.5.sp,
                                             fontFamily = hindSiliguri,
                                             modifier = Modifier.weight(1f),
                                         )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        WelcomeMinimal3DButton(
-                                            text = "Retry",
-                                            hindSiliguri = hindSiliguri,
-                                            isDestructive = true,
-                                            isDark = isDark,
-                                            height = 36.dp,
-                                            cornerRadius = 9.dp,
-                                            testTag = "ai_retry_button",
-                                            modifier = Modifier.width(84.dp),
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Button(
                                             onClick = {
                                                 val lastUserMsg = messages.lastOrNull { it.isFromUser }
                                                 if (lastUserMsg != null) {
@@ -399,14 +321,29 @@ fun AiAssistantScreen(
                                                     uiState = AiUiState.Idle
                                                 }
                                             },
-                                        )
+                                            shape = CircleShape,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = cs.error,
+                                                contentColor = cs.onError,
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                            modifier = Modifier
+                                                .height(36.dp)
+                                                .testTag("ai_retry_button"),
+                                        ) {
+                                            Text(
+                                                text = "Retry",
+                                                fontSize = 13.sp,
+                                                fontFamily = hindSiliguri,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Prompt Suggestions
                     AnimatedVisibility(
                         visible = messages.size <= 2 && uiState !is AiUiState.Loading && uiState !is AiUiState.Streaming,
                         enter = fadeIn(),
@@ -420,7 +357,7 @@ fun AiAssistantScreen(
                                 MinimalIconChip(
                                     label = label,
                                     selected = false,
-                                    accent = accent,
+                                    accent = cs.primary,
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     icon = SparkleIcon,
@@ -431,20 +368,18 @@ fun AiAssistantScreen(
                         }
                     }
 
-                    // Clean Minimal Composer Bar (single hairline border, zero nested boxes)
+                    // Gemini-style Pill Composer
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 10.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = cardBg,
-                        border = BorderStroke(1.dp, borderCol),
-                        shadowElevation = 2.dp,
+                        shape = RoundedCornerShape(28.dp),
+                        color = cs.surfaceContainerHigh,
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                                .padding(start = 18.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Box(
@@ -455,10 +390,10 @@ fun AiAssistantScreen(
                             ) {
                                 if (inputText.isEmpty()) {
                                     Text(
-                                        text = "Ask anything about your studies...",
-                                        fontSize = 14.sp,
+                                        text = "Ask anything about your studies",
+                                        fontSize = 14.5.sp,
                                         fontFamily = hindSiliguri,
-                                        color = subTextColor,
+                                        color = cs.onSurfaceVariant,
                                     )
                                 }
                                 BasicTextField(
@@ -466,11 +401,11 @@ fun AiAssistantScreen(
                                     onValueChange = { inputText = it },
                                     maxLines = 4,
                                     textStyle = TextStyle(
-                                        fontSize = 14.sp,
+                                        fontSize = 15.sp,
                                         fontFamily = hindSiliguri,
-                                        color = textColor,
+                                        color = cs.onSurface,
                                     ),
-                                    cursorBrush = SolidColor(accent),
+                                    cursorBrush = SolidColor(cs.primary),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                     keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
                                     modifier = Modifier
@@ -483,16 +418,28 @@ fun AiAssistantScreen(
 
                             val isBusy = uiState is AiUiState.Loading || uiState is AiUiState.Streaming
                             val canSend = inputText.isNotBlank() && !isBusy
-                            WelcomeMinimal3DIconButton(
-                                icon = SendIcon,
-                                contentDescription = "Send",
-                                isDark = isDark,
-                                containerColor = if (canSend) accent else cardBg,
-                                iconTint = if (canSend) Color.White else subTextColor,
-                                enabled = canSend,
-                                testTag = "ai_send_button",
+                            IconButton(
                                 onClick = { sendMessage(inputText) },
-                            )
+                                enabled = canSend,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("ai_send_button"),
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (canSend) cs.primary else Color.Transparent,
+                                    modifier = Modifier.size(38.dp),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = SendIcon,
+                                            contentDescription = "Send",
+                                            tint = if (canSend) cs.onPrimary else cs.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -504,17 +451,12 @@ fun AiAssistantScreen(
 @Composable
 private fun ChatMessageBubble(
     message: AiChatMessage,
-    isDark: Boolean,
     hindSiliguri: FontFamily,
     geminiGradient: Brush,
     maxBubbleWidth: Dp,
     isStreaming: Boolean = false,
 ) {
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val userBubbleBg = Color(0xFF2563EB)
-    val aiBubbleBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-
+    val cs = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.isFromUser) Arrangement.End else Arrangement.Start,
@@ -523,46 +465,45 @@ private fun ChatMessageBubble(
         if (!message.isFromUser) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .padding(top = 2.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(geminiGradient),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = SparkleIcon,
-                    contentDescription = "AI",
+                    contentDescription = "Assistant",
                     tint = Color.White,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(14.dp),
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
         }
 
         Surface(
             shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (message.isFromUser) 16.dp else 4.dp,
-                bottomEnd = if (message.isFromUser) 4.dp else 16.dp,
+                topStart = 20.dp,
+                topEnd = 20.dp,
+                bottomStart = if (message.isFromUser) 20.dp else 6.dp,
+                bottomEnd = if (message.isFromUser) 6.dp else 20.dp,
             ),
-            color = if (message.isFromUser) userBubbleBg else aiBubbleBg,
-            border = if (!message.isFromUser) BorderStroke(1.dp, borderCol) else null,
-            shadowElevation = 1.dp,
+            color = if (message.isFromUser) cs.primaryContainer else cs.surfaceContainerLow,
             modifier = Modifier.widthIn(max = maxBubbleWidth),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
                     text = message.text,
-                    fontSize = 14.sp,
+                    fontSize = 14.5.sp,
                     fontFamily = hindSiliguri,
-                    color = if (message.isFromUser) Color.White else textColor,
-                    lineHeight = 20.sp,
+                    color = if (message.isFromUser) cs.onPrimaryContainer else cs.onSurface,
+                    lineHeight = 21.sp,
                 )
                 if (isStreaming) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "●",
-                        color = Color(0xFF8B5CF6),
+                        color = cs.primary,
                         fontSize = 12.sp,
                     )
                 }

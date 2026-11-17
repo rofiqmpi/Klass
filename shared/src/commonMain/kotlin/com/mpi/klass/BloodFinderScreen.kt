@@ -1,6 +1,5 @@
 package com.mpi.klass
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,9 +21,11 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,8 +37,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,14 +59,11 @@ fun BloodFinderScreen(
     onSignInClick: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
     var donors by remember { mutableStateOf<List<BloodDonorItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedBloodGroup by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
-
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val crimson = Color(0xFFDC2626)
 
     fun refreshDonors() {
         scope.launch {
@@ -109,6 +105,8 @@ fun BloodFinderScreen(
             if (topContentPadding > 0.dp) {
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Spacer(modifier = Modifier.height(topContentPadding))
+            } else {
+                Spacer(modifier = Modifier.height(6.dp))
             }
 
             Column(
@@ -117,36 +115,28 @@ fun BloodFinderScreen(
                     .widthIn(max = 920.dp)
                     .padding(horizontal = 16.dp),
             ) {
-                // Clean Minimal Toolbar: Search Bar + Donor Count Badge + Refresh Icon
+                // Single Search + Refresh row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     MinimalSearchBar(
                         query = searchQuery,
                         onQueryChange = { searchQuery = it },
-                        placeholder = "Search name, dept, city or phone...",
-                        accent = crimson,
+                        placeholder = "Search donors (${filteredDonors.size})",
+                        accent = cs.error,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                         testTag = "blood_search_input",
                         modifier = Modifier.weight(1f),
                     )
 
-                    MinimalStatBadge(
-                        icon = DropletIcon,
-                        text = "${filteredDonors.size}",
-                        accent = crimson,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                    )
-
                     WelcomeMinimal3DIconButton(
                         icon = RefreshIcon,
                         contentDescription = "Refresh blood donors",
                         isDark = isDark,
-                        iconTint = crimson,
+                        iconTint = cs.onSurfaceVariant,
                         isLoading = isLoading,
                         enabled = !isLoading,
                         testTag = "blood_refresh_button",
@@ -154,9 +144,8 @@ fun BloodFinderScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Blood Group Filter Strip
                 val groupChoices = remember { listOf("All") + RoutineRules.BLOOD_GROUPS }
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -166,7 +155,7 @@ fun BloodFinderScreen(
                         MinimalIconChip(
                             label = grp,
                             selected = selectedBloodGroup == grp,
-                            accent = crimson,
+                            accent = cs.error,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             icon = if (grp == "All") DropletIcon else null,
@@ -176,7 +165,7 @@ fun BloodFinderScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 when {
                     isLoading && donors.isEmpty() -> {
@@ -184,7 +173,7 @@ fun BloodFinderScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(color = crimson, strokeWidth = 2.5.dp)
+                            CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
                         }
                     }
 
@@ -197,6 +186,7 @@ fun BloodFinderScreen(
                         ) {
                             MinimalCardSurface(
                                 isDark = isDark,
+                                shape = RoundedCornerShape(24.dp),
                                 modifier = Modifier.widthIn(max = 380.dp),
                             ) {
                                 Column(
@@ -206,31 +196,30 @@ fun BloodFinderScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Surface(
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = crimson.copy(alpha = if (isDark) 0.16f else 0.10f),
-                                        border = BorderStroke(1.dp, crimson.copy(alpha = 0.25f)),
-                                        modifier = Modifier.size(52.dp),
+                                        shape = CircleShape,
+                                        color = cs.errorContainer,
+                                        modifier = Modifier.size(56.dp),
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
                                                 imageVector = DropletIcon,
                                                 contentDescription = null,
-                                                tint = crimson,
-                                                modifier = Modifier.size(22.dp),
+                                                tint = cs.onErrorContainer,
+                                                modifier = Modifier.size(24.dp),
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(14.dp))
                                     Text(
                                         text = if (isGuest && donors.isEmpty()) {
                                             "Sign in to view live donors"
                                         } else {
                                             "No donors found"
                                         },
-                                        fontSize = 15.5.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium,
                                         fontFamily = hindSiliguri,
-                                        color = textColor,
+                                        color = cs.onSurface,
                                         textAlign = TextAlign.Center,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -240,13 +229,14 @@ fun BloodFinderScreen(
                                         } else {
                                             "Try clearing filters or update Blood Group in Profile."
                                         },
-                                        fontSize = 12.5.sp,
+                                        fontSize = 13.sp,
                                         fontFamily = hindSiliguri,
-                                        color = subTextColor,
+                                        color = cs.onSurfaceVariant,
                                         textAlign = TextAlign.Center,
+                                        lineHeight = 18.sp,
                                     )
                                     if (isGuest && onSignInClick != null && donors.isEmpty()) {
-                                        Spacer(modifier = Modifier.height(14.dp))
+                                        Spacer(modifier = Modifier.height(16.dp))
                                         WelcomeMinimal3DButton(
                                             text = "Sign In Now",
                                             hindSiliguri = hindSiliguri,
@@ -284,9 +274,6 @@ fun BloodFinderScreen(
                                                         donor = indexed.value,
                                                         index = indexed.index,
                                                         isDark = isDark,
-                                                        crimson = crimson,
-                                                        textColor = textColor,
-                                                        subTextColor = subTextColor,
                                                         hindSiliguri = hindSiliguri,
                                                     )
                                                 }
@@ -311,34 +298,32 @@ private fun DonorCard(
     donor: BloodDonorItem,
     index: Int,
     isDark: Boolean,
-    crimson: Color,
-    textColor: Color,
-    subTextColor: Color,
     hindSiliguri: FontFamily,
 ) {
+    val cs = MaterialTheme.colorScheme
     MinimalCardSurface(
         isDark = isDark,
+        shape = RoundedCornerShape(14.dp),
         testTag = "donor_card_$index",
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = crimson.copy(alpha = if (isDark) 0.16f else 0.10f),
-                border = BorderStroke(1.dp, crimson.copy(alpha = 0.35f)),
-                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = cs.errorContainer,
+                modifier = Modifier.size(42.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = donor.bloodGroup,
-                        fontSize = 15.5.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
                         fontFamily = hindSiliguri,
-                        color = crimson,
+                        color = cs.onErrorContainer,
                     )
                 }
             }
@@ -351,25 +336,24 @@ private fun DonorCard(
             ) {
                 Text(
                     text = donor.name.ifBlank { "MPI Member" },
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = hindSiliguri,
-                    color = textColor,
+                    color = cs.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val meta = listOfNotNull(
+                val subtitle = listOfNotNull(
+                    RoutineRules.normalizeDepartmentShort(donor.department).takeIf { it.isNotBlank() },
                     donor.roleLabel.takeIf { it.isNotBlank() },
-                    RoutineRules.normalizeDepartmentShort(donor.department)
-                        .takeIf { it.isNotBlank() },
+                    donor.phone.takeIf { it.isNotBlank() },
                 ).joinToString(" • ")
-                if (meta.isNotBlank()) {
+                if (subtitle.isNotBlank()) {
                     Text(
-                        text = meta,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text = subtitle,
+                        fontSize = 12.sp,
                         fontFamily = hindSiliguri,
-                        color = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB),
+                        color = cs.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -379,7 +363,7 @@ private fun DonorCard(
                         Icon(
                             imageVector = LocationDotIcon,
                             contentDescription = null,
-                            tint = subTextColor,
+                            tint = cs.onSurfaceVariant,
                             modifier = Modifier.size(11.dp),
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -387,29 +371,24 @@ private fun DonorCard(
                             text = donor.address,
                             fontSize = 11.5.sp,
                             fontFamily = hindSiliguri,
-                            color = subTextColor,
+                            color = cs.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-                Text(
-                    text = donor.phone,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = hindSiliguri,
-                    color = textColor.copy(alpha = 0.85f),
-                    maxLines = 1,
-                )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
 
             WelcomeMinimal3DIconButton(
                 icon = PhoneSolidIcon,
                 contentDescription = "Call ${donor.name}",
                 isDark = isDark,
-                iconTint = Color(0xFF059669),
+                containerColor = cs.primaryContainer,
+                iconTint = cs.primary,
+                visualSize = 38.dp,
+                iconSize = 16.dp,
                 testTag = "call_donor_$index",
                 onClick = { openPhoneDialer(donor.phone) },
             )

@@ -5,7 +5,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,8 +31,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,8 +52,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -77,6 +80,7 @@ fun TeacherPreferencesScreen(
     onSaved: (TeacherSchedulingPref) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
     val cleanEmail = email.trim().lowercase()
 
     var isLoading by remember { mutableStateOf(true) }
@@ -99,14 +103,6 @@ fun TeacherPreferencesScreen(
             put(RoutineRules.ALL_SEMESTER_KEYS.first(), true)
         }
     }
-
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF0284C7)
-    val emerald = Color(0xFF10B981)
-    val amber = Color(0xFFD97706)
 
     LaunchedEffect(cleanEmail) {
         isLoading = true
@@ -206,12 +202,12 @@ fun TeacherPreferencesScreen(
                 Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Spacer(modifier = Modifier.height(topContentPadding))
             } else {
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(6.dp))
             }
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = accent, strokeWidth = 2.5.dp)
+                    CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
                 }
                 return@Column
             }
@@ -223,24 +219,20 @@ fun TeacherPreferencesScreen(
                     .widthIn(max = 920.dp)
                     .padding(horizontal = 16.dp),
             ) {
-                // Clean Iconic Header Row (replaces wordy banner card)
+                // Slim 1-line summary bar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        MinimalStatBadge(
-                            icon = GraduationCapIcon,
-                            text = "$totalSelectedCount Selected • Sem 1–7",
-                            accent = accent,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    }
+                    Text(
+                        text = "$totalSelectedCount subject(s) selected • Sem 1–7",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = hindSiliguri,
+                        color = cs.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
                     if (isOnboardingPrompt && onDismissOnboarding != null) {
                         TextButton(
                             onClick = onDismissOnboarding,
@@ -248,15 +240,15 @@ fun TeacherPreferencesScreen(
                         ) {
                             Text(
                                 text = "Skip",
-                                color = subTextColor,
-                                fontWeight = FontWeight.Bold,
+                                color = cs.primary,
+                                fontWeight = FontWeight.Medium,
                                 fontFamily = hindSiliguri,
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -269,31 +261,24 @@ fun TeacherPreferencesScreen(
                             val twoCol = maxWidth >= 640.dp
 
                             val deptShiftCard: @Composable (Modifier) -> Unit = { mod ->
-                                MinimalCardSurface(isDark = isDark, modifier = mod) {
+                                MinimalCardSurface(
+                                    isDark = isDark,
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = mod,
+                                ) {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(16.dp),
+                                            .padding(14.dp),
                                         verticalArrangement = Arrangement.spacedBy(10.dp),
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Icon(
-                                                imageVector = GraduationCapIcon,
-                                                contentDescription = null,
-                                                tint = accent,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                            Text(
-                                                text = "Department & Shift",
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = textColor,
-                                            )
-                                        }
+                                        Text(
+                                            text = "Department & Shift",
+                                            fontSize = 14.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontFamily = hindSiliguri,
+                                            color = cs.onSurface,
+                                        )
 
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -304,7 +289,7 @@ fun TeacherPreferencesScreen(
                                                 MinimalIconChip(
                                                     label = dept,
                                                     selected = isSelected,
-                                                    accent = accent,
+                                                    accent = cs.primary,
                                                     isDark = isDark,
                                                     hindSiliguri = hindSiliguri,
                                                     testTag = "teacher_dept_$dept",
@@ -327,7 +312,7 @@ fun TeacherPreferencesScreen(
                                                 MinimalIconChip(
                                                     label = sh,
                                                     selected = isSelected,
-                                                    accent = Color(0xFF059669),
+                                                    accent = cs.primary,
                                                     isDark = isDark,
                                                     hindSiliguri = hindSiliguri,
                                                     testTag = "teacher_shift_$sh",
@@ -341,46 +326,31 @@ fun TeacherPreferencesScreen(
                             }
 
                             val timePrefCard: @Composable (Modifier) -> Unit = { mod ->
-                                MinimalCardSurface(isDark = isDark, modifier = mod) {
+                                MinimalCardSurface(
+                                    isDark = isDark,
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = mod,
+                                ) {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(16.dp),
+                                            .padding(14.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Icon(
-                                                imageVector = ClockIcon,
-                                                contentDescription = null,
-                                                tint = amber,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                            Text(
-                                                text = "Preferred Class Hours",
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = textColor,
-                                            )
-                                        }
+                                        Text(
+                                            text = "Preferred Class Hours",
+                                            fontSize = 14.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontFamily = hindSiliguri,
+                                            color = cs.onSurface,
+                                        )
 
                                         TeacherTimePreference.entries.forEach { pref ->
                                             val isSelected = selectedTimePref == pref
                                             Surface(
                                                 onClick = { selectedTimePref = pref },
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = if (isSelected) {
-                                                    amber.copy(alpha = if (isDark) 0.16f else 0.10f)
-                                                } else {
-                                                    cardBg
-                                                },
-                                                border = BorderStroke(
-                                                    width = if (isSelected) 1.3.dp else 1.dp,
-                                                    color = if (isSelected) amber else borderCol,
-                                                ),
+                                                shape = RoundedCornerShape(14.dp),
+                                                color = if (isSelected) cs.secondaryContainer else cs.surfaceContainer,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .testTag("teacher_time_${pref.key}"),
@@ -388,41 +358,37 @@ fun TeacherPreferencesScreen(
                                                 Row(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                                        .padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                 ) {
                                                     Column(modifier = Modifier.weight(1f)) {
                                                         Text(
                                                             text = pref.label,
-                                                            fontSize = 13.sp,
-                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.5.sp,
+                                                            fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
-                                                            color = textColor,
+                                                            color = if (isSelected) cs.onSecondaryContainer else cs.onSurface,
                                                         )
                                                         Text(
                                                             text = pref.subtitle,
-                                                            fontSize = 11.sp,
+                                                            fontSize = 11.5.sp,
                                                             fontFamily = hindSiliguri,
-                                                            color = subTextColor,
+                                                            color = if (isSelected) {
+                                                                cs.onSecondaryContainer.copy(alpha = 0.8f)
+                                                            } else {
+                                                                cs.onSurfaceVariant
+                                                            },
                                                         )
                                                     }
-                                                    if (isSelected) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(20.dp)
-                                                                .clip(CircleShape)
-                                                                .background(amber),
-                                                            contentAlignment = Alignment.Center,
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = CheckIcon,
-                                                                contentDescription = null,
-                                                                tint = Color.White,
-                                                                modifier = Modifier.size(12.dp),
-                                                            )
-                                                        }
-                                                    }
+                                                    RadioButton(
+                                                        selected = isSelected,
+                                                        onClick = null,
+                                                        colors = RadioButtonDefaults.colors(
+                                                            selectedColor = cs.primary,
+                                                            unselectedColor = cs.onSurfaceVariant,
+                                                        ),
+                                                    )
                                                 }
                                             }
                                         }
@@ -450,31 +416,20 @@ fun TeacherPreferencesScreen(
 
                     // Subject Filter Controls Card
                     item {
-                        MinimalCardSurface(isDark = isDark) {
+                        MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(14.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = BookIcon,
-                                        contentDescription = null,
-                                        tint = emerald,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Text(
-                                        text = "Subjects by Semester (1–7)",
-                                        fontSize = 14.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                        color = textColor,
-                                    )
-                                }
+                                Text(
+                                    text = "Subjects by Semester (1–7)",
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = hindSiliguri,
+                                    color = cs.onSurface,
+                                )
 
                                 val filterDepts = remember { listOf("ALL") + RoutineRules.TECH_DEPARTMENTS }
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -482,7 +437,7 @@ fun TeacherPreferencesScreen(
                                         MinimalIconChip(
                                             label = if (dept == "ALL") "All Depts" else dept,
                                             selected = bookDeptFilter == dept,
-                                            accent = emerald,
+                                            accent = cs.primary,
                                             isDark = isDark,
                                             hindSiliguri = hindSiliguri,
                                             onClick = { bookDeptFilter = dept },
@@ -493,8 +448,8 @@ fun TeacherPreferencesScreen(
                                 MinimalSearchBar(
                                     query = searchQuery,
                                     onQueryChange = { searchQuery = it },
-                                    placeholder = "Filter subjects by code or title...",
-                                    accent = emerald,
+                                    placeholder = "Filter subjects by code or title",
+                                    accent = cs.primary,
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                 )
@@ -532,7 +487,8 @@ fun TeacherPreferencesScreen(
 
                         MinimalCardSurface(
                             isDark = isDark,
-                            borderColor = if (selectedCodes.isNotEmpty()) emerald.copy(alpha = 0.5f) else null,
+                            shape = RoundedCornerShape(18.dp),
+                            borderColor = if (selectedCodes.isNotEmpty()) cs.primary.copy(alpha = 0.45f) else null,
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Row(
@@ -549,26 +505,26 @@ fun TeacherPreferencesScreen(
                                     ) {
                                         Text(
                                             text = RoutineRules.semesterDisplayLabel(semKey),
-                                            fontSize = 14.5.sp,
-                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
                                             fontFamily = hindSiliguri,
-                                            color = textColor,
+                                            color = cs.onSurface,
                                         )
                                         Surface(
-                                            shape = RoundedCornerShape(8.dp),
+                                            shape = CircleShape,
                                             color = if (selectedCodes.isNotEmpty()) {
-                                                emerald.copy(alpha = if (isDark) 0.18f else 0.12f)
+                                                cs.primaryContainer
                                             } else {
-                                                borderCol.copy(alpha = 0.45f)
+                                                cs.surfaceContainerHigh
                                             },
                                         ) {
                                             Text(
                                                 text = "${selectedCodes.size} / ${semBooks.size}",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Medium,
                                                 fontFamily = hindSiliguri,
-                                                color = if (selectedCodes.isNotEmpty()) Color(0xFF059669) else subTextColor,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                color = if (selectedCodes.isNotEmpty()) cs.onPrimaryContainer else cs.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
                                             )
                                         }
                                     }
@@ -576,7 +532,7 @@ fun TeacherPreferencesScreen(
                                     Icon(
                                         imageVector = ChevronDownIcon,
                                         contentDescription = "Toggle semester",
-                                        tint = subTextColor,
+                                        tint = cs.onSurfaceVariant,
                                         modifier = Modifier
                                             .size(17.dp)
                                             .graphicsLayer(rotationZ = chevronRotation),
@@ -587,14 +543,14 @@ fun TeacherPreferencesScreen(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                                            .padding(start = 12.dp, end = 12.dp, bottom = 14.dp),
                                     ) {
                                         if (semBooks.isEmpty()) {
                                             Text(
                                                 text = "No matching subjects in this semester.",
-                                                fontSize = 12.sp,
+                                                fontSize = 12.5.sp,
                                                 fontFamily = hindSiliguri,
-                                                color = subTextColor,
+                                                color = cs.onSurfaceVariant,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
                                             )
                                         } else {
@@ -614,60 +570,49 @@ fun TeacherPreferencesScreen(
                                                             current + code
                                                         }
                                                     },
-                                                    shape = RoundedCornerShape(12.dp),
-                                                    color = if (checked) {
-                                                        emerald.copy(alpha = if (isDark) 0.18f else 0.10f)
+                                                    shape = RoundedCornerShape(14.dp),
+                                                    color = if (checked) cs.secondaryContainer else cs.surfaceContainer,
+                                                    border = if (checked) {
+                                                        BorderStroke(1.dp, cs.primary.copy(alpha = 0.45f))
                                                     } else {
-                                                        if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
+                                                        null
                                                     },
-                                                    border = BorderStroke(
-                                                        1.dp,
-                                                        if (checked) emerald else borderCol,
-                                                    ),
                                                     modifier = Modifier.fillMaxWidth(),
                                                 ) {
                                                     Row(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                                            .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                     ) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(20.dp)
-                                                                .clip(RoundedCornerShape(6.dp))
-                                                                .background(
-                                                                    if (checked) emerald else borderCol.copy(alpha = 0.55f)
-                                                                ),
-                                                            contentAlignment = Alignment.Center,
-                                                        ) {
-                                                            if (checked) {
-                                                                Icon(
-                                                                    imageVector = CheckIcon,
-                                                                    contentDescription = null,
-                                                                    tint = Color.White,
-                                                                    modifier = Modifier.size(12.dp),
-                                                                )
-                                                            }
-                                                        }
-
-                                                        Spacer(modifier = Modifier.width(10.dp))
+                                                        Checkbox(
+                                                            checked = checked,
+                                                            onCheckedChange = null,
+                                                            colors = CheckboxDefaults.colors(
+                                                                checkedColor = cs.primary,
+                                                                uncheckedColor = cs.onSurfaceVariant,
+                                                            ),
+                                                        )
 
                                                         Column(modifier = Modifier.weight(1f)) {
                                                             Text(
                                                                 text = book.title,
-                                                                fontSize = 13.sp,
-                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 13.5.sp,
+                                                                fontWeight = FontWeight.Medium,
                                                                 fontFamily = hindSiliguri,
-                                                                color = textColor,
+                                                                color = if (checked) cs.onSecondaryContainer else cs.onSurface,
                                                                 maxLines = 1,
                                                                 overflow = TextOverflow.Ellipsis,
                                                             )
                                                             Text(
                                                                 text = "${book.subjectCode} • ${book.theoryClassesPerWeek}T • ${book.practicalClassesPerWeek}P",
-                                                                fontSize = 11.sp,
+                                                                fontSize = 11.5.sp,
                                                                 fontFamily = hindSiliguri,
-                                                                color = subTextColor,
+                                                                color = if (checked) {
+                                                                    cs.onSecondaryContainer.copy(alpha = 0.8f)
+                                                                } else {
+                                                                    cs.onSurfaceVariant
+                                                                },
                                                             )
                                                         }
                                                     }
@@ -682,24 +627,21 @@ fun TeacherPreferencesScreen(
                 }
             }
 
-            // Clean Pinned Save Footer
+            // Clean M3 Pinned Bottom Bar
             Surface(
-                color = cardBg,
-                shadowElevation = 4.dp,
+                color = cs.surface,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .background(borderCol),
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = cs.outlineVariant.copy(alpha = 0.5f),
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 920.dp)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                     ) {
                         WelcomeMinimal3DButton(
                             text = "Save Preferences ($totalSelectedCount)",
@@ -708,7 +650,9 @@ fun TeacherPreferencesScreen(
                             isDark = isDark,
                             isLoading = isSaving,
                             height = 46.dp,
+                            cornerRadius = 23.dp,
                             testTag = "save_teacher_preferences_button",
+                            modifier = Modifier.fillMaxWidth(),
                             onClick = { savePrefs() },
                         )
                     }

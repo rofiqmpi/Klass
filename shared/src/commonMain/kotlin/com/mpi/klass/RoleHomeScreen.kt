@@ -27,15 +27,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -51,8 +53,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -241,176 +241,192 @@ fun RoleHomeScreen(
         goBack()
     }
 
-    val dragController = rememberSwipeIconDragController()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = overlayTab == null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                ) { page ->
+                    when (page) {
+                        0 -> {
+                            // Compute role-filtered routine entries
+                            val plan = publishedPlan
+                            val allEntries = plan?.entries ?: emptyList()
+                            val activeConfig = plan?.config ?: RoutineConfig()
+                            val cleanEmail = email.trim().lowercase()
 
-    CompositionLocalProvider(LocalSwipeIconDragController provides dragController) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .onGloballyPositioned { coords ->
-                    dragController.rootOffsetInWindow = coords.positionInWindow()
-                    dragController.rootSize = coords.size
-                },
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = overlayTab == null,
-                modifier = Modifier.fillMaxSize(),
-            ) { page ->
-                when (page) {
-                    0 -> {
-                        // Compute role-filtered routine entries
-                        val plan = publishedPlan
-                        val allEntries = plan?.entries ?: emptyList()
-                        val activeConfig = plan?.config ?: RoutineConfig()
-                        val cleanEmail = email.trim().lowercase()
-
-                        val homeFiltered = remember(
-                            allEntries,
-                            currentRole,
-                            studentProfile,
-                            cleanEmail,
-                        ) {
-                            when (currentRole) {
-                                UserRole.STUDENT -> {
-                                    val sp = studentProfile
-                                    if (sp == null || sp.department.isBlank() || sp.semester.isBlank()) {
-                                        emptyList()
-                                    } else {
-                                        val dept = RoutineRules.normalizeDepartmentShort(sp.department)
-                                        val shift = RoutineRules.normalizeShift(sp.shift)
-                                        val sem = RoutineRules.canonicalSemesterKey(sp.semester)
-                                        val grp = RoutineRules.normalizeGroup(dept, sp.section)
+                            val homeFiltered = remember(
+                                allEntries,
+                                currentRole,
+                                studentProfile,
+                                cleanEmail,
+                            ) {
+                                when (currentRole) {
+                                    UserRole.STUDENT -> {
+                                        val sp = studentProfile
+                                        if (sp == null || sp.department.isBlank() || sp.semester.isBlank()) {
+                                            emptyList()
+                                        } else {
+                                            val dept = RoutineRules.normalizeDepartmentShort(sp.department)
+                                            val shift = RoutineRules.normalizeShift(sp.shift)
+                                            val sem = RoutineRules.canonicalSemesterKey(sp.semester)
+                                            val grp = RoutineRules.normalizeGroup(dept, sp.section)
+                                            allEntries.filter {
+                                                it.department == dept &&
+                                                    RoutineRules.normalizeShift(it.shift) == shift &&
+                                                    RoutineRules.canonicalSemesterKey(it.semester) == sem &&
+                                                    RoutineRules.normalizeGroup(dept, it.group) == grp
+                                            }
+                                        }
+                                    }
+                                    UserRole.TEACHER -> {
                                         allEntries.filter {
-                                            it.department == dept &&
-                                                RoutineRules.normalizeShift(it.shift) == shift &&
-                                                RoutineRules.canonicalSemesterKey(it.semester) == sem &&
-                                                RoutineRules.normalizeGroup(dept, it.group) == grp
+                                            it.teacherEmail.trim().lowercase() == cleanEmail
+                                        }
+                                    }
+                                    UserRole.ADMIN -> {
+                                        allEntries.filter {
+                                            it.department == "CST" &&
+                                                RoutineRules.normalizeShift(it.shift) == RoutineRules.SHIFT_1 &&
+                                                RoutineRules.canonicalSemesterKey(it.semester) == RoutineRules.ALL_SEMESTER_KEYS.first() &&
+                                                RoutineRules.normalizeGroup("CST", it.group) == "Group A"
                                         }
                                     }
                                 }
+                            }
+
+                            val activeShiftForTime = when (currentRole) {
+                                UserRole.STUDENT -> RoutineRules.normalizeShift(studentProfile?.shift ?: RoutineRules.SHIFT_1)
+                                UserRole.TEACHER -> RoutineRules.normalizeShift(teacherPref?.shift ?: RoutineRules.SHIFT_1)
+                                UserRole.ADMIN -> RoutineRules.SHIFT_1
+                            }
+
+                            val headerBadgeText = when (currentRole) {
+                                UserRole.STUDENT -> {
+                                    val sp = studentProfile
+                                    if (sp != null && sp.department.isNotBlank()) {
+                                        val semNum = RoutineRules.semesterNumber(sp.semester) ?: 1
+                                        val shiftNum = if (RoutineRules.normalizeShift(sp.shift) == RoutineRules.SHIFT_2) "2" else "1"
+                                        val dept = RoutineRules.normalizeDepartmentShort(sp.department)
+                                        val grpLetter = RoutineRules.normalizeGroup(dept, sp.section)
+                                            .removePrefix("Group ")
+                                            .trim()
+                                        "$semNum/$shiftNum/$dept-$grpLetter"
+                                    } else {
+                                        currentUserName.ifBlank { "Student" }
+                                    }
+                                }
                                 UserRole.TEACHER -> {
-                                    allEntries.filter {
-                                        it.teacherEmail.trim().lowercase() == cleanEmail
+                                    val tp = teacherPref
+                                    if (tp != null && tp.department.isNotBlank()) {
+                                        val dept = RoutineRules.normalizeDepartmentShort(tp.department)
+                                        val shiftNum = if (RoutineRules.normalizeShift(tp.shift) == RoutineRules.SHIFT_2) "2" else "1"
+                                        "$shiftNum/$dept • ${homeFiltered.size} Cls"
+                                    } else {
+                                        currentUserName.ifBlank { "Teacher" }
                                     }
                                 }
-                                UserRole.ADMIN -> {
-                                    allEntries.filter {
-                                        it.department == "CST" &&
-                                            RoutineRules.normalizeShift(it.shift) == RoutineRules.SHIFT_1 &&
-                                            RoutineRules.canonicalSemesterKey(it.semester) == RoutineRules.ALL_SEMESTER_KEYS.first() &&
-                                            RoutineRules.normalizeGroup("CST", it.group) == "Group A"
-                                    }
-                                }
-                            }
-                        }
-
-                        val activeShiftForTime = when (currentRole) {
-                            UserRole.STUDENT -> RoutineRules.normalizeShift(studentProfile?.shift ?: RoutineRules.SHIFT_1)
-                            UserRole.TEACHER -> RoutineRules.normalizeShift(teacherPref?.shift ?: RoutineRules.SHIFT_1)
-                            UserRole.ADMIN -> RoutineRules.SHIFT_1
-                        }
-
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            HomeRoutineHeader(
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                photoUrl = currentPhotoUrl,
-                                avatarSeed = email.ifBlank { currentUserName },
-                                onProfileClick = { navigateTo("profile") },
-                                onAiClick = { navigateTo("ai") },
-                                onNotificationClick = { navigateTo("notification") },
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(0.5.dp)
-                                    .background(if (isDark) Color.White else Color.Black),
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .padding(3.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                ClassRoutineTable(
-                                    hindSiliguri = hindSiliguri,
-                                    isDark = isDark,
-                                    entries = homeFiltered,
-                                    periodsPerDay = activeConfig.periodsPerDay,
-                                    shift = activeShiftForTime,
-                                    config = activeConfig,
-                                    showGroupOrRoomHint = currentRole == UserRole.TEACHER,
-                                    onSlotClick = { entry -> inspectedEntry = entry },
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                                UserRole.ADMIN -> "1/1/CST-A"
                             }
 
-                            HomeMenuBottomBar(
-                                isHomeSelected = true,
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                hindSiliguri = hindSiliguri,
-                                homeShape = homeShape,
-                                menuShape = menuShape,
-                                onHomeClick = { navigateTo("home") },
-                                onMenuClick = { navigateTo("menu") },
-                            )
-                        }
-                    }
-
-                    else -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f),
-                            ) {
-                                MenuScreen(
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    role = currentRole,
-                                    currentThemeMode = currentThemeMode,
-                                    onThemeModeChange = onThemeModeChange,
-                                    onProfileClick = { navigateTo("profile") },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNoticeClick = { navigateTo("notification") },
-                                    onClassroomClick = { navigateTo("classrooms") },
-                                    onBooksClick = { navigateTo("books") },
-                                    onTeachersClick = { navigateTo("teachers") },
-                                    onRoutineManagerClick = { navigateTo("routine_manager") },
-                                    onTeacherPreferencesClick = { navigateTo("teacher_prefs") },
-                                    onBloodFinderClick = { navigateTo("blood_finder") },
-                                    topContentPadding = 72.dp,
-                                )
-                                FloatingFadeTopHeader(
-                                    title = "Menu",
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                HomeRoutineHeader(
                                     isDark = isDark,
                                     cardBg = cardBg,
-                                    textColor = textColor,
-                                    hindSiliguri = hindSiliguri,
-                                    onCloseClick = { goBack() },
+                                    photoUrl = currentPhotoUrl,
+                                    avatarSeed = email.ifBlank { currentUserName },
+                                    onProfileClick = { navigateTo("profile") },
                                     onAiClick = { navigateTo("ai") },
                                     onNotificationClick = { navigateTo("notification") },
-                                    modifier = Modifier.align(Alignment.TopCenter),
+                                    titleText = headerBadgeText,
+                                    subtitleText = "",
                                 )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                        .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    ClassRoutineTable(
+                                        hindSiliguri = hindSiliguri,
+                                        isDark = isDark,
+                                        entries = homeFiltered,
+                                        periodsPerDay = activeConfig.periodsPerDay,
+                                        shift = activeShiftForTime,
+                                        config = activeConfig,
+                                        showGroupOrRoomHint = currentRole == UserRole.TEACHER,
+                                        onSlotClick = { entry -> inspectedEntry = entry },
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
                             }
-                            HomeMenuBottomBar(
-                                isHomeSelected = false,
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                hindSiliguri = hindSiliguri,
-                                homeShape = homeShape,
-                                menuShape = menuShape,
-                                onHomeClick = { navigateTo("home") },
-                                onMenuClick = { navigateTo("menu") },
-                            )
+                        }
+
+                        else -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surface),
+                            ) {
+                                GoogleTopAppBar(
+                                    title = "Menu",
+                                    hindSiliguri = hindSiliguri,
+                                    navigationIcon = null,
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f),
+                                ) {
+                                    MenuScreen(
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        role = currentRole,
+                                        currentThemeMode = currentThemeMode,
+                                        onThemeModeChange = onThemeModeChange,
+                                        onProfileClick = { navigateTo("profile") },
+                                        onAiClick = { navigateTo("ai") },
+                                        onNoticeClick = { navigateTo("notification") },
+                                        onClassroomClick = { navigateTo("classrooms") },
+                                        onBooksClick = { navigateTo("books") },
+                                        onTeachersClick = { navigateTo("teachers") },
+                                        onRoutineManagerClick = { navigateTo("routine_manager") },
+                                        onTeacherPreferencesClick = { navigateTo("teacher_prefs") },
+                                        onBloodFinderClick = { navigateTo("blood_finder") },
+                                        topContentPadding = 0.dp,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
+
+                HomeMenuBottomBar(
+                    isHomeSelected = if (pagerState.isScrollInProgress) pagerState.targetPage == 0 else activeBaseTab == "home",
+                    isDark = isDark,
+                    cardBg = cardBg,
+                    hindSiliguri = hindSiliguri,
+                    homeShape = homeShape,
+                    menuShape = menuShape,
+                    onHomeClick = { navigateTo("home") },
+                    onMenuClick = { navigateTo("menu") },
+                )
             }
 
             // Secondary Overlay Layer
@@ -426,305 +442,305 @@ fun RoleHomeScreen(
             ) { tab ->
                 when (tab) {
                     "profile" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            ProfileScreen(
-                                userName = currentUserName,
-                                role = currentRole,
-                                isDark = isDark,
-                                currentThemeMode = currentThemeMode,
-                                onThemeModeChange = onThemeModeChange,
-                                onSignOut = onSignOut,
-                                hindSiliguri = hindSiliguri,
-                                email = email,
-                                photoUrl = currentPhotoUrl,
-                                topContentPadding = 72.dp,
-                                onOpenTeachingPrefs = if (currentRole == UserRole.TEACHER) {
-                                    { navigateTo("teacher_prefs") }
-                                } else {
-                                    null
-                                },
-                                onUpdateProfile = { newName, newPhotoUrl ->
-                                    currentUserName = newName
-                                    currentPhotoUrl = newPhotoUrl
-                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
-                                    if (sessionEmail.isNotBlank()) {
-                                        saveLocalProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
-                                        saveUserSession(
-                                            UserSession(
-                                                role = currentRole.name,
-                                                email = sessionEmail,
-                                                name = newName,
-                                                photoUrl = newPhotoUrl,
-                                            )
-                                        )
-                                        CoroutineScope(Dispatchers.IO + NonCancellable).launch {
-                                            if (currentRole == UserRole.ADMIN) {
-                                                RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
-                                            }
-                                            RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
-                                            studentProfile = RoleConfig.fetchStudentProfile(sessionEmail)
-                                        }
-                                    }
-                                    onProfileUpdated?.invoke(newName, newPhotoUrl)
-                                },
-                                onCategoryChanged = { newRole ->
-                                    currentRole = newRole
-                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
-                                    if (sessionEmail.isNotBlank()) {
-                                        saveUserSession(
-                                            UserSession(
-                                                role = newRole.name,
-                                                email = sessionEmail,
-                                                name = currentUserName,
-                                                photoUrl = currentPhotoUrl,
-                                            )
-                                        )
-                                    }
-                                },
-                            )
-                            FloatingFadeTopHeader(
+                            GoogleTopAppBar(
                                 title = "Profile",
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                textColor = textColor,
                                 hindSiliguri = hindSiliguri,
-                                onCloseClick = { goBack() },
-                                onAiClick = { navigateTo("ai") },
-                                onNotificationClick = { navigateTo("notification") },
-                                modifier = Modifier.align(Alignment.TopCenter),
+                                onNavigationClick = { goBack() },
+                                actions = {
+                                    HeaderAiNotificationActions(
+                                        isDark = isDark,
+                                        onAiClick = { navigateTo("ai") },
+                                        onNotificationClick = { navigateTo("notification") },
+                                    )
+                                },
                             )
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                ProfileScreen(
+                                    userName = currentUserName,
+                                    role = currentRole,
+                                    isDark = isDark,
+                                    currentThemeMode = currentThemeMode,
+                                    onThemeModeChange = onThemeModeChange,
+                                    onSignOut = onSignOut,
+                                    hindSiliguri = hindSiliguri,
+                                    email = email,
+                                    photoUrl = currentPhotoUrl,
+                                    topContentPadding = 0.dp,
+                                    onOpenTeachingPrefs = if (currentRole == UserRole.TEACHER) {
+                                        { navigateTo("teacher_prefs") }
+                                    } else {
+                                        null
+                                    },
+                                    onUpdateProfile = { newName, newPhotoUrl ->
+                                        currentUserName = newName
+                                        currentPhotoUrl = newPhotoUrl
+                                        val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
+                                        if (sessionEmail.isNotBlank()) {
+                                            saveLocalProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                            saveUserSession(
+                                                UserSession(
+                                                    role = currentRole.name,
+                                                    email = sessionEmail,
+                                                    name = newName,
+                                                    photoUrl = newPhotoUrl,
+                                                )
+                                            )
+                                            CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+                                                if (currentRole == UserRole.ADMIN) {
+                                                    RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
+                                                }
+                                                RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                                studentProfile = RoleConfig.fetchStudentProfile(sessionEmail)
+                                            }
+                                        }
+                                        onProfileUpdated?.invoke(newName, newPhotoUrl)
+                                    },
+                                    onCategoryChanged = { newRole ->
+                                        currentRole = newRole
+                                        val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
+                                        if (sessionEmail.isNotBlank()) {
+                                            saveUserSession(
+                                                UserSession(
+                                                    role = newRole.name,
+                                                    email = sessionEmail,
+                                                    name = currentUserName,
+                                                    photoUrl = currentPhotoUrl,
+                                                )
+                                            )
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                     "notification" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            NotificationScreen(
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                role = currentRole,
-                                email = email,
-                                studentProfile = studentProfile,
-                                teacherPref = teacherPref,
-                                publishedPlan = publishedPlan,
-                            )
-                            FloatingFadeTopHeader(
+                            GoogleTopAppBar(
                                 title = "Notifications",
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                textColor = textColor,
                                 hindSiliguri = hindSiliguri,
-                                showLeftClose = false,
-                                showRightClose = true,
-                                onCloseClick = { goBack() },
-                                onAiClick = { navigateTo("ai") },
-                                onNotificationClick = { navigateTo("notification") },
-                                modifier = Modifier.align(Alignment.TopCenter),
+                                onNavigationClick = { goBack() },
+                                actions = {
+                                    HeaderAiNotificationActions(
+                                        isDark = isDark,
+                                        showAi = true,
+                                        showNotification = false,
+                                        onAiClick = { navigateTo("ai") },
+                                    )
+                                },
                             )
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                NotificationScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                    role = currentRole,
+                                    email = email,
+                                    studentProfile = studentProfile,
+                                    teacherPref = teacherPref,
+                                    publishedPlan = publishedPlan,
+                                )
+                            }
                         }
                     }
                     "teachers" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            TeachersDirectoryScreen(
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                topContentPadding = 72.dp,
-                                onFullScreenOverlayChange = { isTeachersSubOverlayOpen = it },
-                            )
-                            AnimatedVisibility(
-                                visible = !isTeachersSubOverlayOpen,
-                                enter = fadeIn(tween(180)),
-                                exit = fadeOut(tween(150)),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .zIndex(15f),
-                            ) {
-                                FloatingFadeTopHeader(
+                            AnimatedVisibility(visible = !isTeachersSubOverlayOpen) {
+                                GoogleTopAppBar(
                                     title = "Teachers Directory",
-                                    isDark = isDark,
-                                    cardBg = cardBg,
-                                    textColor = textColor,
                                     hindSiliguri = hindSiliguri,
-                                    onCloseClick = { goBack() },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNotificationClick = { navigateTo("notification") },
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                TeachersDirectoryScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                    onFullScreenOverlayChange = { isTeachersSubOverlayOpen = it },
                                 )
                             }
                         }
                     }
                     "books" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            BooksLibraryScreen(
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                topContentPadding = 72.dp,
-                                onFullScreenOverlayChange = { isBooksSubOverlayOpen = it },
-                            )
-                            AnimatedVisibility(
-                                visible = !isBooksSubOverlayOpen,
-                                enter = fadeIn(tween(180)),
-                                exit = fadeOut(tween(150)),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .zIndex(15f),
-                            ) {
-                                FloatingFadeTopHeader(
+                            AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
+                                GoogleTopAppBar(
                                     title = "Books Library",
-                                    isDark = isDark,
-                                    cardBg = cardBg,
-                                    textColor = textColor,
                                     hindSiliguri = hindSiliguri,
-                                    onCloseClick = { goBack() },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNotificationClick = { navigateTo("notification") },
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                BooksLibraryScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                    onFullScreenOverlayChange = { isBooksSubOverlayOpen = it },
                                 )
                             }
                         }
                     }
                     "classrooms" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            ClassroomManagementScreen(
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                canEdit = currentRole == UserRole.ADMIN,
-                                topContentPadding = 72.dp,
-                                onFullScreenOverlayChange = { isClassroomSubOverlayOpen = it },
-                            )
-                            AnimatedVisibility(
-                                visible = !isClassroomSubOverlayOpen,
-                                enter = fadeIn(tween(180)),
-                                exit = fadeOut(tween(150)),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .zIndex(15f),
-                            ) {
-                                FloatingFadeTopHeader(
+                            AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
+                                GoogleTopAppBar(
                                     title = "Classrooms & Labs",
-                                    isDark = isDark,
-                                    cardBg = cardBg,
-                                    textColor = textColor,
                                     hindSiliguri = hindSiliguri,
-                                    onCloseClick = { goBack() },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNotificationClick = { navigateTo("notification") },
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                ClassroomManagementScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    canEdit = currentRole == UserRole.ADMIN,
+                                    topContentPadding = 0.dp,
+                                    onFullScreenOverlayChange = { isClassroomSubOverlayOpen = it },
                                 )
                             }
                         }
                     }
                     "routine_manager" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            RoutineGeneratorScreen(
-                                adminEmail = email,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                topContentPadding = 72.dp,
-                                onFullScreenOverlayChange = { isRoutineSubOverlayOpen = it },
-                                onPlanPublished = { updated -> publishedPlan = updated },
-                            )
-                            AnimatedVisibility(
-                                visible = !isRoutineSubOverlayOpen,
-                                enter = fadeIn(tween(180)),
-                                exit = fadeOut(tween(150)),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .zIndex(15f),
-                            ) {
-                                FloatingFadeTopHeader(
-                                    title = "Routine Generator",
-                                    isDark = isDark,
-                                    cardBg = cardBg,
-                                    textColor = textColor,
+                            AnimatedVisibility(visible = !isRoutineSubOverlayOpen) {
+                                GoogleTopAppBar(
+                                    title = "Routine Engine",
                                     hindSiliguri = hindSiliguri,
-                                    onCloseClick = { goBack() },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNotificationClick = { navigateTo("notification") },
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                RoutineGeneratorScreen(
+                                    adminEmail = email,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                    onFullScreenOverlayChange = { isRoutineSubOverlayOpen = it },
+                                    onPlanPublished = { updated -> publishedPlan = updated },
                                 )
                             }
                         }
                     }
                     "teacher_prefs" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            TeacherPreferencesScreen(
-                                email = email,
-                                userName = currentUserName,
-                                isDark = isDark,
+                            GoogleTopAppBar(
+                                title = "Teaching Subjects",
                                 hindSiliguri = hindSiliguri,
-                                topContentPadding = 72.dp,
-                                isOnboardingPrompt = !(teacherPref?.schedulingSetupComplete ?: true),
-                                onDismissOnboarding = {
+                                onNavigationClick = {
                                     teacherOnboardingDismissed = true
                                     goBack()
                                 },
-                                onSaved = { saved ->
-                                    teacherPref = saved
-                                    teacherOnboardingDismissed = true
-                                    goBack()
+                                actions = {
+                                    HeaderAiNotificationActions(
+                                        isDark = isDark,
+                                        onAiClick = { navigateTo("ai") },
+                                        onNotificationClick = { navigateTo("notification") },
+                                    )
                                 },
                             )
-                            FloatingFadeTopHeader(
-                                title = "Teaching Preferences",
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                textColor = textColor,
-                                hindSiliguri = hindSiliguri,
-                                onCloseClick = {
-                                    teacherOnboardingDismissed = true
-                                    goBack()
-                                },
-                                onAiClick = { navigateTo("ai") },
-                                onNotificationClick = { navigateTo("notification") },
-                                modifier = Modifier.align(Alignment.TopCenter),
-                            )
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                TeacherPreferencesScreen(
+                                    email = email,
+                                    userName = currentUserName,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                    isOnboardingPrompt = !(teacherPref?.schedulingSetupComplete ?: true),
+                                    onDismissOnboarding = {
+                                        teacherOnboardingDismissed = true
+                                        goBack()
+                                    },
+                                    onSaved = { saved ->
+                                        teacherPref = saved
+                                        teacherOnboardingDismissed = true
+                                        goBack()
+                                    },
+                                )
+                            }
                         }
                     }
                     "blood_finder" -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .background(MaterialTheme.colorScheme.surface),
                         ) {
-                            BloodFinderScreen(
-                                isDark = isDark,
+                            GoogleTopAppBar(
+                                title = "Blood Finder",
                                 hindSiliguri = hindSiliguri,
-                                topContentPadding = 72.dp,
+                                onNavigationClick = { goBack() },
+                                actions = {
+                                    HeaderAiNotificationActions(
+                                        isDark = isDark,
+                                        onAiClick = { navigateTo("ai") },
+                                        onNotificationClick = { navigateTo("notification") },
+                                    )
+                                },
                             )
-                            FloatingFadeTopHeader(
-                                title = "Blood Donor Finder",
-                                isDark = isDark,
-                                cardBg = cardBg,
-                                textColor = textColor,
-                                hindSiliguri = hindSiliguri,
-                                onCloseClick = { goBack() },
-                                onAiClick = { navigateTo("ai") },
-                                onNotificationClick = { navigateTo("notification") },
-                                modifier = Modifier.align(Alignment.TopCenter),
-                            )
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                BloodFinderScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                )
+                            }
                         }
                     }
                     "ai" -> {
@@ -737,19 +753,13 @@ fun RoleHomeScreen(
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 onBack = { goBack() },
+                                onNotificationClick = { navigateTo("notification") },
                                 userDisplayName = currentUserName,
                             )
                         }
                     }
                 }
             }
-
-            SwipeDragWindowOverlay(
-                controller = dragController,
-                isDark = isDark,
-                hindSiliguri = hindSiliguri,
-            )
-        }
     }
 
     // Slot Inspection / Teacher Edit Request Dialog
@@ -795,11 +805,12 @@ private fun SlotInspectionDialog(
     onOpenRoutineManager: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val accent = Color(0xFF0284C7)
+    val cs = MaterialTheme.colorScheme
+    val cardBg = cs.surfaceContainerLow
+    val textColor = cs.onSurface
+    val subTextColor = cs.onSurfaceVariant
+    val borderCol = cs.outlineVariant
+    val accent = cs.primary
 
     var showEditForm by remember { mutableStateOf(false) }
     var reqDay by remember(entry) { mutableStateOf(entry.day) }
@@ -808,37 +819,37 @@ private fun SlotInspectionDialog(
     var reqReason by remember(entry) { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    val metaFields = remember(entry) {
+    val metaFields = remember(entry, cs) {
         listOf(
             SlotMetaField(
                 label = "Schedule",
                 value = "${entry.day}, Period ${entry.periodIndex + 1} (${entry.startTime} – ${entry.endTime})",
                 icon = ClockIcon,
-                accent = Color(0xFF0284C7),
+                accent = cs.primary,
             ),
             SlotMetaField(
                 label = "Department & Batch",
                 value = "${entry.department} • ${RoutineRules.semesterDisplayLabel(entry.semester)} • ${entry.group}",
                 icon = GraduationCapIcon,
-                accent = Color(0xFF2563EB),
+                accent = cs.primary,
             ),
             SlotMetaField(
                 label = "Classroom / Lab",
                 value = "Room ${entry.roomNumber} (${entry.shift})",
                 icon = DoorOpenIcon,
-                accent = Color(0xFF7C3AED),
+                accent = cs.tertiary,
             ),
             SlotMetaField(
                 label = "Instructor",
                 value = entry.teacherName.ifBlank { entry.teacherEmail.ifBlank { "Assigned Faculty" } },
                 icon = PersonIcon,
-                accent = Color(0xFF059669),
+                accent = cs.secondary,
             ),
             SlotMetaField(
                 label = "Subject Code & Format",
                 value = "${entry.subjectCode} • ${if (entry.isPractical) "Practical / Lab" else "Theory"}",
                 icon = BookIcon,
-                accent = Color(0xFFD97706),
+                accent = cs.primary,
             ),
         )
     }
@@ -916,13 +927,12 @@ private fun SlotInspectionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    WelcomeMinimal3DButton(
+                    GoogleOutlinedButton(
                         text = if (showEditForm) "Back" else "Close",
                         hindSiliguri = hindSiliguri,
-                        isPrimaryAccent = false,
-                        isDark = isDark,
                         enabled = !isSubmitting,
                         height = 46.dp,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                         onClick = {
                             if (showEditForm) showEditForm = false else onDismiss()
@@ -937,6 +947,7 @@ private fun SlotInspectionDialog(
                             isLoading = isSubmitting,
                             enabled = !isSubmitting,
                             height = 46.dp,
+                            cornerRadius = 23.dp,
                             modifier = Modifier.weight(1.3f),
                             onClick = { submitEditRequest() },
                         )
@@ -947,6 +958,7 @@ private fun SlotInspectionDialog(
                             hindSiliguri = hindSiliguri,
                             isDark = isDark,
                             height = 46.dp,
+                            cornerRadius = 23.dp,
                             modifier = Modifier.weight(1.3f),
                             onClick = { showEditForm = true },
                         )
@@ -957,6 +969,7 @@ private fun SlotInspectionDialog(
                             hindSiliguri = hindSiliguri,
                             isDark = isDark,
                             height = 46.dp,
+                            cornerRadius = 23.dp,
                             modifier = Modifier.weight(1.3f),
                             onClick = onOpenRoutineManager,
                         )
@@ -964,12 +977,13 @@ private fun SlotInspectionDialog(
                 }
             },
         ) {
+            val cs = MaterialTheme.colorScheme
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 if (!showEditForm) {
                     MinimalResponsiveGrid(
@@ -977,42 +991,42 @@ private fun SlotInspectionDialog(
                         twoColMinWidth = 560.dp,
                         spacing = 10.dp,
                     ) { _, field ->
-                        MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
+                        MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(18.dp)) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(RoundedCornerShape(9.dp))
-                                        .background(field.accent.copy(alpha = if (isDark) 0.16f else 0.10f)),
-                                    contentAlignment = Alignment.Center,
+                                Surface(
+                                    shape = CircleShape,
+                                    color = cs.primaryContainer,
+                                    modifier = Modifier.size(36.dp),
                                 ) {
-                                    Icon(
-                                        imageVector = field.icon,
-                                        contentDescription = null,
-                                        tint = field.accent,
-                                        modifier = Modifier.size(16.dp),
-                                    )
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = field.icon,
+                                            contentDescription = null,
+                                            tint = cs.onPrimaryContainer,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = field.label,
-                                        fontSize = 11.5.sp,
+                                        fontSize = 12.sp,
                                         fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Medium,
-                                        color = subTextColor,
+                                        fontWeight = FontWeight.Normal,
+                                        color = cs.onSurfaceVariant,
                                     )
                                     Text(
                                         text = field.value,
-                                        fontSize = 13.5.sp,
+                                        fontSize = 14.5.sp,
                                         fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Bold,
-                                        color = textColor,
+                                        fontWeight = FontWeight.Medium,
+                                        color = cs.onSurface,
                                     )
                                 }
                             }
@@ -1022,19 +1036,13 @@ private fun SlotInspectionDialog(
                     MinimalStatBadge(
                         icon = ClockIcon,
                         text = "Current: ${entry.day} P${entry.periodIndex + 1} • Room ${entry.roomNumber}",
-                        accent = accent,
+                        accent = cs.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                     )
 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "Requested Working Day",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                            color = textColor,
-                        )
+                        GoogleSectionHeader(title = "Requested Working Day", hindSiliguri = hindSiliguri)
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1043,7 +1051,7 @@ private fun SlotInspectionDialog(
                                 MinimalIconChip(
                                     label = d.take(3),
                                     selected = reqDay.equals(d, true),
-                                    accent = accent,
+                                    accent = cs.primary,
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     onClick = { reqDay = d },
@@ -1053,13 +1061,7 @@ private fun SlotInspectionDialog(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "Requested Period",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                            color = textColor,
-                        )
+                        GoogleSectionHeader(title = "Requested Period", hindSiliguri = hindSiliguri)
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1068,7 +1070,7 @@ private fun SlotInspectionDialog(
                                 MinimalIconChip(
                                     label = "P${p + 1}",
                                     selected = reqPeriod == p,
-                                    accent = Color(0xFF7C3AED),
+                                    accent = cs.primary,
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     onClick = { reqPeriod = p },
@@ -1079,19 +1081,13 @@ private fun SlotInspectionDialog(
 
                     if (classrooms.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = "Requested Classroom / Lab",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                                color = textColor,
-                            )
+                            GoogleSectionHeader(title = "Requested Classroom / Lab", hindSiliguri = hindSiliguri)
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(classrooms) { r ->
                                     MinimalIconChip(
                                         label = r.roomNumber,
                                         selected = reqRoom.equals(r.roomNumber, true),
-                                        accent = Color(0xFF059669),
+                                        accent = cs.primary,
                                         isDark = isDark,
                                         hindSiliguri = hindSiliguri,
                                         onClick = { reqRoom = r.roomNumber },
@@ -1101,79 +1097,29 @@ private fun SlotInspectionDialog(
                         }
                     }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "Reason",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
+                    OutlinedTextField(
+                        value = reqReason,
+                        onValueChange = { reqReason = it },
+                        minLines = 3,
+                        maxLines = 6,
+                        label = { Text("Reason", fontFamily = hindSiliguri) },
+                        placeholder = { Text("Reason for change request...", fontFamily = hindSiliguri) },
+                        textStyle = TextStyle(
+                            fontSize = 14.5.sp,
                             fontFamily = hindSiliguri,
-                            color = textColor,
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, borderCol),
-                            modifier = Modifier.fillMaxWidth().height(100.dp),
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-                                if (reqReason.isEmpty()) {
-                                    Text(
-                                        text = "Reason for change request...",
-                                        color = subTextColor,
-                                        fontSize = 13.sp,
-                                        fontFamily = hindSiliguri,
-                                    )
-                                }
-                                BasicTextField(
-                                    value = reqReason,
-                                    onValueChange = { reqReason = it },
-                                    textStyle = TextStyle(
-                                        color = textColor,
-                                        fontSize = 13.5.sp,
-                                        fontFamily = hindSiliguri,
-                                        lineHeight = 19.sp,
-                                    ),
-                                    cursorBrush = SolidColor(accent),
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
-                    }
+                            lineHeight = 20.sp,
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = cs.primary,
+                            unfocusedBorderColor = cs.outlineVariant,
+                            focusedLabelColor = cs.primary,
+                            unfocusedLabelColor = cs.onSurfaceVariant,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
-        }
-    }
-}
-
-@Composable
-internal fun HomeFilterPill(
-    label: String,
-    active: Boolean,
-    cardBg: Color,
-    borderCol: Color,
-    activeColor: Color,
-    textColor: Color,
-    hindSiliguri: FontFamily,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        color = if (active) activeColor else cardBg,
-        border = BorderStroke(1.dp, if (active) activeColor else borderCol),
-        modifier = Modifier.height(30.dp),
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 9.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = label,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = hindSiliguri,
-                color = if (active) Color.White else textColor,
-            )
         }
     }
 }

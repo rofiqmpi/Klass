@@ -70,8 +70,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -381,7 +379,7 @@ fun WelcomeScreen(
                                         .zIndex(30f),
                                     contentAlignment = Alignment.BottomStart,
                                 ) {
-                                    // 3D Shadow Base
+                                    // 3D Shadow Base (#94A3B8)
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.BottomStart)
@@ -432,6 +430,7 @@ fun WelcomeScreen(
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 fontFamily = hindSiliguri,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 maxLines = 1,
                                                 softWrap = false,
                                             )
@@ -446,7 +445,7 @@ fun WelcomeScreen(
                                         .height(51.dp),
                                     contentAlignment = Alignment.TopCenter,
                                 ) {
-                                    // 3D Shadow underneath
+                                    // 3D Shadow underneath (#8E7864)
                                     Box(
                                         modifier = Modifier
                                             .offset(y = 3.dp)
@@ -463,7 +462,7 @@ fun WelcomeScreen(
                                             .background(Color(0xFF8E7864)),
                                     )
 
-                                    // Foreground Button
+                                    // Foreground Button (#8CB9D9)
                                     Button(
                                         onClick = {
                                             isThemeExpanded = false
@@ -755,7 +754,7 @@ fun WelcomeScreen(
                     .height(languageCardHeight + 3.dp),
                 contentAlignment = Alignment.TopEnd,
             ) {
-                // 3D Base Shape
+                // 3D Base Shape (#8E7864)
                 Box(
                     modifier = Modifier
                         .offset(y = 3.dp)
@@ -1341,68 +1340,14 @@ fun WelcomeScreen(
 @Composable
 internal fun RoleButton(
     text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isDark: Boolean,
-    fontFamily: androidx.compose.ui.text.font.FontFamily,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-
-    val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val borderColor = if (isDark) Color(0xFF475569) else Color(0xFF94A3B8)
-
-    Surface(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, borderColor),
-        color = cardBgColor,
-        shadowElevation = if (isDark) 2.dp else 3.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = text,
-                modifier = Modifier.size(24.dp),
-                tint = textColor,
-            )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Text(
-                text = text,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = fontFamily,
-                color = textColor,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun RoleButton(
-    text: String,
     painter: DrawableResource,
     isDark: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
     onClick: () -> Unit,
 ) {
+    val borderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1)
+    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
     val interactionSource = remember { MutableInteractionSource() }
-
-    val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val borderColor = if (isDark) Color(0xFF475569) else Color(0xFF94A3B8)
 
     Surface(
         onClick = onClick,
@@ -1412,8 +1357,8 @@ internal fun RoleButton(
             .height(48.dp),
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, borderColor),
-        color = cardBgColor,
-        shadowElevation = if (isDark) 2.dp else 3.dp,
+        color = if (isDark) Color(0xFF1E293B) else Color.White,
+        shadowElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier
@@ -1433,7 +1378,7 @@ internal fun RoleButton(
             Text(
                 text = text,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 fontFamily = fontFamily,
                 color = textColor,
             )
@@ -1454,19 +1399,5 @@ private val DeepBowArchShape = GenericShape { size, _ ->
         y2 = h,
     )
     close()
-}
-
-private fun Modifier.expandUpwards(targetHeight: Dp): Modifier = this.layout { measurable, constraints ->
-    val heightPx = targetHeight.roundToPx()
-    val placeable = measurable.measure(
-        constraints.copy(
-            minHeight = heightPx,
-            maxHeight = heightPx,
-        ),
-    )
-    val layoutHeight = constraints.maxHeight
-    layout(placeable.width, layoutHeight) {
-        placeable.placeRelative(0, layoutHeight - placeable.height)
-    }
 }
 

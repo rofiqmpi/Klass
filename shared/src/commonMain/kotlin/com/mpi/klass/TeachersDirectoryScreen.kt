@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -37,8 +36,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -73,7 +74,6 @@ import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.LocationDotIcon
 import com.mpi.klass.theme.PhoneSolidIcon
 import com.mpi.klass.theme.RefreshIcon
-import com.mpi.klass.theme.RightArrowIcon
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.VenusMarsIcon
 import kotlinx.coroutines.launch
@@ -86,6 +86,7 @@ fun TeachersDirectoryScreen(
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
+    val cs = MaterialTheme.colorScheme
 
     var teachers by remember { mutableStateOf<List<TeacherDirectoryItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -131,13 +132,6 @@ fun TeachersDirectoryScreen(
         }
     }
 
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val cardBorder = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val headingColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val accentBlue = if (isDark) Color(0xFF60A5FA) else Color(0xFF2563EB)
-    val accentAmber = if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
-
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalBackdrop(isDark = isDark) {
             Column(
@@ -150,7 +144,7 @@ fun TeachersDirectoryScreen(
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
                 } else {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 Column(
@@ -159,17 +153,17 @@ fun TeachersDirectoryScreen(
                         .widthIn(max = 960.dp)
                         .padding(horizontal = 16.dp),
                 ) {
-                    // Clean Minimal Toolbar
+                    // Clean Search Toolbar
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         MinimalSearchBar(
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
-                            placeholder = "Search teacher, dept or email...",
-                            accent = accentAmber,
+                            placeholder = "Search teachers (${filteredTeachers.size})",
+                            accent = cs.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             testTag = "teachers_search_input",
@@ -177,19 +171,11 @@ fun TeachersDirectoryScreen(
                             modifier = Modifier.weight(1f),
                         )
 
-                        MinimalStatBadge(
-                            icon = GraduationCapIcon,
-                            text = "${filteredTeachers.size} Faculty",
-                            accent = accentAmber,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-
                         WelcomeMinimal3DIconButton(
                             icon = RefreshIcon,
                             contentDescription = "Refresh teachers",
                             isDark = isDark,
-                            iconTint = accentAmber,
+                            iconTint = cs.onSurfaceVariant,
                             isLoading = isLoading,
                             enabled = !isLoading,
                             testTag = "teachers_refresh_button",
@@ -197,7 +183,7 @@ fun TeachersDirectoryScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     when {
                         isLoading && teachers.isEmpty() -> {
@@ -207,14 +193,14 @@ fun TeachersDirectoryScreen(
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     CircularProgressIndicator(
-                                        color = accentAmber,
+                                        color = cs.primary,
                                         strokeWidth = 2.5.dp,
                                         modifier = Modifier.size(32.dp),
                                     )
-                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = "Loading faculty directory...",
-                                        color = subTextColor,
+                                        color = cs.onSurfaceVariant,
                                         fontSize = 13.5.sp,
                                         fontFamily = hindSiliguri,
                                         fontWeight = FontWeight.Medium,
@@ -232,6 +218,7 @@ fun TeachersDirectoryScreen(
                             ) {
                                 MinimalCardSurface(
                                     isDark = isDark,
+                                    shape = RoundedCornerShape(24.dp),
                                     modifier = Modifier.widthIn(max = 380.dp),
                                 ) {
                                     Column(
@@ -241,39 +228,38 @@ fun TeachersDirectoryScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
                                         Surface(
-                                            shape = RoundedCornerShape(14.dp),
-                                            color = accentAmber.copy(alpha = if (isDark) 0.16f else 0.10f),
-                                            border = BorderStroke(1.dp, accentAmber.copy(alpha = 0.25f)),
-                                            modifier = Modifier.size(52.dp),
+                                            shape = CircleShape,
+                                            color = cs.tertiaryContainer,
+                                            modifier = Modifier.size(56.dp),
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
                                                     imageVector = GraduationCapIcon,
                                                     contentDescription = null,
-                                                    tint = accentAmber,
-                                                    modifier = Modifier.size(22.dp),
+                                                    tint = cs.onTertiaryContainer,
+                                                    modifier = Modifier.size(24.dp),
                                                 )
                                             }
                                         }
-                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Spacer(modifier = Modifier.height(14.dp))
                                         Text(
                                             text = if (searchQuery.isBlank()) {
                                                 "No teachers registered yet"
                                             } else {
                                                 "No matching teachers found"
                                             },
-                                            color = headingColor,
-                                            fontSize = 15.5.sp,
+                                            color = cs.onSurface,
+                                            fontSize = 16.sp,
                                             fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.Bold,
+                                            fontWeight = FontWeight.Medium,
                                             textAlign = TextAlign.Center,
                                         )
                                         if (searchQuery.isBlank()) {
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = "Signed-in teachers appear here automatically.",
-                                                color = subTextColor,
-                                                fontSize = 12.5.sp,
+                                                color = cs.onSurfaceVariant,
+                                                fontSize = 13.sp,
                                                 fontFamily = hindSiliguri,
                                                 textAlign = TextAlign.Center,
                                             )
@@ -314,12 +300,6 @@ fun TeachersDirectoryScreen(
                                                         MessengerTeacherChatCard(
                                                             teacher = teacher,
                                                             isDark = isDark,
-                                                            cardBg = cardBg,
-                                                            cardBorder = cardBorder,
-                                                            headingColor = headingColor,
-                                                            subTextColor = subTextColor,
-                                                            accentBlue = accentBlue,
-                                                            accentAmber = accentAmber,
                                                             hindSiliguri = hindSiliguri,
                                                             testTag = "teacher_card_$index",
                                                             deleteTestTag = "teacher_delete_button_$index",
@@ -354,12 +334,6 @@ fun TeachersDirectoryScreen(
                 FullScreenTeacherDetailScreen(
                     teacher = teacher,
                     isDark = isDark,
-                    cardBg = cardBg,
-                    cardBorder = cardBorder,
-                    headingColor = headingColor,
-                    subTextColor = subTextColor,
-                    accentBlue = accentBlue,
-                    accentAmber = accentAmber,
                     hindSiliguri = hindSiliguri,
                     onDismiss = { selectedTeacher = null },
                     onDeleteClick = {
@@ -374,19 +348,19 @@ fun TeachersDirectoryScreen(
     teacherToDelete?.let { target ->
         AlertDialog(
             onDismissRequest = { if (!isDeletingTeacher) teacherToDelete = null },
-            containerColor = cardBg,
-            titleContentColor = headingColor,
-            textContentColor = subTextColor,
+            containerColor = cs.surfaceContainerHigh,
+            titleContentColor = cs.onSurface,
+            textContentColor = cs.onSurfaceVariant,
             title = {
                 Text(
                     text = "Remove Teacher",
                     fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 19.sp,
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = "Permanently remove this teacher from the database?",
                         fontFamily = hindSiliguri,
@@ -394,23 +368,22 @@ fun TeachersDirectoryScreen(
                         lineHeight = 20.sp,
                     )
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-                        border = BorderStroke(1.dp, cardBorder),
+                        shape = RoundedCornerShape(14.dp),
+                        color = cs.surfaceContainerLow,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                             Text(
                                 text = target.name.ifBlank { target.email.substringBefore("@") },
-                                color = headingColor,
+                                color = cs.onSurface,
                                 fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Medium,
                                 fontSize = 14.5.sp,
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = target.email,
-                                color = subTextColor,
+                                color = cs.onSurfaceVariant,
                                 fontFamily = hindSiliguri,
                                 fontSize = 12.5.sp,
                             )
@@ -426,9 +399,8 @@ fun TeachersDirectoryScreen(
                     isDark = isDark,
                     isLoading = isDeletingTeacher,
                     height = 40.dp,
-                    cornerRadius = 10.dp,
+                    cornerRadius = 20.dp,
                     testTag = "confirm_delete_teacher_button",
-                    modifier = Modifier.width(96.dp),
                     onClick = {
                         if (isDeletingTeacher) return@WelcomeMinimal3DButton
                         isDeletingTeacher = true
@@ -454,9 +426,9 @@ fun TeachersDirectoryScreen(
                 ) {
                     Text(
                         text = "Cancel",
-                        color = subTextColor,
+                        color = cs.primary,
                         fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             },
@@ -464,340 +436,45 @@ fun TeachersDirectoryScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MessengerTeacherChatCard(
     teacher: TeacherDirectoryItem,
     isDark: Boolean,
-    cardBg: Color,
-    cardBorder: Color,
-    headingColor: Color,
-    subTextColor: Color,
-    accentBlue: Color,
-    accentAmber: Color,
     hindSiliguri: FontFamily,
     testTag: String,
     deleteTestTag: String,
     onClick: () -> Unit,
     onDeleteClick: () -> Unit,
 ) {
+    val cs = MaterialTheme.colorScheme
     val deptShort = remember(teacher.department) {
         teacher.department.substringBefore(" (").trim()
     }
-    val relativeTime = remember(teacher.updatedAt, teacher.registeredAt) {
-        formatTeacherRelativeTime(maxOf(teacher.updatedAt, teacher.registeredAt))
+    val metaLine = remember(deptShort, teacher.shift, teacher.phone, teacher.contactEmail, teacher.email) {
+        listOfNotNull(
+            deptShort.takeIf { it.isNotBlank() },
+            teacher.shift.takeIf { it.isNotBlank() }?.let { RoutineRules.normalizeShift(it) },
+            teacher.phone.takeIf { it.isNotBlank() } ?: teacher.contactEmail.ifBlank { teacher.email }.takeIf { it.isNotBlank() },
+        ).joinToString(" • ")
     }
 
     MinimalCardSurface(
         isDark = isDark,
-        shape = RoundedCornerShape(16.dp),
-        borderColor = cardBorder,
+        shape = RoundedCornerShape(14.dp),
         onClick = onClick,
         testTag = testTag,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+                .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(modifier = Modifier.size(50.dp)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .border(1.5.dp, cardBorder, CircleShape)
-                        .background(cardBg, CircleShape),
-                ) {
-                    val resolvedModel = resolveProfileImageModel(teacher.photoUrl)
-                    if (resolvedModel != null) {
-                        AsyncImage(
-                            model = resolvedModel,
-                            contentDescription = teacher.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                        )
-                    } else {
-                        DynamicAvatar(
-                            seed = teacher.email.ifBlank { teacher.name },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                        )
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(13.dp)
-                        .align(Alignment.BottomEnd)
-                        .clip(CircleShape)
-                        .background(Color(0xFF22C55E))
-                        .border(2.dp, cardBg, CircleShape),
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = teacher.name.ifBlank { teacher.email.substringBefore("@") },
-                        color = headingColor,
-                        fontSize = 15.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (teacher.bloodGroup.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFFEF4444).copy(alpha = if (isDark) 0.18f else 0.10f),
-                        ) {
-                            Text(
-                                text = teacher.bloodGroup,
-                                color = if (isDark) Color(0xFFFCA5A5) else Color(0xFFDC2626),
-                                fontSize = 10.5.sp,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            )
-                        }
-                    }
-                }
-
-                if (deptShort.isNotBlank() || teacher.shift.isNotBlank()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        if (deptShort.isNotBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = accentBlue.copy(alpha = if (isDark) 0.16f else 0.10f),
-                            ) {
-                                Text(
-                                    text = deptShort,
-                                    color = accentBlue,
-                                    fontSize = 10.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                                )
-                            }
-                        }
-                        if (teacher.shift.isNotBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = accentAmber.copy(alpha = if (isDark) 0.16f else 0.10f),
-                            ) {
-                                Text(
-                                    text = RoutineRules.normalizeShift(teacher.shift),
-                                    color = accentAmber,
-                                    fontSize = 10.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                val contactPreview = buildList {
-                    if (teacher.phone.isNotBlank()) add(teacher.phone)
-                    val mail = teacher.contactEmail.ifBlank { teacher.email }
-                    if (mail.isNotBlank()) add(mail)
-                }.joinToString(" • ")
-
-                if (contactPreview.isNotBlank()) {
-                    Text(
-                        text = contactPreview,
-                        color = subTextColor,
-                        fontSize = 12.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                if (relativeTime.isNotBlank()) {
-                    Text(
-                        text = relativeTime,
-                        color = subTextColor,
-                        fontSize = 10.5.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        modifier = Modifier.padding(end = 6.dp),
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onDeleteClick,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .testTag(deleteTestTag),
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFEF4444).copy(alpha = if (isDark) 0.14f else 0.08f),
-                            modifier = Modifier.size(34.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = TrashCanIcon,
-                                    contentDescription = "Remove teacher",
-                                    tint = if (isDark) Color(0xFFFCA5A5) else Color(0xFFDC2626),
-                                    modifier = Modifier.size(15.dp),
-                                )
-                            }
-                        }
-                    }
-                    Icon(
-                        imageVector = RightArrowIcon,
-                        contentDescription = null,
-                        tint = subTextColor,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-            }
-        }
-    }
-}
-
-private data class TeacherDetailField(
-    val label: String,
-    val value: String,
-    val icon: ImageVector,
-    val iconTint: Color,
-)
-
-@Composable
-private fun FullScreenTeacherDetailScreen(
-    teacher: TeacherDirectoryItem,
-    isDark: Boolean,
-    cardBg: Color,
-    cardBorder: Color,
-    headingColor: Color,
-    subTextColor: Color,
-    accentBlue: Color,
-    accentAmber: Color,
-    hindSiliguri: FontFamily,
-    onDismiss: () -> Unit,
-    onDeleteClick: () -> Unit,
-) {
-    val emptyText = "Not provided"
-    val fields = remember(teacher) {
-        listOf(
-            TeacherDetailField(
-                label = "Department",
-                value = teacher.department.ifBlank { emptyText },
-                icon = GraduationCapIcon,
-                iconTint = Color(0xFF3B82F6),
-            ),
-            TeacherDetailField(
-                label = "Shift",
-                value = if (teacher.shift.isNotBlank()) RoutineRules.normalizeShift(teacher.shift) else emptyText,
-                icon = ClockIcon,
-                iconTint = Color(0xFFF59E0B),
-            ),
-            TeacherDetailField(
-                label = "Phone Number",
-                value = teacher.phone.ifBlank { emptyText },
-                icon = PhoneSolidIcon,
-                iconTint = Color(0xFF10B981),
-            ),
-            TeacherDetailField(
-                label = "Email Address",
-                value = teacher.contactEmail.ifBlank { teacher.email }.ifBlank { emptyText },
-                icon = EnvelopeSolidIcon,
-                iconTint = Color(0xFF6366F1),
-            ),
-            TeacherDetailField(
-                label = "Blood Group",
-                value = teacher.bloodGroup.ifBlank { emptyText },
-                icon = DropletIcon,
-                iconTint = Color(0xFFEF4444),
-            ),
-            TeacherDetailField(
-                label = "Gender",
-                value = teacher.gender.ifBlank { emptyText },
-                icon = VenusMarsIcon,
-                iconTint = Color(0xFFEC4899),
-            ),
-            TeacherDetailField(
-                label = "Present Address",
-                value = teacher.address.ifBlank { emptyText },
-                icon = LocationDotIcon,
-                iconTint = Color(0xFFEF4444),
-            ),
-            TeacherDetailField(
-                label = "Permanent Address",
-                value = teacher.permanentAddress.ifBlank { emptyText },
-                icon = LocationDotIcon,
-                iconTint = Color(0xFFF97316),
-            ),
-        )
-    }
-
-    MinimalFullScreenSheet(
-        title = "Teacher Profile",
-        subtitle = "Faculty Directory",
-        icon = GraduationCapIcon,
-        accent = accentAmber,
-        isDark = isDark,
-        hindSiliguri = hindSiliguri,
-        onDismiss = onDismiss,
-        closeTestTag = "teacher_detail_close_button",
-        maxContentWidth = 760.dp,
-        bottomBar = {
-            WelcomeMinimal3DButton(
-                text = "Remove Teacher",
-                icon = TrashCanIcon,
-                hindSiliguri = hindSiliguri,
-                isDestructive = true,
-                isDark = isDark,
-                height = 46.dp,
-                cornerRadius = 12.dp,
-                testTag = "teacher_detail_delete_button",
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onDeleteClick,
-            )
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(
                 modifier = Modifier
-                    .size(86.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .border(1.5.dp, cardBorder, CircleShape)
-                    .background(cardBg, CircleShape),
+                    .background(cs.surfaceContainerHigh, CircleShape),
             ) {
                 val resolvedModel = resolveProfileImageModel(teacher.photoUrl)
                 if (resolvedModel != null) {
@@ -819,50 +496,280 @@ private fun FullScreenTeacherDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = teacher.name.ifBlank { teacher.email.substringBefore("@") },
+                        color = cs.onSurface,
+                        fontSize = 14.5.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (teacher.bloodGroup.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = cs.errorContainer,
+                        ) {
+                            Text(
+                                text = teacher.bloodGroup,
+                                color = cs.onErrorContainer,
+                                fontSize = 10.5.sp,
+                                fontFamily = hindSiliguri,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            )
+                        }
+                    }
+                }
+
+                if (metaLine.isNotBlank()) {
+                    Text(
+                        text = metaLine,
+                        color = cs.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        fontFamily = hindSiliguri,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onDeleteClick,
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag(deleteTestTag),
+            ) {
+                Icon(
+                    imageVector = TrashCanIcon,
+                    contentDescription = "Remove teacher",
+                    tint = cs.onSurfaceVariant,
+                    modifier = Modifier.size(17.dp),
+                )
+            }
+        }
+    }
+}
+
+private data class TeacherDetailField(
+    val label: String,
+    val value: String,
+    val icon: ImageVector,
+    val containerColor: Color,
+    val contentColor: Color,
+)
+
+@Composable
+private fun FullScreenTeacherDetailScreen(
+    teacher: TeacherDirectoryItem,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onDismiss: () -> Unit,
+    onDeleteClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val emptyText = "Not provided"
+    val fields = remember(teacher, cs) {
+        listOf(
+            TeacherDetailField(
+                label = "Department",
+                value = teacher.department.ifBlank { emptyText },
+                icon = GraduationCapIcon,
+                containerColor = cs.primaryContainer,
+                contentColor = cs.onPrimaryContainer,
+            ),
+            TeacherDetailField(
+                label = "Shift",
+                value = if (teacher.shift.isNotBlank()) RoutineRules.normalizeShift(teacher.shift) else emptyText,
+                icon = ClockIcon,
+                containerColor = cs.tertiaryContainer,
+                contentColor = cs.onTertiaryContainer,
+            ),
+            TeacherDetailField(
+                label = "Phone Number",
+                value = teacher.phone.ifBlank { emptyText },
+                icon = PhoneSolidIcon,
+                containerColor = cs.secondaryContainer,
+                contentColor = cs.onSecondaryContainer,
+            ),
+            TeacherDetailField(
+                label = "Email Address",
+                value = teacher.contactEmail.ifBlank { teacher.email }.ifBlank { emptyText },
+                icon = EnvelopeSolidIcon,
+                containerColor = cs.primaryContainer,
+                contentColor = cs.onPrimaryContainer,
+            ),
+            TeacherDetailField(
+                label = "Blood Group",
+                value = teacher.bloodGroup.ifBlank { emptyText },
+                icon = DropletIcon,
+                containerColor = cs.errorContainer,
+                contentColor = cs.onErrorContainer,
+            ),
+            TeacherDetailField(
+                label = "Gender",
+                value = teacher.gender.ifBlank { emptyText },
+                icon = VenusMarsIcon,
+                containerColor = cs.secondaryContainer,
+                contentColor = cs.onSecondaryContainer,
+            ),
+            TeacherDetailField(
+                label = "Present Address",
+                value = teacher.address.ifBlank { emptyText },
+                icon = LocationDotIcon,
+                containerColor = cs.surfaceContainerHigh,
+                contentColor = cs.onSurfaceVariant,
+            ),
+            TeacherDetailField(
+                label = "Permanent Address",
+                value = teacher.permanentAddress.ifBlank { emptyText },
+                icon = LocationDotIcon,
+                containerColor = cs.surfaceContainerHigh,
+                contentColor = cs.onSurfaceVariant,
+            ),
+        )
+    }
+
+    MinimalFullScreenSheet(
+        title = "Teacher Profile",
+        subtitle = "Faculty Directory",
+        icon = GraduationCapIcon,
+        accent = cs.primary,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onDismiss,
+        closeTestTag = "teacher_detail_close_button",
+        maxContentWidth = 760.dp,
+        bottomBar = {
+            WelcomeMinimal3DButton(
+                text = "Remove Teacher",
+                icon = TrashCanIcon,
+                hindSiliguri = hindSiliguri,
+                isDestructive = true,
+                isDark = isDark,
+                height = 46.dp,
+                cornerRadius = 23.dp,
+                testTag = "teacher_detail_delete_button",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onDeleteClick,
+            )
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(92.dp)
+                    .clip(CircleShape)
+                    .background(cs.surfaceContainerHigh, CircleShape),
+            ) {
+                val resolvedModel = resolveProfileImageModel(teacher.photoUrl)
+                if (resolvedModel != null) {
+                    AsyncImage(
+                        model = resolvedModel,
+                        contentDescription = teacher.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                    )
+                } else {
+                    DynamicAvatar(
+                        seed = teacher.email.ifBlank { teacher.name },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = teacher.name.ifBlank { teacher.email.substringBefore("@") },
-                color = headingColor,
-                fontSize = 19.sp,
+                color = cs.onSurface,
+                fontSize = 21.sp,
                 fontFamily = hindSiliguri,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = accentBlue.copy(alpha = if (isDark) 0.16f else 0.10f),
+                shape = CircleShape,
+                color = cs.primaryContainer,
             ) {
                 Text(
                     text = "Faculty",
-                    color = accentBlue,
-                    fontSize = 11.5.sp,
+                    color = cs.onPrimaryContainer,
+                    fontSize = 12.sp,
                     fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                 )
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            MinimalResponsiveGrid(
-                items = fields,
-                twoColMinWidth = 560.dp,
-                spacing = 10.dp,
-            ) { _, field ->
-                TeacherDetailRow(
-                    label = field.label,
-                    value = field.value,
-                    icon = field.icon,
-                    iconTint = field.iconTint,
-                    headingColor = headingColor,
-                    subTextColor = subTextColor,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val useTwoCols = maxWidth >= 560.dp
+                if (useTwoCols) {
+                    MinimalResponsiveGrid(
+                        items = fields,
+                        twoColMinWidth = 560.dp,
+                        spacing = 10.dp,
+                    ) { _, field ->
+                        MinimalCardSurface(
+                            isDark = isDark,
+                            shape = RoundedCornerShape(18.dp),
+                        ) {
+                            TeacherDetailRow(
+                                field = field,
+                                hindSiliguri = hindSiliguri,
+                            )
+                        }
+                    }
+                } else {
+                    GoogleSectionHeader(title = "Contact & Academic Info", hindSiliguri = hindSiliguri)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    MinimalCardSurface(
+                        isDark = isDark,
+                        shape = RoundedCornerShape(22.dp),
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            fields.forEachIndexed { idx, field ->
+                                TeacherDetailRow(
+                                    field = field,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                                if (idx < fields.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 66.dp, end = 16.dp),
+                                        thickness = 0.5.dp,
+                                        color = cs.outlineVariant.copy(alpha = 0.55f),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -870,56 +777,46 @@ private fun FullScreenTeacherDetailScreen(
 
 @Composable
 private fun TeacherDetailRow(
-    label: String,
-    value: String,
-    icon: ImageVector,
-    iconTint: Color,
-    headingColor: Color,
-    subTextColor: Color,
-    isDark: Boolean,
+    field: TeacherDetailField,
     hindSiliguri: FontFamily,
 ) {
-    MinimalCardSurface(
-        isDark = isDark,
-        shape = RoundedCornerShape(14.dp),
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            shape = CircleShape,
+            color = field.containerColor,
+            modifier = Modifier.size(36.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(iconTint.copy(alpha = if (isDark) 0.16f else 0.10f)),
-                contentAlignment = Alignment.Center,
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = icon,
+                    imageVector = field.icon,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = field.contentColor,
                     modifier = Modifier.size(16.dp),
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    color = subTextColor,
-                    fontSize = 11.5.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    text = value,
-                    color = headingColor,
-                    fontSize = 13.5.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = field.label,
+                color = cs.onSurfaceVariant,
+                fontSize = 12.sp,
+                fontFamily = hindSiliguri,
+                fontWeight = FontWeight.Normal,
+            )
+            Text(
+                text = field.value,
+                color = cs.onSurface,
+                fontSize = 14.5.sp,
+                fontFamily = hindSiliguri,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 }

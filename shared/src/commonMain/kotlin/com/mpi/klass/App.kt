@@ -559,22 +559,22 @@ fun ErrorImagePopup(
 
     val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
     val borderColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val stepsBgColor = if (isDark) Color(0xFF0F172A).copy(alpha = 0.8f) else Color(0xFFF8FAFC)
+    val stepsBgColor = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
     val stepsBorderColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
 
     val titleColor = when (errorType) {
         ErrorImageType.NO_INTERNET, ErrorImageType.GENERAL_ERROR ->
             if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
         ErrorImageType.SIGN_IN_DISABLED, ErrorImageType.ADMIN_REQUEST_PENDING, ErrorImageType.ADMIN_REQUEST_DECLINED ->
-            if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
+            if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
         ErrorImageType.ADMIN_NOT_AUTHORIZED ->
-            if (isDark) Color(0xFFF87171) else Color(0xFFEF4444)
+            if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
         else ->
-            if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
+            if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7)
     }
 
-    val textColorPrimary = if (isDark) Color(0xFFF1F5F9) else Color(0xFF1E293B)
-    val textColorSecondary = if (isDark) Color(0xFF94A3B8) else Color(0xFF475569)
+    val textColorPrimary = if (isDark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
+    val textColorSecondary = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569)
     val fontBengali = getHindSiliguriFontFamily()
 
     Box(
