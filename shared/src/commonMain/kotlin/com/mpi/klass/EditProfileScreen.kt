@@ -427,7 +427,7 @@ fun EditProfileContent(
                                 Text(
                                     text = "ময়মনসিংহ সরকারি পলিটেকনিক ইনস্টিটিউট".localized(),
                                     color = cs.onSurfaceVariant,
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                     fontFamily = hindSiliguri,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -455,7 +455,7 @@ fun EditProfileContent(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "প্রোফাইল দেখুন".localized(),
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1,

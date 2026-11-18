@@ -218,21 +218,21 @@ private fun SimpleMenuRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 18.dp, vertical = 17.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = tile.icon,
                 contentDescription = tile.title,
                 tint = cs.primary,
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(23.dp),
             )
 
             Spacer(modifier = Modifier.width(15.dp))
 
             Text(
                 text = tile.title,
-                fontSize = 15.sp,
+                fontSize = 16.5.sp,
                 fontFamily = hindSiliguri,
                 fontWeight = FontWeight.Medium,
                 color = cs.onSurface,
@@ -247,7 +247,7 @@ private fun SimpleMenuRow(
                 imageVector = RightArrowIcon,
                 contentDescription = null,
                 tint = cs.onSurfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.size(13.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }
@@ -583,7 +583,7 @@ private fun AdminRequestRowItem(
                 )
                 Text(
                     text = item.email,
-                    fontSize = 12.sp,
+                    fontSize = 13.5.sp,
                     color = cs.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

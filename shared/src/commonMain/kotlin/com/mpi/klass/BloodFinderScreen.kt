@@ -336,7 +336,7 @@ private fun DonorCard(
             ) {
                 Text(
                     text = donor.name.ifBlank { "MPI Member" },
-                    fontSize = 14.5.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = hindSiliguri,
                     color = cs.onSurface,
@@ -351,7 +351,7 @@ private fun DonorCard(
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle,
-                        fontSize = 12.sp,
+                        fontSize = 13.5.sp,
                         fontFamily = hindSiliguri,
                         color = cs.onSurfaceVariant,
                         maxLines = 1,
@@ -364,12 +364,12 @@ private fun DonorCard(
                             imageVector = LocationDotIcon,
                             contentDescription = null,
                             tint = cs.onSurfaceVariant,
-                            modifier = Modifier.size(11.dp),
+                            modifier = Modifier.size(13.dp),
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = donor.address,
-                            fontSize = 11.5.sp,
+                            fontSize = 13.sp,
                             fontFamily = hindSiliguri,
                             color = cs.onSurfaceVariant,
                             maxLines = 1,

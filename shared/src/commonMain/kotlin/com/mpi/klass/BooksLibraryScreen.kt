@@ -319,7 +319,7 @@ fun BooksLibraryScreen(
                             Spacer(modifier = Modifier.weight(1f))
                             Text(
                                 text = "${filteredBooks.size} shown",
-                                fontSize = 12.sp,
+                                fontSize = 13.5.sp,
                                 color = cs.onSurfaceVariant,
                                 fontFamily = hindSiliguri,
                             )
@@ -344,7 +344,7 @@ fun BooksLibraryScreen(
                                     Text(
                                         text = "Loading books...",
                                         color = cs.onSurfaceVariant,
-                                        fontSize = 13.5.sp,
+                                        fontSize = 15.sp,
                                         fontFamily = hindSiliguri,
                                         fontWeight = FontWeight.Medium,
                                     )
@@ -403,7 +403,7 @@ fun BooksLibraryScreen(
                                             Text(
                                                 text = "Tap + to add a BTEB curriculum subject.",
                                                 color = cs.onSurfaceVariant,
-                                                fontSize = 13.sp,
+                                                fontSize = 14.sp,
                                                 fontFamily = hindSiliguri,
                                                 textAlign = TextAlign.Center,
                                             )
@@ -587,7 +587,7 @@ fun BooksLibraryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Department",
-                        fontSize = 13.sp,
+                        fontSize = 14.5.sp,
                         fontWeight = FontWeight.Medium,
                         color = cs.onSurfaceVariant,
                         fontFamily = hindSiliguri,
@@ -624,7 +624,7 @@ fun BooksLibraryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Semester",
-                        fontSize = 13.sp,
+                        fontSize = 14.5.sp,
                         fontWeight = FontWeight.Medium,
                         color = cs.onSurfaceVariant,
                         fontFamily = hindSiliguri,
@@ -707,7 +707,7 @@ fun BooksLibraryScreen(
                             Text(
                                 text = AppStrings.convertBengaliDigitsToAscii(selected.subjectCode),
                                 color = cs.onPrimaryContainer,
-                                fontSize = 12.sp,
+                                fontSize = 13.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 fontFamily = hindSiliguri,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -719,7 +719,7 @@ fun BooksLibraryScreen(
                 val creditClean = AppStrings.convertBengaliDigitsToAscii(selected.credit.ifBlank { "0" })
                 Text(
                     text = "${selected.theoryClassesPerWeek} Theory / wk • ${selected.practicalClassesPerWeek} Practical / wk • $creditClean Credits",
-                    fontSize = 13.5.sp,
+                    fontSize = 14.5.sp,
                     color = cs.onSurfaceVariant,
                     fontFamily = hindSiliguri,
                 )
@@ -728,7 +728,7 @@ fun BooksLibraryScreen(
                     HorizontalDivider(thickness = 0.6.dp, color = cs.outlineVariant.copy(alpha = 0.6f))
                     Text(
                         text = "Departments & Semesters",
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = cs.primary,
                         fontFamily = hindSiliguri,
@@ -745,14 +745,14 @@ fun BooksLibraryScreen(
                             ) {
                                 Text(
                                     text = deptShort,
-                                    fontSize = 13.5.sp,
+                                    fontSize = 14.5.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = cs.onSurface,
                                     fontFamily = hindSiliguri,
                                 )
                                 Text(
                                     text = semSummary,
-                                    fontSize = 13.sp,
+                                    fontSize = 14.sp,
                                     color = cs.onSurfaceVariant,
                                     fontFamily = hindSiliguri,
                                 )
@@ -836,7 +836,7 @@ fun BooksLibraryScreen(
                                 text = "Code: ${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}",
                                 color = cs.onSurfaceVariant,
                                 fontFamily = hindSiliguri,
-                                fontSize = 12.sp,
+                                fontSize = 13.5.sp,
                             )
                         }
                     }
@@ -905,7 +905,7 @@ private fun ActiveFilterTag(
         ) {
             Text(
                 text = label,
-                fontSize = 12.sp,
+                fontSize = 13.5.sp,
                 fontWeight = FontWeight.Medium,
                 color = cs.onPrimaryContainer,
             )
@@ -992,7 +992,7 @@ private fun LibraryBookCard(
                             Text(
                                 text = AppStrings.convertBengaliDigitsToAscii(book.subjectCode),
                                 color = cs.onSecondaryContainer,
-                                fontSize = 11.sp,
+                                fontSize = 13.sp,
                                 fontFamily = hindSiliguri,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -1004,7 +1004,7 @@ private fun LibraryBookCard(
                 Text(
                     text = "$deptSummary • ${book.theoryClassesPerWeek}T ${book.practicalClassesPerWeek}P • $creditClean Cr",
                     color = cs.onSurfaceVariant,
-                    fontSize = 12.sp,
+                    fontSize = 13.5.sp,
                     fontFamily = hindSiliguri,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1355,7 +1355,7 @@ private fun FullScreenBookFormScreen(
                                     Text(
                                         text = dept.fullName,
                                         color = cs.onSurface,
-                                        fontSize = 13.5.sp,
+                                        fontSize = 14.5.sp,
                                         fontFamily = hindSiliguri,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1,
@@ -1380,7 +1380,7 @@ private fun FullScreenBookFormScreen(
                                             Text(
                                                 text = countStr,
                                                 color = cs.onPrimaryContainer,
-                                                fontSize = 11.sp,
+                                                fontSize = 13.sp,
                                                 fontFamily = hindSiliguri,
                                                 fontWeight = FontWeight.Medium,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
@@ -1491,7 +1491,7 @@ private fun MinimalSemesterChip(
             Text(
                 text = label,
                 color = if (selected) cs.onSecondaryContainer else cs.onSurfaceVariant,
-                fontSize = 12.5.sp,
+                fontSize = 14.sp,
                 fontFamily = hindSiliguri,
                 fontWeight = FontWeight.Medium,
             )

@@ -227,7 +227,7 @@ fun TeacherPreferencesScreen(
                 ) {
                     Text(
                         text = "$totalSelectedCount subject(s) selected • Sem 1–7",
-                        fontSize = 13.sp,
+                        fontSize = 14.5.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = hindSiliguri,
                         color = cs.onSurfaceVariant,
@@ -365,14 +365,14 @@ fun TeacherPreferencesScreen(
                                                     Column(modifier = Modifier.weight(1f)) {
                                                         Text(
                                                             text = pref.label,
-                                                            fontSize = 13.5.sp,
+                                                            fontSize = 15.sp,
                                                             fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
                                                             color = if (isSelected) cs.onSecondaryContainer else cs.onSurface,
                                                         )
                                                         Text(
                                                             text = pref.subtitle,
-                                                            fontSize = 11.5.sp,
+                                                            fontSize = 13.sp,
                                                             fontFamily = hindSiliguri,
                                                             color = if (isSelected) {
                                                                 cs.onSecondaryContainer.copy(alpha = 0.8f)
@@ -520,7 +520,7 @@ fun TeacherPreferencesScreen(
                                         ) {
                                             Text(
                                                 text = "${selectedCodes.size} / ${semBooks.size}",
-                                                fontSize = 11.5.sp,
+                                                fontSize = 13.sp,
                                                 fontWeight = FontWeight.Medium,
                                                 fontFamily = hindSiliguri,
                                                 color = if (selectedCodes.isNotEmpty()) cs.onPrimaryContainer else cs.onSurfaceVariant,
@@ -548,7 +548,7 @@ fun TeacherPreferencesScreen(
                                         if (semBooks.isEmpty()) {
                                             Text(
                                                 text = "No matching subjects in this semester.",
-                                                fontSize = 12.5.sp,
+                                                fontSize = 14.sp,
                                                 fontFamily = hindSiliguri,
                                                 color = cs.onSurfaceVariant,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
@@ -597,7 +597,7 @@ fun TeacherPreferencesScreen(
                                                         Column(modifier = Modifier.weight(1f)) {
                                                             Text(
                                                                 text = book.title,
-                                                                fontSize = 13.5.sp,
+                                                                fontSize = 15.sp,
                                                                 fontWeight = FontWeight.Medium,
                                                                 fontFamily = hindSiliguri,
                                                                 color = if (checked) cs.onSecondaryContainer else cs.onSurface,
@@ -606,7 +606,7 @@ fun TeacherPreferencesScreen(
                                                             )
                                                             Text(
                                                                 text = "${book.subjectCode} • ${book.theoryClassesPerWeek}T • ${book.practicalClassesPerWeek}P",
-                                                                fontSize = 11.5.sp,
+                                                                fontSize = 13.sp,
                                                                 fontFamily = hindSiliguri,
                                                                 color = if (checked) {
                                                                     cs.onSecondaryContainer.copy(alpha = 0.8f)

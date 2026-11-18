@@ -208,7 +208,7 @@ fun NotificationScreen(
                         }
                         Text(
                             text = "$dayStatus$countSuffix",
-                            fontSize = 13.sp,
+                            fontSize = 14.5.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
                             color = cs.onSurfaceVariant,
@@ -262,7 +262,7 @@ fun NotificationScreen(
                                         Spacer(modifier = Modifier.height(14.dp))
                                         Text(
                                             text = "No New Notifications",
-                                            fontSize = 16.sp,
+                                            fontSize = 18.sp,
                                             fontFamily = hindSiliguri,
                                             fontWeight = FontWeight.Medium,
                                             color = cs.onSurface,
@@ -271,11 +271,11 @@ fun NotificationScreen(
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = "Today's classes and institute notices appear here automatically.",
-                                            fontSize = 13.sp,
+                                            fontSize = 14.5.sp,
                                             fontFamily = hindSiliguri,
                                             color = cs.onSurfaceVariant,
                                             textAlign = TextAlign.Center,
-                                            lineHeight = 18.sp,
+                                            lineHeight = 21.sp,
                                         )
                                     }
                                 }
@@ -582,7 +582,7 @@ private fun TodayClassNoticeCard(
                 )
                 Text(
                     text = "${cls.startTime} – ${cls.endTime} • Room ${cls.roomNumber}",
-                    fontSize = 12.5.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = hindSiliguri,
                     color = cs.primary,
@@ -593,7 +593,7 @@ private fun TodayClassNoticeCard(
                     } else {
                         "Instructor: ${cls.teacherName.ifBlank { "Faculty" }}"
                     },
-                    fontSize = 12.sp,
+                    fontSize = 13.5.sp,
                     fontFamily = hindSiliguri,
                     color = cs.onSurfaceVariant,
                 )
@@ -647,7 +647,7 @@ private fun AnnouncementNoticeCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.body,
-                    fontSize = 13.sp,
+                    fontSize = 14.5.sp,
                     fontFamily = hindSiliguri,
                     color = cs.onSurfaceVariant,
                     lineHeight = 18.sp,

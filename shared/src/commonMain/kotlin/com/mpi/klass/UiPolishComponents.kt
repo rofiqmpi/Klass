@@ -56,6 +56,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -80,7 +81,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Clean minimal background canvas using the Slate & Cobalt theme background.
+ * Soft editorial canvas used by utility and detail screens.
  */
 @Composable
 internal fun MinimalBackdrop(
@@ -91,7 +92,15 @@ internal fun MinimalBackdrop(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.18f else 0.34f),
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.background,
+                    ),
+                ),
+            ),
         content = content,
     )
 }
@@ -130,15 +139,15 @@ internal fun AnimatedStaggeredItem(
 }
 
 /**
- * Clean crisp Card Surface (14.dp rounded corners, 0.75.dp subtle outlineVariant border).
+ * Elevated content surface with a clear hierarchy from the page canvas.
  */
 @Composable
 internal fun MinimalCardSurface(
     isDark: Boolean,
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(14.dp),
+    shape: Shape = RoundedCornerShape(18.dp),
     borderColor: Color? = MaterialTheme.colorScheme.outlineVariant,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
     onClick: (() -> Unit)? = null,
     testTag: String? = null,
     content: @Composable BoxScope.() -> Unit,
@@ -152,7 +161,7 @@ internal fun MinimalCardSurface(
             shape = shape,
             color = containerColor,
             border = border,
-            shadowElevation = 0.dp,
+            shadowElevation = 2.dp,
             modifier = taggedModifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.fillMaxWidth(), content = content)
@@ -162,7 +171,7 @@ internal fun MinimalCardSurface(
             shape = shape,
             color = containerColor,
             border = border,
-            shadowElevation = 0.dp,
+            shadowElevation = 2.dp,
             modifier = taggedModifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.fillMaxWidth(), content = content)
@@ -171,7 +180,7 @@ internal fun MinimalCardSurface(
 }
 
 /**
- * Clean TopAppBar (56.dp height, 19.sp title & subtle bottom divider).
+ * Spacious app bar with stronger title hierarchy.
  */
 @Composable
 internal fun GoogleTopAppBar(
@@ -195,8 +204,8 @@ internal fun GoogleTopAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .height(56.dp)
-                    .padding(horizontal = 4.dp),
+                    .height(64.dp)
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (navigationIcon != null && onNavigationClick != null) {
@@ -210,7 +219,7 @@ internal fun GoogleTopAppBar(
                             imageVector = navigationIcon,
                             contentDescription = navigationContentDescription,
                             tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(22.dp),
                         )
                     }
                 } else {
@@ -220,14 +229,14 @@ internal fun GoogleTopAppBar(
                 Text(
                     text = title,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 19.sp,
+                    fontSize = 21.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 4.dp),
+                        .padding(horizontal = 8.dp),
                 )
 
                 Row(
@@ -238,8 +247,8 @@ internal fun GoogleTopAppBar(
             }
             if (showBottomDivider) {
                 HorizontalDivider(
-                    thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
                 )
             }
         }
@@ -322,7 +331,7 @@ internal fun HeaderAiNotificationActions(
 }
 
 /**
- * Clean minimal section label.
+ * Strong section label that remains readable at a glance.
  */
 @Composable
 internal fun GoogleSectionHeader(
@@ -333,12 +342,12 @@ internal fun GoogleSectionHeader(
     Text(
         text = title,
         color = MaterialTheme.colorScheme.primary,
-        fontSize = 13.5.sp,
+        fontSize = 15.sp,
         fontFamily = hindSiliguri,
         fontWeight = FontWeight.Medium,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 7.dp),
     )
 }
 
@@ -466,7 +475,7 @@ private fun GoogleButtonContent(
             }
             Text(
                 text = text,
-                fontSize = 14.sp,
+                fontSize = 15.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = hindSiliguri,
                 color = contentColor,
@@ -478,7 +487,7 @@ private fun GoogleButtonContent(
 }
 
 /**
- * Clean Outlined Button with crisp 12.dp corners and subtle outlineVariant border.
+ * Clear outlined action with a comfortable touch target.
  */
 @Composable
 internal fun GoogleOutlinedButton(
@@ -495,8 +504,8 @@ internal fun GoogleOutlinedButton(
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(0.75.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -614,7 +623,7 @@ internal fun WelcomeMinimal3DIconButton(
 }
 
 /**
- * Clean minimal SearchBar (44.dp height, 12.dp corners, 0.75.dp subtle border).
+ * Roomy search field with a visible focus state.
  */
 @Composable
 internal fun MinimalSearchBar(
@@ -637,11 +646,11 @@ internal fun MinimalSearchBar(
     )
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         color = cs.surfaceContainerLow,
-        border = BorderStroke(if (isFocused) 1.2.dp else 0.75.dp, borderColor),
-        shadowElevation = 0.dp,
-        modifier = modifier.height(44.dp),
+        border = BorderStroke(if (isFocused) 1.5.dp else 1.dp, borderColor),
+        shadowElevation = if (isFocused) 2.dp else 0.dp,
+        modifier = modifier.height(50.dp),
     ) {
         Row(
             modifier = Modifier
@@ -664,7 +673,7 @@ internal fun MinimalSearchBar(
                     Text(
                         text = placeholder,
                         color = cs.onSurfaceVariant,
-                        fontSize = 13.5.sp,
+                        fontSize = 15.sp,
                         fontFamily = hindSiliguri,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -676,7 +685,7 @@ internal fun MinimalSearchBar(
                     singleLine = true,
                     textStyle = TextStyle(
                         color = cs.onSurface,
-                        fontSize = 14.sp,
+                        fontSize = 15.5.sp,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.Normal,
                     ),
@@ -707,7 +716,7 @@ internal fun MinimalSearchBar(
 }
 
 /**
- * Clean FilterChip (34.dp height, crisp 10.dp rounded corners & 0.75.dp border).
+ * Readable filter chip with a generous touch target.
  */
 @Composable
 internal fun MinimalIconChip(
@@ -731,11 +740,11 @@ internal fun MinimalIconChip(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         color = containerColor,
         border = borderStroke,
         modifier = modifier
-            .height(34.dp)
+            .height(38.dp)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
     ) {
         Row(
@@ -755,7 +764,7 @@ internal fun MinimalIconChip(
             }
             Text(
                 text = label,
-                fontSize = 12.5.sp,
+                fontSize = 13.5.sp,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                 fontFamily = hindSiliguri,
                 color = contentColor,
@@ -799,7 +808,7 @@ internal fun MinimalStatBadge(
             Text(
                 text = text,
                 color = cs.onSurface,
-                fontSize = 12.sp,
+                fontSize = 13.5.sp,
                 fontFamily = hindSiliguri,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,

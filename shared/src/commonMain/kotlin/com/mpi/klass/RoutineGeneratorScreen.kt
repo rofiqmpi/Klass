@@ -228,7 +228,7 @@ fun RoutineGeneratorScreen(
                             ) {
                                 Text(
                                     text = title,
-                                    fontSize = 12.5.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
                                     fontFamily = hindSiliguri,
                                     maxLines = 1,
@@ -268,7 +268,7 @@ fun RoutineGeneratorScreen(
                                     ) {
                                         Text(
                                             text = "$readyTeachers Faculty • ${theoryRooms}T / ${labRooms}L Rooms • ${books.size} Books",
-                                            fontSize = 12.5.sp,
+                                            fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium,
                                             fontFamily = hindSiliguri,
                                             color = cs.onSurfaceVariant,
@@ -391,7 +391,7 @@ fun RoutineGeneratorScreen(
                                                         )
                                                         Text(
                                                             text = "Sun–Thu • 5 Days",
-                                                            fontSize = 11.5.sp,
+                                                            fontSize = 13.5.sp,
                                                             fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
                                                             color = cs.onSurfaceVariant,
@@ -571,7 +571,7 @@ fun RoutineGeneratorScreen(
                                                     )
                                                     Text(
                                                         text = "${plan.entries.size} scheduled slots • ${plan.conflicts.size} conflict(s)",
-                                                        fontSize = 12.5.sp,
+                                                        fontSize = 14.sp,
                                                         fontFamily = hindSiliguri,
                                                         color = if (isPub) {
                                                             cs.onSecondaryContainer.copy(alpha = 0.8f)
@@ -630,7 +630,7 @@ fun RoutineGeneratorScreen(
                                                         Column(modifier = Modifier.weight(1f)) {
                                                             Text(
                                                                 text = "${conf.department} • ${RoutineRules.semesterShortLabel(conf.semester)} • ${conf.shift} • ${conf.group}",
-                                                                fontSize = 12.5.sp,
+                                                                fontSize = 14.sp,
                                                                 fontWeight = FontWeight.Medium,
                                                                 fontFamily = hindSiliguri,
                                                                 color = cs.onErrorContainer,
@@ -644,7 +644,7 @@ fun RoutineGeneratorScreen(
                                                             )
                                                             Text(
                                                                 text = conf.reason,
-                                                                fontSize = 12.sp,
+                                                                fontSize = 13.5.sp,
                                                                 fontFamily = hindSiliguri,
                                                                 color = cs.onErrorContainer.copy(alpha = 0.85f),
                                                             )
@@ -793,7 +793,7 @@ fun RoutineGeneratorScreen(
                                         ) {
                                             Text(
                                                 text = "${filteredEntries.size} slots",
-                                                fontSize = 11.sp,
+                                                fontSize = 13.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 fontFamily = hindSiliguri,
                                                 color = cs.primary,
@@ -955,7 +955,7 @@ fun RoutineGeneratorScreen(
                                                                     ) {
                                                                         Text(
                                                                             text = req.status.label,
-                                                                            fontSize = 11.sp,
+                                                                            fontSize = 13.sp,
                                                                             fontWeight = FontWeight.Medium,
                                                                             fontFamily = hindSiliguri,
                                                                             color = pillFg,
@@ -966,7 +966,7 @@ fun RoutineGeneratorScreen(
 
                                                                 Text(
                                                                     text = "${req.department} • ${RoutineRules.semesterShortLabel(req.semester)} • ${req.shift} • ${req.group}",
-                                                                    fontSize = 12.5.sp,
+                                                                    fontSize = 14.sp,
                                                                     fontFamily = hindSiliguri,
                                                                     color = cs.primary,
                                                                     fontWeight = FontWeight.Medium,
@@ -974,7 +974,7 @@ fun RoutineGeneratorScreen(
 
                                                                 Text(
                                                                     text = "${req.originalDay} P${req.originalPeriod + 1} (${req.originalRoomNumber}) → ${req.requestedDay} P${req.requestedPeriod + 1} (${req.requestedRoomNumber})",
-                                                                    fontSize = 12.5.sp,
+                                                                    fontSize = 14.sp,
                                                                     fontWeight = FontWeight.Medium,
                                                                     fontFamily = hindSiliguri,
                                                                     color = cs.onSurface,
@@ -983,7 +983,7 @@ fun RoutineGeneratorScreen(
                                                                 if (req.reason.isNotBlank()) {
                                                                     Text(
                                                                         text = req.reason,
-                                                                        fontSize = 12.sp,
+                                                                        fontSize = 13.5.sp,
                                                                         fontFamily = hindSiliguri,
                                                                         color = cs.onSurfaceVariant,
                                                                     )
@@ -999,7 +999,7 @@ fun RoutineGeneratorScreen(
                                                                             if (clashes.isEmpty()) {
                                                                                 Text(
                                                                                     text = "Clash Check: Clear",
-                                                                                    fontSize = 12.sp,
+                                                                                    fontSize = 13.5.sp,
                                                                                     fontWeight = FontWeight.Medium,
                                                                                     fontFamily = hindSiliguri,
                                                                                     color = cs.onSecondaryContainer,
@@ -1008,7 +1008,7 @@ fun RoutineGeneratorScreen(
                                                                                 clashes.forEach { msg ->
                                                                                     Text(
                                                                                         text = "• $msg",
-                                                                                        fontSize = 12.sp,
+                                                                                        fontSize = 13.5.sp,
                                                                                         fontFamily = hindSiliguri,
                                                                                         color = cs.onErrorContainer,
                                                                                     )
@@ -1484,7 +1484,7 @@ private fun ManualSlotEditorOverlay(
                         liveClashes.forEach { msg ->
                             Text(
                                 text = "• $msg",
-                                fontSize = 12.5.sp,
+                                fontSize = 14.sp,
                                 fontFamily = hindSiliguri,
                                 color = cs.onErrorContainer,
                             )
@@ -1623,7 +1623,7 @@ private fun FilterPill(
             }
             Text(
                 text = label,
-                fontSize = 12.5.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = hindSiliguri,
                 color = if (active) cs.onSecondaryContainer else cs.onSurfaceVariant,
@@ -1659,7 +1659,7 @@ private fun RoutineConfigTimeField(
         trailingIcon = {
             Text(
                 text = preview,
-                fontSize = 11.5.sp,
+                fontSize = 13.5.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = hindSiliguri,
                 color = cs.primary,
@@ -1700,7 +1700,7 @@ private fun StepperChipCard(
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(
                 text = label,
-                fontSize = 11.5.sp,
+                fontSize = 13.5.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = hindSiliguri,
                 color = cs.onSurfaceVariant,

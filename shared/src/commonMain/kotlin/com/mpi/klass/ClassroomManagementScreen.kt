@@ -279,7 +279,7 @@ fun ClassroomManagementScreen(
                                             } else {
                                                 "No classroom schedule data is available yet."
                                             },
-                                            fontSize = 13.sp,
+                                            fontSize = 14.5.sp,
                                             fontFamily = hindSiliguri,
                                             color = cs.onSurfaceVariant,
                                             textAlign = TextAlign.Center,
@@ -363,7 +363,7 @@ fun ClassroomManagementScreen(
                                                                         ) {
                                                                             Text(
                                                                                 text = if (isLab) "Lab" else "Theory",
-                                                                                fontSize = 11.sp,
+                                                                                fontSize = 13.sp,
                                                                                 fontWeight = FontWeight.Medium,
                                                                                 fontFamily = hindSiliguri,
                                                                                 color = badgeFg,
@@ -381,7 +381,7 @@ fun ClassroomManagementScreen(
 
                                                                     Text(
                                                                         text = subtitle,
-                                                                        fontSize = 12.sp,
+                                                                        fontSize = 14.sp,
                                                                         fontFamily = hindSiliguri,
                                                                         color = cs.onSurfaceVariant,
                                                                         maxLines = 1,
@@ -1016,7 +1016,7 @@ private fun RoomScheduleViewerFullScreen(
                                                     ) {
                                                         Text(
                                                             text = "P${p + 1} • $st",
-                                                            fontSize = 11.sp,
+                                                            fontSize = 13.sp,
                                                             fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
                                                             color = if (slot == null) cs.onSecondaryContainer else cs.onSurfaceVariant,
@@ -1025,7 +1025,7 @@ private fun RoomScheduleViewerFullScreen(
                                                         if (slot == null) {
                                                             Text(
                                                                 text = "Free ($st–$et)",
-                                                                fontSize = 12.5.sp,
+                                                                fontSize = 14.sp,
                                                                 fontWeight = FontWeight.Medium,
                                                                 fontFamily = hindSiliguri,
                                                                 color = cs.onSecondaryContainer,
@@ -1034,7 +1034,7 @@ private fun RoomScheduleViewerFullScreen(
                                                             Column(modifier = Modifier.weight(1f)) {
                                                                 Text(
                                                                     text = "${slot.subjectTitle} (${slot.subjectCode})",
-                                                                    fontSize = 13.sp,
+                                                                    fontSize = 14.5.sp,
                                                                     fontWeight = FontWeight.Medium,
                                                                     fontFamily = hindSiliguri,
                                                                     color = cs.onSurface,
@@ -1043,7 +1043,7 @@ private fun RoomScheduleViewerFullScreen(
                                                                 )
                                                                 Text(
                                                                     text = "${slot.department} • ${RoutineRules.semesterShortLabel(slot.semester)} • ${slot.group} • ${slot.teacherName}",
-                                                                    fontSize = 11.5.sp,
+                                                                    fontSize = 13.sp,
                                                                     fontFamily = hindSiliguri,
                                                                     color = cs.onSurfaceVariant,
                                                                     maxLines = 1,

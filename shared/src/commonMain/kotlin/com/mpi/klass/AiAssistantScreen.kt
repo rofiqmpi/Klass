@@ -192,7 +192,7 @@ fun AiAssistantScreen(
                     ) {
                         Text(
                             text = "New chat",
-                            fontSize = 13.5.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
                         )
@@ -268,7 +268,7 @@ fun AiAssistantScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Thinking...",
-                                        fontSize = 13.5.sp,
+                                        fontSize = 15.sp,
                                         fontFamily = hindSiliguri,
                                         color = cs.onSurfaceVariant,
                                     )
@@ -307,7 +307,7 @@ fun AiAssistantScreen(
                                         Text(
                                             text = errorMsg,
                                             color = cs.onErrorContainer,
-                                            fontSize = 13.5.sp,
+                                            fontSize = 15.sp,
                                             fontFamily = hindSiliguri,
                                             modifier = Modifier.weight(1f),
                                         )
@@ -333,7 +333,7 @@ fun AiAssistantScreen(
                                         ) {
                                             Text(
                                                 text = "Retry",
-                                                fontSize = 13.sp,
+                                                fontSize = 14.sp,
                                                 fontFamily = hindSiliguri,
                                                 fontWeight = FontWeight.Medium,
                                             )
@@ -504,7 +504,7 @@ private fun ChatMessageBubble(
                     Text(
                         text = "●",
                         color = cs.primary,
-                        fontSize = 12.sp,
+                        fontSize = 13.5.sp,
                     )
                 }
             }

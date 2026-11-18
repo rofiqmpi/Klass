@@ -514,7 +514,7 @@ private fun ProfileViewContent(
                 Text(
                     text = if (emailDisplay.isNotBlank()) "$roleSubtitle · $emailDisplay" else roleSubtitle,
                     color = cs.onSurfaceVariant,
-                    fontSize = 13.sp,
+                    fontSize = 14.5.sp,
                     fontFamily = hindSiliguri,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
@@ -593,7 +593,7 @@ private fun ProfileViewContent(
                     MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
                         Text(
                             text = "Tap Edit to complete your department, blood group, and contact info.",
-                            fontSize = 13.5.sp,
+                            fontSize = 15.sp,
                             fontFamily = hindSiliguri,
                             color = cs.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -638,7 +638,7 @@ private fun ProfileViewContent(
                     Text(
                         text = "ডিলিট একাউন্ট".localized(),
                         color = cs.error,
-                        fontSize = 13.5.sp,
+                        fontSize = 15.sp,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.Medium,
                     )
@@ -677,7 +677,7 @@ private fun SimpleProfileSection(
                         Text(
                             text = field.label,
                             color = cs.onSurfaceVariant,
-                            fontSize = 13.sp,
+                            fontSize = 14.5.sp,
                             fontFamily = hindSiliguri,
                             modifier = Modifier.weight(0.9f),
                         )
@@ -753,7 +753,7 @@ private fun GuestSignInPrompt(
                     Text(
                         text = "View your class routine, profile, and notifications.",
                         color = cs.onSurfaceVariant,
-                        fontSize = 13.5.sp,
+                        fontSize = 15.sp,
                         lineHeight = 19.sp,
                         fontFamily = hindSiliguri,
                         textAlign = TextAlign.Center,

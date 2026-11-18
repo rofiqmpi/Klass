@@ -201,7 +201,7 @@ fun TeachersDirectoryScreen(
                                     Text(
                                         text = "Loading faculty directory...",
                                         color = cs.onSurfaceVariant,
-                                        fontSize = 13.5.sp,
+                                        fontSize = 15.sp,
                                         fontFamily = hindSiliguri,
                                         fontWeight = FontWeight.Medium,
                                     )
@@ -259,7 +259,7 @@ fun TeachersDirectoryScreen(
                                             Text(
                                                 text = "Signed-in teachers appear here automatically.",
                                                 color = cs.onSurfaceVariant,
-                                                fontSize = 13.sp,
+                                                fontSize = 14.sp,
                                                 fontFamily = hindSiliguri,
                                                 textAlign = TextAlign.Center,
                                             )
@@ -385,7 +385,7 @@ fun TeachersDirectoryScreen(
                                 text = target.email,
                                 color = cs.onSurfaceVariant,
                                 fontFamily = hindSiliguri,
-                                fontSize = 12.5.sp,
+                                fontSize = 13.5.sp,
                             )
                         }
                     }
@@ -524,7 +524,7 @@ private fun MessengerTeacherChatCard(
                             Text(
                                 text = teacher.bloodGroup,
                                 color = cs.onErrorContainer,
-                                fontSize = 10.5.sp,
+                                fontSize = 13.5.sp,
                                 fontFamily = hindSiliguri,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
@@ -537,7 +537,7 @@ private fun MessengerTeacherChatCard(
                     Text(
                         text = metaLine,
                         color = cs.onSurfaceVariant,
-                        fontSize = 12.sp,
+                        fontSize = 13.5.sp,
                         fontFamily = hindSiliguri,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -719,7 +719,7 @@ private fun FullScreenTeacherDetailScreen(
                 Text(
                     text = "Faculty",
                     color = cs.onPrimaryContainer,
-                    fontSize = 12.sp,
+                    fontSize = 13.5.sp,
                     fontFamily = hindSiliguri,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
@@ -806,7 +806,7 @@ private fun TeacherDetailRow(
             Text(
                 text = field.label,
                 color = cs.onSurfaceVariant,
-                fontSize = 12.sp,
+                fontSize = 13.5.sp,
                 fontFamily = hindSiliguri,
                 fontWeight = FontWeight.Normal,
             )
