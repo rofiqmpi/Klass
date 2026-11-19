@@ -81,9 +81,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         configureAppCheck(this, intent)
 
+        val webClientId = try {
+            getString(R.string.default_web_client_id)
+        } catch (_: Exception) {
+            "1234567890-mock.apps.googleusercontent.com"
+        }
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestIdToken(webClientId)
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 

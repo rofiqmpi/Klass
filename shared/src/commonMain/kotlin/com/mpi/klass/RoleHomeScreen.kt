@@ -432,9 +432,6 @@ fun RoleHomeScreen(
             // Secondary Overlay Layer
             AnimatedContent(
                 targetState = overlayTab,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(260)) togetherWith fadeOut(animationSpec = tween(220))
-                },
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(20f),

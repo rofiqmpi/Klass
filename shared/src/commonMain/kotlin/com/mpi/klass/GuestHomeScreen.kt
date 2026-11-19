@@ -2,10 +2,7 @@ package com.mpi.klass
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -254,9 +251,6 @@ fun GuestHomeScreen(
 
             AnimatedContent(
                 targetState = overlayTab,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(260)) togetherWith fadeOut(animationSpec = tween(220))
-                },
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(20f),

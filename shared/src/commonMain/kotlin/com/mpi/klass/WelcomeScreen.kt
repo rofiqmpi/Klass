@@ -2,7 +2,7 @@ package com.mpi.klass
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -11,7 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -298,40 +298,6 @@ fun WelcomeScreen(
         ) {
             AnimatedContent(
                 targetState = isRegistrationMode,
-                transitionSpec = {
-                    val duration = 550
-                    val easing = FastOutSlowInEasing
-
-                    if (targetState) {
-                        (slideInVertically(
-                            initialOffsetY = { fullHeight -> fullHeight / 4 },
-                            animationSpec = tween(durationMillis = duration, easing = easing),
-                        ) + fadeIn(
-                            animationSpec = tween(durationMillis = duration, easing = easing),
-                        )).togetherWith(
-                            slideOutVertically(
-                                targetOffsetY = { fullHeight -> -fullHeight / 4 },
-                                animationSpec = tween(durationMillis = duration, easing = easing),
-                            ) + fadeOut(
-                                animationSpec = tween(durationMillis = duration, easing = easing),
-                            ),
-                        )
-                    } else {
-                        (slideInVertically(
-                            initialOffsetY = { fullHeight -> -fullHeight / 4 },
-                            animationSpec = tween(durationMillis = duration, easing = easing),
-                        ) + fadeIn(
-                            animationSpec = tween(durationMillis = duration, easing = easing),
-                        )).togetherWith(
-                            slideOutVertically(
-                                targetOffsetY = { fullHeight -> fullHeight / 4 },
-                                animationSpec = tween(durationMillis = duration, easing = easing),
-                            ) + fadeOut(
-                                animationSpec = tween(durationMillis = duration, easing = easing),
-                            ),
-                        )
-                    }
-                },
                 label = "RegistrationModeTransition",
             ) { registrationMode ->
                 if (!registrationMode) {

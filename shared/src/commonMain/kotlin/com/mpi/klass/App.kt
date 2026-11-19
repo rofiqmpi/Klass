@@ -10,7 +10,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -352,9 +352,6 @@ fun App(
             Box(modifier = Modifier.fillMaxSize()) {
                 AnimatedContent(
                     targetState = currentScreen,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(250))
-                    },
                     modifier = Modifier.fillMaxSize(),
                 ) { screen ->
                     when (screen) {

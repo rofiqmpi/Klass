@@ -207,7 +207,6 @@ fun ProfileScreen(
 
     AnimatedContent(
         targetState = isEditingMode,
-        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(180)) },
         label = "ProfileViewEditTransition",
         modifier = Modifier.fillMaxSize(),
     ) { editing ->
