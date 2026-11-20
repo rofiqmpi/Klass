@@ -1,8 +1,8 @@
 package com.mpi.klass
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,14 +21,17 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,17 +40,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mpi.klass.theme.CopyIcon
 import com.mpi.klass.theme.DropletIcon
+import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LocationDotIcon
+import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.PhoneSolidIcon
 import com.mpi.klass.theme.RefreshIcon
+import com.mpi.klass.theme.departmentAccent
 import kotlinx.coroutines.launch
 
 @Composable
@@ -57,13 +68,23 @@ fun BloodFinderScreen(
     topContentPadding: Dp = 72.dp,
     isGuest: Boolean = false,
     onSignInClick: (() -> Unit)? = null,
+    onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    val cs = MaterialTheme.colorScheme
+    val bloodAccent = KlassFeaturePalette.blood(isDark)
+
     var donors by remember { mutableStateOf<List<BloodDonorItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedBloodGroup by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
+    var selectedDonor by remember { mutableStateOf<BloodDonorItem?>(null) }
+
+    LaunchedEffect(selectedDonor != null) {
+        onFullScreenOverlayChange(selectedDonor != null)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onFullScreenOverlayChange(false) }
+    }
 
     fun refreshDonors() {
         scope.launch {
@@ -95,193 +116,152 @@ fun BloodFinderScreen(
         }
     }
 
-    MinimalBackdrop(isDark = isDark) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (topContentPadding > 0.dp) {
-                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-                Spacer(modifier = Modifier.height(topContentPadding))
-            } else {
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalBackdrop(isDark = isDark, focusAccent = bloodAccent.primary) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .widthIn(max = 920.dp)
-                    .padding(horizontal = 16.dp),
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Single Search + Refresh row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    MinimalSearchBar(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        placeholder = "Search donors (${filteredDonors.size})",
-                        accent = cs.error,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        testTag = "blood_search_input",
-                        modifier = Modifier.weight(1f),
-                    )
-
-                    WelcomeMinimal3DIconButton(
-                        icon = RefreshIcon,
-                        contentDescription = "Refresh blood donors",
-                        isDark = isDark,
-                        iconTint = cs.onSurfaceVariant,
-                        isLoading = isLoading,
-                        enabled = !isLoading,
-                        testTag = "blood_refresh_button",
-                        onClick = { refreshDonors() },
-                    )
+                if (topContentPadding > 0.dp) {
+                    Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                    Spacer(modifier = Modifier.height(topContentPadding))
+                } else {
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val groupChoices = remember { listOf("All") + RoutineRules.BLOOD_GROUPS }
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(vertical = 2.dp),
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .widthIn(max = 880.dp),
                 ) {
-                    items(groupChoices) { grp ->
-                        MinimalIconChip(
-                            label = grp,
-                            selected = selectedBloodGroup == grp,
-                            accent = cs.error,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            icon = if (grp == "All") DropletIcon else null,
-                            testTag = "blood_chip_$grp",
-                            onClick = { selectedBloodGroup = grp },
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                when {
-                    isLoading && donors.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
+                            MinimalSearchBar(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
+                                placeholder = "Search donors (${filteredDonors.size})",
+                                accent = bloodAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                testTag = "blood_search_input",
+                                modifier = Modifier.weight(1f),
+                            )
+
+                            WelcomeMinimal3DIconButton(
+                                icon = RefreshIcon,
+                                contentDescription = "Refresh blood donors",
+                                isDark = isDark,
+                                containerColor = bloodAccent.softTint,
+                                iconTint = bloodAccent.primary,
+                                baseColor = bloodAccent.borderTint,
+                                isLoading = isLoading,
+                                enabled = !isLoading,
+                                testTag = "blood_refresh_button",
+                                onClick = { refreshDonors() },
+                            )
+                        }
+
+                        val groupChoices = remember { listOf("All") + RoutineRules.BLOOD_GROUPS }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(groupChoices) { grp ->
+                                MinimalIconChip(
+                                    label = grp,
+                                    selected = selectedBloodGroup == grp,
+                                    accent = bloodAccent.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    icon = if (grp == "All") DropletIcon else null,
+                                    testTag = "blood_chip_$grp",
+                                    onClick = { selectedBloodGroup = grp },
+                                )
+                            }
                         }
                     }
 
-                    filteredDonors.isEmpty() -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = 32.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            MinimalCardSurface(
-                                isDark = isDark,
-                                shape = RoundedCornerShape(24.dp),
-                                modifier = Modifier.widthIn(max = 380.dp),
+                    SocialSectionDividerBand(isDark = isDark, height = 4.dp)
+
+                    when {
+                        isLoading && donors.isEmpty() -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = cs.errorContainer,
-                                        modifier = Modifier.size(56.dp),
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = DropletIcon,
-                                                contentDescription = null,
-                                                tint = cs.onErrorContainer,
-                                                modifier = Modifier.size(24.dp),
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(14.dp))
-                                    Text(
-                                        text = if (isGuest && donors.isEmpty()) {
-                                            "Sign in to view live donors"
-                                        } else {
-                                            "No donors found"
-                                        },
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        fontFamily = hindSiliguri,
-                                        color = cs.onSurface,
-                                        textAlign = TextAlign.Center,
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = if (isGuest && donors.isEmpty()) {
-                                            "Registered students, teachers & admins appear here automatically."
-                                        } else {
-                                            "Try clearing filters or update Blood Group in Profile."
-                                        },
-                                        fontSize = 13.sp,
-                                        fontFamily = hindSiliguri,
-                                        color = cs.onSurfaceVariant,
-                                        textAlign = TextAlign.Center,
-                                        lineHeight = 18.sp,
-                                    )
-                                    if (isGuest && onSignInClick != null && donors.isEmpty()) {
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        WelcomeMinimal3DButton(
-                                            text = "Sign In Now",
-                                            hindSiliguri = hindSiliguri,
+                                CircularProgressIndicator(color = bloodAccent.primary, strokeWidth = 2.5.dp)
+                            }
+                        }
+
+                        filteredDonors.isEmpty() -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                KlassEmptyState(
+                                    icon = DropletIcon,
+                                    title = if (isGuest && donors.isEmpty()) {
+                                        "Sign in to view donors"
+                                    } else {
+                                        "No donors found"
+                                    },
+                                    subtitle = if (isGuest && donors.isEmpty()) {
+                                        "Campus donor contacts are protected for verified MPI members."
+                                    } else {
+                                        "Try another blood group or clear your search filter."
+                                    },
+                                    accent = bloodAccent.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    actionLabel = if (isGuest && onSignInClick != null && donors.isEmpty()) "Sign In Now" else null,
+                                    actionTestTag = "blood_guest_signin_button",
+                                    onActionClick = onSignInClick,
+                                )
+                            }
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 28.dp),
+                            ) {
+                                item {
+                                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                                        MinimalStatBadge(
+                                            icon = DropletIcon,
+                                            text = "${filteredDonors.size} Verified Donors • $selectedBloodGroup",
+                                            accent = bloodAccent.primary,
                                             isDark = isDark,
-                                            testTag = "blood_guest_signin_button",
-                                            onClick = onSignInClick,
+                                            hindSiliguri = hindSiliguri,
                                         )
                                     }
                                 }
-                            }
-                        }
-                    }
 
-                    else -> {
-                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                            val cols = if (maxWidth >= 600.dp) 2 else 1
-                            val rows = remember(filteredDonors, cols) {
-                                filteredDonors.withIndex().chunked(cols)
-                            }
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                contentPadding = PaddingValues(bottom = 24.dp),
-                            ) {
-                                items(rows.size) { rowIdx ->
-                                    val rowItems = rows[rowIdx]
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        rowItems.forEach { indexed ->
-                                            Box(modifier = Modifier.weight(1f)) {
-                                                AnimatedStaggeredItem(index = indexed.index) {
-                                                    DonorCard(
-                                                        donor = indexed.value,
-                                                        index = indexed.index,
-                                                        isDark = isDark,
-                                                        hindSiliguri = hindSiliguri,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        if (cols == 2 && rowItems.size == 1) {
-                                            Spacer(modifier = Modifier.weight(1f))
-                                        }
+                                itemsIndexed(
+                                    items = filteredDonors,
+                                    key = { idx, d -> "${d.id}_$idx" },
+                                ) { index, donor ->
+                                    SocialSurfaceBlock(isDark = isDark) {
+                                        DonorMinimalRow(
+                                            donor = donor,
+                                            index = index,
+                                            isDark = isDark,
+                                            hindSiliguri = hindSiliguri,
+                                            showDivider = index < filteredDonors.lastIndex,
+                                            onClick = { selectedDonor = donor },
+                                        )
                                     }
                                 }
                             }
@@ -290,108 +270,277 @@ fun BloodFinderScreen(
                 }
             }
         }
+
+        KlassSubScreenHost(visible = selectedDonor != null, zIndex = 80f) {
+            selectedDonor?.let { donor ->
+                DonorDetailSubScreen(
+                    donor = donor,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onDismiss = { selectedDonor = null },
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun DonorCard(
+private fun DonorMinimalRow(
     donor: BloodDonorItem,
     index: Int,
     isDark: Boolean,
     hindSiliguri: FontFamily,
+    showDivider: Boolean,
+    onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    MinimalCardSurface(
-        isDark = isDark,
-        shape = RoundedCornerShape(14.dp),
-        testTag = "donor_card_$index",
+    val bloodAccent = KlassFeaturePalette.blood(isDark)
+    val callAccent = KlassFeaturePalette.success(isDark)
+
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("donor_card_$index"),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = cs.errorContainer,
-                modifier = Modifier.size(42.dp),
+        Column(modifier = Modifier.fillMaxWidth()) {
+            val deptShort = RoutineRules.normalizeDepartmentShort(donor.department)
+            val deptAccent = if (deptShort.isNotBlank()) departmentAccent(deptShort, isDark) else bloodAccent
+            val subtitleText = listOfNotNull(
+                deptShort.takeIf { it.isNotBlank() },
+                donor.roleLabel.takeIf { it.isNotBlank() },
+            ).joinToString(" • ")
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = donor.bloodGroup,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = hindSiliguri,
-                        color = cs.onErrorContainer,
-                    )
+                Surface(
+                    shape = CircleShape,
+                    color = bloodAccent.softTint,
+                    border = BorderStroke(1.dp, bloodAccent.borderTint),
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = donor.bloodGroup,
+                            fontSize = 15.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = bloodAccent.primary,
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = donor.name.ifBlank { "MPI Member" },
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = hindSiliguri,
-                    color = cs.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val subtitle = listOfNotNull(
-                    RoutineRules.normalizeDepartmentShort(donor.department).takeIf { it.isNotBlank() },
-                    donor.roleLabel.takeIf { it.isNotBlank() },
-                    donor.phone.takeIf { it.isNotBlank() },
-                ).joinToString(" • ")
-                if (subtitle.isNotBlank()) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
                     Text(
-                        text = subtitle,
-                        fontSize = 13.5.sp,
+                        text = donor.name.ifBlank { "MPI Member" },
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = hindSiliguri,
-                        color = cs.onSurfaceVariant,
+                        color = cs.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                }
-                if (donor.address.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = LocationDotIcon,
-                            contentDescription = null,
-                            tint = cs.onSurfaceVariant,
-                            modifier = Modifier.size(13.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                    if (subtitleText.isNotBlank()) {
                         Text(
-                            text = donor.address,
-                            fontSize = 13.sp,
+                            text = subtitleText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
-                            color = cs.onSurfaceVariant,
+                            color = deptAccent.primary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                WelcomeMinimal3DIconButton(
+                    icon = PhoneSolidIcon,
+                    contentDescription = "Call ${donor.name}",
+                    isDark = isDark,
+                    containerColor = callAccent.softTint,
+                    iconTint = callAccent.primary,
+                    baseColor = callAccent.borderTint,
+                    visualSize = 42.dp,
+                    iconSize = 18.dp,
+                    testTag = "call_donor_$index",
+                    onClick = { openPhoneDialer(donor.phone) },
+                )
             }
 
-            Spacer(modifier = Modifier.width(4.dp))
+            if (showDivider) {
+                SocialInsetDivider(startIndent = 78.dp)
+            }
+        }
+    }
+}
 
-            WelcomeMinimal3DIconButton(
-                icon = PhoneSolidIcon,
-                contentDescription = "Call ${donor.name}",
-                isDark = isDark,
-                containerColor = cs.primaryContainer,
-                iconTint = cs.primary,
-                visualSize = 38.dp,
-                iconSize = 16.dp,
-                testTag = "call_donor_$index",
-                onClick = { openPhoneDialer(donor.phone) },
-            )
+@Composable
+private fun DonorDetailSubScreen(
+    donor: BloodDonorItem,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onDismiss: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
+    val bloodAccent = KlassFeaturePalette.blood(isDark)
+    val callAccent = KlassFeaturePalette.success(isDark)
+    val deptAccent = if (donor.department.isNotBlank()) departmentAccent(donor.department, isDark) else bloodAccent
+
+    MinimalFullScreenSheet(
+        title = donor.name.ifBlank { "Donor Details" },
+        subtitle = "Blood Group ${donor.bloodGroup}",
+        levelLabel = "Blood Finder • Level 1",
+        icon = DropletIcon,
+        accent = bloodAccent.primary,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onDismiss,
+        closeTestTag = "donor_detail_back_button",
+        bottomBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (donor.phone.isNotBlank()) {
+                    GoogleOutlinedButton(
+                        text = "Copy Phone",
+                        icon = CopyIcon,
+                        hindSiliguri = hindSiliguri,
+                        height = 48.dp,
+                        contentColor = bloodAccent.primary,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            clipboard.setText(AnnotatedString(donor.phone))
+                            showToast("Phone number copied!")
+                        },
+                    )
+                }
+                WelcomeMinimal3DButton(
+                    text = "Call Donor",
+                    icon = PhoneSolidIcon,
+                    hindSiliguri = hindSiliguri,
+                    isDark = isDark,
+                    customPrimaryColor = callAccent.primary,
+                    customBaseColor = callAccent.deep,
+                    height = 48.dp,
+                    cornerRadius = 16.dp,
+                    testTag = "donor_detail_call_button",
+                    modifier = Modifier.weight(if (donor.phone.isNotBlank()) 1.25f else 1f),
+                    onClick = { openPhoneDialer(donor.phone) },
+                )
+            }
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                val badges = buildList {
+                    add(donor.bloodGroup to bloodAccent.primary)
+                    if (donor.roleLabel.isNotBlank()) {
+                        add(donor.roleLabel to KlassFeaturePalette.profile(isDark).primary)
+                    }
+                    if (donor.department.isNotBlank()) {
+                        add(RoutineRules.normalizeDepartmentShort(donor.department) to deptAccent.primary)
+                    }
+                }
+                KlassHeroBanner(
+                    title = donor.name.ifBlank { "MPI Member" },
+                    subtitle = "Verified MPI Blood Donor",
+                    icon = DropletIcon,
+                    accent = bloodAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    badges = badges,
+                )
+            }
+
+            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                KlassDetailFieldRow(
+                    label = "Blood Group",
+                    value = donor.bloodGroup,
+                    icon = DropletIcon,
+                    accent = bloodAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                )
+                if (donor.roleLabel.isNotBlank()) {
+                    SocialInsetDivider(startIndent = 68.dp)
+                    KlassDetailFieldRow(
+                        label = "Role",
+                        value = donor.roleLabel,
+                        icon = PersonIcon,
+                        accent = KlassFeaturePalette.profile(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                }
+                if (donor.department.isNotBlank()) {
+                    SocialInsetDivider(startIndent = 68.dp)
+                    KlassDetailFieldRow(
+                        label = "Department",
+                        value = donor.department,
+                        icon = GraduationCapIcon,
+                        accent = deptAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                }
+                if (donor.phone.isNotBlank()) {
+                    SocialInsetDivider(startIndent = 68.dp)
+                    KlassDetailFieldRow(
+                        label = "Phone (Tap to Copy)",
+                        value = donor.phone,
+                        icon = PhoneSolidIcon,
+                        accent = callAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        onClick = {
+                            clipboard.setText(AnnotatedString(donor.phone))
+                            showToast("Phone number copied!")
+                        },
+                        trailingContent = {
+                            Icon(
+                                imageVector = CopyIcon,
+                                contentDescription = "Copy phone",
+                                tint = callAccent.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                    )
+                }
+                if (donor.address.isNotBlank()) {
+                    SocialInsetDivider(startIndent = 68.dp)
+                    KlassDetailFieldRow(
+                        label = "Present Address (Tap to Copy)",
+                        value = donor.address,
+                        icon = LocationDotIcon,
+                        accent = KlassFeaturePalette.books(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        onClick = {
+                            clipboard.setText(AnnotatedString(donor.address))
+                            showToast("Address copied!")
+                        },
+                    )
+                }
+            }
         }
     }
 }

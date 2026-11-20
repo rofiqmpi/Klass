@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 @Composable
 fun GuestHomeScreen(
@@ -55,7 +57,14 @@ fun GuestHomeScreen(
     var currentPhotoUrl by remember { mutableStateOf(initialSession?.photoUrl) }
 
     var publishedPlan by remember { mutableStateOf<RoutinePlan?>(null) }
+    var tempRoutineFilter by remember { mutableStateOf<RoutineQuickFilter?>(null) }
+    var isRoutineFilterExpanded by remember { mutableStateOf(false) }
+    var isDownloadingRoutine by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     var isClassroomSubOverlayOpen by remember { mutableStateOf(false) }
+    var isNotificationsSubOverlayOpen by remember { mutableStateOf(false) }
+    var isBloodFinderSubOverlayOpen by remember { mutableStateOf(false) }
+    var isProfileSubOverlayOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         publishedPlan = fetchRoutinePlanFromFirestore("master_6m_published")
@@ -66,8 +75,21 @@ fun GuestHomeScreen(
     val selectedTab = tabBackStack.lastOrNull() ?: "home"
 
     fun navigateTo(tab: String) {
-        if (selectedTab != tab) {
-            tabBackStack.add(tab)
+        when (tab) {
+            "home" -> {
+                tabBackStack.clear()
+                tabBackStack.add("home")
+            }
+            "menu" -> {
+                tabBackStack.clear()
+                tabBackStack.add("home")
+                tabBackStack.add("menu")
+            }
+            else -> {
+                if (selectedTab != tab) {
+                    tabBackStack.add(tab)
+                }
+            }
         }
     }
 
@@ -79,7 +101,7 @@ fun GuestHomeScreen(
         }
     }
 
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
+    val cardBg = if (isDark) Color(0xFF1E293B).copy(alpha = 0.86f) else Color.White.copy(alpha = 0.86f)
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val borderCol = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
 
@@ -116,10 +138,13 @@ fun GuestHomeScreen(
                 val pageTab = if (page == 0) "home" else "menu"
                 val current = tabBackStack.lastOrNull() ?: "home"
                 if ((current == "home" || current == "menu") && current != pageTab) {
-                    if (pageTab == "home" && tabBackStack.size >= 2 && tabBackStack[tabBackStack.lastIndex - 1] == "home") {
-                        tabBackStack.removeAt(tabBackStack.lastIndex)
+                    if (pageTab == "home") {
+                        tabBackStack.clear()
+                        tabBackStack.add("home")
                     } else {
-                        tabBackStack.add(pageTab)
+                        tabBackStack.clear()
+                        tabBackStack.add("home")
+                        tabBackStack.add("menu")
                     }
                 }
             }
@@ -139,7 +164,7 @@ fun GuestHomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .rainbowScreenBackground(isDark),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
                 HorizontalPager(
@@ -152,15 +177,23 @@ fun GuestHomeScreen(
                     when (page) {
                         0 -> {
                             val entries = publishedPlan?.entries ?: emptyList()
-                            val filtered = remember(entries) {
+                            val displayedEntries = remember(entries, tempRoutineFilter) {
+                                val tf = tempRoutineFilter
+                                val dept = RoutineRules.normalizeDepartmentShort(tf?.department ?: "CST")
+                                val shift = RoutineRules.normalizeShift(tf?.shift ?: RoutineRules.SHIFT_1)
+                                val sem = RoutineRules.canonicalSemesterKey(tf?.semesterKey ?: RoutineRules.ALL_SEMESTER_KEYS.first())
+                                val grp = RoutineRules.normalizeGroup(dept, tf?.group ?: "Group A")
                                 entries.filter {
-                                    it.department == "CST" &&
-                                        RoutineRules.normalizeShift(it.shift) == RoutineRules.SHIFT_1 &&
-                                        RoutineRules.canonicalSemesterKey(it.semester) == RoutineRules.ALL_SEMESTER_KEYS.first() &&
-                                        RoutineRules.normalizeGroup("CST", it.group) == "Group A"
+                                    it.department == dept &&
+                                        RoutineRules.normalizeShift(it.shift) == shift &&
+                                        RoutineRules.canonicalSemesterKey(it.semester) == sem &&
+                                        RoutineRules.normalizeGroup(dept, it.group) == grp
                                 }
                             }
                             val cfg = publishedPlan?.config ?: RoutineConfig()
+                            val activeShiftForTime = tempRoutineFilter?.let { RoutineRules.normalizeShift(it.shift) }
+                                ?: RoutineRules.SHIFT_1
+                            val headerBadgeText = tempRoutineFilter?.toBadgeText() ?: ""
 
                             Column(modifier = Modifier.fillMaxSize()) {
                                 HomeRoutineHeader(
@@ -171,8 +204,36 @@ fun GuestHomeScreen(
                                     onProfileClick = { navigateTo("profile") },
                                     onAiClick = { navigateTo("ai") },
                                     onNotificationClick = { navigateTo("notification") },
-                                    titleText = "1/1/CST-A",
+                                    titleText = headerBadgeText,
                                     subtitleText = "",
+                                    isExpanded = isRoutineFilterExpanded,
+                                    onToggleExpand = { isRoutineFilterExpanded = !isRoutineFilterExpanded },
+                                    isDownloading = isDownloadingRoutine,
+                                    onDownloadClick = {
+                                        if (displayedEntries.isEmpty()) {
+                                            showToast("No classes to download")
+                                        } else if (!isDownloadingRoutine) {
+                                            isDownloadingRoutine = true
+                                            val label = headerBadgeText.ifBlank { "Class_Routine" }
+                                            coroutineScope.launch {
+                                                try {
+                                                    val res = downloadRoutinePdf(
+                                                        label = label,
+                                                        shift = activeShiftForTime,
+                                                        config = cfg,
+                                                        entries = displayedEntries,
+                                                    )
+                                                    res.onSuccess { msg -> showToast(msg) }
+                                                        .onFailure { err -> showToast(err.message ?: "Could not save routine PDF") }
+                                                } finally {
+                                                    isDownloadingRoutine = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    activeTempFilter = tempRoutineFilter,
+                                    defaultFilter = RoutineQuickFilter(),
+                                    onTempFilterChange = { updated -> tempRoutineFilter = updated },
                                 )
 
                                 Box(
@@ -185,9 +246,9 @@ fun GuestHomeScreen(
                                     ClassRoutineTable(
                                         hindSiliguri = hindSiliguri,
                                         isDark = isDark,
-                                        entries = filtered,
+                                        entries = displayedEntries,
                                         periodsPerDay = cfg.periodsPerDay,
-                                        shift = RoutineRules.SHIFT_1,
+                                        shift = activeShiftForTime,
                                         config = cfg,
                                         modifier = Modifier.fillMaxSize(),
                                     )
@@ -199,7 +260,7 @@ fun GuestHomeScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.surface),
+                                    .rainbowScreenBackground(isDark),
                             ) {
                                 GoogleTopAppBar(
                                     title = "Menu",
@@ -229,6 +290,7 @@ fun GuestHomeScreen(
                                         onNoticeClick = { navigateTo("notification") },
                                         onClassroomClick = { navigateTo("classrooms") },
                                         onBloodFinderClick = { navigateTo("blood_finder") },
+                                        onAppearanceClick = { navigateTo("appearance") },
                                         topContentPadding = 0.dp,
                                     )
                                 }
@@ -261,20 +323,22 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface),
+                                .rainbowScreenBackground(isDark),
                         ) {
-                            GoogleTopAppBar(
-                                title = "Profile",
-                                hindSiliguri = hindSiliguri,
-                                onNavigationClick = { goBack() },
-                                actions = {
-                                    HeaderAiNotificationActions(
-                                        isDark = isDark,
-                                        onAiClick = { navigateTo("ai") },
-                                        onNotificationClick = { navigateTo("notification") },
-                                    )
-                                },
-                            )
+                            AnimatedVisibility(visible = !isProfileSubOverlayOpen) {
+                                GoogleTopAppBar(
+                                    title = "Profile",
+                                    hindSiliguri = hindSiliguri,
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 ProfileScreen(
                                     userName = currentUserName,
@@ -287,6 +351,7 @@ fun GuestHomeScreen(
                                     email = guestSeed,
                                     photoUrl = currentPhotoUrl,
                                     topContentPadding = 0.dp,
+                                    onFullScreenOverlayChange = { isProfileSubOverlayOpen = it },
                                     onUpdateProfile = { newName, newPhotoUrl ->
                                         currentUserName = newName
                                         currentPhotoUrl = newPhotoUrl
@@ -307,21 +372,23 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface),
+                                .rainbowScreenBackground(isDark),
                         ) {
-                            GoogleTopAppBar(
-                                title = "Notifications",
-                                hindSiliguri = hindSiliguri,
-                                onNavigationClick = { goBack() },
-                                actions = {
-                                    HeaderAiNotificationActions(
-                                        isDark = isDark,
-                                        showAi = true,
-                                        showNotification = false,
-                                        onAiClick = { navigateTo("ai") },
-                                    )
-                                },
-                            )
+                            AnimatedVisibility(visible = !isNotificationsSubOverlayOpen) {
+                                GoogleTopAppBar(
+                                    title = "Notifications",
+                                    hindSiliguri = hindSiliguri,
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            showAi = true,
+                                            showNotification = false,
+                                            onAiClick = { navigateTo("ai") },
+                                        )
+                                    },
+                                )
+                            }
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 NotificationScreen(
                                     isDark = isDark,
@@ -329,6 +396,10 @@ fun GuestHomeScreen(
                                     topContentPadding = 0.dp,
                                     role = null,
                                     publishedPlan = publishedPlan,
+                                    onNavigateToRoute = { dest ->
+                                        if (dest == "sign_in") onSwitchToLogin() else navigateTo(dest)
+                                    },
+                                    onFullScreenOverlayChange = { isNotificationsSubOverlayOpen = it },
                                 )
                             }
                         }
@@ -337,7 +408,7 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface),
+                                .rainbowScreenBackground(isDark),
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -368,20 +439,22 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface),
+                                .rainbowScreenBackground(isDark),
                         ) {
-                            GoogleTopAppBar(
-                                title = "Blood Finder",
-                                hindSiliguri = hindSiliguri,
-                                onNavigationClick = { goBack() },
-                                actions = {
-                                    HeaderAiNotificationActions(
-                                        isDark = isDark,
-                                        onAiClick = { navigateTo("ai") },
-                                        onNotificationClick = { navigateTo("notification") },
-                                    )
-                                },
-                            )
+                            AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
+                                GoogleTopAppBar(
+                                    title = "Blood Finder",
+                                    hindSiliguri = hindSiliguri,
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 BloodFinderScreen(
                                     isDark = isDark,
@@ -389,15 +462,25 @@ fun GuestHomeScreen(
                                     topContentPadding = 0.dp,
                                     isGuest = true,
                                     onSignInClick = onSwitchToLogin,
+                                    onFullScreenOverlayChange = { isBloodFinderSubOverlayOpen = it },
                                 )
                             }
                         }
+                    }
+                    "appearance" -> {
+                        AppearanceSubScreen(
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            currentThemeMode = currentThemeMode,
+                            onThemeModeChange = onThemeModeChange,
+                            onBack = { goBack() },
+                        )
                     }
                     "ai" -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                                .rainbowScreenBackground(isDark),
                         ) {
                             AiAssistantScreen(
                                 isDark = isDark,

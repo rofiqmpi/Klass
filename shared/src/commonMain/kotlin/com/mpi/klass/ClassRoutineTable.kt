@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -72,15 +73,18 @@ fun ClassRoutineTable(
     onSlotClick: ((RoutineEntry) -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
-    val dayHeaderBg = cs.primaryContainer
-    val dayHeaderFg = cs.onPrimaryContainer
-    val headerBg = cs.surfaceContainerHigh
+    val routineAccent = com.mpi.klass.theme.KlassFeaturePalette.routine(isDark)
+    val labAccent = com.mpi.klass.theme.KlassFeaturePalette.teaching(isDark)
+    val dayHeaderBg = routineAccent.softTint.copy(alpha = if (isDark) 0.34f else 0.16f)
+    val dayHeaderFg = routineAccent.primary
+    val headerBg = if (isDark) cs.surfaceContainerHigh.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.88f)
     val headerTextColor = cs.onSurfaceVariant
-    val theoryCellBg = cs.surfaceContainerLow
-    val practicalCellBg = cs.tertiaryContainer.copy(alpha = if (isDark) 0.48f else 0.55f)
-    val emptyCellBg = cs.surfaceContainer.copy(alpha = 0.6f)
+    val theoryCellBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.86f)
+    val practicalCellBg = labAccent.softTint.copy(alpha = if (isDark) 0.28f else 0.15f)
+    val practicalBorderCol = labAccent.borderTint
+    val emptyCellBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.54f)
     val gapThickness = 3.dp
-    val cellShape = RoundedCornerShape(6.dp)
+    val cellShape = RoundedCornerShape(7.dp)
 
     val colDayWeight = 0.65f
     val colTimeWeight = 1.50f
@@ -129,9 +133,12 @@ fun ClassRoutineTable(
             RoutineHeaderCell("Room", colRoomWeight, headerBg, headerTextColor, hindSiliguri, cellShape)
         }
 
-        days.forEach { dayConfig ->
+        days.forEachIndexed { dayIndex, dayConfig ->
             val dayWeight = dayConfig.rowCount.toFloat()
             val dayEntries = entriesByDay[dayConfig.name.lowercase()] ?: emptyList()
+            val dayAccent = com.mpi.klass.theme.dayPaletteAt(dayIndex, isDark)
+            val dayBadgeBg = dayAccent.softTint.copy(alpha = if (isDark) 0.32f else 0.16f)
+            val dayBadgeFg = dayAccent.primary
 
             Row(
                 modifier = Modifier
@@ -140,13 +147,14 @@ fun ClassRoutineTable(
                 horizontalArrangement = Arrangement.spacedBy(gapThickness),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Day column card
+                // Day column card with distinct sun-thu rainbow semantic color
                 Surface(
                     modifier = Modifier
                         .weight(colDayWeight)
                         .fillMaxHeight(),
                     shape = cellShape,
-                    color = dayHeaderBg,
+                    color = dayBadgeBg,
+                    border = BorderStroke(0.75.dp, dayAccent.borderTint),
                     shadowElevation = 0.dp,
                 ) {
                     Box(
@@ -155,11 +163,11 @@ fun ClassRoutineTable(
                     ) {
                         Text(
                             text = dayConfig.name.uppercase(),
-                            color = dayHeaderFg,
+                            color = dayBadgeFg,
                             fontSize = 10.sp,
-                            letterSpacing = 0.5.sp,
+                            letterSpacing = 0.6.sp,
                             fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             softWrap = false,
                             textAlign = TextAlign.Center,
@@ -204,10 +212,10 @@ fun ClassRoutineTable(
                             isPractical -> practicalCellBg
                             else -> theoryCellBg
                         }
-                        val cellBorder = if (entry != null && !isPractical) {
-                            BorderStroke(0.5.dp, cs.outlineVariant.copy(alpha = 0.6f))
-                        } else {
-                            null
+                        val cellBorder = when {
+                            entry == null -> null
+                            isPractical -> BorderStroke(0.75.dp, practicalBorderCol)
+                            else -> BorderStroke(0.5.dp, cs.outlineVariant.copy(alpha = 0.48f))
                         }
 
                         Row(
@@ -239,8 +247,8 @@ fun ClassRoutineTable(
                                 weight = colSubjectWeight,
                                 bg = rowBg,
                                 border = cellBorder,
-                                textColor = if (isPractical) cs.onTertiaryContainer else cs.onSurface,
-                                fontWeight = if (isPractical) FontWeight.SemiBold else FontWeight.Medium,
+                                textColor = if (isPractical) labAccent.primary else cs.onSurface,
+                                fontWeight = if (isPractical) FontWeight.Bold else FontWeight.Medium,
                                 hindSiliguri = hindSiliguri,
                                 shape = cellShape,
                                 singleLineClip = false,
@@ -260,8 +268,8 @@ fun ClassRoutineTable(
                                 weight = colRoomWeight,
                                 bg = rowBg,
                                 border = cellBorder,
-                                textColor = if (entry != null) cs.primary else cs.onSurfaceVariant,
-                                fontWeight = FontWeight.SemiBold,
+                                textColor = if (entry != null) dayAccent.primary else cs.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold,
                                 hindSiliguri = hindSiliguri,
                                 shape = cellShape,
                                 singleLineClip = true,

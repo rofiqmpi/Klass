@@ -131,16 +131,6 @@ data class RoutineEditRequest(
     val resolvedAt: Long = 0L,
 )
 
-data class AppNotificationItem(
-    val id: String = "",
-    val title: String = "",
-    val body: String = "",
-    val category: String = "GENERAL", // CLASS_ALERT, ROUTINE, REQUEST, GENERAL
-    val targetRole: String = "ALL",
-    val targetEmail: String = "",
-    val createdAt: Long = 0L,
-)
-
 data class BloodDonorItem(
     val id: String = "",
     val name: String = "",
@@ -338,8 +328,5 @@ expect suspend fun resolveRoutineEditRequestInFirestore(
     newStatus: EditRequestStatus,
     adminNote: String,
 ): Result<Unit>
-
-expect suspend fun fetchNotificationsFromFirestore(): List<AppNotificationItem>
-expect suspend fun publishNotificationInFirestore(item: AppNotificationItem): Result<Unit>
 
 expect suspend fun fetchBloodDonorsFromFirestore(): List<BloodDonorItem>

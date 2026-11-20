@@ -451,8 +451,8 @@ object AppStrings {
         "বুধবার" to "Wednesday",
         "বৃহস্পতিবার" to "Thursday",
 
-        // AI Assistant
-        "স্বাগতম! আমি আপনার Klass Gemini AI স্টাডি সহকারী। ক্লাস নোটের সারাংশ, গণিত-বিজ্ঞান সমাধান, কুইজ প্রস্তুতি বা যেকোনো পড়াশোনার বিষয়ে আমাকে প্রশ্ন করতে পারেন।" to "Welcome! I am your Klass Gemini AI study assistant. Ask me for lecture summaries, math or science solutions, quiz prep, or any study help.",
+        // AI Assistant (Zed)
+        "স্বাগতম! আমি আপনার Klass Gemini AI স্টাডি সহকারী। ক্লাস নোটের সারাংশ, গণিত-বিজ্ঞান সমাধান, কুইজ প্রস্তুতি বা যেকোনো পড়াশোনার বিষয়ে আমাকে প্রশ্ন করতে পারেন।" to "Welcome! I am Zed, your custom MPI Klass AI assistant. Ask me about books, teachers, classrooms, routine, or mpi.politech.gov.bd!",
         "ক্লাস নোটের সারাংশ তৈরি করুন" to "Summarize Class Notes",
         "দয়া করে আমার পড়া বিষয়ের একটি পরিষ্কার ও পয়েন্ট ভিত্তিক সারাংশ তৈরি করুন:" to "Please create a clear bullet-point summary of my study topic:",
         "কঠিন বিষয় সহজে ব্যাখ্যা" to "Explain Hard Topic",
@@ -464,13 +464,13 @@ object AppStrings {
         "AI সংযোগে ত্রুটি হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।" to "AI connection failed. Please try again.",
         "AI প্রতিক্রিয়া সময়সীমা অতিক্রান্ত হয়েছে (Timeout). অনুগ্রহ করে আবার চেষ্টা করুন।" to "AI response timed out. Please try again.",
         "ফিরে যান" to "Back",
-        "Gemini AI সহকারী" to "Gemini AI Assistant",
-        "নতুন চ্যাট শুরু হয়েছে। আপনি কী জানতে চান?" to "New chat started. What would you like to learn?",
+        "Gemini AI সহকারী" to "Zed AI Assistant",
+        "নতুন চ্যাট শুরু হয়েছে। আপনি কী জানতে চান?" to "New chat started. How can Zed help you?",
         "নতুন চ্যাট" to "New Chat",
-        "Gemini চিন্তা করছে..." to "Gemini is thinking...",
+        "Gemini চিন্তা করছে..." to "Zed is thinking...",
         "আবার চেষ্টা করুন" to "Retry",
         "দ্রুত জিজ্ঞাসা করুন:" to "Quick Prompts:",
-        "AI-কে যেকোনো প্রশ্ন করুন..." to "Ask AI anything...",
+        "AI-কে যেকোনো প্রশ্ন করুন..." to "Ask Zed anything...",
         "পাঠান" to "Send",
 
         // Menu Screen

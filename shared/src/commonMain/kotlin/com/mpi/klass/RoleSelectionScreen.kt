@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mpi.klass.theme.KlassFeaturePalette
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.admin
 import klass.shared.generated.resources.student
@@ -38,6 +39,9 @@ fun RoleSelectionScreen(
     onAdminClick: () -> Unit,
 ) {
     val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+    val studentAccent = KlassFeaturePalette.routine(isDark).primary
+    val teacherAccent = KlassFeaturePalette.teaching(isDark).primary
+    val adminAccent = KlassFeaturePalette.admin(isDark).primary
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -56,6 +60,8 @@ fun RoleSelectionScreen(
                 painter = Res.drawable.student,
                 isDark = isDark,
                 fontFamily = hindSiliguri,
+                accentColor = studentAccent,
+                testTag = "role_student_button",
                 onClick = onStudentClick,
             )
 
@@ -65,6 +71,8 @@ fun RoleSelectionScreen(
                 painter = Res.drawable.teacher,
                 isDark = isDark,
                 fontFamily = hindSiliguri,
+                accentColor = teacherAccent,
+                testTag = "role_teacher_button",
                 onClick = onTeacherClick,
             )
 
@@ -74,6 +82,8 @@ fun RoleSelectionScreen(
                 painter = Res.drawable.admin,
                 isDark = isDark,
                 fontFamily = hindSiliguri,
+                accentColor = adminAccent,
+                testTag = "role_admin_button",
                 onClick = onAdminClick,
             )
 

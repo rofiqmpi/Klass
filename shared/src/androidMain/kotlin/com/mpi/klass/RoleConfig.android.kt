@@ -34,6 +34,7 @@ private fun getFirestoreInstances(): List<Pair<FirebaseFirestore, String>> {
     if (customDbId != null) {
         try {
             list.add(FirebaseFirestore.getInstance(customDbId) to customDbId)
+            return list
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get custom db instance ($customDbId): ${e.message}")
         }
@@ -844,23 +845,25 @@ actual suspend fun deleteUserFromFirestore(email: String, role: String): Result<
 }
 
 actual suspend fun fetchSignInControlFromFirestore(): SignInControlConfig {
-    val instances = getFirestoreInstances()
-    for ((db, _) in instances) {
-        try {
-            val doc = db.collection("config").document("signin_control").get().awaitTask()
-            if (doc.exists()) {
-                val data = doc.data
-                if (data != null) {
-                    return SignInControlConfig(
-                        adminSignInEnabled = data["adminSignInEnabled"] as? Boolean ?: true,
-                        teacherSignInEnabled = data["teacherSignInEnabled"] as? Boolean ?: true,
-                        studentSignInEnabled = data["studentSignInEnabled"] as? Boolean ?: true,
-                    )
+    return withTimeoutOrNull(4.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                val doc = db.collection("config").document("signin_control").get().awaitTask()
+                if (doc.exists()) {
+                    val data = doc.data
+                    if (data != null) {
+                        return@withTimeoutOrNull SignInControlConfig(
+                            adminSignInEnabled = data["adminSignInEnabled"] as? Boolean ?: true,
+                            teacherSignInEnabled = data["teacherSignInEnabled"] as? Boolean ?: true,
+                            studentSignInEnabled = data["studentSignInEnabled"] as? Boolean ?: true,
+                        )
+                    }
                 }
-            }
-        } catch (_: Exception) {}
-    }
-    return SignInControlConfig()
+            } catch (_: Exception) {}
+        }
+        SignInControlConfig()
+    } ?: SignInControlConfig()
 }
 
 actual suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Result<Unit> {

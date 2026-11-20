@@ -1498,3 +1498,113 @@ val MoreVertIcon: ImageVector
         }
     }.build()
 
+val ChevronRightIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "ChevronRight",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.4f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(9f, 6f)
+            lineTo(15f, 12f)
+            lineTo(9f, 18f)
+        }
+    }.build()
+
+val CopyIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Copy",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(9f, 9f)
+            horizontalLineTo(19f)
+            curveTo(20.1f, 9f, 21f, 9.9f, 21f, 11f)
+            verticalLineTo(19f)
+            curveTo(21f, 20.1f, 20.1f, 21f, 19f, 21f)
+            horizontalLineTo(11f)
+            curveTo(9.9f, 21f, 9f, 20.1f, 9f, 19f)
+            verticalLineTo(9f)
+            close()
+            moveTo(5f, 15f)
+            horizontalLineTo(4f)
+            curveTo(3.45f, 15f, 3f, 14.55f, 3f, 14f)
+            verticalLineTo(5f)
+            curveTo(3f, 3.9f, 3.9f, 3f, 5f, 3f)
+            horizontalLineTo(14f)
+            curveTo(14.55f, 3f, 15f, 3.45f, 15f, 4f)
+            verticalLineTo(5f)
+        }
+    }.build()
+
+val InfoCircleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "InfoCircle",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 21f)
+            curveTo(16.97f, 21f, 21f, 16.97f, 21f, 12f)
+            curveTo(21f, 7.03f, 16.97f, 3f, 12f, 3f)
+            curveTo(7.03f, 3f, 3f, 7.03f, 3f, 12f)
+            curveTo(3f, 16.97f, 7.03f, 21f, 12f, 21f)
+            close()
+            moveTo(12f, 16f)
+            verticalLineTo(11f)
+            moveTo(12f, 8f)
+            horizontalLineTo(12.01f)
+        }
+    }.build()
+
+val DownloadIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Download",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2.1f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 3f)
+            verticalLineTo(15f)
+            moveTo(7f, 10f)
+            lineTo(12f, 15f)
+            lineTo(17f, 10f)
+            moveTo(4f, 17f)
+            verticalLineTo(19f)
+            curveTo(4f, 20.1f, 4.9f, 21f, 6f, 21f)
+            horizontalLineTo(18f)
+            curveTo(19.1f, 21f, 20f, 20.1f, 20f, 19f)
+            verticalLineTo(17f)
+        }
+    }.build()
+
+

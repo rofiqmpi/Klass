@@ -1,6 +1,7 @@
 package com.mpi.klass
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -14,13 +15,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -52,8 +55,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -68,7 +69,7 @@ import coil3.compose.AsyncImage
 import com.mpi.klass.theme.CalendarDaysIcon
 import com.mpi.klass.theme.CameraIcon
 import com.mpi.klass.theme.CheckIcon
-import com.mpi.klass.theme.ChevronDownIcon
+import com.mpi.klass.theme.ChevronRightIcon
 import com.mpi.klass.theme.ClockIcon
 import com.mpi.klass.theme.DatabaseIcon
 import com.mpi.klass.theme.DropletIcon
@@ -76,6 +77,7 @@ import com.mpi.klass.theme.EnvelopeSolidIcon
 import com.mpi.klass.theme.FileLinesIcon
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.IdCardIcon
+import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LayerGroupIcon
 import com.mpi.klass.theme.LocationDotIcon
 import com.mpi.klass.theme.PhoneSolidIcon
@@ -180,6 +182,17 @@ private fun normalizeSectionOption(raw: String, dept: String = ""): String {
     return RoutineRules.normalizeGroup(dept, clean)
 }
 
+private data class EditPickerRequest(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val accent: Color,
+    val options: List<String>,
+    val selected: String,
+    val translateOptions: Boolean,
+    val onSelect: (String) -> Unit,
+)
+
 @Composable
 fun EditProfileContent(
     initialProfile: StudentProfile,
@@ -191,6 +204,7 @@ fun EditProfileContent(
     topContentPadding: Dp,
     isSaving: Boolean,
     isDark: Boolean = false,
+    onOverlayStateChange: (Boolean) -> Unit = {},
     onAvatarClick: () -> Unit,
     onViewProfileClick: () -> Unit,
     onSaveProfile: (StudentProfile) -> Unit,
@@ -198,6 +212,16 @@ fun EditProfileContent(
     val cs = MaterialTheme.colorScheme
     val isBengali = LocalAppLanguage.current == AppLanguage.BENGALI
     val focusManager = LocalFocusManager.current
+    val profileAccent = KlassFeaturePalette.profile(isDark)
+    val familyAccent = KlassFeaturePalette.books(isDark)
+    val contactAccent = KlassFeaturePalette.teachers(isDark)
+    val addressAccent = KlassFeaturePalette.classrooms(isDark)
+    val academicAccent = KlassFeaturePalette.routine(isDark)
+    var activePicker by remember { mutableStateOf<EditPickerRequest?>(null) }
+
+    LaunchedEffect(activePicker) {
+        onOverlayStateChange(activePicker != null)
+    }
 
     var hasUserEdited by remember(fallbackEmail) { mutableStateOf(false) }
     var hasEditedCurrentAddress by remember(fallbackEmail) { mutableStateOf(false) }
@@ -259,6 +283,17 @@ fun EditProfileContent(
         dob = picked
     }
 
+    val currentAppLanguage = LocalAppLanguage.current
+    val gpsSyncLauncher = rememberLocationPermissionLauncher { realAddress ->
+        if (realAddress.isNotBlank()) {
+            hasUserEdited = true
+            hasEditedCurrentAddress = true
+            currentAddress = realAddress
+        } else {
+            showToast(AppStrings.translate("লোকেশন পাওয়া যায়নি। অনুগ্রহ করে ঠিকানা লিখুন।", currentAppLanguage))
+        }
+    }
+
     val bloodOptions = listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
     val religionOptions = listOf("ইসলাম", "হিন্দুধর্ম", "বৌদ্ধধর্ম", "খ্রিস্টধর্ম", "অন্যান্য")
     val genderOptions = listOf("পুরুষ (Male)", "মহিলা (Female)", "অন্যান্য (Other)")
@@ -308,67 +343,66 @@ fun EditProfileContent(
         onSaveProfile(updated)
     }
 
-    MinimalBackdrop(isDark = isDark) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding()
-                .imePadding(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // Scrollable Form Body
-            Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalBackdrop(isDark = isDark, focusAccent = profileAccent.primary) {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.TopCenter,
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(
+                // Scrollable Form Body
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .widthIn(max = 780.dp)
-                        .verticalScroll(rememberScrollState())
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) {
-                            focusManager.clearFocus(force = true)
-                        }
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
-                    if (topContentPadding > 0.dp) {
-                        Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-                        Spacer(modifier = Modifier.height(topContentPadding))
-                    } else {
-                        Spacer(modifier = Modifier.height(14.dp))
-                    }
-
-                    // Compact Google Contacts Edit Header Card
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = cs.surfaceContainerLow,
-                        modifier = Modifier.fillMaxWidth(),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .widthIn(max = 780.dp)
+                            .verticalScroll(rememberScrollState())
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) {
+                                focusManager.clearFocus(force = true)
+                            }
+                            .padding(bottom = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        if (topContentPadding > 0.dp) {
+                            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                            Spacer(modifier = Modifier.height(topContentPadding))
+                        }
+
+                        // Full-bleed Facebook / Telegram Profile Edit Header
+                        SocialSurfaceBlock(
+                            isDark = isDark,
+                            showBottomHairline = true,
+                            accentTint = profileAccent.primary,
                         ) {
-                            Box(modifier = Modifier.size(64.dp)) {
-                                Surface(
-                                    onClick = {
-                                        focusManager.clearFocus(force = true)
-                                        onAvatarClick()
-                                    },
-                                    shape = CircleShape,
-                                    color = cs.surfaceContainerHigh,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .testTag("profile_avatar_button"),
-                                ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(modifier = Modifier.size(72.dp)) {
+                                    Surface(
+                                        onClick = {
+                                            focusManager.clearFocus(force = true)
+                                            onAvatarClick()
+                                        },
+                                        shape = CircleShape,
+                                        color = cs.surfaceContainerHigh,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .border(2.dp, profileAccent.primary.copy(alpha = 0.65f), CircleShape)
+                                            .padding(2.5.dp)
+                                            .testTag("profile_avatar_button"),
+                                    ) {
                                     val resolvedModel = resolveProfileImageModel(photoUrl)
                                     if (resolvedModel != null) {
                                         AsyncImage(
@@ -395,18 +429,18 @@ fun EditProfileContent(
                                         onAvatarClick()
                                     },
                                     shape = CircleShape,
-                                    color = cs.primaryContainer,
-                                    border = BorderStroke(1.5.dp, cs.surfaceContainerLow),
+                                    color = profileAccent.primary,
+                                    border = BorderStroke(1.5.dp, cs.surfaceContainerLowest),
                                     modifier = Modifier
                                         .align(Alignment.BottomEnd)
-                                        .size(24.dp),
+                                        .size(26.dp),
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = CameraIcon,
                                             contentDescription = null,
-                                            tint = cs.onPrimaryContainer,
-                                            modifier = Modifier.size(12.dp),
+                                            tint = Color.White,
+                                            modifier = Modifier.size(13.dp),
                                         )
                                     }
                                 }
@@ -418,9 +452,9 @@ fun EditProfileContent(
                                 Text(
                                     text = "আপনার প্রোফাইল সম্পাদনা করুন".localized(),
                                     color = cs.onSurface,
-                                    fontSize = 16.sp,
+                                    fontSize = 18.sp,
                                     fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -436,37 +470,29 @@ fun EditProfileContent(
 
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            FilledTonalButton(
+                            KlassTonalButton(
+                                text = "প্রোফাইল দেখুন".localized(),
+                                icon = DatabaseIcon,
+                                accent = profileAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                height = 40.dp,
+                                testTag = "edit_to_view_profile_button",
                                 onClick = {
                                     focusManager.clearFocus(force = true)
                                     onViewProfileClick()
                                 },
-                                shape = CircleShape,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .testTag("edit_to_view_profile_button"),
-                            ) {
-                                Icon(
-                                    imageVector = DatabaseIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "প্রোফাইল দেখুন".localized(),
-                                    fontSize = 14.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                )
-                            }
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    SocialSectionDividerBand(isDark = isDark)
 
-                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
                         val cols = when {
                             maxWidth >= 820.dp -> 3
                             maxWidth >= 560.dp -> 2
@@ -492,6 +518,7 @@ fun EditProfileContent(
                             GoogleSectionHeader(
                                 title = "১. ব্যক্তিগত তথ্য (Personal Information)".localized(),
                                 hindSiliguri = hindSiliguri,
+                                accent = profileAccent.primary,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -526,64 +553,112 @@ fun EditProfileContent(
                                 )
                                 add(
                                     1 to {
+                                        val bgLabel = "রক্তের গ্রুপ".localized()
                                         GoogleSelectField(
-                                            label = "রক্তের গ্রুপ".localized(),
+                                            label = bgLabel,
                                             icon = DropletIcon,
                                             value = bloodGroup,
                                             placeholder = "গ্রুপ নির্বাচন করুন".localized(),
-                                            options = bloodOptions,
                                             translateOptions = false,
-                                            onSelect = { hasUserEdited = true; bloodGroup = it },
                                             hindSiliguri = hindSiliguri,
                                             testTag = "edit_blood_group_select",
+                                            onClick = {
+                                                focusManager.clearFocus(force = true)
+                                                activePicker = EditPickerRequest(
+                                                    title = bgLabel,
+                                                    subtitle = "রক্তের গ্রুপ বেছে নিন",
+                                                    icon = DropletIcon,
+                                                    accent = KlassFeaturePalette.blood(isDark).primary,
+                                                    options = bloodOptions,
+                                                    selected = bloodGroup,
+                                                    translateOptions = false,
+                                                    onSelect = { hasUserEdited = true; bloodGroup = it },
+                                                )
+                                            },
                                         )
                                     }
                                 )
                                 if (showPersonalExtended) {
                                     add(
                                         1 to {
+                                            val relLabel = "ধর্ম".localized()
                                             GoogleSelectField(
-                                                label = "ধর্ম".localized(),
+                                                label = relLabel,
                                                 icon = PrayingHandsIcon,
                                                 value = religion,
                                                 placeholder = "ধর্ম নির্বাচন করুন".localized(),
-                                                options = religionOptions,
                                                 translateOptions = true,
-                                                onSelect = { hasUserEdited = true; religion = it },
                                                 hindSiliguri = hindSiliguri,
                                                 testTag = "edit_religion_select",
+                                                onClick = {
+                                                    focusManager.clearFocus(force = true)
+                                                    activePicker = EditPickerRequest(
+                                                        title = relLabel,
+                                                        subtitle = "ধর্মীয় তথ্য নির্বাচন করুন",
+                                                        icon = PrayingHandsIcon,
+                                                        accent = profileAccent.primary,
+                                                        options = religionOptions,
+                                                        selected = religion,
+                                                        translateOptions = true,
+                                                        onSelect = { hasUserEdited = true; religion = it },
+                                                    )
+                                                },
                                             )
                                         }
                                     )
                                 }
                                 add(
                                     1 to {
+                                        val genLabel = "লিঙ্গ (Gender)".localized()
                                         GoogleSelectField(
-                                            label = "লিঙ্গ (Gender)".localized(),
+                                            label = genLabel,
                                             icon = VenusMarsIcon,
                                             value = gender,
                                             placeholder = "লিঙ্গ নির্বাচন করুন".localized(),
-                                            options = genderOptions,
                                             translateOptions = true,
-                                            onSelect = { hasUserEdited = true; gender = it },
                                             hindSiliguri = hindSiliguri,
                                             testTag = "edit_gender_select",
+                                            onClick = {
+                                                focusManager.clearFocus(force = true)
+                                                activePicker = EditPickerRequest(
+                                                    title = genLabel,
+                                                    subtitle = "একটি অপশন বাছাই করুন",
+                                                    icon = VenusMarsIcon,
+                                                    accent = KlassFeaturePalette.appearance(isDark).primary,
+                                                    options = genderOptions,
+                                                    selected = gender,
+                                                    translateOptions = true,
+                                                    onSelect = { hasUserEdited = true; gender = it },
+                                                )
+                                            },
                                         )
                                     }
                                 )
                                 if (showPersonalExtended) {
                                     add(
                                         1 to {
+                                            val marLabel = "বৈবাহিক অবস্থা".localized()
                                             GoogleSelectField(
-                                                label = "বৈবাহিক অবস্থা".localized(),
+                                                label = marLabel,
                                                 icon = RingIcon,
                                                 value = maritalStatus,
                                                 placeholder = "অবিবাহিত (Unmarried)".localized(),
-                                                options = maritalOptions,
                                                 translateOptions = true,
-                                                onSelect = { hasUserEdited = true; maritalStatus = it },
                                                 hindSiliguri = hindSiliguri,
                                                 testTag = "edit_marital_select",
+                                                onClick = {
+                                                    focusManager.clearFocus(force = true)
+                                                    activePicker = EditPickerRequest(
+                                                        title = marLabel,
+                                                        subtitle = "অবস্থা নির্বাচন করুন",
+                                                        icon = RingIcon,
+                                                        accent = profileAccent.primary,
+                                                        options = maritalOptions,
+                                                        selected = maritalStatus,
+                                                        translateOptions = true,
+                                                        onSelect = { hasUserEdited = true; maritalStatus = it },
+                                                    )
+                                                },
                                             )
                                         }
                                     )
@@ -597,6 +672,7 @@ fun EditProfileContent(
                                 GoogleSectionHeader(
                                     title = "২. পারিবারিক তথ্য (Family Information)".localized(),
                                     hindSiliguri = hindSiliguri,
+                                    accent = familyAccent.primary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -631,6 +707,7 @@ fun EditProfileContent(
                             GoogleSectionHeader(
                                 title = "$contactSectionNum. যোগাযোগের তথ্য (Contact Information)".localized(),
                                 hindSiliguri = hindSiliguri,
+                                accent = contactAccent.primary,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -663,10 +740,29 @@ fun EditProfileContent(
                             HtmlResponsiveGrid(columns = cols, items = contactItems, spacing = 12.dp)
 
                             Spacer(modifier = Modifier.height(20.dp))
-                            GoogleSectionHeader(
-                                title = "$addressSectionNum. ঠিকানার তথ্য (Address Information)".localized(),
-                                hindSiliguri = hindSiliguri,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    GoogleSectionHeader(
+                                        title = "$addressSectionNum. ঠিকানার তথ্য (Address Information)".localized(),
+                                        hindSiliguri = hindSiliguri,
+                                        accent = addressAccent.primary,
+                                    )
+                                }
+                                KlassTonalButton(
+                                    text = "GPS",
+                                    icon = LocationDotIcon,
+                                    accent = addressAccent.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    height = 36.dp,
+                                    testTag = "edit_sync_gps_button",
+                                    onClick = { gpsSyncLauncher() },
+                                )
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
 
                             val addressItems: List<Pair<Int, @Composable () -> Unit>> = listOf(
@@ -700,76 +796,125 @@ fun EditProfileContent(
                                 GoogleSectionHeader(
                                     title = "$academicSectionNum. একাডেমিক তথ্য (Academic Information)".localized(),
                                     hindSiliguri = hindSiliguri,
+                                    accent = academicAccent.primary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 val academicItems = buildList<Pair<Int, @Composable () -> Unit>> {
                                     add(
                                         1 to {
+                                            val deptLabel = "ডিপার্টমেন্ট (Department)".localized()
                                             GoogleSelectField(
-                                                label = "ডিপার্টমেন্ট (Department)".localized(),
+                                                label = deptLabel,
                                                 icon = GraduationCapIcon,
                                                 value = department,
                                                 placeholder = "ডিপার্টমেন্ট নির্বাচন করুন".localized(),
-                                                options = deptOptions,
                                                 translateOptions = false,
-                                                onSelect = {
-                                                    hasUserEdited = true
-                                                    department = it
-                                                    if (section.isNotBlank()) {
-                                                        section = RoutineRules.normalizeGroup(it, section)
-                                                    }
-                                                },
                                                 hindSiliguri = hindSiliguri,
                                                 testTag = "edit_department_select",
+                                                onClick = {
+                                                    focusManager.clearFocus(force = true)
+                                                    activePicker = EditPickerRequest(
+                                                        title = deptLabel,
+                                                        subtitle = "আপনার টেকনোলজি বেছে নিন",
+                                                        icon = GraduationCapIcon,
+                                                        accent = academicAccent.primary,
+                                                        options = deptOptions,
+                                                        selected = department,
+                                                        translateOptions = false,
+                                                        onSelect = {
+                                                            hasUserEdited = true
+                                                            department = it
+                                                            if (section.isNotBlank()) {
+                                                                section = RoutineRules.normalizeGroup(it, section)
+                                                            }
+                                                        },
+                                                    )
+                                                },
                                             )
                                         }
                                     )
                                     if (showFullAcademicFields) {
                                         add(
                                             1 to {
+                                                val semLabel = "সেমিস্টার".localized()
                                                 GoogleSelectField(
-                                                    label = "সেমিস্টার".localized(),
+                                                    label = semLabel,
                                                     icon = LayerGroupIcon,
                                                     value = semester,
                                                     placeholder = "সেমিস্টার নির্বাচন করুন".localized(),
-                                                    options = semesterOptions,
                                                     translateOptions = true,
-                                                    onSelect = { hasUserEdited = true; semester = it },
                                                     hindSiliguri = hindSiliguri,
                                                     testTag = "edit_semester_select",
+                                                    onClick = {
+                                                        focusManager.clearFocus(force = true)
+                                                        activePicker = EditPickerRequest(
+                                                            title = semLabel,
+                                                            subtitle = "চলমান সেমিস্টার নির্বাচন করুন",
+                                                            icon = LayerGroupIcon,
+                                                            accent = academicAccent.primary,
+                                                            options = semesterOptions,
+                                                            selected = semester,
+                                                            translateOptions = true,
+                                                            onSelect = { hasUserEdited = true; semester = it },
+                                                        )
+                                                    },
                                                 )
                                             }
                                         )
                                     }
                                     add(
                                         1 to {
+                                            val shiftLabel = "শিফট".localized()
                                             GoogleSelectField(
-                                                label = "শিফট".localized(),
+                                                label = shiftLabel,
                                                 icon = ClockIcon,
                                                 value = shift,
                                                 placeholder = "শিফট নির্বাচন করুন".localized(),
-                                                options = shiftOptions,
                                                 translateOptions = true,
-                                                onSelect = { hasUserEdited = true; shift = it },
                                                 hindSiliguri = hindSiliguri,
                                                 testTag = "edit_shift_select",
+                                                onClick = {
+                                                    focusManager.clearFocus(force = true)
+                                                    activePicker = EditPickerRequest(
+                                                        title = shiftLabel,
+                                                        subtitle = "১ম বা ২য় শিফট বেছে নিন",
+                                                        icon = ClockIcon,
+                                                        accent = academicAccent.primary,
+                                                        options = shiftOptions,
+                                                        selected = shift,
+                                                        translateOptions = true,
+                                                        onSelect = { hasUserEdited = true; shift = it },
+                                                    )
+                                                },
                                             )
                                         }
                                     )
                                     if (showFullAcademicFields) {
                                         add(
                                             1 to {
+                                                val secLabel = "সেকশন (Section)".localized()
                                                 GoogleSelectField(
-                                                    label = "সেকশন (Section)".localized(),
+                                                    label = secLabel,
                                                     icon = UsersRectangleIcon,
                                                     value = section,
                                                     placeholder = "সেকশন নির্বাচন করুন".localized(),
-                                                    options = sectionOptions,
                                                     translateOptions = false,
-                                                    onSelect = { hasUserEdited = true; section = it },
                                                     hindSiliguri = hindSiliguri,
                                                     testTag = "edit_section_select",
+                                                    onClick = {
+                                                        focusManager.clearFocus(force = true)
+                                                        activePicker = EditPickerRequest(
+                                                            title = secLabel,
+                                                            subtitle = "ক্লাস সেকশন বা গ্রুপ বেছে নিন",
+                                                            icon = UsersRectangleIcon,
+                                                            accent = academicAccent.primary,
+                                                            options = sectionOptions,
+                                                            selected = section,
+                                                            translateOptions = false,
+                                                            onSelect = { hasUserEdited = true; section = it },
+                                                        )
+                                                    },
                                                 )
                                             }
                                         )
@@ -810,7 +955,7 @@ fun EditProfileContent(
 
             // Pinned M3 Bottom Save Bar
             Surface(
-                color = cs.surface,
+                color = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
@@ -832,44 +977,55 @@ fun EditProfileContent(
                             text = "বাতিল".localized(),
                             hindSiliguri = hindSiliguri,
                             enabled = !isSaving,
+                            height = 48.dp,
                             contentColor = cs.onSurface,
                             modifier = Modifier.weight(1f),
                             onClick = onViewProfileClick,
                         )
 
-                        Button(
-                            onClick = { submitForm() },
+                        WelcomeMinimal3DButton(
+                            text = "সংরক্ষণ করুন".localized(),
+                            icon = CheckIcon,
+                            hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            isLoading = isSaving,
                             enabled = !isSaving,
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .weight(1.4f)
-                                .height(46.dp)
-                                .testTag("edit_profile_save_button"),
-                        ) {
-                            if (isSaving) {
-                                CircularProgressIndicator(
-                                    color = cs.onPrimary,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = CheckIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "সংরক্ষণ করুন".localized(),
-                                    fontSize = 14.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                            }
-                        }
+                            customPrimaryColor = profileAccent.primary,
+                            customBaseColor = profileAccent.deep,
+                            height = 48.dp,
+                            cornerRadius = 14.dp,
+                            testTag = "edit_profile_save_button",
+                            modifier = Modifier.weight(1.4f),
+                            onClick = { submitForm() },
+                        )
                     }
                 }
             }
+        }
+    }
+    }
+
+    // Full-Screen Picker Sub-Screen for Edit Fields (replaces tiny DropdownMenus)
+    KlassSubScreenHost(
+        visible = activePicker != null,
+        zIndex = 88f,
+    ) {
+        activePicker?.let { picker ->
+            KlassSelectionPickerSubScreen(
+                title = picker.title,
+                subtitle = picker.subtitle.localized(),
+                levelLabel = "প্রোফাইল এডিট • নির্বাচন".localized(),
+                icon = picker.icon,
+                accent = picker.accent,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                options = picker.options,
+                selectedOption = picker.options.firstOrNull { it.equals(picker.selected, ignoreCase = true) },
+                optionLabel = { opt -> if (picker.translateOptions) AppStrings.translate(opt, currentAppLanguage) else opt },
+                searchable = picker.options.size > 6,
+                onSelect = picker.onSelect,
+                onDismiss = { activePicker = null },
+            )
         }
     }
 }
@@ -980,7 +1136,7 @@ private fun GoogleOutlinedTextField(
             )
         },
         textStyle = TextStyle(
-            fontSize = 15.sp,
+            fontSize = 16.5.sp,
             fontFamily = hindSiliguri,
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -1048,7 +1204,7 @@ private fun GooglePickerField(
                 )
             },
             textStyle = TextStyle(
-                fontSize = 15.sp,
+                fontSize = 16.5.sp,
                 fontFamily = hindSiliguri,
             ),
             shape = RoundedCornerShape(14.dp),
@@ -1079,67 +1235,23 @@ private fun GoogleSelectField(
     icon: ImageVector,
     value: String,
     placeholder: String,
-    options: List<String>,
     translateOptions: Boolean,
-    onSelect: (String) -> Unit,
     hindSiliguri: FontFamily,
     testTag: String,
+    onClick: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
-    var expanded by remember { mutableStateOf(false) }
-    var fieldWidthPx by remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
-    val fieldWidthDp = with(density) { fieldWidthPx.toDp() }
-
     val displayedValue = if (value.isNotBlank()) {
         if (translateOptions) value.localized() else value
     } else ""
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onSizeChanged { fieldWidthPx = it.width },
-    ) {
-        GooglePickerField(
-            label = label,
-            leadingIcon = icon,
-            trailingIcon = ChevronDownIcon,
-            value = displayedValue,
-            placeholder = placeholder,
-            hindSiliguri = hindSiliguri,
-            testTag = testTag,
-            onClick = { expanded = true },
-        )
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            shape = RoundedCornerShape(16.dp),
-            containerColor = cs.surfaceContainerHigh,
-            modifier = Modifier.then(if (fieldWidthDp > 0.dp) Modifier.width(fieldWidthDp) else Modifier),
-        ) {
-            options.forEach { option ->
-                val optionLabel = if (translateOptions) option.localized() else option
-                val isSelected = option.equals(value, ignoreCase = true)
-                DropdownMenuItem(
-                    modifier = Modifier.fillMaxWidth(),
-                    text = {
-                        Text(
-                            text = optionLabel,
-                            fontFamily = hindSiliguri,
-                            fontSize = 14.5.sp,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) cs.primary else cs.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
+    GooglePickerField(
+        label = label,
+        leadingIcon = icon,
+        trailingIcon = ChevronRightIcon,
+        value = displayedValue,
+        placeholder = placeholder,
+        hindSiliguri = hindSiliguri,
+        testTag = testTag,
+        onClick = onClick,
+    )
 }

@@ -1,10 +1,7 @@
 package com.mpi.klass
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,20 +26,24 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -52,7 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -62,9 +63,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CheckIcon
-import com.mpi.klass.theme.ChevronDownIcon
 import com.mpi.klass.theme.ClockIcon
+import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.InfoCircleIcon
+import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.LayerGroupIcon
+import com.mpi.klass.theme.dayPaletteAt
+import com.mpi.klass.theme.departmentAccent
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -76,12 +82,14 @@ fun TeacherPreferencesScreen(
     hindSiliguri: FontFamily,
     topContentPadding: Dp = 72.dp,
     isOnboardingPrompt: Boolean = false,
+    onFullScreenOverlayChange: (Boolean) -> Unit = {},
     onDismissOnboarding: (() -> Unit)? = null,
     onSaved: (TeacherSchedulingPref) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val cs = MaterialTheme.colorScheme
     val cleanEmail = email.trim().lowercase()
+    val teachingAccent = KlassFeaturePalette.teaching(isDark)
 
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
@@ -93,15 +101,17 @@ fun TeacherPreferencesScreen(
 
     var allBooks by remember { mutableStateOf<List<LibraryBook>>(emptyList()) }
     var bookDeptFilter by remember { mutableStateOf("ALL") }
-    var searchQuery by remember { mutableStateOf("") }
+    var activeSemesterKey by remember { mutableStateOf<String?>(null) }
 
     val selectedBySemester = remember(cleanEmail) {
         mutableStateMapOf<String, Set<String>>()
     }
-    val expandedSemesters = remember {
-        mutableStateMapOf<String, Boolean>().apply {
-            put(RoutineRules.ALL_SEMESTER_KEYS.first(), true)
-        }
+
+    LaunchedEffect(activeSemesterKey != null) {
+        onFullScreenOverlayChange(activeSemesterKey != null)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onFullScreenOverlayChange(false) }
     }
 
     LaunchedEffect(cleanEmail) {
@@ -152,6 +162,7 @@ fun TeacherPreferencesScreen(
     }
 
     val totalSelectedCount = selectedBySemester.values.sumOf { it.size }
+    val deptColor = departmentAccent(selectedDept, isDark)
 
     fun savePrefs() {
         if (cleanEmail.isBlank()) {
@@ -191,166 +202,160 @@ fun TeacherPreferencesScreen(
         }
     }
 
-    MinimalBackdrop(isDark = isDark) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (topContentPadding > 0.dp) {
-                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-                Spacer(modifier = Modifier.height(topContentPadding))
-            } else {
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
-                }
-                return@Column
-            }
-
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalBackdrop(isDark = isDark, focusAccent = teachingAccent.primary) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .widthIn(max = 920.dp)
-                    .padding(horizontal = 16.dp),
+                    .fillMaxSize()
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Slim 1-line summary bar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = "$totalSelectedCount subject(s) selected • Sem 1–7",
-                        fontSize = 14.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = hindSiliguri,
-                        color = cs.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                    if (isOnboardingPrompt && onDismissOnboarding != null) {
-                        TextButton(
-                            onClick = onDismissOnboarding,
-                            modifier = Modifier.testTag("skip_teacher_setup_button"),
-                        ) {
-                            Text(
-                                text = "Skip",
-                                color = cs.primary,
-                                fontWeight = FontWeight.Medium,
-                                fontFamily = hindSiliguri,
-                            )
-                        }
-                    }
+                if (topContentPadding > 0.dp) {
+                    Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                    Spacer(modifier = Modifier.height(topContentPadding))
+                } else {
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = teachingAccent.primary, strokeWidth = 2.5.dp)
+                    }
+                    return@Column
+                }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp),
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .widthIn(max = 920.dp),
                 ) {
-                    // Responsive 2-col on wide screens for Dept/Shift & Preferred Hours
-                    item {
-                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                            val twoCol = maxWidth >= 640.dp
-
-                            val deptShiftCard: @Composable (Modifier) -> Unit = { mod ->
-                                MinimalCardSurface(
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
+                    ) {
+                        // Top Hero Summary
+                        item {
+                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                KlassHeroBanner(
+                                    title = teacherName.ifBlank { "Teaching Setup" },
+                                    subtitle = "Select department, shift & subjects per semester",
+                                    icon = GraduationCapIcon,
+                                    accent = teachingAccent.primary,
                                     isDark = isDark,
-                                    shape = RoundedCornerShape(14.dp),
-                                    modifier = mod,
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(14.dp),
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        Text(
-                                            text = "Department & Shift",
-                                            fontSize = 14.5.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontFamily = hindSiliguri,
-                                            color = cs.onSurface,
-                                        )
-
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                                        ) {
-                                            RoutineRules.ALL_TEACHER_DEPARTMENTS.forEach { dept ->
-                                                val isSelected = selectedDept.equals(dept, ignoreCase = true)
-                                                MinimalIconChip(
-                                                    label = dept,
-                                                    selected = isSelected,
-                                                    accent = cs.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                    testTag = "teacher_dept_$dept",
-                                                    onClick = {
-                                                        selectedDept = dept
-                                                        if (dept in RoutineRules.TECH_DEPARTMENTS) {
-                                                            bookDeptFilter = dept
-                                                        }
-                                                    },
-                                                )
-                                            }
+                                    hindSiliguri = hindSiliguri,
+                                    badges = listOf(
+                                        selectedDept to deptColor.primary,
+                                        selectedShift to teachingAccent.primary,
+                                        "$totalSelectedCount Subjects" to KlassFeaturePalette.books(isDark).primary,
+                                    ),
+                                    trailingContent = if (isOnboardingPrompt && onDismissOnboarding != null) {
+                                        {
+                                            KlassTonalButton(
+                                                text = "Skip",
+                                                accent = teachingAccent.primary,
+                                                isDark = isDark,
+                                                hindSiliguri = hindSiliguri,
+                                                testTag = "skip_teacher_setup_button",
+                                                onClick = onDismissOnboarding,
+                                            )
                                         }
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
+                            SocialSectionDividerBand(isDark = isDark, height = 10.dp)
+                        }
 
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        // Department, Shift & Preferred Class Hours (2-col on wide screens)
+                        item {
+                            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                val twoCol = maxWidth >= 640.dp
+
+                                val deptShiftCard: @Composable (Modifier) -> Unit = { mod ->
+                                    SocialSurfaceBlock(
+                                        isDark = isDark,
+                                        showTopHairline = true,
+                                        showBottomHairline = true,
+                                        accentTint = deptColor.primary,
+                                        modifier = mod,
+                                    ) {
+                                        GoogleSectionHeader(
+                                            title = "Department & Shift",
+                                            hindSiliguri = hindSiliguri,
+                                            accent = deptColor.primary,
+                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp),
                                         ) {
-                                            listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
-                                                val isSelected = selectedShift == sh
-                                                MinimalIconChip(
-                                                    label = sh,
-                                                    selected = isSelected,
-                                                    accent = cs.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                    testTag = "teacher_shift_$sh",
-                                                    modifier = Modifier.weight(1f),
-                                                    onClick = { selectedShift = sh },
-                                                )
+                                            FlowRow(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                RoutineRules.ALL_TEACHER_DEPARTMENTS.forEach { dept ->
+                                                    val isSelected = selectedDept.equals(dept, ignoreCase = true)
+                                                    val dAccent = departmentAccent(dept, isDark)
+                                                    MinimalIconChip(
+                                                        label = dept,
+                                                        selected = isSelected,
+                                                        accent = dAccent.primary,
+                                                        isDark = isDark,
+                                                        hindSiliguri = hindSiliguri,
+                                                        testTag = "teacher_dept_$dept",
+                                                        onClick = {
+                                                            selectedDept = dept
+                                                            if (dept in RoutineRules.TECH_DEPARTMENTS) {
+                                                                bookDeptFilter = dept
+                                                            }
+                                                        },
+                                                    )
+                                                }
+                                            }
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
+                                                    val isSelected = selectedShift == sh
+                                                    MinimalIconChip(
+                                                        label = sh,
+                                                        selected = isSelected,
+                                                        accent = teachingAccent.primary,
+                                                        isDark = isDark,
+                                                        hindSiliguri = hindSiliguri,
+                                                        testTag = "teacher_shift_$sh",
+                                                        modifier = Modifier.weight(1f),
+                                                        onClick = { selectedShift = sh },
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
 
-                            val timePrefCard: @Composable (Modifier) -> Unit = { mod ->
-                                MinimalCardSurface(
-                                    isDark = isDark,
-                                    shape = RoundedCornerShape(14.dp),
-                                    modifier = mod,
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(14.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                val timePrefCard: @Composable (Modifier) -> Unit = { mod ->
+                                    SocialSurfaceBlock(
+                                        isDark = isDark,
+                                        showTopHairline = true,
+                                        showBottomHairline = true,
+                                        accentTint = teachingAccent.primary,
+                                        modifier = mod,
                                     ) {
-                                        Text(
-                                            text = "Preferred Class Hours",
-                                            fontSize = 14.5.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontFamily = hindSiliguri,
-                                            color = cs.onSurface,
+                                        GoogleSectionHeader(
+                                            title = "Preferred Class Hours",
+                                            hindSiliguri = hindSiliguri,
+                                            accent = teachingAccent.primary,
                                         )
-
-                                        TeacherTimePreference.entries.forEach { pref ->
+                                        TeacherTimePreference.entries.forEachIndexed { idx, pref ->
                                             val isSelected = selectedTimePref == pref
                                             Surface(
                                                 onClick = { selectedTimePref = pref },
-                                                shape = RoundedCornerShape(14.dp),
-                                                color = if (isSelected) cs.secondaryContainer else cs.surfaceContainer,
+                                                color = if (isSelected) teachingAccent.softTint else Color.Transparent,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .testTag("teacher_time_${pref.key}"),
@@ -358,303 +363,461 @@ fun TeacherPreferencesScreen(
                                                 Row(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+                                                        .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     horizontalArrangement = Arrangement.SpaceBetween,
                                                 ) {
                                                     Column(modifier = Modifier.weight(1f)) {
                                                         Text(
                                                             text = pref.label,
-                                                            fontSize = 15.sp,
-                                                            fontWeight = FontWeight.Medium,
+                                                            fontSize = 16.5.sp,
+                                                            fontWeight = FontWeight.Bold,
                                                             fontFamily = hindSiliguri,
-                                                            color = if (isSelected) cs.onSecondaryContainer else cs.onSurface,
+                                                            color = if (isSelected) teachingAccent.primary else cs.onSurface,
                                                         )
                                                         Text(
                                                             text = pref.subtitle,
-                                                            fontSize = 13.sp,
+                                                            fontSize = 14.sp,
                                                             fontFamily = hindSiliguri,
-                                                            color = if (isSelected) {
-                                                                cs.onSecondaryContainer.copy(alpha = 0.8f)
-                                                            } else {
-                                                                cs.onSurfaceVariant
-                                                            },
+                                                            color = cs.onSurfaceVariant,
                                                         )
                                                     }
                                                     RadioButton(
                                                         selected = isSelected,
                                                         onClick = null,
                                                         colors = RadioButtonDefaults.colors(
-                                                            selectedColor = cs.primary,
+                                                            selectedColor = teachingAccent.primary,
                                                             unselectedColor = cs.onSurfaceVariant,
                                                         ),
                                                     )
                                                 }
                                             }
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (twoCol) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.Top,
-                                ) {
-                                    deptShiftCard(Modifier.weight(1f))
-                                    timePrefCard(Modifier.weight(1f))
-                                }
-                            } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    deptShiftCard(Modifier.fillMaxWidth())
-                                    timePrefCard(Modifier.fillMaxWidth())
-                                }
-                            }
-                        }
-                    }
-
-                    // Subject Filter Controls Card
-                    item {
-                        MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Text(
-                                    text = "Subjects by Semester (1–7)",
-                                    fontSize = 14.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontFamily = hindSiliguri,
-                                    color = cs.onSurface,
-                                )
-
-                                val filterDepts = remember { listOf("ALL") + RoutineRules.TECH_DEPARTMENTS }
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    items(filterDepts) { dept ->
-                                        MinimalIconChip(
-                                            label = if (dept == "ALL") "All Depts" else dept,
-                                            selected = bookDeptFilter == dept,
-                                            accent = cs.primary,
-                                            isDark = isDark,
-                                            hindSiliguri = hindSiliguri,
-                                            onClick = { bookDeptFilter = dept },
-                                        )
-                                    }
-                                }
-
-                                MinimalSearchBar(
-                                    query = searchQuery,
-                                    onQueryChange = { searchQuery = it },
-                                    placeholder = "Filter subjects by code or title",
-                                    accent = cs.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                )
-                            }
-                        }
-                    }
-
-                    // Semester 1-7 Accordions
-                    items(RoutineRules.ALL_SEMESTER_KEYS) { semKey ->
-                        val isExpanded = expandedSemesters[semKey] == true
-                        val selectedCodes = selectedBySemester[semKey] ?: emptySet()
-                        val q = searchQuery.trim().lowercase()
-
-                        val semBooks = remember(allBooks, bookDeptFilter, q, semKey) {
-                            allBooks.filter { book ->
-                                val matchesSemAndDept = book.departmentSemesters.any { (dept, sems) ->
-                                    val deptOk = bookDeptFilter == "ALL" ||
-                                        RoutineRules.normalizeDepartmentShort(dept) == bookDeptFilter
-                                    val semOk = sems.any { RoutineRules.canonicalSemesterKey(it) == semKey }
-                                    deptOk && semOk
-                                }
-                                val queryOk = q.isBlank() ||
-                                    book.title.lowercase().contains(q) ||
-                                    book.subjectCode.lowercase().contains(q)
-                                matchesSemAndDept && queryOk
-                            }.distinctBy { it.subjectCode.trim() }
-                                .sortedBy { it.subjectCode }
-                        }
-
-                        val chevronRotation by animateFloatAsState(
-                            targetValue = if (isExpanded) 180f else 0f,
-                            animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                            label = "SemChevron_$semKey",
-                        )
-
-                        MinimalCardSurface(
-                            isDark = isDark,
-                            shape = RoundedCornerShape(18.dp),
-                            borderColor = if (selectedCodes.isNotEmpty()) cs.primary.copy(alpha = 0.45f) else null,
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { expandedSemesters[semKey] = !isExpanded }
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = RoutineRules.semesterDisplayLabel(semKey),
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            fontFamily = hindSiliguri,
-                                            color = cs.onSurface,
-                                        )
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = if (selectedCodes.isNotEmpty()) {
-                                                cs.primaryContainer
-                                            } else {
-                                                cs.surfaceContainerHigh
-                                            },
-                                        ) {
-                                            Text(
-                                                text = "${selectedCodes.size} / ${semBooks.size}",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                fontFamily = hindSiliguri,
-                                                color = if (selectedCodes.isNotEmpty()) cs.onPrimaryContainer else cs.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
-                                            )
-                                        }
-                                    }
-
-                                    Icon(
-                                        imageVector = ChevronDownIcon,
-                                        contentDescription = "Toggle semester",
-                                        tint = cs.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .size(17.dp)
-                                            .graphicsLayer(rotationZ = chevronRotation),
-                                    )
-                                }
-
-                                AnimatedVisibility(visible = isExpanded) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 12.dp, end = 12.dp, bottom = 14.dp),
-                                    ) {
-                                        if (semBooks.isEmpty()) {
-                                            Text(
-                                                text = "No matching subjects in this semester.",
-                                                fontSize = 14.sp,
-                                                fontFamily = hindSiliguri,
-                                                color = cs.onSurfaceVariant,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
-                                            )
-                                        } else {
-                                            MinimalResponsiveGrid(
-                                                items = semBooks,
-                                                twoColMinWidth = 560.dp,
-                                                spacing = 8.dp,
-                                            ) { _, book ->
-                                                val code = book.subjectCode.trim()
-                                                val checked = code in selectedCodes
-                                                Surface(
-                                                    onClick = {
-                                                        val current = selectedBySemester[semKey] ?: emptySet()
-                                                        selectedBySemester[semKey] = if (checked) {
-                                                            current - code
-                                                        } else {
-                                                            current + code
-                                                        }
-                                                    },
-                                                    shape = RoundedCornerShape(14.dp),
-                                                    color = if (checked) cs.secondaryContainer else cs.surfaceContainer,
-                                                    border = if (checked) {
-                                                        BorderStroke(1.dp, cs.primary.copy(alpha = 0.45f))
-                                                    } else {
-                                                        null
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                ) {
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                    ) {
-                                                        Checkbox(
-                                                            checked = checked,
-                                                            onCheckedChange = null,
-                                                            colors = CheckboxDefaults.colors(
-                                                                checkedColor = cs.primary,
-                                                                uncheckedColor = cs.onSurfaceVariant,
-                                                            ),
-                                                        )
-
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                            Text(
-                                                                text = book.title,
-                                                                fontSize = 15.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                fontFamily = hindSiliguri,
-                                                                color = if (checked) cs.onSecondaryContainer else cs.onSurface,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis,
-                                                            )
-                                                            Text(
-                                                                text = "${book.subjectCode} • ${book.theoryClassesPerWeek}T • ${book.practicalClassesPerWeek}P",
-                                                                fontSize = 13.sp,
-                                                                fontFamily = hindSiliguri,
-                                                                color = if (checked) {
-                                                                    cs.onSecondaryContainer.copy(alpha = 0.8f)
-                                                                } else {
-                                                                    cs.onSurfaceVariant
-                                                                },
-                                                            )
-                                                        }
-                                                    }
-                                                }
+                                            if (idx < TeacherTimePreference.entries.lastIndex) {
+                                                SocialInsetDivider(startIndent = 16.dp)
                                             }
                                         }
+                                    }
+                                }
+
+                                if (twoCol) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.Top,
+                                    ) {
+                                        deptShiftCard(Modifier.weight(1f))
+                                        timePrefCard(Modifier.weight(1f))
+                                    }
+                                } else {
+                                    Column {
+                                        deptShiftCard(Modifier.fillMaxWidth())
+                                        SocialSectionDividerBand(isDark = isDark)
+                                        timePrefCard(Modifier.fillMaxWidth())
+                                    }
+                                }
+                            }
+                            SocialSectionDividerBand(isDark = isDark)
+                        }
+
+                        // Clean Semester Navigation Rows (Tap to open Level 1 Subject Picker Sub-Screen)
+                        item {
+                            SocialSurfaceBlock(
+                                isDark = isDark,
+                                showTopHairline = true,
+                                showBottomHairline = true,
+                            ) {
+                                GoogleSectionHeader(
+                                    title = "Subjects by Semester (Tap to Pick)",
+                                    hindSiliguri = hindSiliguri,
+                                    accent = teachingAccent.primary,
+                                )
+
+                                RoutineRules.ALL_SEMESTER_KEYS.forEachIndexed { idx, semKey ->
+                                    val dayAccent = dayPaletteAt(idx, isDark)
+                                    val selectedCodes = selectedBySemester[semKey] ?: emptySet()
+                                    val availableCount = remember(allBooks, bookDeptFilter, semKey) {
+                                        allBooks.count { book ->
+                                            book.departmentSemesters.any { (dept, sems) ->
+                                                val deptOk = bookDeptFilter == "ALL" ||
+                                                    RoutineRules.normalizeDepartmentShort(dept) == bookDeptFilter
+                                                val semOk = sems.any { RoutineRules.canonicalSemesterKey(it) == semKey }
+                                                deptOk && semOk
+                                            }
+                                        }
+                                    }
+                                    val subtitleText = if (selectedCodes.isEmpty()) {
+                                        "Tap to choose from $availableCount subjects"
+                                    } else {
+                                        "${selectedCodes.size} selected • ${selectedCodes.sorted().joinToString(", ")}"
+                                    }
+
+                                    KlassNavigationRow(
+                                        title = RoutineRules.semesterDisplayLabel(semKey),
+                                        subtitle = subtitleText,
+                                        icon = BookIcon,
+                                        accent = dayAccent.primary,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        badgeText = "${selectedCodes.size} / $availableCount",
+                                        badgeColor = if (selectedCodes.isNotEmpty()) dayAccent.primary else cs.onSurfaceVariant,
+                                        testTag = "teacher_sem_row_${idx + 1}",
+                                        onClick = { activeSemesterKey = semKey },
+                                    )
+                                    if (idx < RoutineRules.ALL_SEMESTER_KEYS.lastIndex) {
+                                        SocialInsetDivider(startIndent = 72.dp)
                                     }
                                 }
                             }
                         }
                     }
                 }
+
+                // Calibrated Bottom Save Bar
+                Surface(
+                    color = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.94f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = teachingAccent.borderTint,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = 920.dp)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        ) {
+                            WelcomeMinimal3DButton(
+                                text = "Save Preferences ($totalSelectedCount)",
+                                icon = CheckIcon,
+                                hindSiliguri = hindSiliguri,
+                                isDark = isDark,
+                                isLoading = isSaving,
+                                customPrimaryColor = teachingAccent.primary,
+                                customBaseColor = teachingAccent.deep,
+                                height = 48.dp,
+                                cornerRadius = 16.dp,
+                                testTag = "save_teacher_preferences_button",
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { savePrefs() },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Level 1 Sub-Screen: Semester Subject Picker
+        KlassSubScreenHost(visible = activeSemesterKey != null, zIndex = 85f) {
+            val semKey = activeSemesterKey
+            if (semKey != null) {
+                SemesterSubjectPickerSubScreen(
+                    semKey = semKey,
+                    allBooks = allBooks,
+                    initialDeptFilter = bookDeptFilter,
+                    selectedCodes = selectedBySemester[semKey] ?: emptySet(),
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onDeptFilterChange = { bookDeptFilter = it },
+                    onToggleCode = { code ->
+                        val cur = selectedBySemester[semKey] ?: emptySet()
+                        selectedBySemester[semKey] = if (code in cur) cur - code else cur + code
+                    },
+                    onSelectAll = { visibleCodes ->
+                        val cur = selectedBySemester[semKey] ?: emptySet()
+                        selectedBySemester[semKey] = cur + visibleCodes
+                    },
+                    onClearSemester = {
+                        selectedBySemester[semKey] = emptySet()
+                    },
+                    onDismiss = { activeSemesterKey = null },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SemesterSubjectPickerSubScreen(
+    semKey: String,
+    allBooks: List<LibraryBook>,
+    initialDeptFilter: String,
+    selectedCodes: Set<String>,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onDeptFilterChange: (String) -> Unit,
+    onToggleCode: (String) -> Unit,
+    onSelectAll: (Set<String>) -> Unit,
+    onClearSemester: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val semIdx = RoutineRules.ALL_SEMESTER_KEYS.indexOf(semKey).coerceAtLeast(0)
+    val dayAccent = dayPaletteAt(semIdx, isDark)
+    val teachingAccent = KlassFeaturePalette.teaching(isDark)
+
+    var searchQuery by remember(semKey) { mutableStateOf("") }
+    var inspectingBook by remember { mutableStateOf<LibraryBook?>(null) }
+
+    val semBooks = remember(allBooks, initialDeptFilter, searchQuery, semKey) {
+        val q = searchQuery.trim().lowercase()
+        allBooks.filter { book ->
+            val matchesSemAndDept = book.departmentSemesters.any { (dept, sems) ->
+                val deptOk = initialDeptFilter == "ALL" ||
+                    RoutineRules.normalizeDepartmentShort(dept) == initialDeptFilter
+                val semOk = sems.any { RoutineRules.canonicalSemesterKey(it) == semKey }
+                deptOk && semOk
+            }
+            val queryOk = q.isBlank() ||
+                book.title.lowercase().contains(q) ||
+                book.subjectCode.lowercase().contains(q)
+            matchesSemAndDept && queryOk
+        }.distinctBy { it.subjectCode.trim() }
+            .sortedBy { it.subjectCode }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalFullScreenSheet(
+            title = RoutineRules.semesterDisplayLabel(semKey),
+            subtitle = "${selectedCodes.size} of ${semBooks.size} selected",
+            levelLabel = "Teaching Setup • Level 1",
+            icon = BookIcon,
+            accent = dayAccent.primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            onDismiss = onDismiss,
+            headerActions = {
+                if (semBooks.isNotEmpty()) {
+                    KlassTonalButton(
+                        text = "All",
+                        icon = CheckIcon,
+                        accent = dayAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        height = 36.dp,
+                        onClick = { onSelectAll(semBooks.map { it.subjectCode.trim() }.toSet()) },
+                    )
+                }
+                if (selectedCodes.isNotEmpty()) {
+                    KlassTonalButton(
+                        text = "Clear",
+                        icon = CloseIcon,
+                        accent = KlassFeaturePalette.error(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        height = 36.dp,
+                        onClick = onClearSemester,
+                    )
+                }
+            },
+            bottomBar = {
+                WelcomeMinimal3DButton(
+                    text = "Done (${selectedCodes.size} selected)",
+                    icon = CheckIcon,
+                    hindSiliguri = hindSiliguri,
+                    isDark = isDark,
+                    customPrimaryColor = teachingAccent.primary,
+                    customBaseColor = teachingAccent.deep,
+                    height = 48.dp,
+                    cornerRadius = 16.dp,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onDismiss,
+                )
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                val filterDepts = remember { listOf("ALL") + RoutineRules.TECH_DEPARTMENTS }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(filterDepts) { dept ->
+                        val chipAccent = if (dept == "ALL") dayAccent.primary else departmentAccent(dept, isDark).primary
+                        MinimalIconChip(
+                            label = if (dept == "ALL") "All Depts" else dept,
+                            selected = initialDeptFilter == dept,
+                            accent = chipAccent,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onClick = { onDeptFilterChange(dept) },
+                        )
+                    }
+                }
+
+                MinimalSearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    placeholder = "Search subject code or title",
+                    accent = dayAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                )
             }
 
-            // Clean M3 Pinned Bottom Bar
-            Surface(
-                color = cs.surface,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = cs.outlineVariant.copy(alpha = 0.5f),
+            if (semBooks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    KlassEmptyState(
+                        icon = BookIcon,
+                        title = "No Subjects Match",
+                        subtitle = "Try another department filter or clear your search.",
+                        accent = dayAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
                     )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 920.dp)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    ) {
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 20.dp),
+                ) {
+                    item {
+                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                            semBooks.forEachIndexed { idx, book ->
+                                val code = book.subjectCode.trim()
+                                val checked = code in selectedCodes
+                                Surface(
+                                    onClick = { onToggleCode(code) },
+                                    color = if (checked) dayAccent.softTint else Color.Transparent,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 8.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Checkbox(
+                                            checked = checked,
+                                            onCheckedChange = null,
+                                            colors = CheckboxDefaults.colors(
+                                                checkedColor = dayAccent.primary,
+                                                uncheckedColor = cs.onSurfaceVariant,
+                                            ),
+                                        )
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = book.title,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = hindSiliguri,
+                                                color = if (checked) dayAccent.primary else cs.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            Text(
+                                                text = "${book.subjectCode} • ${book.theoryClassesPerWeek}T • ${book.practicalClassesPerWeek}P",
+                                                fontSize = 14.sp,
+                                                fontFamily = hindSiliguri,
+                                                color = cs.onSurfaceVariant,
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = { inspectingBook = book },
+                                            modifier = Modifier.size(48.dp),
+                                        ) {
+                                            Icon(
+                                                imageVector = InfoCircleIcon,
+                                                contentDescription = "Subject details",
+                                                tint = dayAccent.primary,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                                if (idx < semBooks.lastIndex) {
+                                    SocialInsetDivider(startIndent = 56.dp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Level 2 Sub-Sub-Screen: Quick Subject Syllabus Inspection
+        KlassSubScreenHost(visible = inspectingBook != null, zIndex = 95f) {
+            inspectingBook?.let { book ->
+                val isSelected = book.subjectCode.trim() in selectedCodes
+                MinimalFullScreenSheet(
+                    title = book.title,
+                    subtitle = "Subject Code ${book.subjectCode}",
+                    levelLabel = "Subject Details • Level 2",
+                    icon = InfoCircleIcon,
+                    accent = dayAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onDismiss = { inspectingBook = null },
+                    bottomBar = {
                         WelcomeMinimal3DButton(
-                            text = "Save Preferences ($totalSelectedCount)",
-                            icon = CheckIcon,
+                            text = if (isSelected) "Remove Subject" else "Select Subject",
+                            icon = if (isSelected) CloseIcon else CheckIcon,
                             hindSiliguri = hindSiliguri,
                             isDark = isDark,
-                            isLoading = isSaving,
-                            height = 46.dp,
-                            cornerRadius = 23.dp,
-                            testTag = "save_teacher_preferences_button",
+                            isDestructive = isSelected,
+                            customPrimaryColor = if (isSelected) null else dayAccent.primary,
+                            customBaseColor = if (isSelected) null else dayAccent.deep,
+                            height = 48.dp,
+                            cornerRadius = 16.dp,
                             modifier = Modifier.fillMaxWidth(),
-                            onClick = { savePrefs() },
+                            onClick = {
+                                onToggleCode(book.subjectCode.trim())
+                                inspectingBook = null
+                            },
                         )
+                    },
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            KlassHeroBanner(
+                                title = book.title,
+                                subtitle = "Code ${book.subjectCode}",
+                                icon = BookIcon,
+                                accent = dayAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                badges = listOf(
+                                    "${book.theoryClassesPerWeek} Theory/wk" to KlassFeaturePalette.routine(isDark).primary,
+                                    "${book.practicalClassesPerWeek} Practical/wk" to teachingAccent.primary,
+                                    "${book.credit} Credit" to KlassFeaturePalette.books(isDark).primary,
+                                ),
+                            )
+                        }
+
+                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                            book.departmentSemesters.entries.forEachIndexed { idx, (dept, sems) ->
+                                val dAccent = departmentAccent(dept, isDark)
+                                KlassDetailFieldRow(
+                                    label = "$dept Department",
+                                    value = sems.joinToString(", ") { RoutineRules.semesterDisplayLabel(it) },
+                                    icon = LayerGroupIcon,
+                                    accent = dAccent.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                                if (idx < book.departmentSemesters.size - 1) {
+                                    SocialInsetDivider(startIndent = 68.dp)
+                                }
+                            }
+                        }
                     }
                 }
             }

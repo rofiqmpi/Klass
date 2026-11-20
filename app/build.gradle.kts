@@ -15,15 +15,17 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.ai)
-    implementation(libs.firebase.appcheck.recaptcha)
-    implementation(libs.firebase.appcheck.debug)
-    implementation("com.google.firebase:firebase-auth:23.2.0")
-    implementation("com.google.firebase:firebase-firestore")
+    // implementation(libs.firebase.ai) // Removed: Zed AI uses local app data only
+    // implementation(libs.firebase.appcheck.recaptcha)
+    // implementation(libs.firebase.appcheck.debug)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.splashscreen)
-    implementation(libs.google.play.services.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
 
@@ -47,10 +49,20 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
     buildTypes {
         debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
         }
         release {
+            signingConfig = signingConfigs.getByName("debugConfig")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

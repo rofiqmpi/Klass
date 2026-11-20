@@ -19,17 +19,20 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -52,14 +55,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -72,8 +79,10 @@ import androidx.compose.ui.unit.sp
 import com.mpi.klass.theme.BackArrowIcon
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.CloseIcon
+import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.SearchIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.rainbowScreenStops
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.notification
 import kotlinx.coroutines.delay
@@ -81,28 +90,133 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 /**
- * Soft editorial canvas used by utility and detail screens.
+ * Smooth, luminous full-bleed rainbow aurora canvas for all screens.
  */
+internal fun Modifier.rainbowScreenBackground(
+    isDark: Boolean,
+    focusAccent: Color? = null,
+): Modifier = this.drawBehind {
+    val stops = rainbowScreenStops(isDark)
+    drawRect(
+        brush = Brush.linearGradient(
+            colors = stops,
+            start = Offset.Zero,
+            end = Offset(size.width, size.height),
+        )
+    )
+    // Soft ambient radial highlights to enrich screen depth without adding clutter
+    val topHighlight = focusAccent ?: stops.last()
+    val bottomHighlight = stops.first()
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                topHighlight.copy(alpha = if (isDark) 0.16f else 0.14f),
+                Color.Transparent,
+            ),
+            center = Offset(size.width * 0.85f, size.height * 0.10f),
+            radius = (size.maxDimension * 0.65f).coerceAtLeast(1f),
+        )
+    )
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                bottomHighlight.copy(alpha = if (isDark) 0.14f else 0.18f),
+                Color.Transparent,
+            ),
+            center = Offset(size.width * 0.15f, size.height * 0.88f),
+            radius = (size.maxDimension * 0.60f).coerceAtLeast(1f),
+        )
+    )
+}
+
 @Composable
 internal fun MinimalBackdrop(
     isDark: Boolean,
     modifier: Modifier = Modifier,
+    focusAccent: Color? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.18f else 0.34f),
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background,
-                    ),
-                ),
-            ),
+            .rainbowScreenBackground(isDark, focusAccent),
         content = content,
     )
+}
+
+/**
+ * Subtle spacious separator band over the rainbow background.
+ */
+@Composable
+internal fun SocialSectionDividerBand(
+    isDark: Boolean,
+    height: Dp = 8.dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height),
+    )
+}
+
+/**
+ * Clean inset hairline divider between list rows.
+ */
+@Composable
+internal fun SocialInsetDivider(
+    startIndent: Dp = 76.dp,
+    endIndent: Dp = 0.dp,
+    modifier: Modifier = Modifier,
+) {
+    HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        modifier = modifier.padding(start = startIndent, end = endIndent),
+    )
+}
+
+/**
+ * Clean translucent glass block allowing the rainbow screen background to shine gently through.
+ */
+@Composable
+internal fun SocialSurfaceBlock(
+    isDark: Boolean,
+    modifier: Modifier = Modifier,
+    showTopHairline: Boolean = false,
+    showBottomHairline: Boolean = false,
+    accentTint: Color? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val baseBg = if (isDark) {
+        cs.surfaceContainerLow.copy(alpha = 0.62f)
+    } else {
+        Color.White.copy(alpha = 0.68f)
+    }
+    val hairlineColor = accentTint?.copy(alpha = if (isDark) 0.30f else 0.20f)
+        ?: cs.outlineVariant.copy(alpha = 0.45f)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(baseBg)
+            .then(
+                if (accentTint != null) {
+                    Modifier.background(accentTint.copy(alpha = if (isDark) 0.08f else 0.045f))
+                } else {
+                    Modifier
+                }
+            ),
+    ) {
+        if (showTopHairline) {
+            HorizontalDivider(thickness = 0.5.dp, color = hairlineColor)
+        }
+        content()
+        if (showBottomHairline) {
+            HorizontalDivider(thickness = 0.5.dp, color = hairlineColor)
+        }
+    }
 }
 
 /**
@@ -115,16 +229,16 @@ internal fun AnimatedStaggeredItem(
     content: @Composable () -> Unit,
 ) {
     val alphaAnim = remember { Animatable(0f) }
-    val offsetYAnim = remember { Animatable(8f) }
+    val offsetYAnim = remember { Animatable(6f) }
 
     LaunchedEffect(index) {
-        val staggerMs = (index.coerceAtMost(6) * 20L)
+        val staggerMs = (index.coerceAtMost(5) * 16L)
         if (staggerMs > 0L) delay(staggerMs)
         launch {
-            alphaAnim.animateTo(1f, tween(durationMillis = 180, easing = FastOutSlowInEasing))
+            alphaAnim.animateTo(1f, tween(durationMillis = 160, easing = FastOutSlowInEasing))
         }
         launch {
-            offsetYAnim.animateTo(0f, tween(durationMillis = 200, easing = FastOutSlowInEasing))
+            offsetYAnim.animateTo(0f, tween(durationMillis = 180, easing = FastOutSlowInEasing))
         }
     }
 
@@ -139,15 +253,19 @@ internal fun AnimatedStaggeredItem(
 }
 
 /**
- * Elevated content surface with a clear hierarchy from the page canvas.
+ * Kept strictly for empty states or special dialogs; main lists use edge-to-edge Social rows.
  */
 @Composable
 internal fun MinimalCardSurface(
     isDark: Boolean,
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(18.dp),
-    borderColor: Color? = MaterialTheme.colorScheme.outlineVariant,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    shape: Shape = RoundedCornerShape(16.dp),
+    borderColor: Color? = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+    containerColor: Color = if (isDark) {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.74f)
+    } else {
+        Color.White.copy(alpha = 0.80f)
+    },
     onClick: (() -> Unit)? = null,
     testTag: String? = null,
     content: @Composable BoxScope.() -> Unit,
@@ -161,7 +279,7 @@ internal fun MinimalCardSurface(
             shape = shape,
             color = containerColor,
             border = border,
-            shadowElevation = 2.dp,
+            shadowElevation = 0.dp,
             modifier = taggedModifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.fillMaxWidth(), content = content)
@@ -171,7 +289,7 @@ internal fun MinimalCardSurface(
             shape = shape,
             color = containerColor,
             border = border,
-            shadowElevation = 2.dp,
+            shadowElevation = 0.dp,
             modifier = taggedModifier.fillMaxWidth(),
         ) {
             Box(modifier = Modifier.fillMaxWidth(), content = content)
@@ -180,7 +298,7 @@ internal fun MinimalCardSurface(
 }
 
 /**
- * Spacious app bar with stronger title hierarchy.
+ * Crisp Telegram / Facebook style top app bar with bold 22.sp title and subtle rainbow glass edge.
  */
 @Composable
 internal fun GoogleTopAppBar(
@@ -192,9 +310,10 @@ internal fun GoogleTopAppBar(
     onNavigationClick: (() -> Unit)? = null,
     navigationTestTag: String? = null,
     showBottomDivider: Boolean = true,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    containerColor: Color = Color.Transparent,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
+    val cs = MaterialTheme.colorScheme
     Surface(
         color = containerColor,
         modifier = modifier.fillMaxWidth(),
@@ -204,8 +323,8 @@ internal fun GoogleTopAppBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .height(64.dp)
-                    .padding(horizontal = 8.dp),
+                    .height(60.dp)
+                    .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (navigationIcon != null && onNavigationClick != null) {
@@ -218,25 +337,25 @@ internal fun GoogleTopAppBar(
                         Icon(
                             imageVector = navigationIcon,
                             contentDescription = navigationContentDescription,
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = cs.onSurface,
                             modifier = Modifier.size(22.dp),
                         )
                     }
                 } else {
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
                 }
 
                 Text(
                     text = title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 21.sp,
+                    color = cs.onSurface,
+                    fontSize = 22.sp,
                     fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 6.dp),
                 )
 
                 Row(
@@ -247,8 +366,8 @@ internal fun GoogleTopAppBar(
             }
             if (showBottomDivider) {
                 HorizontalDivider(
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
+                    thickness = 0.5.dp,
+                    color = cs.outlineVariant.copy(alpha = 0.5f),
                 )
             }
         }
@@ -256,7 +375,7 @@ internal fun GoogleTopAppBar(
 }
 
 /**
- * Consistent AI & Notification circular icon buttons matching HomeRoutineHeader icons and colors.
+ * Distinct, color-coded AI (Violet) & Notification (Amber/Coral) circular icon buttons with 48.dp hit areas.
  */
 @Composable
 internal fun HeaderAiNotificationActions(
@@ -267,35 +386,37 @@ internal fun HeaderAiNotificationActions(
     onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val cardBg = if (isDark) Color(0xFF1E293B) else Color.White
-    val primaryAccent = if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB)
-    val notiAccent = if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
+    val aiAccent = KlassFeaturePalette.ai(isDark)
+    val notiAccent = KlassFeaturePalette.notifications(isDark)
+    val baseBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
 
     Row(
-        modifier = modifier.padding(end = 8.dp),
+        modifier = modifier.padding(end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (showAi) {
             Surface(
                 onClick = onAiClick,
                 shape = CircleShape,
-                color = cardBg,
-                border = BorderStroke(1.dp, primaryAccent.copy(alpha = 0.45f)),
-                shadowElevation = 2.dp,
+                color = baseBg,
+                border = BorderStroke(1.dp, aiAccent.borderTint),
+                shadowElevation = 1.dp,
                 modifier = Modifier
                     .minimumInteractiveComponentSize()
-                    .size(40.dp)
+                    .size(42.dp)
                     .testTag("top_bar_ai_button"),
             ) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(aiAccent.softTint),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = SparkleIcon,
-                        contentDescription = "Study Assistant",
-                        tint = primaryAccent,
+                        contentDescription = "Zed AI",
+                        tint = aiAccent.primary,
                         modifier = Modifier.size(19.dp),
                     )
                 }
@@ -306,22 +427,24 @@ internal fun HeaderAiNotificationActions(
             Surface(
                 onClick = onNotificationClick,
                 shape = CircleShape,
-                color = cardBg,
-                border = BorderStroke(1.dp, notiAccent.copy(alpha = 0.45f)),
-                shadowElevation = 2.dp,
+                color = baseBg,
+                border = BorderStroke(1.dp, notiAccent.borderTint),
+                shadowElevation = 1.dp,
                 modifier = Modifier
                     .minimumInteractiveComponentSize()
-                    .size(40.dp)
+                    .size(42.dp)
                     .testTag("top_bar_notification_button"),
             ) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(notiAccent.softTint),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.notification),
                         contentDescription = "Notifications",
-                        tint = notiAccent,
+                        tint = notiAccent.primary,
                         modifier = Modifier.size(19.dp),
                     )
                 }
@@ -331,28 +454,43 @@ internal fun HeaderAiNotificationActions(
 }
 
 /**
- * Strong section label that remains readable at a glance.
+ * Clean section heading with subtle pill dot accent.
  */
 @Composable
 internal fun GoogleSectionHeader(
     title: String,
     hindSiliguri: FontFamily,
     modifier: Modifier = Modifier,
+    accent: Color = MaterialTheme.colorScheme.primary,
 ) {
-    Text(
-        text = title,
-        color = MaterialTheme.colorScheme.primary,
-        fontSize = 15.sp,
-        fontFamily = hindSiliguri,
-        fontWeight = FontWeight.Medium,
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 7.dp),
-    )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 4.dp, height = 16.dp)
+                .clip(CircleShape)
+                .background(accent),
+        )
+        Text(
+            text = title,
+            color = accent,
+            fontSize = 15.5.sp,
+            fontFamily = hindSiliguri,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 /**
- * Tactile 3D Extruded Button restoring the user's signature 3D lip + Cobalt/Slate/Red palette.
+ * Tactile 3D Extruded Button preserving the signature 3D lip, with optional custom semantic color.
  */
 @Composable
 internal fun WelcomeMinimal3DButton(
@@ -365,8 +503,10 @@ internal fun WelcomeMinimal3DButton(
     isDark: Boolean = false,
     isLoading: Boolean = false,
     enabled: Boolean = true,
-    height: Dp = 44.dp,
-    cornerRadius: Dp = 12.dp,
+    height: Dp = 46.dp,
+    cornerRadius: Dp = 14.dp,
+    customPrimaryColor: Color? = null,
+    customBaseColor: Color? = null,
     testTag: String? = null,
     onClick: () -> Unit,
 ) {
@@ -376,10 +516,20 @@ internal fun WelcomeMinimal3DButton(
 
     val (fgColor, baseColor, contentColor) = when {
         isDestructive -> Triple(
-            Color(0xFFEF4444),
-            Color(0xFFB91C1C),
+            Color(0xFFE11D48),
+            Color(0xFF9F1239),
             Color.White,
         )
+        customPrimaryColor != null -> {
+            val fg = customPrimaryColor
+            val base = customBaseColor ?: customPrimaryColor.copy(
+                red = (customPrimaryColor.red * 0.72f).coerceIn(0f, 1f),
+                green = (customPrimaryColor.green * 0.72f).coerceIn(0f, 1f),
+                blue = (customPrimaryColor.blue * 0.72f).coerceIn(0f, 1f),
+            )
+            val content = if (fg.luminance() > 0.54f) Color(0xFF0B1120) else Color.White
+            Triple(fg, base, content)
+        }
         isPrimaryAccent -> Triple(
             if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB),
             if (isDark) Color(0xFF0284C7) else Color(0xFF1D4ED8),
@@ -403,7 +553,6 @@ internal fun WelcomeMinimal3DButton(
             .alpha(if (enabled) 1f else 0.6f),
         contentAlignment = Alignment.TopCenter,
     ) {
-        // 3D Bottom Shadow Lip
         Box(
             modifier = Modifier
                 .offset(y = lipDepth)
@@ -413,7 +562,6 @@ internal fun WelcomeMinimal3DButton(
                 .background(baseColor),
         )
 
-        // Tactile Pressable Surface
         Surface(
             onClick = onClick,
             enabled = canClick,
@@ -445,6 +593,65 @@ internal fun WelcomeMinimal3DButton(
     }
 }
 
+/**
+ * Compact Tonal Pill Action Button (40.dp visual height inside a 48.dp minimum touch target)
+ * ideal for inline actions (Call, Email, GPS Sync, Filter, Clear, Copy, View).
+ */
+@Composable
+internal fun KlassTonalButton(
+    text: String,
+    accent: Color,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    height: Dp = 40.dp,
+    testTag: String? = null,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = CircleShape,
+        color = resolvedAccent.copy(alpha = if (isDark) 0.20f else 0.12f),
+        border = BorderStroke(1.dp, resolvedAccent.copy(alpha = if (isDark) 0.45f else 0.30f)),
+        shadowElevation = 0.dp,
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .height(height.coerceAtLeast(36.dp))
+            .alpha(if (enabled) 1f else 0.5f)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = resolvedAccent,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            Text(
+                text = text,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = hindSiliguri,
+                color = resolvedAccent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun GoogleButtonContent(
     text: String,
@@ -457,7 +664,7 @@ private fun GoogleButtonContent(
         CircularProgressIndicator(
             color = contentColor,
             strokeWidth = 2.dp,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(19.dp),
         )
     } else {
         Row(
@@ -469,14 +676,14 @@ private fun GoogleButtonContent(
                     imageVector = icon,
                     contentDescription = null,
                     tint = contentColor,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(19.dp),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
                 text = text,
-                fontSize = 15.5.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
                 fontFamily = hindSiliguri,
                 color = contentColor,
                 maxLines = 1,
@@ -487,7 +694,7 @@ private fun GoogleButtonContent(
 }
 
 /**
- * Clear outlined action with a comfortable touch target.
+ * Clean outlined action with larger label typography and optional accent tint.
  */
 @Composable
 internal fun GoogleOutlinedButton(
@@ -496,7 +703,7 @@ internal fun GoogleOutlinedButton(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
-    height: Dp = 44.dp,
+    height: Dp = 46.dp,
     contentColor: Color = MaterialTheme.colorScheme.primary,
     testTag: String? = null,
     onClick: () -> Unit,
@@ -505,10 +712,10 @@ internal fun GoogleOutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(1.dp, contentColor.copy(alpha = 0.42f)),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.85f),
             contentColor = contentColor,
         ),
         modifier = modifier
@@ -538,9 +745,9 @@ internal fun WelcomeMinimal3DIconButton(
     containerColor: Color = Color.Unspecified,
     iconTint: Color = Color.Unspecified,
     baseColor: Color = Color.Transparent,
-    visualSize: Dp = 38.dp,
-    iconSize: Dp = 18.dp,
-    cornerRadius: Dp = 11.dp,
+    visualSize: Dp = 40.dp,
+    iconSize: Dp = 19.dp,
+    cornerRadius: Dp = 12.dp,
     isLoading: Boolean = false,
     enabled: Boolean = true,
     testTag: String? = null,
@@ -623,7 +830,7 @@ internal fun WelcomeMinimal3DIconButton(
 }
 
 /**
- * Roomy search field with a visible focus state.
+ * Borderless Telegram / Facebook style pill search field with clear 16.sp input text.
  */
 @Composable
 internal fun MinimalSearchBar(
@@ -639,30 +846,37 @@ internal fun MinimalSearchBar(
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
-    val borderColor by animateColorAsState(
-        targetValue = if (isFocused) cs.primary else cs.outlineVariant,
-        animationSpec = tween(160),
-        label = "SearchBorderColor",
+    val pillBg by animateColorAsState(
+        targetValue = if (isDark) {
+            cs.surfaceContainerLow.copy(alpha = if (isFocused) 0.92f else 0.74f)
+        } else {
+            Color.White.copy(alpha = if (isFocused) 0.98f else 0.84f)
+        },
+        animationSpec = tween(150),
+        label = "SearchPillBg",
     )
 
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = cs.surfaceContainerLow,
-        border = BorderStroke(if (isFocused) 1.5.dp else 1.dp, borderColor),
-        shadowElevation = if (isFocused) 2.dp else 0.dp,
-        modifier = modifier.height(50.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = pillBg,
+        border = BorderStroke(
+            width = if (isFocused) 1.4.dp else 0.75.dp,
+            color = if (isFocused) accent else accent.copy(alpha = 0.30f),
+        ),
+        shadowElevation = 0.dp,
+        modifier = modifier.height(48.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 14.dp, end = 6.dp),
+                .padding(start = 16.dp, end = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = SearchIcon,
                 contentDescription = null,
-                tint = if (isFocused) cs.primary else cs.onSurfaceVariant,
-                modifier = Modifier.size(17.dp),
+                tint = if (isFocused) accent else accent.copy(alpha = 0.75f),
+                modifier = Modifier.size(19.dp),
             )
             Spacer(modifier = Modifier.width(10.dp))
             Box(
@@ -673,7 +887,7 @@ internal fun MinimalSearchBar(
                     Text(
                         text = placeholder,
                         color = cs.onSurfaceVariant,
-                        fontSize = 15.sp,
+                        fontSize = 15.5.sp,
                         fontFamily = hindSiliguri,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -685,11 +899,11 @@ internal fun MinimalSearchBar(
                     singleLine = true,
                     textStyle = TextStyle(
                         color = cs.onSurface,
-                        fontSize = 15.5.sp,
+                        fontSize = 16.sp,
                         fontFamily = hindSiliguri,
                         fontWeight = FontWeight.Normal,
                     ),
-                    cursorBrush = SolidColor(cs.primary),
+                    cursorBrush = SolidColor(accent),
                     modifier = Modifier
                         .fillMaxWidth()
                         .onFocusChanged { isFocused = it.isFocused }
@@ -700,14 +914,14 @@ internal fun MinimalSearchBar(
                 IconButton(
                     onClick = { onQueryChange("") },
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(40.dp)
                         .then(if (clearTestTag != null) Modifier.testTag(clearTestTag) else Modifier),
                 ) {
                     Icon(
                         imageVector = CloseIcon,
                         contentDescription = "Clear search",
                         tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(15.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -716,7 +930,7 @@ internal fun MinimalSearchBar(
 }
 
 /**
- * Readable filter chip with a generous touch target.
+ * Clean glass filter chip with unified primary active state.
  */
 @Composable
 internal fun MinimalIconChip(
@@ -731,24 +945,31 @@ internal fun MinimalIconChip(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val containerColor = if (selected) cs.primaryContainer else cs.surfaceContainerLow
-    val contentColor = if (selected) cs.onPrimaryContainer else cs.onSurfaceVariant
-    val borderStroke = BorderStroke(
-        0.75.dp,
-        if (selected) cs.primary.copy(alpha = 0.55f) else cs.outlineVariant,
+    val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
+    val selectedFg = if (resolvedAccent.luminance() > 0.52f) Color(0xFF0B1120) else Color.White
+    val unselectedBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.74f) else Color.White.copy(alpha = 0.84f)
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) resolvedAccent else unselectedBg,
+        animationSpec = tween(180),
+        label = "ChipContainer",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) selectedFg else cs.onSurface,
+        animationSpec = tween(180),
+        label = "ChipContent",
     )
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = CircleShape,
         color = containerColor,
-        border = borderStroke,
+        border = if (!selected) BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.28f)) else null,
         modifier = modifier
-            .height(38.dp)
+            .height(40.dp)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier.padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
@@ -757,15 +978,15 @@ internal fun MinimalIconChip(
                 Icon(
                     imageVector = activeIcon,
                     contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(14.dp),
+                    tint = if (selected) contentColor else resolvedAccent,
+                    modifier = Modifier.size(15.dp),
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(6.dp))
             }
             Text(
                 text = label,
-                fontSize = 13.5.sp,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                fontSize = 14.5.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                 fontFamily = hindSiliguri,
                 color = contentColor,
                 maxLines = 1,
@@ -776,7 +997,7 @@ internal fun MinimalIconChip(
 }
 
 /**
- * Compact Stat Badge.
+ * Compact pill stat badge with crisp typography honoring rainbow accents.
  */
 @Composable
 internal fun MinimalStatBadge(
@@ -788,29 +1009,30 @@ internal fun MinimalStatBadge(
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
+    val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = cs.surfaceContainerLow,
-        border = BorderStroke(0.75.dp, cs.outlineVariant),
+        shape = CircleShape,
+        color = resolvedAccent.copy(alpha = if (isDark) 0.18f else 0.12f),
+        border = BorderStroke(0.75.dp, resolvedAccent.copy(alpha = if (isDark) 0.38f else 0.28f)),
         modifier = modifier,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = cs.primary,
-                modifier = Modifier.size(14.dp),
+                tint = resolvedAccent,
+                modifier = Modifier.size(15.dp),
             )
             Text(
                 text = text,
                 color = cs.onSurface,
-                fontSize = 13.5.sp,
+                fontSize = 14.sp,
                 fontFamily = hindSiliguri,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -859,7 +1081,8 @@ internal fun <T> MinimalResponsiveGrid(
 }
 
 /**
- * Clean Full-Screen Dialog Sheet (compact 56.dp header).
+ * Polished Full-Screen Sub-Screen Container with colored feature icon badge,
+ * optional breadcrumb pill (`levelLabel`), header actions slot, and clean rainbow glass backdrop.
  */
 @Composable
 internal fun MinimalFullScreenSheet(
@@ -873,6 +1096,9 @@ internal fun MinimalFullScreenSheet(
     dismissEnabled: Boolean = true,
     closeTestTag: String? = null,
     maxContentWidth: Dp = 740.dp,
+    navigationIcon: ImageVector = BackArrowIcon,
+    levelLabel: String? = null,
+    headerActions: @Composable RowScope.() -> Unit = {},
     bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -881,27 +1107,33 @@ internal fun MinimalFullScreenSheet(
     }
 
     val cs = MaterialTheme.colorScheme
+    val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
+    val headerBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.82f)
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = cs.background,
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .rainbowScreenBackground(isDark, resolvedAccent),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .navigationBarsPadding()
-                .imePadding(),
+                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
         ) {
             Surface(
-                color = cs.surface,
+                color = headerBg,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(resolvedAccent.copy(alpha = if (isDark) 0.10f else 0.055f)),
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()
-                            .height(56.dp)
+                            .height(62.dp)
                             .padding(horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -913,22 +1145,49 @@ internal fun MinimalFullScreenSheet(
                                 .then(if (closeTestTag != null) Modifier.testTag(closeTestTag) else Modifier),
                         ) {
                             Icon(
-                                imageVector = CloseIcon,
-                                contentDescription = "Close",
+                                imageVector = navigationIcon,
+                                contentDescription = "Back",
                                 tint = cs.onSurface,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(22.dp),
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
+                            border = BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.38f)),
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = resolvedAccent,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
+                            if (!levelLabel.isNullOrBlank()) {
+                                Text(
+                                    text = levelLabel,
+                                    color = resolvedAccent,
+                                    fontSize = 11.5.sp,
+                                    fontFamily = hindSiliguri,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                             Text(
                                 text = title,
                                 color = cs.onSurface,
-                                fontSize = 18.sp,
+                                fontSize = 19.sp,
                                 fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -936,7 +1195,7 @@ internal fun MinimalFullScreenSheet(
                                 Text(
                                     text = subtitle,
                                     color = cs.onSurfaceVariant,
-                                    fontSize = 12.sp,
+                                    fontSize = 13.5.sp,
                                     fontFamily = hindSiliguri,
                                     fontWeight = FontWeight.Normal,
                                     maxLines = 1,
@@ -945,11 +1204,16 @@ internal fun MinimalFullScreenSheet(
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier = Modifier.padding(end = 6.dp),
+                            content = headerActions,
+                        )
                     }
                     HorizontalDivider(
                         thickness = 0.5.dp,
-                        color = cs.outlineVariant.copy(alpha = 0.5f),
+                        color = resolvedAccent.copy(alpha = if (isDark) 0.30f else 0.20f),
                     )
                 }
             }
@@ -971,13 +1235,13 @@ internal fun MinimalFullScreenSheet(
 
             if (bottomBar != null) {
                 Surface(
-                    color = cs.surface,
+                    color = headerBg,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         HorizontalDivider(
                             thickness = 0.5.dp,
-                            color = cs.outlineVariant.copy(alpha = 0.5f),
+                            color = resolvedAccent.copy(alpha = if (isDark) 0.30f else 0.22f),
                         )
                         Box(
                             modifier = Modifier.fillMaxWidth(),

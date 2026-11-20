@@ -109,10 +109,8 @@ private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exce
 @Composable
 fun App(
     onLaunchGoogleSignIn: (callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = {},
-    onLaunchEmailSignIn: (email: String, password: String, callback: (email: String?, name: String?, photoUrl: String?, errorMsg: String?) -> Unit) -> Unit = { _, _, _ -> },
     onSignOutGoogle: () -> Unit = {},
     onCloseApp: () -> Unit = {},
-    isBackendConfigured: Boolean = true,
 ) {
     var themeMode by remember { mutableStateOf(loadThemeMode()) }
     var appLanguage by remember { mutableStateOf(loadAppLanguage()) }
@@ -148,13 +146,34 @@ fun App(
     }
     var activeErrorType by remember { mutableStateOf<ErrorImageType?>(null) }
     var lastErrorType by remember { mutableStateOf(ErrorImageType.GENERAL_ERROR) }
+    var lastErrorDetail by remember { mutableStateOf<String?>(null) }
     var isLoadingOverlay by remember { mutableStateOf(value = false) }
 
     val coroutineScope = rememberCoroutineScope()
     val hindSiliguri = getHindSiliguriFontFamily()
 
-    fun showError(type: ErrorImageType) {
+    var pendingWelcomePush by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val requestNotificationPermission = rememberNotificationPermissionLauncher { granted ->
+        val pending = pendingWelcomePush
+        if (granted && pending != null) {
+            sendWelcomePushNotification(pending.first, pending.second)
+            pendingWelcomePush = null
+        }
+    }
+
+    fun triggerWelcomePush(userName: String, roleLabel: String) {
+        if (hasNotificationPermission()) {
+            sendWelcomePushNotification(userName, roleLabel)
+            pendingWelcomePush = null
+        } else {
+            pendingWelcomePush = userName to roleLabel
+            requestNotificationPermission()
+        }
+    }
+
+    fun showError(type: ErrorImageType, detail: String? = null) {
         lastErrorType = type
+        lastErrorDetail = detail?.takeIf { it.isNotBlank() }
         activeErrorType = type
     }
 
@@ -164,14 +183,21 @@ fun App(
         coroutineScope.launch {
             AppStrings.initializeOnlineDictionary()
         }
-        val session = loadUserSession() ?: return@LaunchedEffect
-        if (session.role.trim().uppercase() == "GUEST") return@LaunchedEffect
+        val session = loadUserSession()
+        if (session == null || session.role.trim().uppercase() == "GUEST") {
+            return@LaunchedEffect
+        }
+        if (!hasNotificationPermission()) {
+            requestNotificationPermission()
+        }
         try {
             val isAdmin = session.role.trim().uppercase() == UserRole.ADMIN.name
-            val isAuthorized = !isAdmin || RoleConfig.isAuthorizedAdminEmail(session.email)
-            if (!isAuthorized && isNetworkAvailable()) {
-                clearUserSession()
-                currentScreen = AppScreen.Welcome
+            if (isAdmin && isNetworkAvailable()) {
+                val adminStatus = RoleConfig.getAdminStatusFromFirestore(session.email)
+                if (adminStatus == AdminStatus.DECLINED) {
+                    clearUserSession()
+                    currentScreen = AppScreen.Welcome
+                }
             }
         } catch (_: Exception) {}
     }
@@ -183,7 +209,7 @@ fun App(
                 errorMsg != null -> {
                     isLoadingOverlay = false
                     onSignOutGoogle()
-                    showError(ErrorImageType.GENERAL_ERROR)
+                    showError(ErrorImageType.GENERAL_ERROR, errorMsg)
                 }
 
                 email != null -> {
@@ -221,6 +247,7 @@ fun App(
                                     RoleConfig.saveAdminEmail(cleanEmail, userName, finalAdminPhoto)
                                     RoleConfig.saveUserProfile(cleanEmail, userName, finalAdminPhoto, "google", UserRole.ADMIN.name)
                                     saveUserSession(UserSession(role = UserRole.ADMIN.name, email = cleanEmail, name = userName, photoUrl = finalAdminPhoto))
+                                    triggerWelcomePush(userName, "Admin")
                                     currentScreen = AppScreen.RoleHome(
                                         role = UserRole.ADMIN,
                                         email = cleanEmail,
@@ -302,6 +329,12 @@ fun App(
 
                         RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
                         saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = finalName, photoUrl = finalPhoto))
+                        val roleTitle = when (actualRole) {
+                            UserRole.ADMIN -> "Admin"
+                            UserRole.TEACHER -> "Teacher"
+                            UserRole.STUDENT -> "Student"
+                        }
+                        triggerWelcomePush(finalName, roleTitle)
                         currentScreen = AppScreen.RoleHome(
                             role = actualRole,
                             email = cleanEmail,
@@ -323,6 +356,8 @@ fun App(
         isLoadingOverlay = true
         coroutineScope.launch {
             clearUserSession()
+            cancelAllClassPushNotifications()
+            triggerWelcomePush("Guest", "Guest")
             currentScreen = AppScreen.GuestHome
             isLoadingOverlay = false
         }
@@ -333,6 +368,7 @@ fun App(
     // Signing out is a purely local action; it must not require internet.
     fun signOutAndReturnToWelcome() {
         clearUserSession()
+        cancelAllClassPushNotifications()
         onSignOutGoogle()
         currentScreen = AppScreen.Welcome
     }
@@ -472,8 +508,12 @@ fun App(
                     CompositionLocalProvider(LocalAppLanguage provides errorLang) {
                         ErrorImagePopup(
                             errorType = activeErrorType ?: lastErrorType,
+                            errorDetail = lastErrorDetail,
                             isDark = isDark,
-                            onDismiss = { activeErrorType = null },
+                            onDismiss = {
+                                activeErrorType = null
+                                lastErrorDetail = null
+                            },
                         )
                     }
                 }
@@ -490,6 +530,7 @@ fun App(
 @Composable
 fun ErrorImagePopup(
     errorType: ErrorImageType,
+    errorDetail: String? = null,
     isDark: Boolean,
     onDismiss: () -> Unit,
 ) {
@@ -515,7 +556,11 @@ fun ErrorImagePopup(
 
     val description = when (errorType) {
         ErrorImageType.NO_INTERNET -> "আপনার ডিভাইসে সক্রিয় ইন্টারনেট সংযোগ পাওয়া যায়নি। অ্যাপটির সমস্ত সুবিধা পেতে ইন্টারনেট কানেকশন প্রয়োজন।"
-        ErrorImageType.GENERAL_ERROR -> "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
+        ErrorImageType.GENERAL_ERROR -> if (!errorDetail.isNullOrBlank()) {
+            "সাইন-ইন সম্পন্ন করা সম্ভব হয়নি: $errorDetail"
+        } else {
+            "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
+        }
         ErrorImageType.CONFIGURATION_ERROR -> "Firebase কনফিগারেশন চেক করুন। Google sign-in provider এবং নেটওয়ার্ক সেটিংস যাচাই করুন।"
         ErrorImageType.SIGN_IN_DISABLED -> "এডমিন এই ধরনের সাইন ইন সাময়িকভাবে বন্ধ রেখেছেন। পরে আবার চেষ্টা করুন অথবা এডমিনের সাথে যোগাযোগ করুন।"
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> "শুধু Firebase Firestore-এর admins কালেকশনে থাকা অনুমোদিত email দিয়ে এডমিন হিসেবে প্রবেশ করা যাবে।"
@@ -554,23 +599,21 @@ fun ErrorImagePopup(
         )
     }
 
-    val cardBgColor = if (isDark) Color(0xFF1E293B) else Color.White
-    val borderColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-    val stepsBgColor = if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC)
-    val stepsBorderColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
-
     val titleColor = when (errorType) {
         ErrorImageType.NO_INTERNET, ErrorImageType.GENERAL_ERROR ->
             if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
-        ErrorImageType.SIGN_IN_DISABLED, ErrorImageType.ADMIN_REQUEST_PENDING, ErrorImageType.ADMIN_REQUEST_DECLINED ->
-            if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
-        ErrorImageType.ADMIN_NOT_AUTHORIZED ->
+        ErrorImageType.SIGN_IN_DISABLED, ErrorImageType.ADMIN_REQUEST_PENDING, ErrorImageType.ADMIN_REQUEST_DECLINED, ErrorImageType.ADMIN_NOT_AUTHORIZED ->
             if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
         else ->
             if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7)
     }
 
-    val textColorPrimary = if (isDark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
+    val cardBgColor = if (isDark) Color(0xFF151F32) else Color.White
+    val borderColor = titleColor.copy(alpha = if (isDark) 0.44f else 0.32f)
+    val stepsBgColor = titleColor.copy(alpha = if (isDark) 0.11f else 0.06f)
+    val stepsBorderColor = titleColor.copy(alpha = if (isDark) 0.34f else 0.24f)
+
+    val textColorPrimary = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val textColorSecondary = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569)
     val fontBengali = getHindSiliguriFontFamily()
 
@@ -587,16 +630,17 @@ fun ErrorImagePopup(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.85f)
+                .fillMaxWidth(0.88f)
                 .wrapContentHeight()
+                .navigationBarsPadding()
                 .clickable(enabled = false) {},
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 500.dp),
+                    .heightIn(max = 540.dp),
                 shape = RoundedCornerShape(22.dp),
                 color = cardBgColor,
                 border = BorderStroke(1.dp, borderColor),
@@ -614,8 +658,8 @@ fun ErrorImagePopup(
                         contentDescription = "Error Illustration",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(150.dp)
-                            .clip(RoundedCornerShape(12.dp)),
+                            .height(144.dp)
+                            .clip(RoundedCornerShape(14.dp)),
                         contentScale = ContentScale.Fit,
                     )
 
@@ -625,7 +669,7 @@ fun ErrorImagePopup(
                         text = title.localized(),
                         fontFamily = fontBengali,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = 18.5.sp,
                         color = titleColor,
                         textAlign = TextAlign.Center,
                     )
@@ -636,7 +680,7 @@ fun ErrorImagePopup(
                         text = description.localized(),
                         fontFamily = fontBengali,
                         fontWeight = FontWeight.Normal,
-                        fontSize = 13.sp,
+                        fontSize = 13.5.sp,
                         color = textColorSecondary,
                         lineHeight = 19.sp,
                         textAlign = TextAlign.Center,
@@ -655,7 +699,7 @@ fun ErrorImagePopup(
                                 text = "করণীয়:".localized(),
                                 fontFamily = fontBengali,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
+                                fontSize = 13.5.sp,
                                 color = textColorPrimary,
                             )
 
@@ -677,35 +721,25 @@ fun ErrorImagePopup(
                                         text = stepText.localized(),
                                         fontFamily = fontBengali,
                                         fontWeight = FontWeight.Medium,
-                                        fontSize = 12.sp,
+                                        fontSize = 12.5.sp,
                                         color = textColorSecondary,
-                                        lineHeight = 17.sp,
+                                        lineHeight = 17.5.sp,
                                     )
                                 }
                             }
                         }
                     }
-                }
-            }
 
-            Surface(
-                onClick = onDismiss,
-                modifier = Modifier.size(44.dp),
-                shape = CircleShape,
-                color = titleColor,
-                contentColor = Color.White,
-                border = BorderStroke(2.dp, cardBgColor),
-                shadowElevation = 8.dp,
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = CloseIcon,
-                        contentDescription = "Close Error Popup",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp),
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    WelcomeMinimal3DButton(
+                        text = "ঠিক আছে".localized(),
+                        hindSiliguri = fontBengali,
+                        isDark = isDark,
+                        customPrimaryColor = titleColor,
+                        height = 46.dp,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onDismiss,
                     )
                 }
             }

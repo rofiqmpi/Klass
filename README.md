@@ -3,11 +3,11 @@
 Mymensingh Polytechnic Institute student, faculty, and academic operations application built with Kotlin Multiplatform and Jetpack Compose (Material 3).
 
 ## Key Features
-- **Restored Slate & Cobalt Theme with Tactile 3D Buttons, Original Home Screen & Minimal Inner Screens**:
-  - **Original Color Palette & Typography**: Crisp Slate canvas (`#F8FAFC` Light / `#0B1120` Dark) paired with `surfaceContainerLow` cards (`#FFFFFF` / `#151F32`) and `0.75.dp` `outlineVariant` borders (`#E2E8F0` / `#334155`), Cobalt primary (`#2563EB` / `#60A5FA`), Cyan/Teal tertiary (`#0284C7` / `#38BDF8`), Welcome Screen `#8CB9D9` / `#8E7864` / `#94A3B8` 3D accents, and unified `Hind Siliguri` typography.
-  - **Tactile 3D Extruded Buttons**: Press-animated 3D extruded primary, secondary, destructive, and icon action buttons (`WelcomeMinimal3DButton`, `WelcomeMinimal3DIconButton`, and Welcome screen controls) with bottom shadow lips and responsive ripples.
+- **Restored Slate & Cobalt Theme with Home Screen Preserved & Social-App Flat Inner Screens**:
+  - **Original Color Palette & Large Legible Typography**: Crisp Slate canvas (`#F8FAFC` Light / `#0B1120` Dark) with edge-to-edge `surfaceContainerLowest` feed surfaces (`#FFFFFF` / `#0B1120`), Cobalt primary (`#2563EB` / `#60A5FA`), Cyan/Teal tertiary (`#0F766E` / `#2DD4BF`), Welcome Screen `#8CB9D9` / `#8E7864` / `#94A3B8` 3D accents, and unified `Hind Siliguri` typography scaled up (`17.5.sp` item titles, `15.sp` subtitles, `24.sp` top titles) for instant readability.
+  - **Tactile 3D Primary Action Buttons**: Press-animated 3D extruded action buttons (`WelcomeMinimal3DButton`, `WelcomeMinimal3DIconButton`) preserved for primary CTAs, with flat edge-to-edge lists replacing repetitive boxed cards across inner screens.
   - **Restored Original Home Screen & Stationary Bottom Bar**: Floating `HomeRoutineHeader` featuring a compact profile info section next to the avatar (e.g., `6/1/CST-A`) alongside elevated Profile, AI (`SparkleIcon`), and Notification (`Res.drawable.notification`) circular action buttons; classic bordered `ClassRoutineTable` with subtle practical lab tinting; and a stationary tactile 3D split `HomeMenuBottomBar` outside the `HorizontalPager` (stays fixed while sliding between Home and Menu) preserving the original `home` and `menu` icons with Cobalt active states and display corner-radius adaptation (`homeShape` / `menuShape`).
-  - **Minimal Inner Screens with Consistent Header Actions**: Streamlined single-list `MenuScreen`, compact top bars featuring matching AI and Notification circular icon buttons (`HeaderAiNotificationActions`) across inner screens (`Menu`, `Profile`, `Notifications`, `Teachers Directory`, `Books Library`, `Classrooms & Labs`, `Routine Engine`, `Teaching Subjects`, `Blood Finder`, and `Study Assistant`), single-row search/filter controls, and uncluttered 2-line list cards.
+  - **Telegram / Facebook / TikTok-Style Inner Screens**: Edge-to-edge list rows separated by clean `0.5.dp` inset dividers and `8.dp` tonal section bands (no boxed cards around rows), colorful circular leading badges (`44.dp–50.dp`), borderless pill search bars, bold underlined/pill tabs, and consistent header AI & Notification circular icon buttons (`HeaderAiNotificationActions`) across inner screens.
 - **Screen-Level Language Split**: **Welcome Screen** operates in Bengali (default), while **all inner screens** run strictly in **English** with an instant offline English dictionary in `AppStrings`.
 - **Welcome & Role Authentication**: Google Sign-In and email/role flows for Student, Teacher, Admin, and Guest Mode.
 - **Teacher Onboarding & Scheduling Preferences**:
@@ -22,17 +22,19 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
   - Admin configures **Shift 1 Start Time**, **Shift 2 Start Time**, **Period Duration (minutes)**, **Periods Per Day**, and **Running Semesters (1–7)** before generating.
   - **Hard Constraints**: Zero teacher overlap per `(shift, day, period)`, zero room/lab overlap per `(shift, day, period)`, and **Single-Teacher-per-Group-Subject Lock** (never splits one group's subject across multiple teachers). Matches labs to Lab rooms, spreads Theory/Practical evenly across days, respects teacher time preferences, and reports any teacher/room shortage conflicts.
   - **Draft, Manual Slot Edit & Admin Approval Workflow**: Generated routines start as **Draft** for conflict review, live clash-checked manual editing/swapping, and **Approve & Publish**. Teachers can submit **Edit/Swap Requests** requiring Admin approval.
-- **Personalized Routine Views & Notifications**:
+- **Personalized Routine Views & Real Automatic Android Push Notifications**:
   - **Student Home**: Displays published routine filtered by student's Department, Shift, Semester, and Group.
   - **Teacher Home**: Extracts and displays all classes assigned to the signed-in teacher across all departments, semesters, groups, and rooms, with a button to request slot/room changes.
   - **Classroom Routine Viewer**: Inspect weekly occupancy for any room or lab.
-  - **Notifications**: Profile-matched upcoming class schedule alerts plus live Firestore notifications on routine publication and edit request approvals/declines.
+  - **Real Local Android Push Notifications (Zero Firestore Storage)**:
+    - Immediately sends an Android heads-up welcome push notification when logging in / entering from Welcome Screen (`POST_NOTIFICATIONS` runtime permission flow on Android 13+).
+    - Automatically schedules recurring weekly per-class push alarms via `AlarmManager` + `BroadcastReceiver` (advance reminder before class + class start alert) matched to each user's live weekly schedule, with automatic `+7d` rescheduling and `BOOT_COMPLETED` recovery—stored strictly on-device with zero Firestore notification writes.
 - **Blood Donor Finder (Available in Everyone's Menu)**:
   - Accessible from Admin, Teacher, Student, and Guest Menus; searches institute members who registered their Blood Group, with blood-group filter chips (`A+`..`AB-`), department/address search, and zero-permission `ACTION_DIAL` call launcher.
 - **Home & Menu Navigation**: Synchronized `HorizontalPager` sliding across Home and Menu screens with stationary tactile 3D bottom bar and direct tap actions on header controls.
-- **Profile View & Edit Screens**: Google Material 3 Account/Contacts-inspired grouped profile layout with dynamic Department-aware Section/Group selector (`Group A/B/C` for `CT` & `ET`, `Group A/B` for others), Semesters 1–7, `Non-Tech` option for Teachers, gallery upload, and GPS location sync.
+- **Profile View & Edit Screens**: Social-app full-bleed profile layout with large avatar hero, dynamic Department-aware Section/Group selector (`Group A/B/C` for `CT` & `ET`, `Group A/B` for others), Semesters 1–7, `Non-Tech` option for Teachers, gallery upload, and GPS location sync.
 - **Admin Teachers Directory & Books Library (179 Official BTEB Probidhan-2022 Books)**: Complete CRUD backed by Firebase Firestore and SharedPreferences cache.
-- **Cloud Persistence**: Firebase Auth & Firestore synchronization (`students`, `teachers`, `admins`, `users`, `books`, `classrooms`, `routines`, `routine_edit_requests`, `notifications`, `config`) with SharedPreferences offline cache.
+- **Cloud Persistence**: Firebase Auth & Firestore synchronization (`students`, `teachers`, `admins`, `users`, `books`, `classrooms`, `routines`, `routine_edit_requests`, `config`) with SharedPreferences offline cache.
 
 ## Architecture
 - `app/`: Android application entry point, Manifest, icons, and launcher setup.

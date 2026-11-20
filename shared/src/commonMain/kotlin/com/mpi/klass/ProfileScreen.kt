@@ -1,16 +1,17 @@
 package com.mpi.klass
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,21 +27,18 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +51,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,16 +62,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.mpi.klass.theme.CalendarDaysIcon
 import com.mpi.klass.theme.CameraIcon
 import com.mpi.klass.theme.ClockIcon
+import com.mpi.klass.theme.CopyIcon
 import com.mpi.klass.theme.DropletIcon
 import com.mpi.klass.theme.EditIcon
 import com.mpi.klass.theme.EnvelopeSolidIcon
 import com.mpi.klass.theme.FileLinesIcon
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.IdCardIcon
+import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LayerGroupIcon
 import com.mpi.klass.theme.LocationDotIcon
 import com.mpi.klass.theme.LogoutIcon
@@ -101,6 +105,7 @@ fun ProfileScreen(
     onCategoryChanged: ((UserRole) -> Unit)? = null,
     onOpenTeachingPrefs: (() -> Unit)? = null,
     topContentPadding: Dp = 0.dp,
+    onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
     if (role == null) {
         GuestSignInPrompt(
@@ -193,14 +198,30 @@ fun ProfileScreen(
                 )
             }
             isLoadingProfile = false
-            locationLauncher()
+            if (profileData.address.isBlank()) {
+                locationLauncher()
+            }
         } else {
             isLoadingProfile = false
         }
     }
 
-    AppBackHandler(enabled = isEditingMode) {
-        isEditingMode = false
+    var activeDetailCategory by remember { mutableStateOf<String?>(null) }
+    var isEditPickerOpen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(activeDetailCategory, isEditPickerOpen) {
+        onFullScreenOverlayChange(activeDetailCategory != null || isEditPickerOpen)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onFullScreenOverlayChange(false) }
+    }
+
+    AppBackHandler(enabled = (isEditingMode && !isEditPickerOpen) || activeDetailCategory != null) {
+        if (activeDetailCategory != null) {
+            activeDetailCategory = null
+        } else if (isEditingMode && !isEditPickerOpen) {
+            isEditingMode = false
+        }
     }
 
     val activePhotoUrl = currentPhotoUrl.ifBlank { profileData.photoUrl ?: photoUrl ?: "" }.ifBlank { null }
@@ -221,8 +242,12 @@ fun ProfileScreen(
                 topContentPadding = topContentPadding,
                 isSaving = isSavingProfile,
                 isDark = isDark,
+                onOverlayStateChange = { isEditPickerOpen = it },
                 onAvatarClick = { launchPhotoPicker() },
-                onViewProfileClick = { isEditingMode = false },
+                onViewProfileClick = {
+                    isEditPickerOpen = false
+                    isEditingMode = false
+                },
                 onSaveProfile = { updated ->
                     coroutineScope.launch {
                         isSavingProfile = true
@@ -237,6 +262,7 @@ fun ProfileScreen(
                         if (result.isSuccess) {
                             onUpdateProfile?.invoke(finalProfile.name, preservedPhoto)
                             showToast(AppStrings.translate("প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!", currentLang))
+                            isEditPickerOpen = false
                             isEditingMode = false
                         } else {
                             showToast(AppStrings.translate("তথ্য সংরক্ষণ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।", currentLang))
@@ -255,6 +281,8 @@ fun ProfileScreen(
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
                 topContentPadding = topContentPadding,
+                activeDetailCategory = activeDetailCategory,
+                onSelectDetailCategory = { activeDetailCategory = it },
                 onAvatarClick = { launchPhotoPicker() },
                 onEditClick = { isEditingMode = true },
                 onSignOutClick = {
@@ -268,75 +296,41 @@ fun ProfileScreen(
     }
 
     if (showDeleteDialog) {
-        val cs = MaterialTheme.colorScheme
-        AlertDialog(
-            onDismissRequest = { if (!isDeletingAccount) showDeleteDialog = false },
-            containerColor = cs.surfaceContainerHigh,
-            title = {
-                Text(
-                    text = "ডিলিট একাউন্ট".localized(),
-                    color = cs.error,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 20.sp,
-                )
-            },
-            text = {
-                Text(
-                    text = "আপনি কি নিশ্চিতভাবে আপনার অ্যাকাউন্টটি চিরতরে ডিলিট করতে চান? এটি করলে আপনার সকল তথ্য মুছে যাবে।".localized(),
-                    color = cs.onSurfaceVariant,
-                    fontFamily = hindSiliguri,
-                    fontSize = 14.5.sp,
-                    lineHeight = 21.sp,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (!isDeletingAccount) {
-                            isDeletingAccount = true
-                            coroutineScope.launch {
-                                if (cleanEmail.isNotBlank()) {
-                                    RoleConfig.deleteAccountFromFirebase(cleanEmail, role)
-                                }
-                                clearUserSession()
-                                isDeletingAccount = false
-                                showDeleteDialog = false
-                                onSignOut()
-                            }
+        KlassConfirmDialog(
+            title = "ডিলিট একাউন্ট".localized(),
+            message = "আপনি কি নিশ্চিতভাবে আপনার অ্যাকাউন্টটি চিরতরে ডিলিট করতে চান? এটি করলে আপনার সকল তথ্য মুছে যাবে।".localized(),
+            icon = TrashCanIcon,
+            accent = KlassFeaturePalette.error(isDark).primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            confirmText = if (isDeletingAccount) "মুছে ফেলা হচ্ছে...".localized() else "হ্যাঁ".localized(),
+            cancelText = "বাতিল".localized(),
+            isDestructive = true,
+            confirmTestTag = "confirm_delete_account_button",
+            cancelTestTag = "cancel_delete_account_button",
+            onConfirm = {
+                if (!isDeletingAccount) {
+                    isDeletingAccount = true
+                    coroutineScope.launch {
+                        if (cleanEmail.isNotBlank()) {
+                            RoleConfig.deleteAccountFromFirebase(cleanEmail, role)
                         }
-                    },
-                    enabled = !isDeletingAccount,
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = cs.error,
-                        contentColor = cs.onError,
-                    ),
-                    modifier = Modifier.testTag("confirm_delete_account_button"),
-                ) {
-                    Text(
-                        text = if (isDeletingAccount) "মুছে ফেলা হচ্ছে...".localized() else "হ্যাঁ".localized(),
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
-                    )
+                        clearUserSession()
+                        isDeletingAccount = false
+                        showDeleteDialog = false
+                        onSignOut()
+                    }
                 }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteDialog = false },
-                    enabled = !isDeletingAccount,
-                    modifier = Modifier.testTag("cancel_delete_account_button"),
-                ) {
-                    Text(
-                        text = "বাতিল".localized(),
-                        color = cs.onSurfaceVariant,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-            },
+            onDismiss = { if (!isDeletingAccount) showDeleteDialog = false },
         )
     }
+}
+
+private enum class ProfileFieldActionType {
+    NONE,
+    PHONE,
+    EMAIL,
 }
 
 private data class GoogleContactField(
@@ -345,6 +339,7 @@ private data class GoogleContactField(
     val isEmpty: Boolean,
     val icon: ImageVector,
     val isHighlight: Boolean = false,
+    val actionType: ProfileFieldActionType = ProfileFieldActionType.NONE,
 )
 
 @Composable
@@ -358,6 +353,8 @@ private fun ProfileViewContent(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     topContentPadding: Dp,
+    activeDetailCategory: String?,
+    onSelectDetailCategory: (String?) -> Unit,
     onAvatarClick: () -> Unit,
     onEditClick: () -> Unit,
     onSignOutClick: () -> Unit,
@@ -397,8 +394,8 @@ private fun ProfileViewContent(
     }
 
     val contactFields = buildList {
-        if (profile.phone.isNotBlank()) add(GoogleContactField("মোবাইল নম্বর".localized(), profile.phone, false, PhoneSolidIcon))
-        if (emailDisplay.isNotBlank()) add(GoogleContactField("ইমেল ঠিকানা".localized(), emailDisplay, false, EnvelopeSolidIcon))
+        if (profile.phone.isNotBlank()) add(GoogleContactField("মোবাইল নম্বর".localized(), profile.phone, false, PhoneSolidIcon, actionType = ProfileFieldActionType.PHONE))
+        if (emailDisplay.isNotBlank()) add(GoogleContactField("ইমেল ঠিকানা".localized(), emailDisplay, false, EnvelopeSolidIcon, actionType = ProfileFieldActionType.EMAIL))
         if (profile.address.isNotBlank()) add(GoogleContactField("বর্তমান ঠিকানা".localized(), profile.address, false, LocationDotIcon))
         if (profile.permanentAddress.isNotBlank()) add(GoogleContactField("স্থায়ী ঠিকানা".localized(), profile.permanentAddress, false, LocationDotIcon))
     }
@@ -413,7 +410,15 @@ private fun ProfileViewContent(
         if (role == UserRole.STUDENT && profile.motherName.isNotBlank()) add(GoogleContactField("মাতার নাম".localized(), profile.motherName, false, UserNurseIcon))
     }
 
-    MinimalBackdrop(isDark = isDark) {
+    val profileAccent = KlassFeaturePalette.profile(isDark)
+    val teachingAccent = KlassFeaturePalette.teaching(isDark)
+    val roleBadgeAccent = when (role) {
+        UserRole.STUDENT -> KlassFeaturePalette.routine(isDark)
+        UserRole.TEACHER -> KlassFeaturePalette.teaching(isDark)
+        UserRole.ADMIN -> KlassFeaturePalette.admin(isDark)
+    }
+
+    MinimalBackdrop(isDark = isDark, focusAccent = profileAccent.primary) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
@@ -421,283 +426,524 @@ private fun ProfileViewContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .widthIn(max = 720.dp)
+                    .widthIn(max = 780.dp)
                     .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (topContentPadding > 0.dp) {
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
-                } else {
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Clean Centered Hero
-                Box(
-                    modifier = Modifier.size(88.dp),
-                    contentAlignment = Alignment.Center,
+                // ── FACEBOOK / TELEGRAM HERO HEADER ──────────────────────────────────────
+                SocialSurfaceBlock(
+                    isDark = isDark,
+                    showBottomHairline = true,
+                    accentTint = profileAccent.primary,
                 ) {
-                    Surface(
-                        onClick = onAvatarClick,
-                        shape = CircleShape,
-                        color = cs.surfaceContainerHigh,
-                        border = BorderStroke(0.75.dp, cs.outlineVariant),
+                    Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("profile_avatar_button"),
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        val resolvedModel = resolveProfileImageModel(photoUrl)
-                        if (resolvedModel != null) {
-                            AsyncImage(
-                                model = resolvedModel,
-                                contentDescription = "গ্যালারি থেকে ছবি আপলোড".localized(),
-                                contentScale = ContentScale.Crop,
+                        Box(
+                            modifier = Modifier.size(106.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Surface(
+                                onClick = onAvatarClick,
+                                shape = CircleShape,
+                                color = cs.surfaceContainerHigh,
+                                border = BorderStroke(3.dp, profileAccent.primary.copy(alpha = 0.72f)),
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(CircleShape),
-                            )
-                        } else {
-                            DynamicAvatar(
-                                seed = cleanEmail.ifBlank { displayName },
+                                    .testTag("profile_avatar_button"),
+                            ) {
+                                val resolvedModel = resolveProfileImageModel(photoUrl)
+                                if (resolvedModel != null) {
+                                    AsyncImage(
+                                        model = resolvedModel,
+                                        contentDescription = "গ্যালারি থেকে ছবি আপলোড".localized(),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    DynamicAvatar(
+                                        seed = cleanEmail.ifBlank { displayName },
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                    )
+                                }
+                            }
+
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    color = profileAccent.primary,
+                                    strokeWidth = 2.5.dp,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+
+                            Surface(
+                                onClick = onAvatarClick,
+                                shape = CircleShape,
+                                color = profileAccent.primary,
+                                border = BorderStroke(2.dp, cs.surfaceContainerLowest),
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                            )
+                                    .align(Alignment.BottomEnd)
+                                    .size(34.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = CameraIcon,
+                                        contentDescription = "Change photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
                         }
-                    }
 
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            color = cs.primary,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                    Surface(
-                        onClick = onAvatarClick,
-                        shape = CircleShape,
-                        color = cs.primaryContainer,
-                        border = BorderStroke(1.5.dp, cs.background),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(28.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = CameraIcon,
-                                contentDescription = "Change photo",
-                                tint = cs.primary,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = displayName,
-                    color = cs.onSurface,
-                    fontSize = 22.sp,
-                    lineHeight = 28.sp,
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-
-                Text(
-                    text = if (emailDisplay.isNotBlank()) "$roleSubtitle · $emailDisplay" else roleSubtitle,
-                    color = cs.onSurfaceVariant,
-                    fontSize = 14.5.sp,
-                    fontFamily = hindSiliguri,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    WelcomeMinimal3DButton(
-                        text = "এডিট করুন".localized(),
-                        icon = EditIcon,
-                        hindSiliguri = hindSiliguri,
-                        isPrimaryAccent = true,
-                        isDark = isDark,
-                        height = 42.dp,
-                        cornerRadius = 12.dp,
-                        testTag = "profile_edit_button",
-                        modifier = Modifier.widthIn(min = 136.dp),
-                        onClick = onEditClick,
-                    )
-
-                    if (role == UserRole.TEACHER && onOpenTeachingPrefs != null) {
-                        WelcomeMinimal3DButton(
-                            text = "Subjects",
-                            icon = GraduationCapIcon,
-                            hindSiliguri = hindSiliguri,
-                            isPrimaryAccent = false,
-                            isDark = isDark,
-                            height = 42.dp,
-                            cornerRadius = 12.dp,
-                            testTag = "profile_teaching_prefs_button",
-                            modifier = Modifier.widthIn(min = 132.dp),
-                            onClick = onOpenTeachingPrefs,
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                if (academicFields.isNotEmpty()) {
-                    SimpleProfileSection(
-                        title = "Academic".localized(),
-                        fields = academicFields,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                }
-
-                if (contactFields.isNotEmpty()) {
-                    SimpleProfileSection(
-                        title = "Contact".localized(),
-                        fields = contactFields,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                }
-
-                if (personalFields.isNotEmpty()) {
-                    SimpleProfileSection(
-                        title = "Personal".localized(),
-                        fields = personalFields,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                }
-
-                if (academicFields.isEmpty() && contactFields.size <= 1 && personalFields.isEmpty()) {
-                    MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(14.dp)) {
                         Text(
-                            text = "Tap Edit to complete your department, blood group, and contact info.",
-                            fontSize = 15.sp,
+                            text = displayName,
+                            color = cs.onSurface,
+                            fontSize = 24.sp,
+                            lineHeight = 30.sp,
                             fontFamily = hindSiliguri,
-                            color = cs.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 18.dp),
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Surface(
+                            shape = CircleShape,
+                            color = roleBadgeAccent.softTint,
+                            border = BorderStroke(0.75.dp, roleBadgeAccent.borderTint),
+                        ) {
+                            Text(
+                                text = roleSubtitle,
+                                color = roleBadgeAccent.primary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = hindSiliguri,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            )
+                        }
+
+                        if (emailDisplay.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = emailDisplay,
+                                color = cs.onSurfaceVariant,
+                                fontSize = 14.5.sp,
+                                fontFamily = hindSiliguri,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            WelcomeMinimal3DButton(
+                                text = "এডিট করুন".localized(),
+                                icon = EditIcon,
+                                hindSiliguri = hindSiliguri,
+                                isDark = isDark,
+                                customPrimaryColor = profileAccent.primary,
+                                customBaseColor = profileAccent.deep,
+                                height = 46.dp,
+                                cornerRadius = 14.dp,
+                                testTag = "profile_edit_button",
+                                modifier = Modifier.weight(1f),
+                                onClick = onEditClick,
+                            )
+
+                            if (role == UserRole.TEACHER && onOpenTeachingPrefs != null) {
+                                WelcomeMinimal3DButton(
+                                    text = "Subjects",
+                                    icon = GraduationCapIcon,
+                                    hindSiliguri = hindSiliguri,
+                                    isDark = isDark,
+                                    customPrimaryColor = teachingAccent.primary,
+                                    customBaseColor = teachingAccent.deep,
+                                    height = 46.dp,
+                                    cornerRadius = 14.dp,
+                                    testTag = "profile_teaching_prefs_button",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = onOpenTeachingPrefs,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                val academicSummary = academicFields.take(2).joinToString(" • ") { it.value }.ifBlank { null }
+                val contactSummary = contactFields.firstOrNull()?.value
+                val personalSummary = personalFields.firstOrNull()?.let { "${it.label}: ${it.value}" }
+
+                val detailRows = buildList {
+                    if (academicFields.isNotEmpty()) {
+                        add(
+                            Triple(
+                                "Academic",
+                                Triple(GraduationCapIcon, KlassFeaturePalette.routine(isDark).primary, academicSummary),
+                                academicFields.size,
+                            )
                         )
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
+                    if (contactFields.isNotEmpty()) {
+                        add(
+                            Triple(
+                                "Contact",
+                                Triple(PhoneSolidIcon, KlassFeaturePalette.teachers(isDark).primary, contactSummary),
+                                contactFields.size,
+                            )
+                        )
+                    }
+                    if (personalFields.isNotEmpty()) {
+                        add(
+                            Triple(
+                                "Personal",
+                                Triple(PersonIcon, KlassFeaturePalette.appearance(isDark).primary, personalSummary),
+                                personalFields.size,
+                            )
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (detailRows.isNotEmpty()) {
+                    SocialSectionDividerBand(isDark = isDark)
+                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                        detailRows.forEachIndexed { idx, (key, meta, count) ->
+                            val (icon, rowAccent, subtitleSummary) = meta
+                            val localizedTitle = key.localized()
+                            KlassNavigationRow(
+                                title = localizedTitle,
+                                subtitle = subtitleSummary,
+                                icon = icon,
+                                accent = rowAccent,
+                                badgeText = "$count",
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                testTag = "profile_category_${key.lowercase()}",
+                                onClick = { onSelectDetailCategory(key) },
+                            )
+                            if (idx < detailRows.lastIndex) {
+                                SocialInsetDivider(startIndent = 72.dp)
+                            }
+                        }
+                    }
+                } else {
+                    SocialSectionDividerBand(isDark = isDark)
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        KlassEmptyState(
+                            icon = PersonIcon,
+                            title = "তথ্য সম্পূর্ণ নয়".localized(),
+                            subtitle = "Tap Edit to complete your info.",
+                            accent = profileAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                        )
+                    }
+                }
 
-                GoogleOutlinedButton(
-                    text = "লগআউট করুন".localized(),
-                    icon = LogoutIcon,
+                SocialSectionDividerBand(isDark = isDark)
+
+                // ── ACCOUNT ACTIONS BLOCK ────────────────────────────────────────────────
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    KlassNavigationRow(
+                        title = "লগআউট করুন".localized(),
+                        subtitle = "বর্তমান অ্যাকাউন্ট থেকে বের হন".localized(),
+                        icon = LogoutIcon,
+                        accent = KlassFeaturePalette.notifications(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        showChevron = false,
+                        testTag = "profile_logout_button",
+                        onClick = onSignOutClick,
+                    )
+
+                    SocialInsetDivider(startIndent = 72.dp)
+
+                    KlassNavigationRow(
+                        title = "ডিলিট একাউন্ট".localized(),
+                        subtitle = "সকল তথ্য স্থায়ীভাবে মুছে ফেলুন".localized(),
+                        icon = TrashCanIcon,
+                        accent = KlassFeaturePalette.error(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        showChevron = false,
+                        testTag = "profile_delete_account_button",
+                        onClick = onDeleteAccountClick,
+                    )
+                }
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = activeDetailCategory != null,
+        enter = fadeIn(tween(200)) + slideInVertically(tween(240)) { it / 8 },
+        exit = fadeOut(tween(180)) + slideOutVertically(tween(200)) { it / 8 },
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(80f),
+    ) {
+        val cat = activeDetailCategory
+        val fieldsToShow = when (cat) {
+            "Academic" -> academicFields
+            "Contact" -> contactFields
+            "Personal" -> personalFields
+            else -> emptyList()
+        }
+        val sheetIcon = when (cat) {
+            "Academic" -> GraduationCapIcon
+            "Contact" -> PhoneSolidIcon
+            else -> PersonIcon
+        }
+        val sheetAccent = when (cat) {
+            "Academic" -> KlassFeaturePalette.routine(isDark).primary
+            "Contact" -> KlassFeaturePalette.teachers(isDark).primary
+            else -> KlassFeaturePalette.appearance(isDark).primary
+        }
+        if (cat != null) {
+            ProfileDetailsSubScreen(
+                title = cat.localized(),
+                icon = sheetIcon,
+                accent = sheetAccent,
+                fields = fieldsToShow,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                onEditRequested = {
+                    onSelectDetailCategory(null)
+                    onEditClick()
+                },
+                onBack = { onSelectDetailCategory(null) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileDetailsSubScreen(
+    title: String,
+    icon: ImageVector,
+    accent: Color,
+    fields: List<GoogleContactField>,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onEditRequested: () -> Unit,
+    onBack: () -> Unit,
+) {
+    var inspectedField by remember { mutableStateOf<GoogleContactField?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalFullScreenSheet(
+            title = title,
+            subtitle = "${fields.size} টি তথ্য",
+            levelLabel = "প্রোফাইল • বিবরণ",
+            icon = icon,
+            accent = accent,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            onDismiss = onBack,
+            closeTestTag = "profile_details_back_button",
+            headerActions = {
+                KlassTonalButton(
+                    text = "এডিট",
+                    icon = EditIcon,
+                    accent = accent,
+                    isDark = isDark,
                     hindSiliguri = hindSiliguri,
-                    contentColor = cs.onSurface,
-                    testTag = "profile_logout_button",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 360.dp),
-                    onClick = onSignOutClick,
+                    height = 36.dp,
+                    onClick = onEditRequested,
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                TextButton(
-                    onClick = onDeleteAccountClick,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .height(44.dp)
-                        .testTag("profile_delete_account_button"),
-                ) {
-                    Icon(
-                        imageVector = TrashCanIcon,
-                        contentDescription = null,
-                        tint = cs.error,
-                        modifier = Modifier.size(15.dp),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "ডিলিট একাউন্ট".localized(),
-                        color = cs.error,
-                        fontSize = 15.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 28.dp),
+            ) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    KlassHeroBanner(
+                        title = title,
+                        subtitle = "যেকোনো তথ্যে ট্যাপ করলে বিস্তারিত ও কপি/অ্যাকশন অপশন পাবেন",
+                        icon = icon,
+                        accent = accent,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        badges = listOf("${fields.size} টি আইটেম" to accent),
                     )
                 }
+                Spacer(modifier = Modifier.height(14.dp))
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    fields.forEachIndexed { idx, field ->
+                        val rowAccent = if (field.isHighlight) KlassFeaturePalette.blood(isDark).primary else accent
+                        KlassDetailFieldRow(
+                            label = field.label,
+                            value = field.value,
+                            icon = field.icon,
+                            accent = rowAccent,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onClick = { inspectedField = field },
+                        )
+                        if (idx < fields.lastIndex) {
+                            SocialInsetDivider(startIndent = 72.dp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Level 2: Focused Field Inspection & Quick Action Sub-Sub-Screen
+        KlassSubScreenHost(
+            visible = inspectedField != null,
+            zIndex = 92f,
+        ) {
+            inspectedField?.let { field ->
+                ProfileFieldDetailSubScreen(
+                    categoryTitle = title,
+                    field = field,
+                    accent = if (field.isHighlight) KlassFeaturePalette.blood(isDark).primary else accent,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onEditRequested = {
+                        inspectedField = null
+                        onEditRequested()
+                    },
+                    onDismiss = { inspectedField = null },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SimpleProfileSection(
-    title: String,
-    fields: List<GoogleContactField>,
+private fun ProfileFieldDetailSubScreen(
+    categoryTitle: String,
+    field: GoogleContactField,
+    accent: Color,
     isDark: Boolean,
     hindSiliguri: FontFamily,
+    onEditRequested: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
+    val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
     val cs = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxWidth()) {
-        GoogleSectionHeader(
-            title = title,
-            hindSiliguri = hindSiliguri,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        MinimalCardSurface(
-            isDark = isDark,
-            shape = RoundedCornerShape(14.dp),
+
+    MinimalFullScreenSheet(
+        title = field.label,
+        subtitle = categoryTitle,
+        levelLabel = "প্রোফাইল • $categoryTitle • বিস্তারিত",
+        icon = field.icon,
+        accent = accent,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onDismiss,
+        bottomBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                GoogleOutlinedButton(
+                    text = "কপি করুন",
+                    icon = CopyIcon,
+                    hindSiliguri = hindSiliguri,
+                    contentColor = accent,
+                    height = 46.dp,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        clipboard.setText(AnnotatedString(field.value))
+                        showToast("কপি করা হয়েছে!")
+                    },
+                )
+                WelcomeMinimal3DButton(
+                    text = when (field.actionType) {
+                        ProfileFieldActionType.PHONE -> "কল করুন"
+                        ProfileFieldActionType.EMAIL -> "ইমেইল পাঠান"
+                        ProfileFieldActionType.NONE -> "এডিট করুন"
+                    },
+                    icon = when (field.actionType) {
+                        ProfileFieldActionType.PHONE -> PhoneSolidIcon
+                        ProfileFieldActionType.EMAIL -> EnvelopeSolidIcon
+                        ProfileFieldActionType.NONE -> EditIcon
+                    },
+                    hindSiliguri = hindSiliguri,
+                    isDark = isDark,
+                    customPrimaryColor = when (field.actionType) {
+                        ProfileFieldActionType.PHONE -> KlassFeaturePalette.classrooms(isDark).primary
+                        ProfileFieldActionType.EMAIL -> KlassFeaturePalette.teachers(isDark).primary
+                        ProfileFieldActionType.NONE -> accent
+                    },
+                    height = 46.dp,
+                    modifier = Modifier.weight(1.25f),
+                    onClick = {
+                        when (field.actionType) {
+                            ProfileFieldActionType.PHONE -> openPhoneDialer(field.value)
+                            ProfileFieldActionType.EMAIL -> uriHandler.openUri("mailto:${field.value}")
+                            ProfileFieldActionType.NONE -> onEditRequested()
+                        }
+                    },
+                )
+            }
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                fields.forEachIndexed { idx, field ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 13.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = field.label,
-                            color = cs.onSurfaceVariant,
-                            fontSize = 14.5.sp,
-                            fontFamily = hindSiliguri,
-                            modifier = Modifier.weight(0.9f),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = field.value,
-                            color = if (field.isHighlight) cs.error else cs.onSurface,
-                            fontSize = 14.5.sp,
-                            fontFamily = hindSiliguri,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.weight(1.1f),
-                        )
-                    }
-                    if (idx < fields.lastIndex) {
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = cs.outlineVariant.copy(alpha = 0.45f),
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                    }
+            KlassHeroBanner(
+                title = field.value,
+                subtitle = field.label,
+                icon = field.icon,
+                accent = accent,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                badges = listOf(categoryTitle to accent),
+            )
+
+            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "তথ্যের বিবরণ",
+                        color = accent,
+                        fontSize = 14.sp,
+                        fontFamily = hindSiliguri,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "এই তথ্যটি আপনার প্রোফাইল কার্ড এবং প্রাসঙ্গিক ক্লাস ও ডিরেক্টরি ফিচারে ব্যবহৃত হয়। পরিবর্তন করতে চাইলে নিচের এডিট অপশন ব্যবহার করুন।",
+                        color = cs.onSurfaceVariant,
+                        fontSize = 14.5.sp,
+                        fontFamily = hindSiliguri,
+                        lineHeight = 21.sp,
+                    )
                 }
             }
         }
@@ -711,71 +957,72 @@ private fun GuestSignInPrompt(
     onSignInClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    MinimalBackdrop(isDark = isDark) {
+    val profileAccent = KlassFeaturePalette.profile(isDark)
+    MinimalBackdrop(isDark = isDark, focusAccent = profileAccent.primary) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            MinimalCardSurface(
-                isDark = isDark,
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier.widthIn(max = 360.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 380.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Surface(
+                    shape = CircleShape,
+                    color = profileAccent.softTint,
+                    border = BorderStroke(1.25.dp, profileAccent.borderTint),
+                    modifier = Modifier.size(76.dp),
                 ) {
-                    Icon(
-                        imageVector = PersonIcon,
-                        contentDescription = null,
-                        tint = cs.primary,
-                        modifier = Modifier.size(36.dp),
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = "Sign in to Klass",
-                        color = cs.onSurface,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = hindSiliguri,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = "View your class routine, profile, and notifications.",
-                        color = cs.onSurfaceVariant,
-                        fontSize = 15.sp,
-                        lineHeight = 19.sp,
-                        fontFamily = hindSiliguri,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Button(
-                        onClick = onSignInClick,
-                        shape = CircleShape,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp)
-                            .testTag("guest_sign_in_button"),
-                    ) {
-                        Text(
-                            text = "সাইন ইন করুন".localized(),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = hindSiliguri,
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = PersonIcon,
+                            contentDescription = null,
+                            tint = profileAccent.primary,
+                            modifier = Modifier.size(36.dp),
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Sign in to Klass",
+                    color = cs.onSurface,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = hindSiliguri,
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "View your class routine, profile, and automatic class reminders.",
+                    color = cs.onSurfaceVariant,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    fontFamily = hindSiliguri,
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                WelcomeMinimal3DButton(
+                    text = "সাইন ইন করুন".localized(),
+                    hindSiliguri = hindSiliguri,
+                    isDark = isDark,
+                    customPrimaryColor = profileAccent.primary,
+                    customBaseColor = profileAccent.deep,
+                    height = 50.dp,
+                    cornerRadius = 25.dp,
+                    testTag = "guest_sign_in_button",
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onSignInClick,
+                )
             }
         }
     }

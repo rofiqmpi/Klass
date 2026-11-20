@@ -6,12 +6,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Default deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     // Config collection:
-    // Everyone can read, only Admins (checked via token email or custom doc check) can write.
-    // For simplicity here, allowing authenticated users to read config.
     match /config/{configId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Should ideally be Admin-only, but keeping flexible for now as admin check is complex in rules without a custom claim
+      allow write: if isAuthenticated();
     }
 
     // Admins collection:
@@ -29,8 +32,8 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // General users collection
-    match /users/{userId}/{document=**} {
+    // General users collection:
+    match /users/{userId} {
       allow read, write: if isAuthenticated();
     }
 

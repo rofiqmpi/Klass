@@ -41,7 +41,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,17 +49,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -73,28 +68,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.mpi.klass.theme.AwardIcon
 import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.ChevronDownIcon
+import com.mpi.klass.theme.ClockIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.EditIcon
 import com.mpi.klass.theme.FilterIcon
+import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.LayerGroupIcon
 import com.mpi.klass.theme.MoreVertIcon
 import com.mpi.klass.theme.PlusIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.TrashCanIcon
+import com.mpi.klass.theme.departmentAccent
 import kotlinx.coroutines.launch
 
 private data class LibraryDepartmentSpec(
@@ -132,6 +133,7 @@ private val librarySemesters = listOf(
 fun BooksLibraryScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
+    canEdit: Boolean = true,
     topContentPadding: Dp = 72.dp,
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
@@ -150,8 +152,10 @@ fun BooksLibraryScreen(
     var bookToDelete by remember { mutableStateOf<LibraryBook?>(null) }
     var isDeletingBook by remember { mutableStateOf(false) }
 
-    LaunchedEffect(showFormScreen) {
-        onFullScreenOverlayChange(showFormScreen)
+    val booksAccent = KlassFeaturePalette.books(isDark)
+    val anyOverlay = showFormScreen || showFilterSheet || detailBook != null
+    LaunchedEffect(anyOverlay) {
+        onFullScreenOverlayChange(anyOverlay)
     }
     DisposableEffect(Unit) {
         onDispose { onFullScreenOverlayChange(false) }
@@ -210,7 +214,7 @@ fun BooksLibraryScreen(
     val hasActiveFilter = selectedDept != null || selectedSem != null
 
     Box(modifier = Modifier.fillMaxSize()) {
-        MinimalBackdrop(isDark = isDark) {
+        MinimalBackdrop(isDark = isDark, focusAccent = booksAccent.primary) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -227,20 +231,21 @@ fun BooksLibraryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .widthIn(max = 960.dp)
-                        .padding(horizontal = 16.dp),
+                        .widthIn(max = 960.dp),
                 ) {
                     // Single compact Search + Filter Sheet trigger + Refresh row
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         MinimalSearchBar(
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
                             placeholder = "Search title, code or dept (${filteredBooks.size})",
-                            accent = cs.primary,
+                            accent = booksAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             testTag = "books_search_input",
@@ -257,16 +262,16 @@ fun BooksLibraryScreen(
                             Box(contentAlignment = Alignment.Center) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (hasActiveFilter) cs.primaryContainer else cs.surfaceContainerLow,
-                                    border = if (hasActiveFilter) null else BorderStroke(0.75.dp, cs.outlineVariant),
-                                    modifier = Modifier.size(40.dp),
+                                    color = if (hasActiveFilter) booksAccent.softTint else cs.surfaceContainerHigh,
+                                    border = if (hasActiveFilter) BorderStroke(1.dp, booksAccent.borderTint) else null,
+                                    modifier = Modifier.size(42.dp),
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = FilterIcon,
                                             contentDescription = "Filter books",
-                                            tint = if (hasActiveFilter) cs.primary else cs.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp),
+                                            tint = if (hasActiveFilter) booksAccent.primary else cs.onSurfaceVariant,
+                                            modifier = Modifier.size(19.dp),
                                         )
                                     }
                                 }
@@ -277,7 +282,7 @@ fun BooksLibraryScreen(
                                             .padding(4.dp)
                                             .size(8.dp)
                                             .clip(CircleShape)
-                                            .background(cs.primary),
+                                            .background(booksAccent.primary),
                                     )
                                 }
                             }
@@ -287,7 +292,7 @@ fun BooksLibraryScreen(
                             icon = RefreshIcon,
                             contentDescription = "Refresh library",
                             isDark = isDark,
-                            iconTint = cs.onSurfaceVariant,
+                            iconTint = booksAccent.primary,
                             isLoading = isLoading,
                             enabled = !isLoading,
                             testTag = "books_refresh_button",
@@ -297,36 +302,26 @@ fun BooksLibraryScreen(
 
                     // Show slim removable active-filter pills ONLY when a filter is active
                     if (hasActiveFilter) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            selectedDept?.let { dept ->
-                                ActiveFilterTag(
-                                    label = dept,
-                                    onClear = { selectedDept = null },
-                                )
-                            }
+                        val badges = buildList {
+                            selectedDept?.let { add(it) }
                             selectedSem?.let { semKey ->
                                 val shortEn = librarySemesters.firstOrNull { it.key == semKey }?.shortEn ?: semKey
-                                ActiveFilterTag(
-                                    label = "$shortEn Sem",
-                                    onClear = { selectedSem = null },
-                                )
+                                add("$shortEn Sem")
                             }
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text(
-                                text = "${filteredBooks.size} shown",
-                                fontSize = 13.5.sp,
-                                color = cs.onSurfaceVariant,
-                                fontFamily = hindSiliguri,
-                            )
                         }
+                        KlassFilterBadgeBar(
+                            badges = badges,
+                            accent = booksAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onClear = {
+                                selectedDept = null
+                                selectedSem = null
+                            },
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    SocialSectionDividerBand(isDark = isDark, height = 6.dp)
 
                     when {
                         isLoading && books.isEmpty() -> {
@@ -356,73 +351,32 @@ fun BooksLibraryScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 48.dp),
+                                    .padding(horizontal = 20.dp, vertical = 48.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                MinimalCardSurface(
+                                val hasActiveFilterOrSearch = searchQuery.isNotBlank() || hasActiveFilter
+                                KlassEmptyState(
+                                    icon = BookIcon,
+                                    title = if (!hasActiveFilterOrSearch) "No books in library yet" else "No matching books found",
+                                    subtitle = if (!hasActiveFilterOrSearch) {
+                                        "Tap + to add a BTEB curriculum subject."
+                                    } else {
+                                        "Try adjusting your search or clearing the active filters."
+                                    },
+                                    accent = booksAccent.primary,
                                     isDark = isDark,
-                                    shape = RoundedCornerShape(20.dp),
-                                    modifier = Modifier.widthIn(max = 360.dp),
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = cs.primaryContainer,
-                                            modifier = Modifier.size(52.dp),
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Icon(
-                                                    imageVector = BookIcon,
-                                                    contentDescription = null,
-                                                    tint = cs.onPrimaryContainer,
-                                                    modifier = Modifier.size(22.dp),
-                                                )
-                                            }
+                                    hindSiliguri = hindSiliguri,
+                                    actionLabel = if (hasActiveFilterOrSearch) "Clear Filters" else null,
+                                    actionTestTag = if (hasActiveFilterOrSearch) "books_clear_filters_button" else null,
+                                    onActionClick = if (hasActiveFilterOrSearch) {
+                                        {
+                                            searchQuery = ""
+                                            selectedDept = null
+                                            selectedSem = null
                                         }
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        val hasActiveFilterOrSearch = searchQuery.isNotBlank() || hasActiveFilter
-                                        Text(
-                                            text = if (!hasActiveFilterOrSearch) {
-                                                "No books in library yet"
-                                            } else {
-                                                "No matching books found"
-                                            },
-                                            color = cs.onSurface,
-                                            fontSize = 15.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            fontWeight = FontWeight.SemiBold,
-                                            textAlign = TextAlign.Center,
-                                        )
-                                        if (!hasActiveFilterOrSearch) {
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = "Tap + to add a BTEB curriculum subject.",
-                                                color = cs.onSurfaceVariant,
-                                                fontSize = 14.sp,
-                                                fontFamily = hindSiliguri,
-                                                textAlign = TextAlign.Center,
-                                            )
-                                        } else {
-                                            Spacer(modifier = Modifier.height(14.dp))
-                                            GoogleOutlinedButton(
-                                                text = "Clear Filters",
-                                                hindSiliguri = hindSiliguri,
-                                                height = 40.dp,
-                                                testTag = "books_clear_filters_button",
-                                                onClick = {
-                                                    searchQuery = ""
-                                                    selectedDept = null
-                                                    selectedSem = null
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
+                                    } else null,
+                                    modifier = Modifier.widthIn(max = 380.dp),
+                                )
                             }
                         }
 
@@ -435,8 +389,7 @@ fun BooksLibraryScreen(
 
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(top = 2.dp, bottom = 88.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
                                 ) {
                                     itemsIndexed(
                                         items = indexedRows,
@@ -444,36 +397,42 @@ fun BooksLibraryScreen(
                                             row.firstOrNull()?.value?.id ?: "row_$rowIdx"
                                         },
                                     ) { rowIdx, rowItems ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalAlignment = Alignment.Top,
-                                        ) {
-                                            rowItems.forEach { indexed ->
-                                                val index = indexed.index
-                                                val book = indexed.value
-                                                Box(modifier = Modifier.weight(1f)) {
-                                                    AnimatedStaggeredItem(index = rowIdx) {
-                                                        LibraryBookCard(
-                                                            book = book,
-                                                            selectedDept = selectedDept,
-                                                            isDark = isDark,
-                                                            hindSiliguri = hindSiliguri,
-                                                            testTag = "book_card_$index",
-                                                            editTestTag = "book_edit_button_$index",
-                                                            deleteTestTag = "book_delete_button_$index",
-                                                            onClick = { detailBook = book },
-                                                            onEditClick = {
-                                                                editingBook = book
-                                                                showFormScreen = true
-                                                            },
-                                                            onDeleteClick = { bookToDelete = book },
-                                                        )
+                                        Column(modifier = Modifier.fillMaxWidth()) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.Top,
+                                            ) {
+                                                rowItems.forEach { indexed ->
+                                                    val index = indexed.index
+                                                    val book = indexed.value
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        AnimatedStaggeredItem(index = rowIdx) {
+                                                            LibraryBookCard(
+                                                                book = book,
+                                                                colorIndex = index,
+                                                                selectedDept = selectedDept,
+                                                                canEdit = canEdit,
+                                                                isDark = isDark,
+                                                                hindSiliguri = hindSiliguri,
+                                                                testTag = "book_card_$index",
+                                                                editTestTag = "book_edit_button_$index",
+                                                                deleteTestTag = "book_delete_button_$index",
+                                                                onClick = { detailBook = book },
+                                                                onEditClick = {
+                                                                    editingBook = book
+                                                                    showFormScreen = true
+                                                                },
+                                                                onDeleteClick = { bookToDelete = book },
+                                                            )
+                                                        }
                                                     }
                                                 }
+                                                if (cols == 2 && rowItems.size == 1) {
+                                                    Spacer(modifier = Modifier.weight(1f))
+                                                }
                                             }
-                                            if (cols == 2 && rowItems.size == 1) {
-                                                Spacer(modifier = Modifier.weight(1f))
+                                            if (rowIdx < indexedRows.lastIndex) {
+                                                SocialInsetDivider(startIndent = if (cols == 1) 76.dp else 16.dp)
                                             }
                                         }
                                     }
@@ -485,15 +444,15 @@ fun BooksLibraryScreen(
             }
         }
 
-        // Clean Floating Action Button for Add Book
-        if (!showFormScreen) {
+        // Clean Floating Action Button for Add Book (Admin only)
+        if (canEdit && !anyOverlay) {
             FloatingActionButton(
                 onClick = {
                     editingBook = null
                     showFormScreen = true
                 },
-                containerColor = cs.primary,
-                contentColor = cs.onPrimary,
+                containerColor = booksAccent.primary,
+                contentColor = Color.White,
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -541,380 +500,396 @@ fun BooksLibraryScreen(
                 },
             )
         }
-    }
 
-    // Filter ModalBottomSheet (keeps main screen completely clean!)
-    if (showFilterSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { showFilterSheet = false },
-            sheetState = sheetState,
-            containerColor = cs.surfaceContainerLow,
+        // Level 1: Full-Screen Books Filter Sub-Screen
+        KlassSubScreenHost(
+            visible = showFilterSheet,
+            zIndex = 75f,
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "Filter Books",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = hindSiliguri,
-                        color = cs.onSurface,
-                    )
+            MinimalFullScreenSheet(
+                title = "Filter Books",
+                subtitle = "${filteredBooks.size} matching books",
+                levelLabel = "বই লাইব্রেরি • ফিল্টার",
+                icon = FilterIcon,
+                accent = booksAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                onDismiss = { showFilterSheet = false },
+                headerActions = {
                     if (hasActiveFilter) {
-                        TextButton(
+                        KlassTonalButton(
+                            text = "Reset",
+                            icon = CloseIcon,
+                            accent = KlassFeaturePalette.error(isDark).primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            height = 36.dp,
+                            testTag = "books_clear_filters_button",
                             onClick = {
                                 selectedDept = null
                                 selectedSem = null
                             },
-                            modifier = Modifier.testTag("books_clear_filters_button"),
-                        ) {
-                            Text("Reset", color = cs.primary, fontFamily = hindSiliguri)
-                        }
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Department",
-                        fontSize = 14.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = cs.onSurfaceVariant,
-                        fontFamily = hindSiliguri,
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        MinimalIconChip(
-                            label = "All",
-                            selected = selectedDept == null,
-                            accent = cs.primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            testTag = "books_filter_dept_all",
-                            onClick = { selectedDept = null },
                         )
-                        libraryDepartments.forEach { spec ->
-                            MinimalIconChip(
-                                label = spec.shortCode,
-                                selected = selectedDept == spec.shortCode,
-                                accent = cs.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                testTag = "books_filter_dept_${spec.shortCode.lowercase()}",
-                                onClick = {
-                                    selectedDept = if (selectedDept == spec.shortCode) null else spec.shortCode
-                                },
-                            )
-                        }
                     }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Semester",
-                        fontSize = 14.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = cs.onSurfaceVariant,
-                        fontFamily = hindSiliguri,
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        MinimalIconChip(
-                            label = "All",
-                            selected = selectedSem == null,
-                            accent = cs.primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            testTag = "books_filter_sem_all",
-                            onClick = { selectedSem = null },
-                        )
-                        librarySemesters.forEachIndexed { idx, sem ->
-                            MinimalIconChip(
-                                label = sem.shortEn,
-                                selected = selectedSem == sem.key,
-                                accent = cs.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                testTag = "books_filter_sem_${idx + 1}",
-                                onClick = {
-                                    selectedSem = if (selectedSem == sem.key) null else sem.key
-                                },
-                            )
-                        }
-                    }
-                }
-
-                WelcomeMinimal3DButton(
-                    text = "Show ${filteredBooks.size} Books",
-                    hindSiliguri = hindSiliguri,
-                    isDark = isDark,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { showFilterSheet = false },
-                )
-            }
-        }
-    }
-
-    // Book Detail BottomSheet (on card tap)
-    detailBook?.let { selected ->
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { detailBook = null },
-            sheetState = sheetState,
-            containerColor = cs.surfaceContainerLow,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = selected.title,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = hindSiliguri,
-                        color = cs.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (selected.subjectCode.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = cs.primaryContainer,
-                        ) {
-                            Text(
-                                text = AppStrings.convertBengaliDigitsToAscii(selected.subjectCode),
-                                color = cs.onPrimaryContainer,
-                                fontSize = 13.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = hindSiliguri,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            )
-                        }
-                    }
-                }
-
-                val creditClean = AppStrings.convertBengaliDigitsToAscii(selected.credit.ifBlank { "0" })
-                Text(
-                    text = "${selected.theoryClassesPerWeek} Theory / wk • ${selected.practicalClassesPerWeek} Practical / wk • $creditClean Credits",
-                    fontSize = 14.5.sp,
-                    color = cs.onSurfaceVariant,
-                    fontFamily = hindSiliguri,
-                )
-
-                if (selected.departmentSemesters.isNotEmpty()) {
-                    HorizontalDivider(thickness = 0.6.dp, color = cs.outlineVariant.copy(alpha = 0.6f))
-                    Text(
-                        text = "Departments & Semesters",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = cs.primary,
-                        fontFamily = hindSiliguri,
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        selected.departmentSemesters.forEach { (dept, sems) ->
-                            val deptShort = dept.substringBefore(" (").trim()
-                            val semSummary = sems.joinToString(", ") { semKey ->
-                                librarySemesters.firstOrNull { it.key == semKey }?.shortEn ?: semKey
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    text = deptShort,
-                                    fontSize = 14.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = cs.onSurface,
-                                    fontFamily = hindSiliguri,
-                                )
-                                Text(
-                                    text = semSummary,
-                                    fontSize = 14.sp,
-                                    color = cs.onSurfaceVariant,
-                                    fontFamily = hindSiliguri,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    GoogleOutlinedButton(
-                        text = "Delete",
-                        icon = TrashCanIcon,
-                        hindSiliguri = hindSiliguri,
-                        contentColor = cs.error,
-                        height = 44.dp,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            detailBook = null
-                            bookToDelete = selected
-                        },
-                    )
+                },
+                bottomBar = {
                     WelcomeMinimal3DButton(
-                        text = "Edit Book",
-                        icon = EditIcon,
+                        text = "Show ${filteredBooks.size} Books",
+                        icon = CheckIcon,
                         hindSiliguri = hindSiliguri,
                         isDark = isDark,
-                        height = 44.dp,
-                        modifier = Modifier.weight(1.3f),
-                        onClick = {
-                            detailBook = null
-                            editingBook = selected
-                            showFormScreen = true
-                        },
+                        customPrimaryColor = booksAccent.primary,
+                        customBaseColor = booksAccent.deep,
+                        height = 48.dp,
+                        cornerRadius = 24.dp,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { showFilterSheet = false },
                     )
+                },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                        GoogleSectionHeader(
+                            title = "Department",
+                            hindSiliguri = hindSiliguri,
+                            accent = booksAccent.primary,
+                        )
+                        FlowRow(
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            MinimalIconChip(
+                                label = "All",
+                                selected = selectedDept == null,
+                                accent = booksAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                testTag = "books_filter_dept_all",
+                                onClick = { selectedDept = null },
+                            )
+                            libraryDepartments.forEach { spec ->
+                                val deptAccent = departmentAccent(spec.shortCode, isDark)
+                                MinimalIconChip(
+                                    label = spec.shortCode,
+                                    selected = selectedDept == spec.shortCode,
+                                    accent = deptAccent.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    testTag = "books_filter_dept_${spec.shortCode.lowercase()}",
+                                    onClick = {
+                                        selectedDept = if (selectedDept == spec.shortCode) null else spec.shortCode
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                        GoogleSectionHeader(
+                            title = "Semester",
+                            hindSiliguri = hindSiliguri,
+                            accent = KlassFeaturePalette.routine(isDark).primary,
+                        )
+                        FlowRow(
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            MinimalIconChip(
+                                label = "All",
+                                selected = selectedSem == null,
+                                accent = KlassFeaturePalette.routine(isDark).primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                testTag = "books_filter_sem_all",
+                                onClick = { selectedSem = null },
+                            )
+                            librarySemesters.forEachIndexed { idx, sem ->
+                                MinimalIconChip(
+                                    label = sem.shortEn,
+                                    selected = selectedSem == sem.key,
+                                    accent = KlassFeaturePalette.routine(isDark).primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    testTag = "books_filter_sem_${idx + 1}",
+                                    onClick = {
+                                        selectedSem = if (selectedSem == sem.key) null else sem.key
+                                    },
+                                )
+                            }
+                        }
+                    }
                 }
+            }
+        }
+
+        // Level 1: Book Detail Sub-Screen (replaces cramped ModalBottomSheet)
+        KlassSubScreenHost(
+            visible = detailBook != null,
+            zIndex = 78f,
+        ) {
+            detailBook?.let { selected ->
+                BookDetailFullSubScreen(
+                    book = selected,
+                    canEdit = canEdit,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onEditClick = {
+                        detailBook = null
+                        editingBook = selected
+                        showFormScreen = true
+                    },
+                    onDeleteClick = {
+                        detailBook = null
+                        bookToDelete = selected
+                    },
+                    onDismiss = { detailBook = null },
+                )
             }
         }
     }
 
     bookToDelete?.let { target ->
-        AlertDialog(
-            onDismissRequest = { if (!isDeletingBook) bookToDelete = null },
-            containerColor = cs.surfaceContainerLow,
-            titleContentColor = cs.onSurface,
-            textContentColor = cs.onSurfaceVariant,
-            title = {
-                Text(
-                    text = "Delete Book",
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Permanently remove this book from the curriculum library?",
-                        fontFamily = hindSiliguri,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = cs.surfaceContainer,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                            Text(
-                                text = target.title,
-                                color = cs.onSurface,
-                                fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 14.sp,
-                            )
-                            Text(
-                                text = "Code: ${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}",
-                                color = cs.onSurfaceVariant,
-                                fontFamily = hindSiliguri,
-                                fontSize = 13.5.sp,
-                            )
+        KlassConfirmDialog(
+            title = "Delete Book",
+            message = "Permanently remove \"${target.title}\" (${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}) from the curriculum library?",
+            icon = TrashCanIcon,
+            accent = KlassFeaturePalette.error(isDark).primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            confirmText = if (isDeletingBook) "Deleting..." else "Delete",
+            cancelText = "Cancel",
+            isDestructive = true,
+            confirmTestTag = "confirm_delete_book_button",
+            cancelTestTag = "cancel_delete_book_button",
+            onConfirm = {
+                if (!isDeletingBook) {
+                    isDeletingBook = true
+                    scope.launch {
+                        val result = RoleConfig.deleteLibraryBook(target.id)
+                        isDeletingBook = false
+                        if (result.isSuccess) {
+                            books = books.filterNot { it.id == target.id }
+                            bookToDelete = null
+                            showToast("Book deleted!")
+                        } else {
+                            showToast("Could not delete book. Try again.")
                         }
                     }
                 }
             },
-            confirmButton = {
-                WelcomeMinimal3DButton(
-                    text = "Delete",
-                    hindSiliguri = hindSiliguri,
-                    isDestructive = true,
-                    isDark = isDark,
-                    isLoading = isDeletingBook,
-                    height = 40.dp,
-                    cornerRadius = 20.dp,
-                    testTag = "confirm_delete_book_button",
-                    onClick = {
-                        if (isDeletingBook) return@WelcomeMinimal3DButton
-                        isDeletingBook = true
-                        scope.launch {
-                            val result = RoleConfig.deleteLibraryBook(target.id)
-                            isDeletingBook = false
-                            if (result.isSuccess) {
-                                books = books.filterNot { it.id == target.id }
-                                bookToDelete = null
-                                showToast("Book deleted!")
-                            } else {
-                                showToast("Could not delete book. Try again.")
-                            }
-                        }
-                    },
-                )
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { bookToDelete = null },
-                    enabled = !isDeletingBook,
-                    modifier = Modifier.testTag("cancel_delete_book_button"),
-                ) {
-                    Text(
-                        text = "Cancel",
-                        color = cs.primary,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-            },
+            onDismiss = { if (!isDeletingBook) bookToDelete = null },
         )
     }
 }
 
 @Composable
-private fun ActiveFilterTag(
-    label: String,
-    onClear: () -> Unit,
+private fun BookDetailFullSubScreen(
+    book: LibraryBook,
+    canEdit: Boolean,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
-    Surface(
-        onClick = onClear,
-        shape = CircleShape,
-        color = cs.primaryContainer,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+    val booksAccent = KlassFeaturePalette.books(isDark)
+    val cleanCode = AppStrings.convertBengaliDigitsToAscii(book.subjectCode)
+    val creditClean = AppStrings.convertBengaliDigitsToAscii(book.credit.ifBlank { "0" })
+    var inspectedDeptEntry by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalFullScreenSheet(
+            title = book.title,
+            subtitle = if (cleanCode.isNotBlank()) "Subject Code $cleanCode" else "BTEB Curriculum Book",
+            levelLabel = "বই লাইব্রেরি • বিস্তারিত",
+            icon = BookIcon,
+            accent = booksAccent.primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            onDismiss = onDismiss,
+            bottomBar = if (canEdit) {
+                {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        GoogleOutlinedButton(
+                            text = "Delete",
+                            icon = TrashCanIcon,
+                            hindSiliguri = hindSiliguri,
+                            contentColor = KlassFeaturePalette.error(isDark).primary,
+                            height = 46.dp,
+                            modifier = Modifier.weight(1f),
+                            onClick = onDeleteClick,
+                        )
+                        WelcomeMinimal3DButton(
+                            text = "Edit Book",
+                            icon = EditIcon,
+                            hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            customPrimaryColor = booksAccent.primary,
+                            customBaseColor = booksAccent.deep,
+                            height = 46.dp,
+                            modifier = Modifier.weight(1.35f),
+                            onClick = onEditClick,
+                        )
+                    }
+                }
+            } else null,
         ) {
-            Text(
-                text = label,
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.Medium,
-                color = cs.onPrimaryContainer,
-            )
-            Icon(
-                imageVector = CloseIcon,
-                contentDescription = "Remove filter",
-                tint = cs.onPrimaryContainer,
-                modifier = Modifier.size(12.dp),
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 28.dp),
+            ) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    KlassHeroBanner(
+                        title = book.title,
+                        subtitle = "সাপ্তাহিক ক্লাস ও ক্রেডিট কাঠামো",
+                        icon = BookIcon,
+                        accent = booksAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        badges = buildList {
+                            if (cleanCode.isNotBlank()) add(cleanCode to booksAccent.primary)
+                            add("${book.theoryClassesPerWeek} Theory/wk" to KlassFeaturePalette.teachers(isDark).primary)
+                            add("${book.practicalClassesPerWeek} Practical/wk" to KlassFeaturePalette.classrooms(isDark).primary)
+                            add("$creditClean Credits" to KlassFeaturePalette.ai(isDark).primary)
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    KlassDetailFieldRow(
+                        label = "Theory Classes / Week",
+                        value = "${book.theoryClassesPerWeek} periods",
+                        icon = ClockIcon,
+                        accent = KlassFeaturePalette.teachers(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    KlassDetailFieldRow(
+                        label = "Practical Lab / Week",
+                        value = "${book.practicalClassesPerWeek} periods",
+                        icon = LayerGroupIcon,
+                        accent = KlassFeaturePalette.classrooms(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    KlassDetailFieldRow(
+                        label = "Subject Credit",
+                        value = "$creditClean Credits",
+                        icon = AwardIcon,
+                        accent = KlassFeaturePalette.ai(isDark).primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                }
+
+                if (book.departmentSemesters.isNotEmpty()) {
+                    SocialSectionDividerBand(isDark = isDark)
+                    GoogleSectionHeader(
+                        title = "Departments & Semesters (${book.departmentSemesters.size})",
+                        hindSiliguri = hindSiliguri,
+                        accent = booksAccent.primary,
+                    )
+                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                        val entries = book.departmentSemesters.entries.toList()
+                        entries.forEachIndexed { idx, (dept, sems) ->
+                            val deptShort = dept.substringBefore(" (").trim()
+                            val deptAcc = departmentAccent(deptShort, isDark)
+                            val semSummary = sems.joinToString(", ") { semKey ->
+                                librarySemesters.firstOrNull { it.key == semKey }?.shortEn ?: semKey
+                            }
+                            KlassNavigationRow(
+                                title = deptShort,
+                                subtitle = semSummary,
+                                icon = GraduationCapIcon,
+                                accent = deptAcc.primary,
+                                badgeText = "${sems.size} Sem",
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onClick = { inspectedDeptEntry = dept to sems },
+                            )
+                            if (idx < entries.lastIndex) {
+                                SocialInsetDivider(startIndent = 72.dp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Level 2: Department Syllabus Mapping Breakdown Sub-Sub-Screen
+        KlassSubScreenHost(
+            visible = inspectedDeptEntry != null,
+            zIndex = 90f,
+        ) {
+            inspectedDeptEntry?.let { (deptName, sems) ->
+                val deptShort = deptName.substringBefore(" (").trim()
+                val deptAcc = departmentAccent(deptShort, isDark)
+                MinimalFullScreenSheet(
+                    title = "$deptShort Syllabus",
+                    subtitle = book.title,
+                    levelLabel = "বই লাইব্রেরি • $deptShort • সেমিস্টার",
+                    icon = GraduationCapIcon,
+                    accent = deptAcc.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onDismiss = { inspectedDeptEntry = null },
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            KlassHeroBanner(
+                                title = deptShort,
+                                subtitle = "${book.title} (${cleanCode})",
+                                icon = GraduationCapIcon,
+                                accent = deptAcc.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                badges = listOf("${sems.size} সেমিস্টার" to deptAcc.primary),
+                            )
+                        }
+
+                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                            sems.forEachIndexed { idx, semKey ->
+                                val semLabel = librarySemesters.firstOrNull { it.key == semKey }?.shortEn ?: semKey
+                                KlassDetailFieldRow(
+                                    label = "$semLabel Semester ($semKey)",
+                                    value = "${book.theoryClassesPerWeek} Theory + ${book.practicalClassesPerWeek} Practical hrs/wk",
+                                    icon = LayerGroupIcon,
+                                    accent = deptAcc.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                                if (idx < sems.lastIndex) {
+                                    SocialInsetDivider(startIndent = 72.dp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -922,7 +897,9 @@ private fun ActiveFilterTag(
 @Composable
 private fun LibraryBookCard(
     book: LibraryBook,
+    colorIndex: Int,
     selectedDept: String?,
+    canEdit: Boolean,
     isDark: Boolean,
     hindSiliguri: FontFamily,
     testTag: String,
@@ -935,7 +912,6 @@ private fun LibraryBookCard(
     val cs = MaterialTheme.colorScheme
     var menuExpanded by remember { mutableStateOf(false) }
 
-    val creditClean = AppStrings.convertBengaliDigitsToAscii(book.credit.ifBlank { "0" })
     val deptSummary = remember(book.departmentSemesters, selectedDept) {
         val depts = book.departmentSemesters.keys.map { it.substringBefore(" (").trim() }.distinct()
         when {
@@ -948,24 +924,48 @@ private fun LibraryBookCard(
                     }
                 if (sems.isNotBlank()) "$selectedDept ($sems)" else selectedDept
             }
-            depts.isEmpty() -> "Unassigned"
+            depts.isEmpty() -> "General"
             depts.size <= 2 -> depts.joinToString(", ")
             else -> "${depts.take(2).joinToString(", ")} +${depts.size - 2}"
         }
     }
 
-    MinimalCardSurface(
-        isDark = isDark,
-        shape = RoundedCornerShape(14.dp),
+    val firstDept = remember(book.departmentSemesters, selectedDept) {
+        selectedDept ?: book.departmentSemesters.keys.firstOrNull()?.substringBefore(" (")?.trim().orEmpty()
+    }
+    val cardAccent = if (firstDept.isNotBlank()) departmentAccent(firstDept, isDark) else KlassFeaturePalette.books(isDark)
+
+    Surface(
         onClick = onClick,
-        testTag = testTag,
+        color = Color.Transparent,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+                .padding(start = 16.dp, end = if (canEdit) 6.dp else 16.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Surface(
+                shape = CircleShape,
+                color = cardAccent.softTint,
+                border = BorderStroke(0.75.dp, cardAccent.borderTint),
+                modifier = Modifier.size(44.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = BookIcon,
+                        contentDescription = null,
+                        tint = cardAccent.primary,
+                        modifier = Modifier.size(19.dp),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -977,52 +977,54 @@ private fun LibraryBookCard(
                     Text(
                         text = book.title,
                         color = cs.onSurface,
-                        fontSize = 14.5.sp,
+                        fontSize = 17.sp,
                         fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (book.subjectCode.isNotBlank()) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = cs.secondaryContainer,
+                            shape = CircleShape,
+                            color = cardAccent.softTint,
+                            border = BorderStroke(0.75.dp, cardAccent.borderTint),
                         ) {
                             Text(
                                 text = AppStrings.convertBengaliDigitsToAscii(book.subjectCode),
-                                color = cs.onSecondaryContainer,
-                                fontSize = 13.sp,
+                                color = cardAccent.primary,
+                                fontSize = 12.5.sp,
                                 fontFamily = hindSiliguri,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }
                     }
                 }
 
                 Text(
-                    text = "$deptSummary • ${book.theoryClassesPerWeek}T ${book.practicalClassesPerWeek}P • $creditClean Cr",
+                    text = deptSummary,
                     color = cs.onSurfaceVariant,
-                    fontSize = 13.5.sp,
+                    fontSize = 14.5.sp,
                     fontFamily = hindSiliguri,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    Icon(
-                        imageVector = MoreVertIcon,
-                        contentDescription = "Book actions",
-                        tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+            if (canEdit) {
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = MoreVertIcon,
+                            contentDescription = "Book actions",
+                            tint = cs.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
 
                 DropdownMenu(
                     expanded = menuExpanded,
@@ -1030,7 +1032,7 @@ private fun LibraryBookCard(
                     containerColor = cs.surfaceContainerLow,
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit", fontFamily = hindSiliguri) },
+                        text = { Text("Edit", fontSize = 15.5.sp, fontFamily = hindSiliguri) },
                         leadingIcon = {
                             Icon(
                                 imageVector = EditIcon,
@@ -1046,7 +1048,7 @@ private fun LibraryBookCard(
                         modifier = Modifier.testTag(editTestTag),
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = cs.error, fontFamily = hindSiliguri) },
+                        text = { Text("Delete", fontSize = 15.5.sp, color = cs.error, fontFamily = hindSiliguri) },
                         leadingIcon = {
                             Icon(
                                 imageVector = TrashCanIcon,
@@ -1062,6 +1064,7 @@ private fun LibraryBookCard(
                         modifier = Modifier.testTag(deleteTestTag),
                     )
                 }
+            }
             }
         }
     }
@@ -1110,11 +1113,13 @@ private fun FullScreenBookFormScreen(
         }
     }
 
+    val booksAccent = KlassFeaturePalette.books(isDark)
     MinimalFullScreenSheet(
         title = if (initialBook == null) "Add Book" else "Edit Book",
         subtitle = "BTEB Curriculum Catalog",
+        levelLabel = if (initialBook == null) "বই লাইব্রেরি • নতুন বই" else "বই লাইব্রেরি • এডিট",
         icon = BookIcon,
-        accent = cs.primary,
+        accent = booksAccent.primary,
         isDark = isDark,
         hindSiliguri = hindSiliguri,
         onDismiss = onDismiss,
@@ -1130,7 +1135,7 @@ private fun FullScreenBookFormScreen(
                     text = "Cancel",
                     hindSiliguri = hindSiliguri,
                     enabled = !isSaving,
-                    height = 46.dp,
+                    height = 48.dp,
                     contentColor = cs.onSurface,
                     testTag = "cancel_book_form_button",
                     modifier = Modifier.weight(1f),
@@ -1141,14 +1146,15 @@ private fun FullScreenBookFormScreen(
                     text = if (isSaving) "Saving..." else "Save Book",
                     icon = CheckIcon,
                     hindSiliguri = hindSiliguri,
-                    isPrimaryAccent = true,
                     isDark = isDark,
+                    customPrimaryColor = booksAccent.primary,
+                    customBaseColor = booksAccent.deep,
                     isLoading = isSaving,
                     enabled = !isSaving,
-                    height = 46.dp,
-                    cornerRadius = 23.dp,
+                    height = 48.dp,
+                    cornerRadius = 24.dp,
                     testTag = "save_book_button",
-                    modifier = Modifier.weight(1.3f),
+                    modifier = Modifier.weight(1.35f),
                     onClick = {
                         if (isSaving) return@WelcomeMinimal3DButton
                         val cleanTitle = title.trim()
@@ -1181,6 +1187,10 @@ private fun FullScreenBookFormScreen(
                         val practicalVal = AppStrings.convertBengaliDigitsToAscii(practicalText.trim())
                             .filter { it.isDigit() }
                             .toIntOrNull() ?: 0
+                        if (theoryVal + practicalVal <= 0) {
+                            showToast("Enter at least 1 weekly theory or practical class.")
+                            return@WelcomeMinimal3DButton
+                        }
                         val cleanCredit = AppStrings.convertBengaliDigitsToAscii(creditText.trim())
                             .ifBlank { "0" }
 
@@ -1300,6 +1310,7 @@ private fun FullScreenBookFormScreen(
                 GoogleSectionHeader(
                     title = "Departments & Semesters",
                     hindSiliguri = hindSiliguri,
+                    accent = booksAccent.primary,
                 )
 
                 MinimalResponsiveGrid(
@@ -1307,6 +1318,7 @@ private fun FullScreenBookFormScreen(
                     twoColMinWidth = 600.dp,
                     spacing = 10.dp,
                 ) { _, dept ->
+                    val deptAcc = departmentAccent(dept.shortCode, isDark)
                     val selectedSems = deptSelections[dept.shortCode].orEmpty()
                     val isSelected = selectedSems.isNotEmpty()
                     val isExpanded = expandedDepts[dept.shortCode] == true
@@ -1318,11 +1330,11 @@ private fun FullScreenBookFormScreen(
 
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = if (isSelected) cs.surfaceContainer else cs.surfaceContainerLow,
+                        color = if (isSelected) deptAcc.softTint else cs.surfaceContainerLow,
                         border = if (isSelected) {
-                            BorderStroke(1.dp, cs.primary.copy(alpha = 0.45f))
+                            BorderStroke(1.25.dp, deptAcc.borderTint)
                         } else {
-                            null
+                            BorderStroke(0.5.dp, cs.outlineVariant.copy(alpha = 0.45f))
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -1355,9 +1367,9 @@ private fun FullScreenBookFormScreen(
                                     Text(
                                         text = dept.fullName,
                                         color = cs.onSurface,
-                                        fontSize = 14.5.sp,
+                                        fontSize = 16.5.sp,
                                         fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Medium,
+                                        fontWeight = FontWeight.Bold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -1532,7 +1544,7 @@ private fun MinimalBookTextField(
             )
         },
         textStyle = TextStyle(
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             fontFamily = hindSiliguri,
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),

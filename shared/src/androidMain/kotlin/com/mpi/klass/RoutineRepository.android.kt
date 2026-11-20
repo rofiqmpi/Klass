@@ -28,6 +28,7 @@ private fun getRepoFirestoreInstances(): List<Pair<FirebaseFirestore, String>> {
     if (customDbId != null) {
         try {
             list.add(FirebaseFirestore.getInstance(customDbId) to customDbId)
+            return list
         } catch (e: Exception) {
             Log.w(REPO_TAG, "Custom DB unavailable ($customDbId): ${e.message}")
         }
@@ -750,62 +751,7 @@ actual suspend fun resolveRoutineEditRequestInFirestore(
     return if (ok) Result.success(Unit) else Result.failure(err ?: Exception("Failed updating request"))
 }
 
-// ─── 5. Notifications ────────────────────────────────────────────────────────
-
-actual suspend fun fetchNotificationsFromFirestore(): List<AppNotificationItem> {
-    if (!isFirebaseSignedIn()) return emptyList()
-    val map = linkedMapOf<String, AppNotificationItem>()
-    withTimeoutOrNull(8.seconds) {
-        for ((db, _) in getRepoFirestoreInstances()) {
-            try {
-                val snap = db.collection("notifications").get().awaitTask()
-                for (doc in snap.documents) {
-                    val d = doc.data ?: continue
-                    val id = ((d["id"] as? String)?.ifBlank { null } ?: doc.id).trim()
-                    val item = AppNotificationItem(
-                        id = id,
-                        title = (d["title"] as? String)?.trim() ?: "",
-                        body = (d["body"] as? String)?.trim() ?: "",
-                        category = (d["category"] as? String)?.trim() ?: "GENERAL",
-                        targetRole = (d["target_role"] as? String)?.trim() ?: "ALL",
-                        targetEmail = (d["target_email"] as? String)?.trim()?.lowercase() ?: "",
-                        createdAt = (d["created_at"] as? Number)?.toLong() ?: 0L,
-                    )
-                    if (item.title.isNotBlank()) map[id] = item
-                }
-            } catch (e: Exception) {
-                Log.w(REPO_TAG, "Failed fetching notifications: ${e.message}")
-            }
-        }
-    }
-    return map.values.sortedByDescending { it.createdAt }
-}
-
-actual suspend fun publishNotificationInFirestore(item: AppNotificationItem): Result<Unit> {
-    val now = if (item.createdAt > 0L) item.createdAt else System.currentTimeMillis()
-    val id = item.id.trim().ifBlank { "noti_${now}_${(100..999).random()}" }
-    val data = mapOf(
-        "id" to id,
-        "title" to item.title.trim(),
-        "body" to item.body.trim(),
-        "category" to item.category,
-        "target_role" to item.targetRole,
-        "target_email" to item.targetEmail.trim().lowercase(),
-        "created_at" to now,
-    )
-    var ok = false
-    withTimeoutOrNull(7.seconds) {
-        for ((db, _) in getRepoFirestoreInstances()) {
-            try {
-                db.collection("notifications").document(id).set(data, SetOptions.merge()).awaitTask()
-                ok = true
-            } catch (_: Exception) {}
-        }
-    }
-    return if (ok) Result.success(Unit) else Result.failure(Exception("Failed saving notification"))
-}
-
-// ─── 6. Blood Donors Aggregator ──────────────────────────────────────────────
+// ─── 5. Blood Donors Aggregator ──────────────────────────────────────────────
 
 private fun readLocalDonorsCache(): List<BloodDonorItem> {
     val raw = readCacheString("blood_donors_json") ?: return emptyList()

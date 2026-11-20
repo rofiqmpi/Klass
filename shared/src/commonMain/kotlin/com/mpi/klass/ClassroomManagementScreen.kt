@@ -1,5 +1,7 @@
 package com.mpi.klass
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,14 +24,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -42,7 +42,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,24 +52,33 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
+import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CheckIcon
+import com.mpi.klass.theme.ChevronRightIcon
+import com.mpi.klass.theme.ClockIcon
 import com.mpi.klass.theme.DoorOpenIcon
 import com.mpi.klass.theme.EditIcon
+import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.LayerGroupIcon
 import com.mpi.klass.theme.MoreVertIcon
+import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.PlusIcon
 import com.mpi.klass.theme.RefreshIcon
+import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.TrashCanIcon
+import com.mpi.klass.theme.dayPaletteAt
+import com.mpi.klass.theme.departmentAccent
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,6 +91,10 @@ fun ClassroomManagementScreen(
 ) {
     val scope = rememberCoroutineScope()
     val cs = MaterialTheme.colorScheme
+    val classroomAccent = KlassFeaturePalette.classrooms(isDark)
+    val theoryAccent = KlassFeaturePalette.teachers(isDark)
+    val errorAccent = KlassFeaturePalette.error(isDark)
+
     var rooms by remember { mutableStateOf<List<ClassroomItem>>(emptyList()) }
     var routinePlan by remember { mutableStateOf<RoutinePlan?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -134,7 +146,7 @@ fun ClassroomManagementScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        MinimalBackdrop(isDark = isDark) {
+        MinimalBackdrop(isDark = isDark, focusAccent = classroomAccent.primary) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -151,20 +163,21 @@ fun ClassroomManagementScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .widthIn(max = 960.dp)
-                        .padding(horizontal = 16.dp),
+                        .widthIn(max = 960.dp),
                 ) {
-                    // Single Search + Actions Row
+                    // Single Search + Colored Actions Row
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         MinimalSearchBar(
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
                             placeholder = "Search rooms & labs (${filteredRooms.size})",
-                            accent = cs.primary,
+                            accent = classroomAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             modifier = Modifier.weight(1f),
@@ -174,7 +187,9 @@ fun ClassroomManagementScreen(
                             icon = RefreshIcon,
                             contentDescription = "Refresh classrooms",
                             isDark = isDark,
-                            iconTint = cs.onSurfaceVariant,
+                            containerColor = classroomAccent.softTint,
+                            iconTint = classroomAccent.primary,
+                            baseColor = classroomAccent.borderTint,
                             isLoading = isLoading,
                             enabled = !isLoading,
                             testTag = "classroom_refresh_button",
@@ -186,19 +201,18 @@ fun ClassroomManagementScreen(
                                 icon = TrashCanIcon,
                                 contentDescription = "Reset all rooms",
                                 isDark = isDark,
-                                containerColor = cs.errorContainer,
-                                iconTint = cs.onErrorContainer,
-                                visualSize = 38.dp,
-                                iconSize = 16.dp,
+                                containerColor = errorAccent.softTint,
+                                iconTint = errorAccent.primary,
+                                baseColor = errorAccent.borderTint,
+                                visualSize = 40.dp,
+                                iconSize = 17.dp,
                                 testTag = "reset_classrooms_button",
                                 onClick = { confirmFreshReset = true },
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Slim Filter Row
+                    // Colored Filter Chips Row
                     val chips = remember {
                         listOf(
                             null to "All",
@@ -207,14 +221,20 @@ fun ClassroomManagementScreen(
                         )
                     }
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        items(chips) { (typeVal, label) ->
+                        itemsIndexed(chips) { _, (typeVal, label) ->
+                            val chipAccent = when (typeVal) {
+                                ClassroomType.THEORY -> theoryAccent.primary
+                                ClassroomType.LAB -> classroomAccent.primary
+                                null -> KlassFeaturePalette.routine(isDark).primary
+                            }
                             MinimalIconChip(
                                 label = label,
                                 selected = typeFilter == typeVal,
-                                accent = cs.primary,
+                                accent = chipAccent,
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 onClick = { typeFilter = typeVal },
@@ -222,12 +242,12 @@ fun ClassroomManagementScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    SocialSectionDividerBand(isDark = isDark, height = 6.dp)
 
                     when {
                         isLoading && rooms.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = cs.primary, strokeWidth = 2.5.dp)
+                                CircularProgressIndicator(color = classroomAccent.primary, strokeWidth = 2.5.dp)
                             }
                         }
 
@@ -235,57 +255,30 @@ fun ClassroomManagementScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 48.dp),
+                                    .padding(horizontal = 24.dp, vertical = 32.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                MinimalCardSurface(
+                                KlassEmptyState(
+                                    icon = DoorOpenIcon,
+                                    title = "No Classrooms Found",
+                                    subtitle = if (canEdit) {
+                                        "Tap Add Room to configure theory rooms and labs."
+                                    } else {
+                                        "No classroom schedule data is available yet."
+                                    },
+                                    accent = classroomAccent.primary,
                                     isDark = isDark,
-                                    shape = RoundedCornerShape(20.dp),
-                                    modifier = Modifier.widthIn(max = 360.dp),
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = cs.tertiaryContainer,
-                                            modifier = Modifier.size(52.dp),
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Icon(
-                                                    imageVector = DoorOpenIcon,
-                                                    contentDescription = null,
-                                                    tint = cs.onTertiaryContainer,
-                                                    modifier = Modifier.size(22.dp),
-                                                )
-                                            }
+                                    hindSiliguri = hindSiliguri,
+                                    actionLabel = if (canEdit) "Add Room" else null,
+                                    onActionClick = if (canEdit) {
+                                        {
+                                            editingRoom = null
+                                            isAddEditorOpen = true
                                         }
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            text = "No Classrooms Found",
-                                            fontSize = 15.5.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontFamily = hindSiliguri,
-                                            color = cs.onSurface,
-                                            textAlign = TextAlign.Center,
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = if (canEdit) {
-                                                "Tap + to add theory rooms and labs."
-                                            } else {
-                                                "No classroom schedule data is available yet."
-                                            },
-                                            fontSize = 14.5.sp,
-                                            fontFamily = hindSiliguri,
-                                            color = cs.onSurfaceVariant,
-                                            textAlign = TextAlign.Center,
-                                        )
-                                    }
-                                }
+                                    } else {
+                                        null
+                                    },
+                                )
                             }
                         }
 
@@ -300,7 +293,12 @@ fun ClassroomManagementScreen(
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(top = 2.dp, bottom = if (canEdit) 88.dp else 24.dp),
+                                    contentPadding = PaddingValues(
+                                        start = 12.dp,
+                                        end = 12.dp,
+                                        top = 4.dp,
+                                        bottom = if (canEdit) 88.dp else 24.dp,
+                                    ),
                                 ) {
                                     itemsIndexed(
                                         items = indexedRows,
@@ -321,8 +319,12 @@ fun ClassroomManagementScreen(
                                                     }
                                                 }
                                                 val isLab = room.roomType == ClassroomType.LAB
-                                                val badgeBg = if (isLab) cs.tertiaryContainer else cs.secondaryContainer
-                                                val badgeFg = if (isLab) cs.onTertiaryContainer else cs.onSecondaryContainer
+                                                val roomAccent = if (isLab) classroomAccent else theoryAccent
+                                                val deptAccent = if (room.department.equals("ALL", true)) {
+                                                    roomAccent
+                                                } else {
+                                                    departmentAccent(room.department, isDark)
+                                                }
 
                                                 Box(modifier = Modifier.weight(1f)) {
                                                     AnimatedStaggeredItem(index = rowIdx) {
@@ -330,16 +332,35 @@ fun ClassroomManagementScreen(
 
                                                         MinimalCardSurface(
                                                             isDark = isDark,
-                                                            shape = RoundedCornerShape(14.dp),
+                                                            shape = RoundedCornerShape(16.dp),
+                                                            borderColor = roomAccent.borderTint,
                                                             onClick = { inspectScheduleRoom = room },
                                                             testTag = "room_card_${room.roomNumber}",
                                                         ) {
                                                             Row(
                                                                 modifier = Modifier
                                                                     .fillMaxWidth()
-                                                                    .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+                                                                    .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
                                                                 verticalAlignment = Alignment.CenterVertically,
                                                             ) {
+                                                                Surface(
+                                                                    shape = CircleShape,
+                                                                    color = roomAccent.softTint,
+                                                                    border = BorderStroke(0.75.dp, roomAccent.borderTint),
+                                                                    modifier = Modifier.size(44.dp),
+                                                                ) {
+                                                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                                                        Icon(
+                                                                            imageVector = DoorOpenIcon,
+                                                                            contentDescription = null,
+                                                                            tint = roomAccent.primary,
+                                                                            modifier = Modifier.size(20.dp),
+                                                                        )
+                                                                    }
+                                                                }
+
+                                                                Spacer(modifier = Modifier.width(12.dp))
+
                                                                 Column(
                                                                     modifier = Modifier.weight(1f),
                                                                     verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -350,40 +371,41 @@ fun ClassroomManagementScreen(
                                                                     ) {
                                                                         Text(
                                                                             text = "Room ${room.roomNumber}",
-                                                                            fontSize = 15.sp,
-                                                                            fontWeight = FontWeight.SemiBold,
+                                                                            fontSize = 16.sp,
+                                                                            fontWeight = FontWeight.Bold,
                                                                             fontFamily = hindSiliguri,
                                                                             color = cs.onSurface,
                                                                             maxLines = 1,
                                                                             overflow = TextOverflow.Ellipsis,
                                                                         )
                                                                         Surface(
-                                                                            shape = RoundedCornerShape(6.dp),
-                                                                            color = badgeBg,
+                                                                            shape = CircleShape,
+                                                                            color = roomAccent.softTint,
+                                                                            border = BorderStroke(0.75.dp, roomAccent.borderTint),
                                                                         ) {
                                                                             Text(
                                                                                 text = if (isLab) "Lab" else "Theory",
-                                                                                fontSize = 13.sp,
-                                                                                fontWeight = FontWeight.Medium,
+                                                                                fontSize = 12.sp,
+                                                                                fontWeight = FontWeight.Bold,
                                                                                 fontFamily = hindSiliguri,
-                                                                                color = badgeFg,
-                                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                                                color = roomAccent.primary,
+                                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                                                             )
                                                                         }
                                                                     }
 
                                                                     val subtitle = listOfNotNull(
+                                                                        room.department.takeIf { it.isNotBlank() },
+                                                                        "$occupiedCount slots",
                                                                         room.buildingOrFloor.takeIf { it.isNotBlank() },
-                                                                        room.department,
-                                                                        "Cap ${room.capacity}",
-                                                                        "$occupiedCount slots/wk",
                                                                     ).joinToString(" • ")
 
                                                                     Text(
                                                                         text = subtitle,
-                                                                        fontSize = 14.sp,
+                                                                        fontSize = 13.5.sp,
                                                                         fontFamily = hindSiliguri,
-                                                                        color = cs.onSurfaceVariant,
+                                                                        color = deptAccent.primary,
+                                                                        fontWeight = FontWeight.Medium,
                                                                         maxLines = 1,
                                                                         overflow = TextOverflow.Ellipsis,
                                                                     )
@@ -393,7 +415,7 @@ fun ClassroomManagementScreen(
                                                                     Box {
                                                                         IconButton(
                                                                             onClick = { menuExpanded = true },
-                                                                            modifier = Modifier.size(44.dp),
+                                                                            modifier = Modifier.size(48.dp),
                                                                         ) {
                                                                             Icon(
                                                                                 imageVector = MoreVertIcon,
@@ -414,7 +436,7 @@ fun ClassroomManagementScreen(
                                                                                     Icon(
                                                                                         imageVector = EditIcon,
                                                                                         contentDescription = null,
-                                                                                        tint = cs.primary,
+                                                                                        tint = classroomAccent.primary,
                                                                                         modifier = Modifier.size(18.dp),
                                                                                     )
                                                                                 },
@@ -425,12 +447,12 @@ fun ClassroomManagementScreen(
                                                                                 },
                                                                             )
                                                                             DropdownMenuItem(
-                                                                                text = { Text("Delete", color = cs.error, fontFamily = hindSiliguri) },
+                                                                                text = { Text("Delete", color = errorAccent.primary, fontFamily = hindSiliguri) },
                                                                                 leadingIcon = {
                                                                                     Icon(
                                                                                         imageVector = TrashCanIcon,
                                                                                         contentDescription = null,
-                                                                                        tint = cs.error,
+                                                                                        tint = errorAccent.primary,
                                                                                         modifier = Modifier.size(18.dp),
                                                                                     )
                                                                                 },
@@ -441,6 +463,15 @@ fun ClassroomManagementScreen(
                                                                             )
                                                                         }
                                                                     }
+                                                                } else {
+                                                                    Icon(
+                                                                        imageVector = ChevronRightIcon,
+                                                                        contentDescription = null,
+                                                                        tint = cs.onSurfaceVariant.copy(alpha = 0.7f),
+                                                                        modifier = Modifier
+                                                                            .padding(end = 10.dp)
+                                                                            .size(18.dp),
+                                                                    )
                                                                 }
                                                             }
                                                         }
@@ -466,9 +497,9 @@ fun ClassroomManagementScreen(
                     editingRoom = null
                     isAddEditorOpen = true
                 },
-                containerColor = cs.primary,
-                contentColor = cs.onPrimary,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp),
+                containerColor = classroomAccent.primary,
+                contentColor = if (isDark) Color(0xFF064E3B) else Color.White,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
@@ -483,49 +514,52 @@ fun ClassroomManagementScreen(
             }
         }
 
-        if (isAddEditorOpen) {
-            Box(modifier = Modifier.fillMaxSize().zIndex(80f)) {
-                RoomEditorFullScreen(
-                    initialRoom = editingRoom,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                    isSaving = isBusy,
-                    onDismiss = {
-                        if (!isBusy) {
-                            isAddEditorOpen = false
-                            editingRoom = null
-                        }
-                    },
-                    onSave = { roomToSave ->
-                        scope.launch {
-                            isBusy = true
-                            try {
-                                val res = saveClassroomInFirestore(roomToSave)
-                                if (res.isSuccess) {
-                                    showToast("Room saved successfully!")
-                                    isAddEditorOpen = false
-                                    editingRoom = null
-                                    refreshAll()
-                                } else {
-                                    showToast("Failed to save room.")
-                                }
-                            } finally {
-                                isBusy = false
+        KlassSubScreenHost(visible = isAddEditorOpen, zIndex = 80f) {
+            RoomEditorFullScreen(
+                initialRoom = editingRoom,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                isSaving = isBusy,
+                onDismiss = {
+                    if (!isBusy) {
+                        isAddEditorOpen = false
+                        editingRoom = null
+                    }
+                },
+                onSave = { roomToSave ->
+                    scope.launch {
+                        isBusy = true
+                        try {
+                            val res = saveClassroomInFirestore(roomToSave)
+                            if (res.isSuccess) {
+                                showToast("Room saved successfully!")
+                                isAddEditorOpen = false
+                                editingRoom = null
+                                refreshAll()
+                            } else {
+                                showToast("Failed to save room.")
                             }
+                        } finally {
+                            isBusy = false
                         }
-                    },
-                )
-            }
+                    }
+                },
+            )
         }
 
-        val inspecting = inspectScheduleRoom
-        if (inspecting != null) {
-            Box(modifier = Modifier.fillMaxSize().zIndex(80f)) {
+        KlassSubScreenHost(visible = inspectScheduleRoom != null, zIndex = 80f) {
+            inspectScheduleRoom?.let { inspecting ->
                 RoomScheduleViewerFullScreen(
                     room = inspecting,
                     plan = routinePlan,
+                    canEdit = canEdit,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
+                    onEditRoom = {
+                        editingRoom = inspecting
+                        inspectScheduleRoom = null
+                        isAddEditorOpen = true
+                    },
                     onDismiss = { inspectScheduleRoom = null },
                 )
             }
@@ -534,108 +568,58 @@ fun ClassroomManagementScreen(
 
     val toDelete = confirmDeleteRoom
     if (toDelete != null) {
-        AlertDialog(
-            onDismissRequest = { if (!isBusy) confirmDeleteRoom = null },
-            containerColor = cs.surfaceContainerHigh,
-            titleContentColor = cs.onSurface,
-            textContentColor = cs.onSurfaceVariant,
-            title = {
-                Text(
-                    text = "Delete Room ${toDelete.roomNumber}?",
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 19.sp,
-                )
-            },
-            text = {
-                Text(
-                    text = "This removes Room ${toDelete.roomNumber} from the classroom inventory.",
-                    fontFamily = hindSiliguri,
-                    fontSize = 14.sp,
-                )
-            },
-            confirmButton = {
-                WelcomeMinimal3DButton(
-                    text = "Delete",
-                    hindSiliguri = hindSiliguri,
-                    isDestructive = true,
-                    isDark = isDark,
-                    isLoading = isBusy,
-                    height = 40.dp,
-                    cornerRadius = 20.dp,
-                    onClick = {
-                        scope.launch {
-                            isBusy = true
-                            try {
-                                deleteClassroomFromFirestore(toDelete.id)
-                                confirmDeleteRoom = null
-                                refreshAll()
-                                showToast("Room deleted.")
-                            } finally {
-                                isBusy = false
-                            }
-                        }
-                    },
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDeleteRoom = null }, enabled = !isBusy) {
-                    Text("Cancel", color = cs.primary, fontFamily = hindSiliguri, fontWeight = FontWeight.Medium)
+        KlassConfirmDialog(
+            title = "Delete Room ${toDelete.roomNumber}?",
+            message = "This removes Room ${toDelete.roomNumber} from the classroom inventory.",
+            icon = TrashCanIcon,
+            accent = errorAccent.primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            confirmText = "Delete",
+            cancelText = "Cancel",
+            isDestructive = true,
+            onConfirm = {
+                scope.launch {
+                    isBusy = true
+                    try {
+                        deleteClassroomFromFirestore(toDelete.id)
+                        confirmDeleteRoom = null
+                        refreshAll()
+                        showToast("Room deleted.")
+                    } finally {
+                        isBusy = false
+                    }
                 }
             },
+            onDismiss = { if (!isBusy) confirmDeleteRoom = null },
         )
     }
 
     if (confirmFreshReset) {
-        AlertDialog(
-            onDismissRequest = { if (!isBusy) confirmFreshReset = false },
-            containerColor = cs.surfaceContainerHigh,
-            titleContentColor = cs.onSurface,
-            textContentColor = cs.onSurfaceVariant,
-            title = {
-                Text(
-                    text = "Clear All Rooms?",
-                    fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 19.sp,
-                )
-            },
-            text = {
-                Text(
-                    text = "All existing classrooms and labs will be deleted for fresh entry.",
-                    fontFamily = hindSiliguri,
-                    fontSize = 14.sp,
-                )
-            },
-            confirmButton = {
-                WelcomeMinimal3DButton(
-                    text = "Delete All",
-                    hindSiliguri = hindSiliguri,
-                    isDestructive = true,
-                    isDark = isDark,
-                    isLoading = isBusy,
-                    height = 40.dp,
-                    cornerRadius = 20.dp,
-                    onClick = {
-                        scope.launch {
-                            isBusy = true
-                            try {
-                                deleteAllClassroomsFromFirestore()
-                                confirmFreshReset = false
-                                refreshAll()
-                                showToast("All classrooms cleared for fresh entry.")
-                            } finally {
-                                isBusy = false
-                            }
-                        }
-                    },
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmFreshReset = false }, enabled = !isBusy) {
-                    Text("Cancel", color = cs.primary, fontFamily = hindSiliguri, fontWeight = FontWeight.Medium)
+        KlassConfirmDialog(
+            title = "Clear All Rooms?",
+            message = "All existing classrooms and labs will be deleted for fresh entry.",
+            icon = TrashCanIcon,
+            accent = errorAccent.primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            confirmText = "Delete All",
+            cancelText = "Cancel",
+            isDestructive = true,
+            onConfirm = {
+                scope.launch {
+                    isBusy = true
+                    try {
+                        deleteAllClassroomsFromFirestore()
+                        confirmFreshReset = false
+                        refreshAll()
+                        showToast("All classrooms cleared for fresh entry.")
+                    } finally {
+                        isBusy = false
+                    }
                 }
             },
+            onDismiss = { if (!isBusy) confirmFreshReset = false },
         )
     }
 }
@@ -651,6 +635,8 @@ private fun RoomEditorFullScreen(
     onSave: (ClassroomItem) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val classroomAccent = KlassFeaturePalette.classrooms(isDark)
+    val theoryAccent = KlassFeaturePalette.teachers(isDark)
 
     var roomNumber by remember(initialRoom) { mutableStateOf(initialRoom?.roomNumber ?: "") }
     var buildingOrFloor by remember(initialRoom) { mutableStateOf(initialRoom?.buildingOrFloor ?: "") }
@@ -663,6 +649,7 @@ private fun RoomEditorFullScreen(
     var shift2Enabled by remember(initialRoom) {
         mutableStateOf(initialRoom == null || RoutineRules.SHIFT_2 in initialRoom.shifts)
     }
+    var showDeptPicker by remember { mutableStateOf(false) }
 
     fun submitRoom() {
         val cleanRoom = roomNumber.trim()
@@ -673,7 +660,11 @@ private fun RoomEditorFullScreen(
         val shifts = buildList {
             if (shift1Enabled) add(RoutineRules.SHIFT_1)
             if (shift2Enabled) add(RoutineRules.SHIFT_2)
-        }.ifEmpty { listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2) }
+        }
+        if (shifts.isEmpty()) {
+            showToast("Select at least one shift.")
+            return
+        }
         val safeId = initialRoom?.id?.takeIf { it.isNotBlank() }
             ?: ("room_" + cleanRoom.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_') + "_" + getCurrentTimeMillis())
         onSave(
@@ -690,151 +681,137 @@ private fun RoomEditorFullScreen(
         )
     }
 
-    MinimalFullScreenSheet(
-        title = if (initialRoom == null) "Add Classroom / Lab" else "Edit Room ${initialRoom.roomNumber}",
-        subtitle = "Classroom Inventory",
-        icon = DoorOpenIcon,
-        accent = cs.primary,
-        isDark = isDark,
-        hindSiliguri = hindSiliguri,
-        onDismiss = onDismiss,
-        dismissEnabled = !isSaving,
-        maxContentWidth = 760.dp,
-        bottomBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                GoogleOutlinedButton(
-                    text = "Cancel",
-                    hindSiliguri = hindSiliguri,
-                    enabled = !isSaving,
-                    height = 46.dp,
-                    contentColor = cs.onSurface,
-                    modifier = Modifier.weight(1f),
-                    onClick = onDismiss,
-                )
-                WelcomeMinimal3DButton(
-                    text = if (initialRoom == null) "Save Room" else "Update Room",
-                    icon = CheckIcon,
-                    hindSiliguri = hindSiliguri,
-                    isDark = isDark,
-                    isLoading = isSaving,
-                    height = 46.dp,
-                    cornerRadius = 23.dp,
-                    modifier = Modifier.weight(1.3f),
-                    testTag = "save_room_button",
-                    onClick = { submitRoom() },
-                )
-            }
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            GoogleSectionHeader(title = "Room Details", hindSiliguri = hindSiliguri)
+    val activeTypeAccent = if (roomType == ClassroomType.LAB) classroomAccent else theoryAccent
+    val deptAccent = if (department.equals("ALL", true)) classroomAccent else departmentAccent(department, isDark)
 
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val twoCol = maxWidth >= 560.dp
-                if (twoCol) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        ClassroomTextInput(
-                            label = "Room Number / Lab *",
-                            value = roomNumber,
-                            placeholder = "e.g. 301 or CST-Lab-1",
-                            onValueChange = { roomNumber = it },
-                            hindSiliguri = hindSiliguri,
-                            modifier = Modifier.weight(1f),
-                        )
-                        ClassroomTextInput(
-                            label = "Building / Floor",
-                            value = buildingOrFloor,
-                            placeholder = "e.g. Academic Bldg 2, 3F",
-                            onValueChange = { buildingOrFloor = it },
-                            hindSiliguri = hindSiliguri,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ClassroomTextInput(
-                            label = "Room Number / Lab *",
-                            value = roomNumber,
-                            placeholder = "e.g. 301 or CST-Lab-1",
-                            onValueChange = { roomNumber = it },
-                            hindSiliguri = hindSiliguri,
-                        )
-                        ClassroomTextInput(
-                            label = "Building / Floor",
-                            value = buildingOrFloor,
-                            placeholder = "e.g. Academic Bldg 2, 3F",
-                            onValueChange = { buildingOrFloor = it },
-                            hindSiliguri = hindSiliguri,
-                        )
-                    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalFullScreenSheet(
+            title = if (initialRoom == null) "Add Classroom / Lab" else "Edit Room ${initialRoom.roomNumber}",
+            subtitle = "Classroom Inventory",
+            levelLabel = "Classrooms • Level 1",
+            icon = DoorOpenIcon,
+            accent = activeTypeAccent.primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            onDismiss = onDismiss,
+            dismissEnabled = !isSaving,
+            maxContentWidth = 760.dp,
+            bottomBar = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    GoogleOutlinedButton(
+                        text = "Cancel",
+                        hindSiliguri = hindSiliguri,
+                        enabled = !isSaving,
+                        height = 48.dp,
+                        contentColor = cs.onSurface,
+                        modifier = Modifier.weight(1f),
+                        onClick = onDismiss,
+                    )
+                    WelcomeMinimal3DButton(
+                        text = if (initialRoom == null) "Save Room" else "Update Room",
+                        icon = CheckIcon,
+                        hindSiliguri = hindSiliguri,
+                        isDark = isDark,
+                        isLoading = isSaving,
+                        customPrimaryColor = classroomAccent.primary,
+                        customBaseColor = classroomAccent.deep,
+                        height = 48.dp,
+                        cornerRadius = 16.dp,
+                        modifier = Modifier.weight(1.3f),
+                        testTag = "save_room_button",
+                        onClick = { submitRoom() },
+                    )
                 }
-            }
-
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val twoCol = maxWidth >= 560.dp
-                if (twoCol) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.Top,
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    GoogleSectionHeader(
+                        title = "Room Details",
+                        hindSiliguri = hindSiliguri,
+                        accent = activeTypeAccent.primary,
+                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Column(modifier = Modifier.weight(1.4f)) {
-                            GoogleSectionHeader(title = "Room Category", hindSiliguri = hindSiliguri)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                ClassroomType.entries.forEach { t ->
-                                    MinimalIconChip(
-                                        label = t.label,
-                                        selected = roomType == t,
-                                        accent = cs.primary,
-                                        isDark = isDark,
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val twoCol = maxWidth >= 560.dp
+                            if (twoCol) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    ClassroomTextInput(
+                                        label = "Room Number / Lab *",
+                                        value = roomNumber,
+                                        placeholder = "e.g. 301 or CST-Lab-1",
+                                        accent = activeTypeAccent.primary,
+                                        onValueChange = { roomNumber = it },
                                         hindSiliguri = hindSiliguri,
                                         modifier = Modifier.weight(1f),
-                                        onClick = { roomType = t },
+                                    )
+                                    ClassroomTextInput(
+                                        label = "Building / Floor",
+                                        value = buildingOrFloor,
+                                        placeholder = "e.g. Academic Bldg 2, 3F",
+                                        accent = activeTypeAccent.primary,
+                                        onValueChange = { buildingOrFloor = it },
+                                        hindSiliguri = hindSiliguri,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    ClassroomTextInput(
+                                        label = "Room Number / Lab *",
+                                        value = roomNumber,
+                                        placeholder = "e.g. 301 or CST-Lab-1",
+                                        accent = activeTypeAccent.primary,
+                                        onValueChange = { roomNumber = it },
+                                        hindSiliguri = hindSiliguri,
+                                    )
+                                    ClassroomTextInput(
+                                        label = "Building / Floor",
+                                        value = buildingOrFloor,
+                                        placeholder = "e.g. Academic Bldg 2, 3F",
+                                        accent = activeTypeAccent.primary,
+                                        onValueChange = { buildingOrFloor = it },
+                                        hindSiliguri = hindSiliguri,
                                     )
                                 }
                             }
                         }
 
-                        ClassroomTextInput(
-                            label = "Capacity",
-                            value = capacityStr,
-                            placeholder = "40",
-                            keyboardType = KeyboardType.Number,
-                            onValueChange = { capacityStr = it.filter { c -> c.isDigit() } },
-                            hindSiliguri = hindSiliguri,
-                            modifier = Modifier.weight(0.8f),
-                        )
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column {
-                            GoogleSectionHeader(title = "Room Category", hindSiliguri = hindSiliguri)
-                            Spacer(modifier = Modifier.height(6.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Room Category",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = hindSiliguri,
+                                color = cs.onSurfaceVariant,
+                            )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 ClassroomType.entries.forEach { t ->
+                                    val tAccent = if (t == ClassroomType.LAB) classroomAccent.primary else theoryAccent.primary
                                     MinimalIconChip(
                                         label = t.label,
                                         selected = roomType == t,
-                                        accent = cs.primary,
+                                        accent = tAccent,
                                         isDark = isDark,
                                         hindSiliguri = hindSiliguri,
                                         modifier = Modifier.weight(1f),
@@ -848,61 +825,77 @@ private fun RoomEditorFullScreen(
                             label = "Seating Capacity",
                             value = capacityStr,
                             placeholder = "40",
+                            accent = activeTypeAccent.primary,
                             keyboardType = KeyboardType.Number,
                             onValueChange = { capacityStr = it.filter { c -> c.isDigit() } },
                             hindSiliguri = hindSiliguri,
                         )
                     }
                 }
-            }
 
-            Column {
-                GoogleSectionHeader(title = "Assigned Department", hindSiliguri = hindSiliguri)
-                Spacer(modifier = Modifier.height(6.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    (listOf("ALL") + RoutineRules.TECH_DEPARTMENTS).forEach { d ->
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    GoogleSectionHeader(
+                        title = "Assignment & Shifts",
+                        hindSiliguri = hindSiliguri,
+                        accent = deptAccent.primary,
+                    )
+                    KlassNavigationRow(
+                        title = "Assigned Department",
+                        subtitle = if (department.equals("ALL", true)) "ALL (Shared across departments)" else "$department Department",
+                        icon = GraduationCapIcon,
+                        accent = deptAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        badgeText = department,
+                        onClick = { showDeptPicker = true },
+                    )
+                    SocialInsetDivider(startIndent = 16.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         MinimalIconChip(
-                            label = if (d == "ALL") "ALL (Shared)" else d,
-                            selected = department.equals(d, ignoreCase = true),
-                            accent = cs.primary,
+                            label = RoutineRules.SHIFT_1,
+                            selected = shift1Enabled,
+                            accent = classroomAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
-                            onClick = { department = d },
+                            modifier = Modifier.weight(1f),
+                            onClick = { shift1Enabled = !shift1Enabled },
+                        )
+                        MinimalIconChip(
+                            label = RoutineRules.SHIFT_2,
+                            selected = shift2Enabled,
+                            accent = classroomAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            modifier = Modifier.weight(1f),
+                            onClick = { shift2Enabled = !shift2Enabled },
                         )
                     }
                 }
             }
+        }
 
-            Column {
-                GoogleSectionHeader(title = "Available Shifts", hindSiliguri = hindSiliguri)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    MinimalIconChip(
-                        label = RoutineRules.SHIFT_1,
-                        selected = shift1Enabled,
-                        accent = cs.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        modifier = Modifier.weight(1f),
-                        onClick = { shift1Enabled = !shift1Enabled },
-                    )
-                    MinimalIconChip(
-                        label = RoutineRules.SHIFT_2,
-                        selected = shift2Enabled,
-                        accent = cs.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        modifier = Modifier.weight(1f),
-                        onClick = { shift2Enabled = !shift2Enabled },
-                    )
-                }
-            }
+        // Level 2 Sub-Sub-Screen: Department Picker
+        KlassSubScreenHost(visible = showDeptPicker, zIndex = 90f) {
+            KlassSelectionPickerSubScreen(
+                title = "Assigned Department",
+                subtitle = "Choose primary department or Shared",
+                levelLabel = "Room Editor • Level 2",
+                icon = GraduationCapIcon,
+                accent = deptAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                options = listOf("ALL") + RoutineRules.TECH_DEPARTMENTS,
+                selectedOption = department,
+                optionLabel = { if (it == "ALL") "ALL (Shared)" else it },
+                optionSubtitle = { if (it == "ALL") "Available for all departments" else "$it dedicated room" },
+                onSelect = { department = it },
+                onDismiss = { showDeptPicker = false },
+            )
         }
     }
 }
@@ -911,14 +904,21 @@ private fun RoomEditorFullScreen(
 private fun RoomScheduleViewerFullScreen(
     room: ClassroomItem,
     plan: RoutinePlan?,
+    canEdit: Boolean,
     isDark: Boolean,
     hindSiliguri: FontFamily,
+    onEditRoom: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val isLab = room.roomType == ClassroomType.LAB
+    val roomAccent = if (isLab) KlassFeaturePalette.classrooms(isDark) else KlassFeaturePalette.teachers(isDark)
+    val freeAccent = KlassFeaturePalette.success(isDark)
+
     var selectedShift by remember {
-        mutableStateOf(room.shifts.firstOrNull() ?: RoutineRules.SHIFT_1)
+        mutableStateOf(RoutineRules.normalizeShift(room.shifts.firstOrNull() ?: RoutineRules.SHIFT_1))
     }
+    var inspectingSlot by remember { mutableStateOf<Pair<RoutineEntry, Int>?>(null) }
 
     val config = plan?.config ?: RoutineConfig()
     val periodsCount = config.periodsPerDay.coerceIn(4, 10)
@@ -929,138 +929,263 @@ private fun RoomScheduleViewerFullScreen(
         }
     }
 
-    MinimalFullScreenSheet(
-        title = "Room ${room.roomNumber} Schedule",
-        subtitle = "${room.roomType.label} • ${room.department} • Cap ${room.capacity}",
-        icon = DoorOpenIcon,
-        accent = cs.primary,
-        isDark = isDark,
-        hindSiliguri = hindSiliguri,
-        onDismiss = onDismiss,
-        maxContentWidth = 880.dp,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
-                    MinimalIconChip(
-                        label = sh,
-                        selected = selectedShift == sh,
-                        accent = cs.primary,
+    Box(modifier = Modifier.fillMaxSize()) {
+        MinimalFullScreenSheet(
+            title = "Room ${room.roomNumber} Schedule",
+            subtitle = "${room.roomType.label} • ${room.department}",
+            levelLabel = "Classroom Schedule • Level 1",
+            icon = DoorOpenIcon,
+            accent = roomAccent.primary,
+            isDark = isDark,
+            hindSiliguri = hindSiliguri,
+            onDismiss = onDismiss,
+            maxContentWidth = 880.dp,
+            headerActions = {
+                if (canEdit) {
+                    KlassTonalButton(
+                        text = "Edit",
+                        icon = EditIcon,
+                        accent = roomAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedShift = sh },
+                        height = 36.dp,
+                        onClick = onEditRoom,
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val cols = if (maxWidth >= 640.dp) 2 else 1
-                val dayRows = remember(cols) { RoutineRules.WORKING_DAYS.chunked(cols) }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp),
+            },
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    itemsIndexed(dayRows) { _, rowDays ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            rowDays.forEach { day ->
-                                Box(modifier = Modifier.weight(1f)) {
-                                    MinimalCardSurface(isDark = isDark, shape = RoundedCornerShape(18.dp)) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(14.dp),
-                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                    listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2).forEach { sh ->
+                        MinimalIconChip(
+                            label = sh,
+                            selected = selectedShift == sh,
+                            accent = roomAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            modifier = Modifier.weight(1f),
+                            onClick = { selectedShift = sh },
+                        )
+                    }
+                }
+
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val cols = if (maxWidth >= 640.dp) 2 else 1
+                    val dayRows = remember(cols) { RoutineRules.WORKING_DAYS.chunked(cols) }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                    ) {
+                        item {
+                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                                KlassHeroBanner(
+                                    title = "Room ${room.roomNumber}",
+                                    subtitle = room.buildingOrFloor.ifBlank { "${room.roomType.label} Space" },
+                                    icon = DoorOpenIcon,
+                                    accent = roomAccent.primary,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    badges = listOf(
+                                        room.roomType.label to roomAccent.primary,
+                                        "Cap ${room.capacity}" to KlassFeaturePalette.books(isDark).primary,
+                                        "${roomEntries.size} Occupied" to KlassFeaturePalette.routine(isDark).primary,
+                                    ),
+                                )
+                            }
+                            SocialSectionDividerBand(isDark = isDark, height = 8.dp)
+                        }
+
+                        itemsIndexed(dayRows) { rowIdx, rowDays ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                rowDays.forEach { day ->
+                                    val dayIdx = RoutineRules.WORKING_DAYS.indexOf(day).coerceAtLeast(0)
+                                    val dayAccent = dayPaletteAt(dayIdx, isDark)
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        SocialSurfaceBlock(
+                                            isDark = isDark,
+                                            showTopHairline = true,
+                                            showBottomHairline = true,
+                                            accentTint = dayAccent.primary,
                                         ) {
-                                            Text(
-                                                text = day,
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                fontFamily = hindSiliguri,
-                                                color = cs.primary,
+                                            GoogleSectionHeader(
+                                                title = day,
+                                                hindSiliguri = hindSiliguri,
+                                                accent = dayAccent.primary,
                                             )
                                             for (p in 0 until periodsCount) {
                                                 val slot = roomEntries.firstOrNull {
                                                     it.day.equals(day, ignoreCase = true) && it.periodIndex == p
                                                 }
                                                 val (st, et) = RoutineRules.periodTimeRange(selectedShift, p, config)
-                                                Surface(
-                                                    shape = RoundedCornerShape(12.dp),
-                                                    color = if (slot == null) {
-                                                        cs.secondaryContainer
-                                                    } else {
-                                                        cs.surfaceContainerHigh
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth(),
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .then(
+                                                            if (slot != null) {
+                                                                Modifier.clickable { inspectingSlot = slot to dayIdx }
+                                                            } else {
+                                                                Modifier
+                                                            }
+                                                        )
+                                                        .padding(horizontal = 16.dp, vertical = 11.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
                                                 ) {
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(horizontal = 12.dp, vertical = 9.dp),
-                                                        verticalAlignment = Alignment.CenterVertically,
+                                                    Surface(
+                                                        shape = RoundedCornerShape(10.dp),
+                                                        color = if (slot == null) freeAccent.softTint else dayAccent.softTint,
+                                                        border = BorderStroke(
+                                                            0.75.dp,
+                                                            if (slot == null) freeAccent.borderTint else dayAccent.borderTint,
+                                                        ),
                                                     ) {
                                                         Text(
                                                             text = "P${p + 1} • $st",
                                                             fontSize = 13.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontFamily = hindSiliguri,
+                                                            color = if (slot == null) freeAccent.primary else dayAccent.primary,
+                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    if (slot == null) {
+                                                        Text(
+                                                            text = "Free ($st–$et)",
+                                                            fontSize = 15.sp,
                                                             fontWeight = FontWeight.Medium,
                                                             fontFamily = hindSiliguri,
-                                                            color = if (slot == null) cs.onSecondaryContainer else cs.onSurfaceVariant,
-                                                            modifier = Modifier.width(82.dp),
+                                                            color = freeAccent.primary,
                                                         )
-                                                        if (slot == null) {
+                                                    } else {
+                                                        Column(modifier = Modifier.weight(1f)) {
                                                             Text(
-                                                                text = "Free ($st–$et)",
-                                                                fontSize = 14.sp,
-                                                                fontWeight = FontWeight.Medium,
+                                                                text = "${slot.subjectTitle} (${slot.subjectCode})",
+                                                                fontSize = 16.sp,
+                                                                fontWeight = FontWeight.Bold,
                                                                 fontFamily = hindSiliguri,
-                                                                color = cs.onSecondaryContainer,
+                                                                color = cs.onSurface,
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis,
                                                             )
-                                                        } else {
-                                                            Column(modifier = Modifier.weight(1f)) {
-                                                                Text(
-                                                                    text = "${slot.subjectTitle} (${slot.subjectCode})",
-                                                                    fontSize = 14.5.sp,
-                                                                    fontWeight = FontWeight.Medium,
-                                                                    fontFamily = hindSiliguri,
-                                                                    color = cs.onSurface,
-                                                                    maxLines = 1,
-                                                                    overflow = TextOverflow.Ellipsis,
-                                                                )
-                                                                Text(
-                                                                    text = "${slot.department} • ${RoutineRules.semesterShortLabel(slot.semester)} • ${slot.group} • ${slot.teacherName}",
-                                                                    fontSize = 13.sp,
-                                                                    fontFamily = hindSiliguri,
-                                                                    color = cs.onSurfaceVariant,
-                                                                    maxLines = 1,
-                                                                    overflow = TextOverflow.Ellipsis,
-                                                                )
-                                                            }
+                                                            Text(
+                                                                text = "${slot.department} • ${RoutineRules.semesterShortLabel(slot.semester)} • ${slot.group} • ${slot.teacherName}",
+                                                                fontSize = 13.5.sp,
+                                                                fontFamily = hindSiliguri,
+                                                                color = cs.onSurfaceVariant,
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis,
+                                                            )
                                                         }
+                                                        Icon(
+                                                            imageVector = ChevronRightIcon,
+                                                            contentDescription = null,
+                                                            tint = dayAccent.primary,
+                                                            modifier = Modifier.size(17.dp),
+                                                        )
                                                     }
+                                                }
+                                                if (p < periodsCount - 1) {
+                                                    SocialInsetDivider(startIndent = 16.dp)
                                                 }
                                             }
                                         }
                                     }
                                 }
+                                if (cols == 2 && rowDays.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
-                            if (cols == 2 && rowDays.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
+                            if (rowIdx < dayRows.lastIndex) {
+                                SocialSectionDividerBand(isDark = isDark)
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Level 2 Sub-Sub-Screen: Occupied Room Slot Details
+        KlassSubScreenHost(visible = inspectingSlot != null, zIndex = 90f) {
+            inspectingSlot?.let { (slot, dayIdx) ->
+                val dayAccent = dayPaletteAt(dayIdx, isDark)
+                val deptAccent = departmentAccent(slot.department, isDark)
+                MinimalFullScreenSheet(
+                    title = slot.subjectTitle,
+                    subtitle = "${slot.day} • Period ${slot.periodIndex + 1}",
+                    levelLabel = "Room Slot • Level 2",
+                    icon = BookIcon,
+                    accent = dayAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onDismiss = { inspectingSlot = null },
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            KlassHeroBanner(
+                                title = slot.subjectTitle,
+                                subtitle = "Code ${slot.subjectCode} • ${slot.startTime}–${slot.endTime}",
+                                icon = BookIcon,
+                                accent = dayAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                badges = listOf(
+                                    "Room ${slot.roomNumber}" to roomAccent.primary,
+                                    (if (slot.isPractical) "Practical" else "Theory") to KlassFeaturePalette.teaching(isDark).primary,
+                                ),
+                            )
+                        }
+
+                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                            KlassDetailFieldRow(
+                                label = "Department & Group",
+                                value = "${slot.department} • ${RoutineRules.semesterDisplayLabel(slot.semester)} • ${slot.group}",
+                                icon = LayerGroupIcon,
+                                accent = deptAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                            )
+                            SocialInsetDivider(startIndent = 68.dp)
+                            KlassDetailFieldRow(
+                                label = "Instructor",
+                                value = slot.teacherName.ifBlank { slot.teacherEmail },
+                                icon = PersonIcon,
+                                accent = KlassFeaturePalette.teachers(isDark).primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                            )
+                            SocialInsetDivider(startIndent = 68.dp)
+                            KlassDetailFieldRow(
+                                label = "Shift & Timing",
+                                value = "${slot.shift} • ${slot.day} (${slot.startTime} – ${slot.endTime})",
+                                icon = ClockIcon,
+                                accent = dayAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                            )
+                            SocialInsetDivider(startIndent = 68.dp)
+                            KlassDetailFieldRow(
+                                label = "Session Type",
+                                value = if (slot.isPractical) "Practical / Lab Class" else "Theory Lecture",
+                                icon = SparkleIcon,
+                                accent = KlassFeaturePalette.ai(isDark).primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                            )
                         }
                     }
                 }
@@ -1074,6 +1199,7 @@ private fun ClassroomTextInput(
     label: String,
     value: String,
     placeholder: String,
+    accent: Color,
     onValueChange: (String) -> Unit,
     hindSiliguri: FontFamily,
     modifier: Modifier = Modifier,
@@ -1101,15 +1227,15 @@ private fun ClassroomTextInput(
             )
         },
         textStyle = TextStyle(
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             fontFamily = hindSiliguri,
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = cs.primary,
+            focusedBorderColor = accent,
             unfocusedBorderColor = cs.outlineVariant,
-            focusedLabelColor = cs.primary,
+            focusedLabelColor = accent,
             unfocusedLabelColor = cs.onSurfaceVariant,
         ),
         modifier = modifier.fillMaxWidth(),

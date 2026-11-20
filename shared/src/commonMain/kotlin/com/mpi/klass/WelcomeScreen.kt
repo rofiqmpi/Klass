@@ -56,6 +56,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -70,6 +71,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,10 +83,12 @@ import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.AutoModeIcon
 import com.mpi.klass.theme.AwardIcon
 import com.mpi.klass.theme.BookIcon
+import com.mpi.klass.theme.ChevronRightIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.CrownIcon
 import com.mpi.klass.theme.DarkModeIcon
 import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LanguageGlobeIcon
 import com.mpi.klass.theme.LightModeIcon
 import com.mpi.klass.theme.NotificationIcon
@@ -844,8 +848,10 @@ fun WelcomeScreen(
 
         // Full-Screen About App Modal
         if (showAboutDialog) {
-            val cardSurface = if (isDark) Color(0xFF1E293B) else Color.White
-            val borderSubtle = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
+            val aboutAccent = KlassFeaturePalette.ai(isDark).primary
+            val cardSurface = if (isDark) Color(0xFF1E293B).copy(alpha = 0.84f) else Color.White.copy(alpha = 0.88f)
+            val headerSurface = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.90f)
+            val borderSubtle = if (isDark) Color(0xFF334155).copy(alpha = 0.7f) else Color(0xFFE2E8F0)
 
             val features = remember {
                 listOf(
@@ -861,27 +867,27 @@ fun WelcomeScreen(
                 )
             }
 
-            Surface(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex(100f),
-                color = MaterialTheme.colorScheme.background,
+                    .zIndex(100f)
+                    .rainbowScreenBackground(isDark, aboutAccent),
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
                         .navigationBarsPadding(),
                 ) {
                     // Top Bar with Close Button
                     Surface(
-                        color = cardSurface,
-                        shadowElevation = 3.dp,
+                        color = headerSurface,
+                        shadowElevation = 0.dp,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .statusBarsPadding()
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -895,23 +901,23 @@ fun WelcomeScreen(
                                     painter = painterResource(Res.drawable.splash),
                                     contentDescription = "App Logo",
                                     modifier = Modifier
-                                        .size(40.dp)
+                                        .size(42.dp)
                                         .clip(CircleShape),
                                     contentScale = ContentScale.Crop,
                                 )
                                 Column {
                                     Text(
                                         text = "অ্যাপ সম্পর্কে".localized(),
-                                        fontSize = 18.sp,
+                                        fontSize = 19.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = hindSiliguri,
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
                                         text = "MPI Klass • ${"ভার্সন ১.০.০".localized()}",
-                                        fontSize = 11.5.sp,
+                                        fontSize = 12.sp,
                                         fontFamily = hindSiliguri,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = aboutAccent,
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                 }
@@ -920,15 +926,17 @@ fun WelcomeScreen(
                             Surface(
                                 onClick = { showAboutDialog = false },
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
-                                modifier = Modifier.size(40.dp),
+                                color = aboutAccent.copy(alpha = 0.14f),
+                                border = BorderStroke(1.dp, aboutAccent.copy(alpha = 0.36f)),
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .size(44.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = CloseIcon,
                                         contentDescription = "বন্ধ করুন".localized(),
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = aboutAccent,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
@@ -1044,21 +1052,15 @@ fun WelcomeScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        Button(
+                        WelcomeMinimal3DButton(
+                            text = "বন্ধ করুন".localized(),
+                            hindSiliguri = hindSiliguri,
+                            isDark = isDark,
+                            customPrimaryColor = aboutAccent,
+                            height = 48.dp,
+                            modifier = Modifier.fillMaxWidth(),
                             onClick = { showAboutDialog = false },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                        ) {
-                            Text(
-                                text = "বন্ধ করুন".localized(),
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                            )
-                        }
+                        )
 
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -1277,7 +1279,9 @@ fun WelcomeScreen(
                         // Clean, elegant solid primary Close Button
                         Surface(
                             onClick = { showTermsDialog = false },
-                            modifier = Modifier.size(44.dp),
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .size(48.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -1309,10 +1313,14 @@ internal fun RoleButton(
     painter: DrawableResource,
     isDark: Boolean,
     fontFamily: androidx.compose.ui.text.font.FontFamily,
+    accentColor: Color? = null,
+    testTag: String? = null,
     onClick: () -> Unit,
 ) {
-    val borderColor = if (isDark) Color(0xFF475569) else Color(0xFFCBD5E1)
-    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF1E293B)
+    val resolvedAccent = accentColor ?: MaterialTheme.colorScheme.primary
+    val borderColor = if (isDark) resolvedAccent.copy(alpha = 0.42f) else resolvedAccent.copy(alpha = 0.34f)
+    val bgColor = if (isDark) Color(0xFF151F32).copy(alpha = 0.90f) else Color.White.copy(alpha = 0.92f)
+    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val interactionSource = remember { MutableInteractionSource() }
 
     Surface(
@@ -1320,33 +1328,53 @@ internal fun RoleButton(
         interactionSource = interactionSource,
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(8.dp),
+            .height(50.dp)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+        shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, borderColor),
-        color = if (isDark) Color(0xFF1E293B) else Color.White,
+        color = bgColor,
         shadowElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .background(resolvedAccent.copy(alpha = if (isDark) 0.08f else 0.05f))
+                .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Image(
-                painter = painterResource(painter),
-                contentDescription = text,
-                modifier = Modifier.size(24.dp),
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = resolvedAccent.copy(alpha = if (isDark) 0.20f else 0.12f),
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            painter = painterResource(painter),
+                            contentDescription = text,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
 
-            Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = text,
+                    fontSize = 15.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = fontFamily,
+                    color = textColor,
+                )
+            }
 
-            Text(
-                text = text,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = fontFamily,
-                color = textColor,
+            Icon(
+                imageVector = ChevronRightIcon,
+                contentDescription = null,
+                tint = resolvedAccent,
+                modifier = Modifier.size(16.dp),
             )
         }
     }
