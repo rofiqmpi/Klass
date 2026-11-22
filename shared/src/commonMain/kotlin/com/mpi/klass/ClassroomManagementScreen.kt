@@ -183,13 +183,13 @@ fun ClassroomManagementScreen(
                             modifier = Modifier.weight(1f),
                         )
 
-                        WelcomeMinimal3DIconButton(
+                        KlassHeaderIconButton(
                             icon = RefreshIcon,
                             contentDescription = "Refresh classrooms",
                             isDark = isDark,
                             containerColor = classroomAccent.softTint,
                             iconTint = classroomAccent.primary,
-                            baseColor = classroomAccent.borderTint,
+                            borderColor = classroomAccent.borderTint,
                             isLoading = isLoading,
                             enabled = !isLoading,
                             testTag = "classroom_refresh_button",
@@ -197,15 +197,15 @@ fun ClassroomManagementScreen(
                         )
 
                         if (canEdit && rooms.isNotEmpty()) {
-                            WelcomeMinimal3DIconButton(
+                            KlassHeaderIconButton(
                                 icon = TrashCanIcon,
                                 contentDescription = "Reset all rooms",
                                 isDark = isDark,
                                 containerColor = errorAccent.softTint,
                                 iconTint = errorAccent.primary,
-                                baseColor = errorAccent.borderTint,
+                                borderColor = errorAccent.borderTint,
                                 visualSize = 40.dp,
-                                iconSize = 17.dp,
+                                iconSize = 18.dp,
                                 testTag = "reset_classrooms_button",
                                 onClick = { confirmFreshReset = true },
                             )

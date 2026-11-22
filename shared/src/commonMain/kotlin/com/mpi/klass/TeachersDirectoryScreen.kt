@@ -180,7 +180,7 @@ fun TeachersDirectoryScreen(
                             modifier = Modifier.weight(1f),
                         )
 
-                        WelcomeMinimal3DIconButton(
+                        KlassHeaderIconButton(
                             icon = RefreshIcon,
                             contentDescription = "Refresh teachers",
                             isDark = isDark,

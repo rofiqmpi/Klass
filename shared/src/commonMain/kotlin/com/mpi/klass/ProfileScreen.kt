@@ -1728,12 +1728,11 @@ private fun GuestSignInPrompt(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                WelcomeMinimal3DButton(
+                KlassPrimaryButton(
                     text = "সাইন ইন করুন".localized(),
                     hindSiliguri = hindSiliguri,
                     isDark = isDark,
                     customPrimaryColor = profileAccent.primary,
-                    customBaseColor = profileAccent.deep,
                     height = 50.dp,
                     cornerRadius = 25.dp,
                     testTag = "guest_sign_in_button",

@@ -158,13 +158,13 @@ fun BloodFinderScreen(
                                 modifier = Modifier.weight(1f),
                             )
 
-                            WelcomeMinimal3DIconButton(
+                            KlassHeaderIconButton(
                                 icon = RefreshIcon,
                                 contentDescription = "Refresh blood donors",
                                 isDark = isDark,
                                 containerColor = bloodAccent.softTint,
                                 iconTint = bloodAccent.primary,
-                                baseColor = bloodAccent.borderTint,
+                                borderColor = bloodAccent.borderTint,
                                 isLoading = isLoading,
                                 enabled = !isLoading,
                                 testTag = "blood_refresh_button",
@@ -366,13 +366,13 @@ private fun DonorMinimalRow(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                WelcomeMinimal3DIconButton(
+                KlassHeaderIconButton(
                     icon = PhoneSolidIcon,
                     contentDescription = "Call ${donor.name}",
                     isDark = isDark,
                     containerColor = callAccent.softTint,
                     iconTint = callAccent.primary,
-                    baseColor = callAccent.borderTint,
+                    borderColor = callAccent.borderTint,
                     visualSize = 42.dp,
                     iconSize = 18.dp,
                     testTag = "call_donor_$index",

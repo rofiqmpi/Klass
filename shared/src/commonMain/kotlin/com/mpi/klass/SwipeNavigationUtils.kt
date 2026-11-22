@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,8 +84,10 @@ import com.mpi.klass.theme.ChevronDownIcon
 import com.mpi.klass.theme.DownloadIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.MessageBubbleIcon
+import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.departmentAccent
 import com.mpi.klass.theme.getHindSiliguriFontFamily
 import klass.shared.generated.resources.Res
@@ -277,8 +280,14 @@ fun HomeRoutineHeader(
 
                     if (onDownloadClick != null) {
                         Spacer(modifier = Modifier.width(5.dp))
+                        val dlInteraction = remember { MutableInteractionSource() }
+                        var dlTrigger by remember { mutableIntStateOf(0) }
                         Surface(
-                            onClick = onDownloadClick,
+                            onClick = {
+                                dlTrigger++
+                                onDownloadClick()
+                            },
+                            interactionSource = dlInteraction,
                             enabled = !isDownloading,
                             shape = CircleShape,
                             color = routineAccent.softTint,
@@ -290,20 +299,15 @@ fun HomeRoutineHeader(
                                 .testTag("home_routine_download_button"),
                         ) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                if (isDownloading) {
-                                    CircularProgressIndicator(
-                                        color = routineAccent.primary,
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = DownloadIcon,
-                                        contentDescription = "Download Routine PDF",
-                                        tint = routineAccent.primary,
-                                        modifier = Modifier.size(15.dp),
-                                    )
-                                }
+                                TelegramAnimatedIcon(
+                                    icon = DownloadIcon,
+                                    contentDescription = "Download Routine PDF",
+                                    tint = routineAccent.primary,
+                                    size = 15.dp,
+                                    interactionSource = dlInteraction,
+                                    triggerKey = dlTrigger,
+                                    isLoading = isDownloading,
+                                )
                             }
                         }
                     }
@@ -630,12 +634,27 @@ fun HomeRoutineHeader(
                     shrinkTowards = Alignment.End,
                 ),
         ) {
+            val msgInteraction = remember { MutableInteractionSource() }
+            val msgPressed by msgInteraction.collectIsPressedAsState()
+            var msgTrigger by remember { mutableIntStateOf(0) }
+            val msgScale by animateFloatAsState(
+                targetValue = if (msgPressed) 0.90f else 1f,
+                animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+                label = "home_msg_scale",
+            )
             Box(modifier = Modifier.size(48.dp)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape)
-                        .clickable(onClick = onAiClick)
+                        .clickable(
+                            interactionSource = msgInteraction,
+                            indication = androidx.compose.material3.ripple(bounded = false, radius = 24.dp),
+                            onClick = {
+                                msgTrigger++
+                                onAiClick()
+                            },
+                        )
                         .testTag("home_messages_button"),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -645,7 +664,12 @@ fun HomeRoutineHeader(
                         border = BorderStroke(1.dp, routineAccent.borderTint),
                         shadowElevation = 0.dp,
                         tonalElevation = 0.dp,
-                        modifier = Modifier.size(42.dp),
+                        modifier = Modifier
+                            .size(42.dp)
+                            .graphicsLayer {
+                                scaleX = msgScale
+                                scaleY = msgScale
+                            },
                     ) {
                         Box(
                             modifier = Modifier
@@ -653,11 +677,14 @@ fun HomeRoutineHeader(
                                 .background(routineAccent.softTint),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                imageVector = MessageBubbleIcon,
+                            TelegramAnimatedIcon(
+                                icon = MessageBubbleIcon,
                                 contentDescription = "Messages",
                                 tint = routineAccent.primary,
-                                modifier = Modifier.size(19.dp),
+                                size = 19.dp,
+                                interactionSource = msgInteraction,
+                                triggerKey = msgTrigger,
+                                hasActivity = unreadMessagesCount > 0,
                             )
                         }
                     }
@@ -680,12 +707,27 @@ fun HomeRoutineHeader(
         }
 
         // 4. Notification Button (48.dp touch box, 42.dp visual circle centered at y = 24.dp) + crisp Red Dot
+        val notiInteraction = remember { MutableInteractionSource() }
+        val notiPressed by notiInteraction.collectIsPressedAsState()
+        var notiTrigger by remember { mutableIntStateOf(0) }
+        val notiScale by animateFloatAsState(
+            targetValue = if (notiPressed) 0.90f else 1f,
+            animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+            label = "home_noti_scale",
+        )
         Box(modifier = Modifier.size(48.dp)) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)
-                    .clickable(onClick = onNotificationClick)
+                    .clickable(
+                        interactionSource = notiInteraction,
+                        indication = androidx.compose.material3.ripple(bounded = false, radius = 24.dp),
+                        onClick = {
+                            notiTrigger++
+                            onNotificationClick()
+                        },
+                    )
                     .testTag("home_notification_button"),
                 contentAlignment = Alignment.Center,
             ) {
@@ -695,7 +737,12 @@ fun HomeRoutineHeader(
                     border = BorderStroke(1.dp, notiAccent.borderTint),
                     shadowElevation = 0.dp,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.size(42.dp),
+                    modifier = Modifier
+                        .size(42.dp)
+                        .graphicsLayer {
+                            scaleX = notiScale
+                            scaleY = notiScale
+                        },
                 ) {
                     Box(
                         modifier = Modifier
@@ -703,11 +750,14 @@ fun HomeRoutineHeader(
                             .background(notiAccent.softTint),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.notification),
+                        TelegramAnimatedIcon(
+                            icon = NotificationIcon,
                             contentDescription = "Notifications",
                             tint = notiAccent.primary,
-                            modifier = Modifier.size(19.dp),
+                            size = 19.dp,
+                            interactionSource = notiInteraction,
+                            triggerKey = notiTrigger,
+                            hasActivity = hasUnreadNotifications,
                         )
                     }
                 }

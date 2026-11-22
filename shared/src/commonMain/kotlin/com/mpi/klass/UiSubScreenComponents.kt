@@ -5,9 +5,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -34,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -53,6 +59,7 @@ import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.ChevronRightIcon
 import com.mpi.klass.theme.CloseIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 
 /**
  * Animated Sub-Screen Host supporting crisp slide-and-fade drill-down across Levels 1, 2, and 3.
@@ -97,13 +104,28 @@ internal fun KlassNavigationRow(
     val cs = MaterialTheme.colorScheme
     val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
     val resolvedBadge = if (badgeColor == Color.Unspecified) resolvedAccent else badgeColor
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var clickTrigger by remember { mutableIntStateOf(0) }
+    val badgeScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        label = "nav_row_badge_scale",
+    )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.material3.ripple(),
+                onClick = {
+                    clickTrigger++
+                    onClick()
+                },
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -112,14 +134,21 @@ internal fun KlassNavigationRow(
             shape = CircleShape,
             color = resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
             border = BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.32f)),
-            modifier = Modifier.size(42.dp),
+            modifier = Modifier
+                .size(42.dp)
+                .graphicsLayer {
+                    scaleX = badgeScale
+                    scaleY = badgeScale
+                },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    imageVector = icon,
+                TelegramAnimatedIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = resolvedAccent,
-                    modifier = Modifier.size(20.dp),
+                    size = 20.dp,
+                    interactionSource = interactionSource,
+                    triggerKey = clickTrigger,
                 )
             }
         }
@@ -197,12 +226,27 @@ internal fun KlassDetailFieldRow(
 ) {
     val cs = MaterialTheme.colorScheme
     val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
+    val interactionSource = remember { MutableInteractionSource() }
+    var clickTrigger by remember { mutableIntStateOf(0) }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 58.dp)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = interactionSource,
+                        indication = androidx.compose.material3.ripple(),
+                        onClick = {
+                            clickTrigger++
+                            onClick()
+                        },
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -213,11 +257,13 @@ internal fun KlassDetailFieldRow(
             modifier = Modifier.size(38.dp),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    imageVector = icon,
+                TelegramAnimatedIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = resolvedAccent,
-                    modifier = Modifier.size(18.dp),
+                    size = 18.dp,
+                    interactionSource = if (onClick != null) interactionSource else null,
+                    triggerKey = clickTrigger,
                 )
             }
         }
@@ -297,11 +343,12 @@ internal fun KlassEmptyState(
                 modifier = Modifier.size(62.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(
-                        imageVector = icon,
+                    TelegramAnimatedIcon(
+                        icon = icon,
                         contentDescription = null,
                         tint = resolvedAccent,
-                        modifier = Modifier.size(28.dp),
+                        size = 28.dp,
+                        hasActivity = true,
                     )
                 }
             }

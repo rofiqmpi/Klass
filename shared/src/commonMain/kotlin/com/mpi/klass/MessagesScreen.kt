@@ -157,11 +157,12 @@ fun MessagesScreen(
                 navigationTestTag = "messages_back_button",
                 actions = {
                     Box {
-                        WelcomeMinimal3DIconButton(
+                        KlassHeaderIconButton(
                             icon = UsersGroupIcon,
                             contentDescription = "বন্ধু ও কানেকশন".localized(),
                             isDark = isDark,
                             visualSize = 38.dp,
+                            hasActivity = incomingRequestCount > 0,
                             onClick = onOpenFriends,
                         )
                         if (incomingRequestCount > 0) {
@@ -178,7 +179,7 @@ fun MessagesScreen(
                             )
                         }
                     }
-                    WelcomeMinimal3DIconButton(
+                    KlassHeaderIconButton(
                         icon = RefreshIcon,
                         contentDescription = "Refresh",
                         isDark = isDark,

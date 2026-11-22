@@ -253,42 +253,32 @@ fun BooksLibraryScreen(
                             modifier = Modifier.weight(1f),
                         )
 
-                        IconButton(
-                            onClick = { showFilterSheet = true },
-                            modifier = Modifier
-                                .size(48.dp)
-                                .testTag("books_filter_button"),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (hasActiveFilter) booksAccent.softTint else cs.surfaceContainerHigh,
-                                    border = if (hasActiveFilter) BorderStroke(1.dp, booksAccent.borderTint) else null,
-                                    modifier = Modifier.size(42.dp),
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = FilterIcon,
-                                            contentDescription = "Filter books",
-                                            tint = if (hasActiveFilter) booksAccent.primary else cs.onSurfaceVariant,
-                                            modifier = Modifier.size(19.dp),
-                                        )
-                                    }
-                                }
-                                if (hasActiveFilter) {
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(4.dp)
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(booksAccent.primary),
-                                    )
-                                }
+                        Box {
+                            KlassHeaderIconButton(
+                                icon = FilterIcon,
+                                contentDescription = "Filter books",
+                                isDark = isDark,
+                                containerColor = if (hasActiveFilter) booksAccent.softTint else cs.surfaceContainerHigh,
+                                iconTint = if (hasActiveFilter) booksAccent.primary else cs.onSurfaceVariant,
+                                borderColor = if (hasActiveFilter) booksAccent.borderTint else Color.Transparent,
+                                visualSize = 40.dp,
+                                hasActivity = hasActiveFilter,
+                                testTag = "books_filter_button",
+                                onClick = { showFilterSheet = true },
+                            )
+                            if (hasActiveFilter) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(booksAccent.primary),
+                                )
                             }
                         }
 
-                        WelcomeMinimal3DIconButton(
+                        KlassHeaderIconButton(
                             icon = RefreshIcon,
                             contentDescription = "Refresh library",
                             isDark = isDark,

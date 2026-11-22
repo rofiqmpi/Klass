@@ -6,8 +6,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -61,6 +63,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -92,8 +95,10 @@ import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.MessageBubbleIcon
+import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.SearchIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.rainbowScreenStops
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.notification
@@ -427,9 +432,21 @@ internal fun HeaderAiNotificationActions(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (showAi) {
+            val aiInteraction = remember { MutableInteractionSource() }
+            val aiPressed by aiInteraction.collectIsPressedAsState()
+            var aiTrigger by remember { mutableIntStateOf(0) }
+            val aiScale by animateFloatAsState(
+                targetValue = if (aiPressed) 0.92f else 1f,
+                animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+                label = "header_ai_scale",
+            )
             Box {
                 Surface(
-                    onClick = onAiClick,
+                    onClick = {
+                        aiTrigger++
+                        onAiClick()
+                    },
+                    interactionSource = aiInteraction,
                     shape = CircleShape,
                     color = baseBg,
                     border = BorderStroke(1.dp, msgAccent.borderTint),
@@ -437,6 +454,10 @@ internal fun HeaderAiNotificationActions(
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
                         .size(42.dp)
+                        .graphicsLayer {
+                            scaleX = aiScale
+                            scaleY = aiScale
+                        }
                         .testTag("top_bar_messages_button"),
                 ) {
                     Box(
@@ -445,11 +466,14 @@ internal fun HeaderAiNotificationActions(
                             .background(msgAccent.softTint),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            imageVector = MessageBubbleIcon,
+                        TelegramAnimatedIcon(
+                            icon = MessageBubbleIcon,
                             contentDescription = "Messages",
                             tint = msgAccent.primary,
-                            modifier = Modifier.size(19.dp),
+                            size = 19.dp,
+                            interactionSource = aiInteraction,
+                            triggerKey = aiTrigger,
+                            hasActivity = unreadMessagesCount > 0,
                         )
                     }
                 }
@@ -471,9 +495,21 @@ internal fun HeaderAiNotificationActions(
         }
 
         if (showNotification) {
+            val notiInteraction = remember { MutableInteractionSource() }
+            val notiPressed by notiInteraction.collectIsPressedAsState()
+            var notiTrigger by remember { mutableIntStateOf(0) }
+            val notiScale by animateFloatAsState(
+                targetValue = if (notiPressed) 0.92f else 1f,
+                animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+                label = "header_noti_scale",
+            )
             Box {
                 Surface(
-                    onClick = onNotificationClick,
+                    onClick = {
+                        notiTrigger++
+                        onNotificationClick()
+                    },
+                    interactionSource = notiInteraction,
                     shape = CircleShape,
                     color = baseBg,
                     border = BorderStroke(1.dp, notiAccent.borderTint),
@@ -481,6 +517,10 @@ internal fun HeaderAiNotificationActions(
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
                         .size(42.dp)
+                        .graphicsLayer {
+                            scaleX = notiScale
+                            scaleY = notiScale
+                        }
                         .testTag("top_bar_notification_button"),
                 ) {
                     Box(
@@ -489,11 +529,14 @@ internal fun HeaderAiNotificationActions(
                             .background(notiAccent.softTint),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.notification),
+                        TelegramAnimatedIcon(
+                            icon = NotificationIcon,
                             contentDescription = "Notifications",
                             tint = notiAccent.primary,
-                            modifier = Modifier.size(19.dp),
+                            size = 19.dp,
+                            interactionSource = notiInteraction,
+                            triggerKey = notiTrigger,
+                            hasActivity = hasUnreadNotifications,
                         )
                     }
                 }
@@ -651,6 +694,126 @@ internal fun WelcomeMinimal3DButton(
                     contentColor = contentColor,
                     hindSiliguri = hindSiliguri,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Clean, flat Material 3 / Telegram-grade primary action button (0.dp shadow, crisp hairline border,
+ * spring scale feedback, and interactive animated icon).
+ */
+@Composable
+internal fun KlassPrimaryButton(
+    text: String,
+    hindSiliguri: FontFamily,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    isPrimaryAccent: Boolean = true,
+    isDestructive: Boolean = false,
+    isDark: Boolean = false,
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
+    height: Dp = 48.dp,
+    cornerRadius: Dp = 14.dp,
+    customPrimaryColor: Color? = null,
+    testTag: String? = null,
+    onClick: () -> Unit,
+) {
+    val canClick = enabled && !isLoading
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var clickTrigger by remember { mutableIntStateOf(0) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && canClick) 0.975f else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 750f),
+        label = "klass_primary_btn_scale",
+    )
+
+    val (fgColor, borderTint, contentColor) = when {
+        isDestructive -> Triple(
+            Color(0xFFE11D48),
+            Color(0xFFBE123C).copy(alpha = 0.35f),
+            Color.White,
+        )
+        customPrimaryColor != null -> {
+            val content = if (customPrimaryColor.luminance() > 0.54f) Color(0xFF0B1120) else Color.White
+            Triple(customPrimaryColor, customPrimaryColor.copy(alpha = 0.25f), content)
+        }
+        isPrimaryAccent -> Triple(
+            if (isDark) Color(0xFF38BDF8) else Color(0xFF2563EB),
+            if (isDark) Color(0xFF7DD3FC).copy(alpha = 0.30f) else Color(0xFF1D4ED8).copy(alpha = 0.20f),
+            if (isDark) Color(0xFF0F172A) else Color.White,
+        )
+        else -> Triple(
+            if (isDark) Color(0xFF1E293B) else Color(0xFFF8FAFC),
+            if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1),
+            if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A),
+        )
+    }
+
+    val safeHeight = height.coerceAtLeast(48.dp)
+    val shape = RoundedCornerShape(cornerRadius)
+
+    Surface(
+        onClick = {
+            clickTrigger++
+            onClick()
+        },
+        enabled = canClick,
+        interactionSource = interactionSource,
+        shape = shape,
+        color = fgColor,
+        border = BorderStroke(0.75.dp, borderTint),
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
+        modifier = modifier
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+            .height(safeHeight)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .alpha(if (enabled) 1f else 0.52f),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = contentColor,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(19.dp),
+                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    if (icon != null) {
+                        TelegramAnimatedIcon(
+                            icon = icon,
+                            contentDescription = null,
+                            tint = contentColor,
+                            size = 19.dp,
+                            interactionSource = interactionSource,
+                            triggerKey = clickTrigger,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = text,
+                        fontSize = 15.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = hindSiliguri,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
@@ -893,6 +1056,109 @@ internal fun WelcomeMinimal3DIconButton(
 }
 
 /**
+ * Sleek, flat Telegram-grade IconButton with accessible 48.dp touch target, 0.dp shadow,
+ * subtle hairline border, and interactive TelegramAnimatedIcon feedback.
+ */
+@Composable
+internal fun KlassHeaderIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    isDark: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = Color.Unspecified,
+    iconTint: Color = Color.Unspecified,
+    borderColor: Color = Color.Unspecified,
+    visualSize: Dp = 40.dp,
+    iconSize: Dp = 19.dp,
+    cornerRadius: Dp = 20.dp,
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
+    hasActivity: Boolean = false,
+    testTag: String? = null,
+) {
+    val cs = MaterialTheme.colorScheme
+    val canClick = enabled && !isLoading
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    var clickTrigger by remember { mutableIntStateOf(0) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && canClick) 0.90f else 1f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
+        label = "klass_icon_btn_scale",
+    )
+
+    val resolvedTint = if (iconTint == Color.Unspecified) {
+        cs.onSurface
+    } else {
+        iconTint
+    }
+    val resolvedContainer = when {
+        containerColor != Color.Unspecified -> containerColor
+        iconTint != Color.Unspecified -> iconTint.copy(alpha = if (isDark) 0.18f else 0.11f)
+        else -> if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
+    }
+    val resolvedBorder = when {
+        borderColor != Color.Unspecified -> borderColor
+        iconTint != Color.Unspecified -> iconTint.copy(alpha = if (isDark) 0.34f else 0.26f)
+        else -> cs.outlineVariant.copy(alpha = if (isDark) 0.45f else 0.55f)
+    }
+    val shape = RoundedCornerShape(cornerRadius)
+
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(bounded = false, radius = 24.dp),
+                enabled = canClick,
+                onClick = {
+                    clickTrigger++
+                    onClick()
+                },
+            )
+            .alpha(if (enabled) 1f else 0.55f),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = shape,
+            color = resolvedContainer,
+            border = BorderStroke(0.75.dp, resolvedBorder),
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+            modifier = Modifier
+                .size(visualSize)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                if (isLoading && icon.name != "Refresh" && icon.name != "Download") {
+                    CircularProgressIndicator(
+                        color = resolvedTint,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(iconSize),
+                    )
+                } else {
+                    TelegramAnimatedIcon(
+                        icon = icon,
+                        contentDescription = contentDescription,
+                        tint = resolvedTint,
+                        size = iconSize,
+                        interactionSource = interactionSource,
+                        triggerKey = clickTrigger,
+                        isLoading = isLoading,
+                        hasActivity = hasActivity,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * Borderless Telegram / Facebook style pill search field with clear 16.sp input text.
  */
 @Composable
@@ -935,11 +1201,12 @@ internal fun MinimalSearchBar(
                 .padding(start = 16.dp, end = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = SearchIcon,
+            TelegramAnimatedIcon(
+                icon = SearchIcon,
                 contentDescription = null,
                 tint = if (isFocused) accent else accent.copy(alpha = 0.75f),
-                modifier = Modifier.size(19.dp),
+                size = 19.dp,
+                triggerKey = if (isFocused) 1 else 0,
             )
             Spacer(modifier = Modifier.width(10.dp))
             Box(
@@ -1226,11 +1493,12 @@ internal fun MinimalFullScreenSheet(
                         modifier = Modifier.size(36.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(
-                                imageVector = icon,
+                            TelegramAnimatedIcon(
+                                icon = icon,
                                 contentDescription = null,
                                 tint = resolvedAccent,
-                                modifier = Modifier.size(18.dp),
+                                size = 18.dp,
+                                triggerKey = 1,
                             )
                         }
                     }

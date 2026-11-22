@@ -74,6 +74,7 @@ import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.UsersGroupIcon
@@ -508,11 +509,12 @@ fun AppearanceSubScreen(
                                 modifier = Modifier.size(42.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = icon,
+                                    TelegramAnimatedIcon(
+                                        icon = icon,
                                         contentDescription = label,
                                         tint = optionAccent.primary,
-                                        modifier = Modifier.size(20.dp),
+                                        size = 20.dp,
+                                        triggerKey = if (isSelected) 1 else 0,
                                     )
                                 }
                             }
@@ -679,7 +681,13 @@ private fun SignInToggleRow(
             modifier = Modifier.size(40.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
+                TelegramAnimatedIcon(
+                    icon = icon,
+                    contentDescription = null,
+                    tint = accent,
+                    size = 19.dp,
+                    triggerKey = if (checked) 1 else 0,
+                )
             }
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -770,7 +778,7 @@ fun AdminApprovalsSubScreen(
             onDismiss = onBack,
             closeTestTag = "admin_approvals_back_button",
             headerActions = {
-                WelcomeMinimal3DIconButton(
+                KlassHeaderIconButton(
                     icon = RefreshIcon,
                     contentDescription = "Refresh",
                     isDark = isDark,

@@ -1141,7 +1141,7 @@ fun WelcomeScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 color = cardSurface,
                                 border = BorderStroke(1.dp, borderSubtle),
-                                shadowElevation = 2.dp,
+                                shadowElevation = 0.dp,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Row(
@@ -1207,7 +1207,7 @@ fun WelcomeScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 color = cardSurface,
                                 border = BorderStroke(1.dp, borderSubtle),
-                                shadowElevation = 2.dp,
+                                shadowElevation = 0.dp,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Row(
@@ -1258,7 +1258,7 @@ fun WelcomeScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        WelcomeMinimal3DButton(
+                        KlassPrimaryButton(
                             text = "বন্ধ করুন".localized(),
                             hindSiliguri = hindSiliguri,
                             isDark = isDark,
@@ -1323,7 +1323,7 @@ fun WelcomeScreen(
                             shape = RoundedCornerShape(18.dp),
                             color = cardSurface,
                             border = BorderStroke(1.dp, termsAccent.copy(alpha = 0.28f)),
-                            shadowElevation = 2.dp,
+                            shadowElevation = 0.dp,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Image(
@@ -1343,7 +1343,7 @@ fun WelcomeScreen(
                                 shape = RoundedCornerShape(16.dp),
                                 color = cardSurface,
                                 border = BorderStroke(1.dp, borderSubtle),
-                                shadowElevation = 1.dp,
+                                shadowElevation = 0.dp,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Row(

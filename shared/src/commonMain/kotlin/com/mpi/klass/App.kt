@@ -637,7 +637,7 @@ private fun AppToastHost(
             shape = RoundedCornerShape(24.dp),
             color = surfaceBg,
             border = BorderStroke(1.dp, accent.copy(alpha = if (isDark) 0.55f else 0.40f)),
-            shadowElevation = 8.dp,
+            shadowElevation = 0.dp,
             onClick = { AppToastState.dismiss(display.id) },
             modifier = Modifier
                 .padding(bottom = 52.dp),
@@ -788,7 +788,7 @@ fun ErrorImagePopup(
             shape = RoundedCornerShape(26.dp),
             color = cardBgColor,
             border = BorderStroke(1.dp, borderColor),
-            shadowElevation = 14.dp,
+            shadowElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 580.dp)
@@ -916,13 +916,13 @@ fun ErrorImagePopup(
                     }
                 }
 
-                WelcomeMinimal3DButton(
+                KlassPrimaryButton(
                     text = "ঠিক আছে".localized(),
                     hindSiliguri = fontBengali,
                     isDark = isDark,
                     customPrimaryColor = titleColor,
-                    height = 46.dp,
-                    cornerRadius = 23.dp,
+                    height = 48.dp,
+                    cornerRadius = 24.dp,
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                 )

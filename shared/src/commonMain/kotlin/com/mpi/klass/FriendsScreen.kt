@@ -269,11 +269,12 @@ fun FriendsScreen(
                 navigationTestTag = "friends_back_button",
                 actions = {
                     Box {
-                        WelcomeMinimal3DIconButton(
+                        KlassHeaderIconButton(
                             icon = MessageBubbleIcon,
                             contentDescription = "মেসেজ".localized(),
                             isDark = isDark,
                             visualSize = 38.dp,
+                            hasActivity = unreadMessagesCount > 0,
                             onClick = onOpenMessages,
                         )
                         if (unreadMessagesCount > 0) {
@@ -290,7 +291,7 @@ fun FriendsScreen(
                             )
                         }
                     }
-                    WelcomeMinimal3DIconButton(
+                    KlassHeaderIconButton(
                         icon = RefreshIcon,
                         contentDescription = "Refresh",
                         isDark = isDark,

@@ -335,13 +335,13 @@ fun RoutineGeneratorScreen(
                                             }
                                         }
 
-                                        WelcomeMinimal3DIconButton(
+                                        KlassHeaderIconButton(
                                             icon = RefreshIcon,
                                             contentDescription = "Refresh data",
                                             isDark = isDark,
                                             containerColor = genAccent.softTint,
                                             iconTint = genAccent.primary,
-                                            baseColor = genAccent.borderTint,
+                                            borderColor = genAccent.borderTint,
                                             isLoading = isLoading,
                                             enabled = !isLoading,
                                             onClick = { refreshAll() },
@@ -372,7 +372,7 @@ fun RoutineGeneratorScreen(
                                     SocialSectionDividerBand(isDark = isDark)
                                 }
 
-                                // Calibrated 48.dp Generate & Publish 3D Buttons
+                                // Flat Material 3 Generate & Publish Buttons
                                 item {
                                     Row(
                                         modifier = Modifier
@@ -380,14 +380,13 @@ fun RoutineGeneratorScreen(
                                             .padding(horizontal = 16.dp, vertical = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     ) {
-                                        WelcomeMinimal3DButton(
+                                        KlassPrimaryButton(
                                             text = "Generate Draft",
                                             icon = SparkleIcon,
                                             hindSiliguri = hindSiliguri,
                                             isDark = isDark,
                                             isLoading = isProcessing,
                                             customPrimaryColor = genAccent.primary,
-                                            customBaseColor = genAccent.deep,
                                             height = 48.dp,
                                             cornerRadius = 16.dp,
                                             modifier = Modifier.weight(1f),
@@ -395,11 +394,11 @@ fun RoutineGeneratorScreen(
                                             onClick = {
                                                 if (classrooms.isEmpty()) {
                                                     showToast("Please add Classrooms & Labs first.")
-                                                    return@WelcomeMinimal3DButton
+                                                    return@KlassPrimaryButton
                                                 }
                                                 if (teachers.isEmpty()) {
                                                     showToast("No teachers have configured their subjects yet.")
-                                                    return@WelcomeMinimal3DButton
+                                                    return@KlassPrimaryButton
                                                 }
                                                 scope.launch {
                                                     isProcessing = true
@@ -433,20 +432,19 @@ fun RoutineGeneratorScreen(
                                         )
 
                                         val planToPub = currentPlan
-                                        WelcomeMinimal3DButton(
+                                        KlassPrimaryButton(
                                             text = "Publish Live",
                                             icon = CheckIcon,
                                             hindSiliguri = hindSiliguri,
                                             isDark = isDark,
                                             enabled = planToPub != null && !isProcessing,
                                             customPrimaryColor = publishAccent.primary,
-                                            customBaseColor = publishAccent.deep,
                                             height = 48.dp,
                                             cornerRadius = 16.dp,
                                             modifier = Modifier.weight(1f),
                                             testTag = "publish_routine_button",
                                             onClick = {
-                                                if (planToPub == null) return@WelcomeMinimal3DButton
+                                                if (planToPub == null) return@KlassPrimaryButton
                                                 scope.launch {
                                                     isProcessing = true
                                                     try {
@@ -2110,13 +2108,13 @@ private fun ConflictsSubScreen(
                                         color = cs.onSurfaceVariant,
                                     )
                                 }
-                                WelcomeMinimal3DIconButton(
+                                KlassHeaderIconButton(
                                     icon = PlusIcon,
                                     contentDescription = "Assign slot manually",
                                     isDark = isDark,
                                     containerColor = conflictAccent.softTint,
                                     iconTint = conflictAccent.primary,
-                                    baseColor = conflictAccent.borderTint,
+                                    borderColor = conflictAccent.borderTint,
                                     visualSize = 38.dp,
                                     iconSize = 17.dp,
                                     onClick = { onResolveClick(conf) },
