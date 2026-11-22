@@ -653,11 +653,12 @@ private fun FacebookNotificationRow(
                 modifier = Modifier.size(52.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(
-                        imageVector = icon,
+                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                        icon = icon,
                         contentDescription = null,
                         tint = if (isUnread) accent else cs.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
+                        size = 24.dp,
+                        hasActivity = isUnread,
                     )
                 }
             }

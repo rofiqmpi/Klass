@@ -422,11 +422,11 @@ fun ClassroomManagementScreen(
                                                                             onClick = { menuExpanded = true },
                                                                             modifier = Modifier.size(48.dp),
                                                                         ) {
-                                                                            Icon(
-                                                                                imageVector = MoreVertIcon,
+                                                                            com.mpi.klass.theme.TelegramAnimatedIcon(
+                                                                                icon = MoreVertIcon,
                                                                                 contentDescription = "Room actions",
                                                                                 tint = cs.onSurfaceVariant,
-                                                                                modifier = Modifier.size(18.dp),
+                                                                                size = 18.dp,
                                                                             )
                                                                         }
 
@@ -438,11 +438,11 @@ fun ClassroomManagementScreen(
                                                                             DropdownMenuItem(
                                                                                 text = { Text("Edit", fontFamily = hindSiliguri) },
                                                                                 leadingIcon = {
-                                                                                    Icon(
-                                                                                        imageVector = EditIcon,
+                                                                                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                                                                                        icon = EditIcon,
                                                                                         contentDescription = null,
                                                                                         tint = classroomAccent.primary,
-                                                                                        modifier = Modifier.size(18.dp),
+                                                                                        size = 18.dp,
                                                                                     )
                                                                                 },
                                                                                 onClick = {
@@ -454,11 +454,11 @@ fun ClassroomManagementScreen(
                                                                             DropdownMenuItem(
                                                                                 text = { Text("Delete", color = errorAccent.primary, fontFamily = hindSiliguri) },
                                                                                 leadingIcon = {
-                                                                                    Icon(
-                                                                                        imageVector = TrashCanIcon,
+                                                                                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                                                                                        icon = TrashCanIcon,
                                                                                         contentDescription = null,
                                                                                         tint = errorAccent.primary,
-                                                                                        modifier = Modifier.size(18.dp),
+                                                                                        size = 18.dp,
                                                                                     )
                                                                                 },
                                                                                 onClick = {
@@ -469,13 +469,12 @@ fun ClassroomManagementScreen(
                                                                         }
                                                                     }
                                                                 } else {
-                                                                    Icon(
-                                                                        imageVector = ChevronRightIcon,
+                                                                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                                                                        icon = ChevronRightIcon,
                                                                         contentDescription = null,
                                                                         tint = cs.onSurfaceVariant.copy(alpha = 0.7f),
-                                                                        modifier = Modifier
-                                                                            .padding(end = 10.dp)
-                                                                            .size(18.dp),
+                                                                        size = 18.dp,
+                                                                        modifier = Modifier.padding(end = 10.dp),
                                                                     )
                                                                 }
                                                             }

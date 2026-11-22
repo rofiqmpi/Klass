@@ -23,6 +23,8 @@ junit = "4.13.2"
 kotlin = "2.3.10"
 kotlinx-datetime = "0.7.1"
 material3 = "1.9.0"
+compottie = "2.1.0"
+robolectric = "4.14.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -65,6 +67,8 @@ firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debu
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
+compottie = { module = "io.github.alexzhirkevich:compottie", version.ref = "compottie" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

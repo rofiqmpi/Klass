@@ -418,11 +418,11 @@ private fun DonorDetailSubScreen(
                     },
                     modifier = Modifier.size(48.dp),
                 ) {
-                    Icon(
-                        imageVector = CopyIcon,
+                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                        icon = CopyIcon,
                         contentDescription = "Copy Phone",
                         tint = bloodAccent.primary,
-                        modifier = Modifier.size(20.dp),
+                        size = 20.dp,
                     )
                 }
             }
@@ -488,11 +488,11 @@ private fun DonorDetailSubScreen(
                             showToast("Phone number copied!")
                         },
                         trailingContent = {
-                            Icon(
-                                imageVector = CopyIcon,
+                            com.mpi.klass.theme.TelegramAnimatedIcon(
+                                icon = CopyIcon,
                                 contentDescription = "Copy phone",
                                 tint = callAccent.primary,
-                                modifier = Modifier.size(18.dp),
+                                size = 18.dp,
                             )
                         },
                     )

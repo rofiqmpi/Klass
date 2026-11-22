@@ -53,9 +53,14 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.datetime)
             implementation(libs.coil.compose)
+            implementation(libs.compottie)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.junit)
+            implementation(libs.robolectric)
         }
     }
 }

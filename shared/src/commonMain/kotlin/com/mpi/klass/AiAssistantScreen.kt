@@ -388,11 +388,11 @@ fun AiAssistantScreen(
                                         .clip(CircleShape)
                                         .background(if (canSend) aiAccent.primary else aiAccent.softTint),
                                 ) {
-                                    Icon(
-                                        imageVector = SendIcon,
+                                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                                        icon = SendIcon,
                                         contentDescription = "Send to Zed",
                                         tint = if (canSend) Color.White else aiAccent.primary.copy(alpha = 0.55f),
-                                        modifier = Modifier.size(18.dp),
+                                        size = 18.dp,
                                     )
                                 }
                             }
@@ -430,11 +430,11 @@ private fun ChatMessageBubble(
                     .background(aiAccent.primary),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = SparkleIcon,
+                com.mpi.klass.theme.TelegramAnimatedIcon(
+                    icon = SparkleIcon,
                     contentDescription = "Zed",
                     tint = Color.White,
-                    modifier = Modifier.size(15.dp),
+                    size = 15.dp,
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))

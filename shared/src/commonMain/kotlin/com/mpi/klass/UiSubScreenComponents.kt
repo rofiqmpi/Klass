@@ -198,11 +198,13 @@ internal fun KlassNavigationRow(
         }
 
         if (showChevron) {
-            Icon(
-                imageVector = ChevronRightIcon,
+            TelegramAnimatedIcon(
+                icon = ChevronRightIcon,
                 contentDescription = null,
                 tint = cs.onSurfaceVariant.copy(alpha = 0.72f),
-                modifier = Modifier.size(18.dp),
+                size = 18.dp,
+                interactionSource = interactionSource,
+                triggerKey = clickTrigger,
             )
         }
     }
@@ -295,11 +297,13 @@ internal fun KlassDetailFieldRow(
         if (trailingContent != null) {
             Box(content = trailingContent)
         } else if (onClick != null) {
-            Icon(
-                imageVector = ChevronRightIcon,
+            TelegramAnimatedIcon(
+                icon = ChevronRightIcon,
                 contentDescription = null,
                 tint = cs.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.size(18.dp),
+                size = 18.dp,
+                interactionSource = interactionSource,
+                triggerKey = clickTrigger,
             )
         }
     }

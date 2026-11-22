@@ -366,11 +366,11 @@ internal fun GoogleTopAppBar(
                             .size(48.dp)
                             .then(if (navigationTestTag != null) Modifier.testTag(navigationTestTag) else Modifier),
                     ) {
-                        Icon(
-                            imageVector = navigationIcon,
+                        TelegramAnimatedIcon(
+                            icon = navigationIcon,
                             contentDescription = navigationContentDescription,
                             tint = cs.onSurface,
-                            modifier = Modifier.size(22.dp),
+                            size = 22.dp,
                         )
                     }
                 } else {
@@ -857,11 +857,11 @@ internal fun KlassTonalButton(
             horizontalArrangement = Arrangement.Center,
         ) {
             if (icon != null) {
-                Icon(
-                    imageVector = icon,
+                TelegramAnimatedIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = resolvedAccent,
-                    modifier = Modifier.size(16.dp),
+                    size = 16.dp,
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }
@@ -898,11 +898,11 @@ private fun GoogleButtonContent(
             horizontalArrangement = Arrangement.Center,
         ) {
             if (icon != null) {
-                Icon(
-                    imageVector = icon,
+                TelegramAnimatedIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = contentColor,
-                    modifier = Modifier.size(19.dp),
+                    size = 19.dp,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
@@ -1247,11 +1247,11 @@ internal fun MinimalSearchBar(
                         .size(40.dp)
                         .then(if (clearTestTag != null) Modifier.testTag(clearTestTag) else Modifier),
                 ) {
-                    Icon(
-                        imageVector = CloseIcon,
+                    TelegramAnimatedIcon(
+                        icon = CloseIcon,
                         contentDescription = "Clear search",
                         tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
+                        size = 16.dp,
                     )
                 }
             }
@@ -1305,11 +1305,12 @@ internal fun MinimalIconChip(
         ) {
             val activeIcon = if (selected && icon == null) CheckIcon else icon
             if (activeIcon != null) {
-                Icon(
-                    imageVector = activeIcon,
+                TelegramAnimatedIcon(
+                    icon = activeIcon,
                     contentDescription = null,
                     tint = if (selected) contentColor else resolvedAccent,
-                    modifier = Modifier.size(15.dp),
+                    size = 15.dp,
+                    triggerKey = if (selected) 1 else 0,
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }
@@ -1351,11 +1352,11 @@ internal fun MinimalStatBadge(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
         ) {
-            Icon(
-                imageVector = icon,
+            TelegramAnimatedIcon(
+                icon = icon,
                 contentDescription = null,
                 tint = resolvedAccent,
-                modifier = Modifier.size(15.dp),
+                size = 15.dp,
             )
             Text(
                 text = text,
@@ -1478,11 +1479,11 @@ internal fun MinimalFullScreenSheet(
                             .size(48.dp)
                             .then(if (closeTestTag != null) Modifier.testTag(closeTestTag) else Modifier),
                     ) {
-                        Icon(
-                            imageVector = navigationIcon,
+                        TelegramAnimatedIcon(
+                            icon = navigationIcon,
                             contentDescription = "Back",
                             tint = cs.onSurface,
-                            modifier = Modifier.size(22.dp),
+                            size = 22.dp,
                         )
                     }
 

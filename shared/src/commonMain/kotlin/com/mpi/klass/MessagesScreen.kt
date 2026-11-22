@@ -69,6 +69,7 @@ import com.mpi.klass.theme.MessageBubbleIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.SendIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.UsersGroupIcon
 import kotlinx.coroutines.launch
@@ -254,11 +255,12 @@ fun MessagesScreen(
                                     modifier = Modifier.size(48.dp),
                                 ) {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                        Icon(
-                                            imageVector = SparkleIcon,
+                                        TelegramAnimatedIcon(
+                                            icon = SparkleIcon,
                                             contentDescription = "Zed AI",
                                             tint = aiAccent.primary,
-                                            modifier = Modifier.size(22.dp),
+                                            size = 22.dp,
+                                            hasActivity = true,
                                         )
                                     }
                                 }
@@ -604,11 +606,11 @@ fun DirectChatScreen(
                         onClick = onBack,
                         modifier = Modifier.size(48.dp).testTag("chat_back_button"),
                     ) {
-                        Icon(
-                            imageVector = BackArrowIcon,
+                        TelegramAnimatedIcon(
+                            icon = BackArrowIcon,
                             contentDescription = "Back",
                             tint = cs.onSurface,
-                            modifier = Modifier.size(22.dp),
+                            size = 22.dp,
                         )
                     }
 
@@ -641,11 +643,11 @@ fun DirectChatScreen(
                         onClick = { showClearDialog = true },
                         modifier = Modifier.size(48.dp).testTag("chat_clear_button"),
                     ) {
-                        Icon(
-                            imageVector = TrashCanIcon,
+                        TelegramAnimatedIcon(
+                            icon = TrashCanIcon,
                             contentDescription = "Clear chat",
                             tint = cs.onSurfaceVariant,
-                            modifier = Modifier.size(19.dp),
+                            size = 19.dp,
                         )
                     }
                 }
@@ -674,11 +676,11 @@ fun DirectChatScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Icon(
-                                imageVector = LockIcon,
+                            TelegramAnimatedIcon(
+                                icon = LockIcon,
                                 contentDescription = null,
                                 tint = fbBlue,
-                                modifier = Modifier.size(15.dp),
+                                size = 15.dp,
                             )
                             Text(
                                 text = "Messages are saved only on your device and auto-deleted from the cloud relay once delivered.",
@@ -828,11 +830,11 @@ fun DirectChatScreen(
                                     modifier = Modifier.size(18.dp),
                                 )
                             } else {
-                                Icon(
-                                    imageVector = SendIcon,
+                                TelegramAnimatedIcon(
+                                    icon = SendIcon,
                                     contentDescription = "Send",
                                     tint = if (canSend) Color.White else cs.onSurfaceVariant,
-                                    modifier = Modifier.size(19.dp),
+                                    size = 19.dp,
                                 )
                             }
                         }

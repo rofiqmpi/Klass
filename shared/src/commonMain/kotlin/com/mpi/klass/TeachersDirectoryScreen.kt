@@ -486,11 +486,11 @@ private fun MessengerTeacherChatCard(
                         .size(48.dp)
                         .testTag(deleteTestTag),
                 ) {
-                    Icon(
-                        imageVector = TrashCanIcon,
+                    com.mpi.klass.theme.TelegramAnimatedIcon(
+                        icon = TrashCanIcon,
                         contentDescription = "Remove teacher",
                         tint = KlassFeaturePalette.error(isDark).primary.copy(alpha = 0.85f),
-                        modifier = Modifier.size(19.dp),
+                        size = 19.dp,
                     )
                 }
             }
