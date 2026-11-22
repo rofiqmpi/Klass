@@ -849,6 +849,10 @@ actual fun startChatRelayListener(userEmail: String) {
                                     ),
                                     incrementUnreadIfIncoming = true,
                                 )
+                                val ctx = getAppContext()
+                                if (ctx != null) {
+                                    postIncomingMessageNotification(ctx, senderName, body, sender)
+                                }
                             }
 
                             // Zero-retention Spark Free Plan deletion immediately upon local persistence
@@ -873,6 +877,17 @@ actual fun startChatRelayListener(userEmail: String) {
                     val parsedList = snap.documents
                         .mapNotNull { parseConnectionDoc(it) }
                         .sortedByDescending { it.updatedAt }
+                    
+                    val prevConnections = readLocalConnectionsCache(cleanEmail)
+                    val prevPendingIds = prevConnections.filter { it.status.equals("PENDING", ignoreCase = true) && it.receiverEmail == cleanEmail }.map { it.id }.toSet()
+                    val newIncoming = parsedList.filter { it.status.equals("PENDING", ignoreCase = true) && it.receiverEmail == cleanEmail && it.id !in prevPendingIds }
+                    val ctx = getAppContext()
+                    if (ctx != null) {
+                        for (req in newIncoming) {
+                            postConnectionRequestNotification(ctx, req.requesterName, req.requesterEmail)
+                        }
+                    }
+
                     saveLocalConnectionsCache(cleanEmail, parsedList)
                     relayScope.launch(Dispatchers.Main) {
                         SocialChatState.publishConnections(cleanEmail, parsedList)

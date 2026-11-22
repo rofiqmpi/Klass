@@ -190,6 +190,16 @@ fun NotificationScreen(
         }
     }
 
+    var chatThreads by remember { mutableStateOf<List<ChatThreadSummary>>(emptyList()) }
+    val chatRevision = SocialChatState.chatRevision
+    val liveConnections = SocialChatState.connections
+
+    LaunchedEffect(email, chatRevision) {
+        if (email.isNotBlank()) {
+            chatThreads = loadLocalChatThreads(email)
+        }
+    }
+
     // Action notifications moved from Home header banners
     val actionNotifications = remember(
         role,
@@ -198,8 +208,50 @@ fun NotificationScreen(
         activePlan,
         permissionGranted,
         isDark,
+        liveConnections,
+        chatThreads,
+        email,
     ) {
         buildList {
+            val cleanUserEmail = email.trim().lowercase()
+            if (cleanUserEmail.isNotBlank()) {
+                val pendingReqs = liveConnections.filter {
+                    it.status.equals("PENDING", ignoreCase = true) &&
+                        it.receiverEmail.trim().lowercase() == cleanUserEmail
+                }
+                for (req in pendingReqs) {
+                    add(
+                        ActionNotificationItem(
+                            id = "conn_req_${req.id}",
+                            title = "Friend request from ${req.requesterName}",
+                            body = "${req.requesterName} sent you a connection request. Tap to view and accept.",
+                            metaLabel = "Connection request • Tap to open Friends",
+                            icon = PersonIcon,
+                            badgeIcon = CheckIcon,
+                            accent = profileAccent.primary,
+                            testTag = "notification_conn_req_${req.id}",
+                            onClick = { onNavigateToRoute("friends") },
+                        )
+                    )
+                }
+
+                for (thread in chatThreads.filter { it.unreadCount > 0 }) {
+                    add(
+                        ActionNotificationItem(
+                            id = "chat_msg_${thread.peerEmail}",
+                            title = "Message from ${thread.peerName}",
+                            body = thread.lastMessage.ifBlank { "You have a new message." },
+                            metaLabel = "Unread message (${thread.unreadCount}) • Tap to open Messages",
+                            icon = NotificationIcon,
+                            badgeIcon = SparkleIcon,
+                            accent = aiAccent.primary,
+                            testTag = "notification_chat_${thread.peerEmail}",
+                            onClick = { onNavigateToRoute("messages") },
+                        )
+                    )
+                }
+            }
+
             if (role == UserRole.STUDENT &&
                 (studentProfile == null || studentProfile.department.isBlank() || studentProfile.semester.isBlank())
             ) {

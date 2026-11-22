@@ -58,6 +58,7 @@ firebaseUiAuth = { module = "com.firebaseui:firebase-ui-auth", version.ref = "fi
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 firebase-ai = { module = "com.google.firebase:firebase-ai" }
 firebase-appcheck-recaptcha = { module = "com.google.firebase:firebase-appcheck-recaptcha" }
 firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
