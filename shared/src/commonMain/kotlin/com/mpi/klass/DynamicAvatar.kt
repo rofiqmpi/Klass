@@ -14,6 +14,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import kotlin.math.abs
 
 /**
@@ -56,6 +59,16 @@ fun DynamicAvatar(
         baseUrl + params.toString()
     }
 
+    val platformContext = LocalPlatformContext.current
+    val imageRequest = remember(diceBearUrl, platformContext) {
+        ImageRequest.Builder(platformContext)
+            .data(diceBearUrl)
+            .memoryCacheKey(diceBearUrl)
+            .diskCacheKey(diceBearUrl)
+            .crossfade(false)
+            .build()
+    }
+
     Box(
         modifier = modifier
             .clip(CircleShape)
@@ -63,7 +76,7 @@ fun DynamicAvatar(
         contentAlignment = Alignment.Center,
     ) {
         AsyncImage(
-            model = diceBearUrl,
+            model = imageRequest,
             contentDescription = "DiceBear Avatar",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,

@@ -30,6 +30,7 @@ private const val KEY_ENABLED = "push_enabled"
 private const val KEY_REMINDER_MINS = "reminder_minutes_before"
 private const val KEY_NOTIFY_START = "notify_at_class_start"
 private const val KEY_ACTIVE_ALARMS = "active_alarms_json"
+private const val KEY_SEEN_NOTIFICATION_IDS = "seen_notification_ids"
 
 const val CHANNEL_WELCOME = "klass_welcome_channel"
 const val CHANNEL_CLASS_ALERTS = "klass_class_alerts_channel"
@@ -330,6 +331,21 @@ actual fun saveNotificationPrefs(prefs: NotificationPrefs) {
         .putBoolean(KEY_ENABLED, prefs.enabled)
         .putInt(KEY_REMINDER_MINS, prefs.reminderMinutesBefore)
         .putBoolean(KEY_NOTIFY_START, prefs.notifyAtClassStart)
+        .apply()
+}
+
+actual fun getSeenNotificationIds(): Set<String> {
+    val ctx = getAppContext() ?: return emptySet()
+    val raw = ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getStringSet(KEY_SEEN_NOTIFICATION_IDS, null)
+    return raw?.toSet() ?: emptySet()
+}
+
+actual fun saveSeenNotificationIds(ids: Set<String>) {
+    val ctx = getAppContext() ?: return
+    ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit()
+        .putStringSet(KEY_SEEN_NOTIFICATION_IDS, HashSet(ids))
         .apply()
 }
 

@@ -2,13 +2,18 @@ package com.mpi.klass
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 
@@ -16,33 +21,26 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -52,14 +50,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,12 +63,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -87,10 +82,16 @@ import com.mpi.klass.theme.ChevronRightIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.CrownIcon
 import com.mpi.klass.theme.DarkModeIcon
+import com.mpi.klass.theme.EnvelopeSolidIcon
+import com.mpi.klass.theme.EyeIcon
+import com.mpi.klass.theme.EyeOffIcon
 import com.mpi.klass.theme.GraduationCapIcon
+import com.mpi.klass.theme.HelpCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LanguageGlobeIcon
 import com.mpi.klass.theme.LightModeIcon
+import com.mpi.klass.theme.LockIcon
+import com.mpi.klass.theme.LoginIcon
 import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.PaletteIcon
 import com.mpi.klass.theme.PersonIcon
@@ -111,6 +112,12 @@ import klass.shared.generated.resources.teacher
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
+private enum class WelcomeStage {
+    INITIAL,
+    ROLE_SELECTION,
+    EMAIL_LOGIN,
+}
+
 @Composable
 fun WelcomeScreen(
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
@@ -121,6 +128,7 @@ fun WelcomeScreen(
     onStudentClick: () -> Unit = {},
     onTeacherClick: () -> Unit = {},
     onAdminClick: () -> Unit = {},
+    onEmailPasswordLogin: (email: String, password: String) -> Unit = { _, _ -> },
     onCloseApp: () -> Unit = {},
 ) {
     val systemInDark = isSystemInDarkTheme()
@@ -138,8 +146,8 @@ fun WelcomeScreen(
 
     val hindSiliguri = getHindSiliguriFontFamily()
 
-    val languageInteractionSource = remember { MutableInteractionSource() }
-    val isLanguagePressed by languageInteractionSource.collectIsPressedAsState()
+    val supportBtnInteractionSource = remember { MutableInteractionSource() }
+    val isSupportBtnPressed by supportBtnInteractionSource.collectIsPressedAsState()
 
     val guestInteractionSource = remember { MutableInteractionSource() }
     val isGuestPressed by guestInteractionSource.collectIsPressedAsState()
@@ -152,24 +160,48 @@ fun WelcomeScreen(
     val themeBtnInteractionSource = remember { MutableInteractionSource() }
     val isThemeBtnPressed by themeBtnInteractionSource.collectIsPressedAsState()
 
-    val closeBtnInteractionSource = remember { MutableInteractionSource() }
-    val isCloseBtnPressed by closeBtnInteractionSource.collectIsPressedAsState()
+    val loginCloseBtnInteractionSource = remember { MutableInteractionSource() }
+    val isLoginCloseBtnPressed by loginCloseBtnInteractionSource.collectIsPressedAsState()
 
     var isThemeExpanded by remember { mutableStateOf(value = false) }
-    var isLanguageExpanded by remember { mutableStateOf(value = false) }
     var showTermsDialog by remember { mutableStateOf(value = false) }
-    var showAboutDialog by remember { mutableStateOf(value = false) }
-    var isRegistrationMode by remember { mutableStateOf(value = false) }
+    var showSupportDialog by remember { mutableStateOf(value = false) }
+    var welcomeStage by remember { mutableStateOf(value = WelcomeStage.INITIAL) }
+    val isLoginMode = welcomeStage == WelcomeStage.EMAIL_LOGIN
+    var emailText by remember { mutableStateOf("") }
+    var passwordText by remember { mutableStateOf("") }
+    var activeLoginField by remember { mutableStateOf<LoginInputField?>(null) }
+    val isCustomKeyboardVisible = isLoginMode && activeLoginField != null
+
+    LaunchedEffect(welcomeStage) {
+        if (welcomeStage != WelcomeStage.EMAIL_LOGIN) {
+            activeLoginField = null
+        }
+    }
+
+    fun submitEmailPasswordLogin() {
+        val cleanEmail = emailText.trim().lowercase()
+        if (cleanEmail.isBlank() || passwordText.isBlank()) {
+            showToast("অনুগ্রহ করে ইমেইল ও পাসওয়ার্ড লিখুন".localized(currentLanguage))
+            return
+        }
+        if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
+            showToast("সঠিক ইমেইল ঠিকানা লিখুন".localized(currentLanguage))
+            return
+        }
+        activeLoginField = null
+        onEmailPasswordLogin(cleanEmail, passwordText)
+    }
 
     var lastBackPressTime by remember { mutableStateOf(0L) }
 
     AppBackHandler(enabled = true) {
         when {
             showTermsDialog -> showTermsDialog = false
-            showAboutDialog -> showAboutDialog = false
+            showSupportDialog -> showSupportDialog = false
             isThemeExpanded -> isThemeExpanded = false
-            isLanguageExpanded -> isLanguageExpanded = false
-            isRegistrationMode -> isRegistrationMode = false
+            isCustomKeyboardVisible -> activeLoginField = null
+            welcomeStage != WelcomeStage.INITIAL -> welcomeStage = WelcomeStage.INITIAL
             else -> {
                 val now = getCurrentTimeMillis()
                 if (now - lastBackPressTime < 2000L) {
@@ -191,14 +223,7 @@ fun WelcomeScreen(
         animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
     )
 
-    val languageCardWidth by animateDpAsState(
-        targetValue = if (isLanguageExpanded) 118.dp else 42.dp,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
-    )
-    val languageCardHeight by animateDpAsState(
-        targetValue = if (isLanguageExpanded) 146.dp else 36.dp,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
-    )
+    val loginBtnWidth = 36.dp
 
     val buttonHorizontalPadding = 36.dp
 
@@ -210,16 +235,26 @@ fun WelcomeScreen(
         bottomEnd = if (isThemeExpanded) 10.dp else 0.dp,
     )
 
-    // Corner shape for Language Button / Card:
-    val languageShape = RoundedCornerShape(
+    // Corner shape for Login / Close Top-Right Button:
+    val loginShape = RoundedCornerShape(
         topStart = 0.dp,
-        bottomStart = if (isLanguageExpanded) 10.dp else 0.dp,
+        bottomStart = 0.dp,
         topEnd = 10.dp,
         bottomEnd = 10.dp,
     )
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) {
+                isThemeExpanded = false
+                if (isCustomKeyboardVisible) {
+                    activeLoginField = null
+                }
+            },
     ) {
         // Fullscreen Background Image
         Image(
@@ -229,21 +264,22 @@ fun WelcomeScreen(
             contentScale = ContentScale.FillBounds,
         )
 
-        // Background Backdrop for collapsing theme or language menu or terms dialog when clicking outside
-        if (isThemeExpanded || showTermsDialog || isLanguageExpanded) {
+        // Background Backdrop for collapsing theme menu when clicking outside
+        if (isThemeExpanded) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(5f)
-                    .clickable {
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
                         isThemeExpanded = false
-                        showTermsDialog = false
-                        isLanguageExpanded = false
                     },
             )
         }
 
-        // Top Content: 3D Logo (72dp) and College Name
+        // Top Content: 3D Logo (72dp) and College Name (stationary regardless of keyboard state)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -291,7 +327,7 @@ fun WelcomeScreen(
             )
         }
 
-        // Bottom Section: Transitions between Initial Mode and Registration Mode
+        // Bottom Section: Transitions between Initial Mode, Role Selection Mode, and Email Login Mode
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -301,10 +337,10 @@ fun WelcomeScreen(
             contentAlignment = Alignment.BottomCenter,
         ) {
             AnimatedContent(
-                targetState = isRegistrationMode,
-                label = "RegistrationModeTransition",
-            ) { registrationMode ->
-                if (!registrationMode) {
+                targetState = welcomeStage,
+                label = "WelcomeStageTransition",
+            ) { stage ->
+                if (stage == WelcomeStage.INITIAL) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -326,7 +362,7 @@ fun WelcomeScreen(
 
                         Spacer(modifier = Modifier.height(60.dp))
 
-                        // 3D Buttons Container (About & Continue — slightly narrower, icon-free)
+                        // 3D Buttons Container (Support & Get Started)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(0.84f)
@@ -341,7 +377,7 @@ fun WelcomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                                 verticalAlignment = Alignment.Bottom,
                             ) {
-                                // 3D About Button
+                                // 3D Support Button
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
@@ -370,16 +406,16 @@ fun WelcomeScreen(
                                     Surface(
                                         onClick = {
                                             isThemeExpanded = false
-                                            isLanguageExpanded = false
                                             showTermsDialog = false
-                                            showAboutDialog = true
+                                            showSupportDialog = true
                                         },
-                                        interactionSource = languageInteractionSource,
+                                        interactionSource = supportBtnInteractionSource,
                                         modifier = Modifier
                                             .align(Alignment.BottomStart)
-                                            .padding(bottom = if (isLanguagePressed) 0.dp else 3.dp)
+                                            .padding(bottom = if (isSupportBtnPressed) 0.dp else 3.dp)
                                             .fillMaxWidth()
-                                            .height(48.dp),
+                                            .height(48.dp)
+                                            .testTag("welcome_support_button"),
                                         shape = RoundedCornerShape(
                                             topStart = 12.dp,
                                             bottomStart = 12.dp,
@@ -396,7 +432,7 @@ fun WelcomeScreen(
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Text(
-                                                text = "অ্যাপ সম্পর্কে".localized(),
+                                                text = AppStrings.supportBtn(currentLanguage),
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 fontFamily = hindSiliguri,
@@ -408,7 +444,7 @@ fun WelcomeScreen(
                                     }
                                 }
 
-                                // 3D Continue / Registration Button
+                                // 3D Get Started Button (শুরু করুন)
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
@@ -436,14 +472,14 @@ fun WelcomeScreen(
                                     Button(
                                         onClick = {
                                             isThemeExpanded = false
-                                            isLanguageExpanded = false
-                                            isRegistrationMode = true
+                                            welcomeStage = WelcomeStage.ROLE_SELECTION
                                         },
                                         interactionSource = startInteractionSource,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(48.dp)
-                                            .offset(y = if (isStartPressed) 3.dp else 0.dp),
+                                            .offset(y = if (isStartPressed) 3.dp else 0.dp)
+                                            .testTag("welcome_start_button"),
                                         shape = RoundedCornerShape(
                                             topStart = 0.dp,
                                             bottomStart = 0.dp,
@@ -488,7 +524,7 @@ fun WelcomeScreen(
                         )
                     }
                 } else {
-                    // Registration Mode Layout
+                    // Role Selection or Email+Password Login Layout
                     val guestBtnColor = if (isGuestActive) {
                         if (isDark) Color(0xFF38BDF8).copy(alpha = 0.30f) else Color(0xFF2563EB).copy(alpha = 0.22f)
                     } else {
@@ -500,12 +536,8 @@ fun WelcomeScreen(
                         if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
                     }
 
-                    val isImeVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
-
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .imePadding(),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         AnimatedVisibility(
@@ -514,59 +546,141 @@ fun WelcomeScreen(
                             exit = fadeOut(animationSpec = tween(350)) + slideOutVertically(animationSpec = tween(350)) { it / 2 },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            RoleSelectionScreen(
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                buttonHorizontalPadding = buttonHorizontalPadding,
-                                currentLanguage = currentLanguage,
-                                onStudentClick = onStudentClick,
-                                onTeacherClick = onTeacherClick,
-                                onAdminClick = onAdminClick,
-                            )
+                            if (stage == WelcomeStage.EMAIL_LOGIN) {
+                                EmailLoginPanel(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    buttonHorizontalPadding = buttonHorizontalPadding,
+                                    currentLanguage = currentLanguage,
+                                    emailText = emailText,
+                                    passwordText = passwordText,
+                                    activeField = activeLoginField,
+                                    isCustomKeyboardVisible = isCustomKeyboardVisible,
+                                    onSelectField = { field ->
+                                        isThemeExpanded = false
+                                        activeLoginField = field
+                                    },
+                                    onLoginSubmit = { submitEmailPasswordLogin() },
+                                )
+                            } else {
+                                RoleSelectionScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    buttonHorizontalPadding = buttonHorizontalPadding,
+                                    currentLanguage = currentLanguage,
+                                    onStudentClick = onStudentClick,
+                                    onTeacherClick = onTeacherClick,
+                                    onAdminClick = onAdminClick,
+                                )
+                            }
                         }
 
-                        if (!isImeVisible) {
-                            Spacer(modifier = Modifier.height(6.dp))
+                        AnimatedVisibility(
+                            visible = isCustomKeyboardVisible,
+                            enter = expandVertically(
+                                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                                expandFrom = Alignment.Bottom,
+                            ) + fadeIn(animationSpec = tween(durationMillis = 220)),
+                            exit = shrinkVertically(
+                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                shrinkTowards = Alignment.Bottom,
+                            ) + fadeOut(animationSpec = tween(durationMillis = 160)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                KlassCustomKeyboard(
+                                    activeField = activeLoginField ?: LoginInputField.EMAIL,
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    onInsertText = { token ->
+                                        if (activeLoginField == LoginInputField.EMAIL) {
+                                            emailText += token
+                                        } else {
+                                            passwordText += token
+                                        }
+                                    },
+                                    onBackspace = {
+                                        if (activeLoginField == LoginInputField.EMAIL) {
+                                            emailText = popLastKeyboardToken(emailText)
+                                        } else {
+                                            passwordText = popLastKeyboardToken(passwordText)
+                                        }
+                                    },
+                                    onClearField = {
+                                        if (activeLoginField == LoginInputField.EMAIL) {
+                                            emailText = ""
+                                        } else {
+                                            passwordText = ""
+                                        }
+                                    },
+                                    onNextOrSubmit = {
+                                        if (activeLoginField == LoginInputField.EMAIL) {
+                                            activeLoginField = LoginInputField.PASSWORD
+                                        } else {
+                                            submitEmailPasswordLogin()
+                                        }
+                                    },
+                                    onDismiss = { activeLoginField = null },
+                                )
+                            }
+                        }
 
-                            // Full 100% Width Deep Bow/Arch Shaped Bottom Guest Mode Button Attached directly to Display Bottom Edge
-                            Surface(
-                                shape = DeepBowArchShape,
-                                color = guestBtnColor,
-                                shadowElevation = if (isGuestActive) 6.dp else 0.dp,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp)
-                                    .clip(DeepBowArchShape)
-                                    .clickable(
-                                        interactionSource = guestInteractionSource,
-                                        indication = ripple(bounded = true, color = if (isDark) Color(0xFF38BDF8) else Color(0xFF1D4ED8)),
-                                        onClick = onGuestClick,
-                                    ),
-                            ) {
-                                Column(
+                        AnimatedVisibility(
+                            visible = !isCustomKeyboardVisible,
+                            enter = expandVertically(
+                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                expandFrom = Alignment.Bottom,
+                            ) + fadeIn(animationSpec = tween(durationMillis = 200)),
+                            exit = shrinkVertically(
+                                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                shrinkTowards = Alignment.Bottom,
+                            ) + fadeOut(animationSpec = tween(durationMillis = 140)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                // Full 100% Width Deep Bow/Arch Shaped Bottom Guest Mode Button Attached directly to Display Bottom Edge
+                                Surface(
+                                    shape = DeepBowArchShape,
+                                    color = guestBtnColor,
+                                    shadowElevation = if (isGuestActive) 6.dp else 0.dp,
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(top = 4.dp, bottom = 10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center,
+                                        .fillMaxWidth()
+                                        .height(60.dp)
+                                        .clip(DeepBowArchShape)
+                                        .clickable(
+                                            interactionSource = guestInteractionSource,
+                                            indication = ripple(bounded = true, color = if (isDark) Color(0xFF38BDF8) else Color(0xFF1D4ED8)),
+                                            onClick = onGuestClick,
+                                        ),
                                 ) {
-                                    Icon(
-                                        imageVector = RightArrowIcon,
-                                        contentDescription = AppStrings.guestMode(currentLanguage),
-                                        tint = guestContentColor,
-                                        modifier = Modifier.size(16.dp),
-                                    )
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(top = 4.dp, bottom = 10.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = RightArrowIcon,
+                                            contentDescription = AppStrings.guestMode(currentLanguage),
+                                            tint = guestContentColor,
+                                            modifier = Modifier.size(16.dp),
+                                        )
 
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                        Spacer(modifier = Modifier.height(2.dp))
 
-                                    Text(
-                                        text = AppStrings.guestMode(currentLanguage),
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Light,
-                                        fontFamily = hindSiliguri,
-                                        color = guestContentColor,
-                                        textAlign = TextAlign.Center,
-                                    )
+                                        Text(
+                                            text = AppStrings.guestMode(currentLanguage),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Light,
+                                            fontFamily = hindSiliguri,
+                                            color = guestContentColor,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -585,7 +699,7 @@ fun WelcomeScreen(
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            // Theme 3D Button (Expands leftwards & downwards without covering the Close button!)
+            // Theme 3D Button (Expands leftwards & downwards without covering the Login/Close button!)
             Box(
                 modifier = Modifier
                     .width(themeCardWidth)
@@ -607,7 +721,7 @@ fun WelcomeScreen(
                     onClick = {
                         if (!isThemeExpanded) {
                             showTermsDialog = false
-                            isLanguageExpanded = false
+                            showSupportDialog = false
                             isThemeExpanded = true
                         }
                     },
@@ -717,141 +831,96 @@ fun WelcomeScreen(
                 }
             }
 
-            // Right: 3D Language Expandable Button (Expands width + height like Theme button, with header + BN & EN options)
+            // Right: 3D Login Button (Turns into Close button when Login screen is open)
             Box(
                 modifier = Modifier
-                    .width(languageCardWidth)
-                    .height(languageCardHeight + 3.dp),
+                    .width(loginBtnWidth)
+                    .height(39.dp),
                 contentAlignment = Alignment.TopEnd,
             ) {
                 // 3D Base Shape (#8E7864)
                 Box(
                     modifier = Modifier
                         .offset(y = 3.dp)
-                        .width(languageCardWidth)
-                        .height(languageCardHeight)
-                        .clip(languageShape)
+                        .width(loginBtnWidth)
+                        .height(36.dp)
+                        .clip(loginShape)
                         .background(Color(0xFF8E7864)),
                 )
 
-                // Foreground Animated 3D Surface Card
+                // Foreground Animated 3D Surface Card (#8CB9D9)
                 Surface(
                     onClick = {
-                        if (!isLanguageExpanded) {
-                            showTermsDialog = false
-                            isThemeExpanded = false
-                            isLanguageExpanded = true
+                        isThemeExpanded = false
+                        showTermsDialog = false
+                        showSupportDialog = false
+                        welcomeStage = if (isLoginMode) {
+                            WelcomeStage.INITIAL
+                        } else {
+                            WelcomeStage.EMAIL_LOGIN
                         }
                     },
-                    interactionSource = closeBtnInteractionSource,
+                    interactionSource = loginCloseBtnInteractionSource,
                     modifier = Modifier
-                        .width(languageCardWidth)
-                        .height(languageCardHeight)
-                        .offset(y = if (isCloseBtnPressed && !isLanguageExpanded) 3.dp else 0.dp),
-                    shape = languageShape,
+                        .width(loginBtnWidth)
+                        .height(36.dp)
+                        .offset(y = if (isLoginCloseBtnPressed) 3.dp else 0.dp)
+                        .testTag(if (isLoginMode) "welcome_login_close_button" else "welcome_login_button"),
+                    shape = loginShape,
                     border = BorderStroke(0.5.dp, Color(0xFF8E7864)),
-                    color = if (isLanguageExpanded) MaterialTheme.colorScheme.surface else Color(0xFF8CB9D9),
+                    color = Color(0xFF8CB9D9),
                 ) {
-                    if (!isLanguageExpanded) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AnimatedContent(
+                            targetState = isLoginMode,
+                            label = "welcome_login_icon_morph",
+                        ) { showClose ->
                             Icon(
-                                imageVector = LanguageGlobeIcon,
-                                contentDescription = "ভাষা".localized(),
+                                imageVector = if (showClose) CloseIcon else LoginIcon,
+                                contentDescription = if (showClose) {
+                                    "বন্ধ করুন".localized()
+                                } else {
+                                    AppStrings.loginBtn(currentLanguage)
+                                },
                                 tint = Color(0xFF1E293B),
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(if (showClose) 16.dp else 17.dp),
                             )
-                        }
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 6.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = "ভাষা নির্বাচন করুন".localized(),
-                                fontSize = 10.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                listOf(
-                                    AppLanguage.BENGALI to "BN",
-                                    AppLanguage.ENGLISH to "EN",
-                                ).forEach { (lang, code) ->
-                                    val isSelected = lang == currentLanguage
-                                    Surface(
-                                        onClick = {
-                                            onLanguageChange(lang)
-                                            isLanguageExpanded = false
-                                        },
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = if (isSelected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            Color.Transparent
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(38.dp),
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(horizontal = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Icon(
-                                                imageVector = LanguageGlobeIcon,
-                                                contentDescription = code,
-                                                tint = if (isSelected) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurface
-                                                },
-                                                modifier = Modifier.size(15.dp),
-                                            )
-
-                                            Text(
-                                                text = code,
-                                                fontSize = 13.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                fontFamily = hindSiliguri,
-                                                color = if (isSelected) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurface
-                                                },
-                                                maxLines = 1,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
             }
         }
 
-        // Full-Screen About App Modal
-        if (showAboutDialog) {
-            val aboutAccent = KlassFeaturePalette.ai(isDark).primary
+        // Full-Screen Help & Support Modal
+        if (showSupportDialog) {
+            val supportAccent = KlassFeaturePalette.ai(isDark).primary
             val cardSurface = if (isDark) Color(0xFF1E293B).copy(alpha = 0.84f) else Color.White.copy(alpha = 0.88f)
             val headerSurface = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.90f)
             val borderSubtle = if (isDark) Color(0xFF334155).copy(alpha = 0.7f) else Color(0xFFE2E8F0)
+            val uriHandler = LocalUriHandler.current
+
+            val supportGuides = remember {
+                listOf(
+                    Triple(
+                        LoginIcon,
+                        Color(0xFF0284C7),
+                        "ইমেইল ও পাসওয়ার্ড লগইন" to "উপরের 'লগইন' বাটনে ট্যাপ করে নিবন্ধিত ইমেইল ও পাসওয়ার্ড দিয়ে সরাসরি প্রবেশ করুন।",
+                    ),
+                    Triple(
+                        LockIcon,
+                        Color(0xFF8B5CF6),
+                        "পাসওয়ার্ড সেট ও পরিবর্তন" to "প্রথমবার 'শুরু করুন' দিয়ে Google Sign-In করলে পাসওয়ার্ড সেট করার অপশন পাবেন। পরে যেকোনো রোলের প্রোফাইল থেকেও পাসওয়ার্ড পরিবর্তন করা যায়।",
+                    ),
+                    Triple(
+                        CrownIcon,
+                        Color(0xFF10B981),
+                        "ক্যাম্পাস পোর্টাল (mpi.politech.gov.bd)" to "ইনস্টিটিউটের অফিসিয়াল নোটিশ, ফলাফল ও একাডেমিক আপডেটের জন্য ক্লিক করে ওয়েবসাইট ভিজিট করুন।",
+                    ),
+                )
+            }
 
             val features = remember {
                 listOf(
@@ -871,7 +940,7 @@ fun WelcomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(100f)
-                    .rainbowScreenBackground(isDark, aboutAccent),
+                    .rainbowScreenBackground(isDark, supportAccent),
             ) {
                 Column(
                     modifier = Modifier
@@ -897,46 +966,54 @@ fun WelcomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Image(
-                                    painter = painterResource(Res.drawable.splash),
-                                    contentDescription = "App Logo",
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop,
-                                )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = supportAccent.copy(alpha = 0.16f),
+                                    border = BorderStroke(1.dp, supportAccent.copy(alpha = 0.36f)),
+                                    modifier = Modifier.size(42.dp),
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Icon(
+                                            imageVector = HelpCircleIcon,
+                                            contentDescription = "হেল্প ও সাপোর্ট".localized(),
+                                            tint = supportAccent,
+                                            modifier = Modifier.size(22.dp),
+                                        )
+                                    }
+                                }
                                 Column {
                                     Text(
-                                        text = "অ্যাপ সম্পর্কে".localized(),
+                                        text = "হেল্প ও সাপোর্ট".localized(),
                                         fontSize = 19.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = hindSiliguri,
                                         color = MaterialTheme.colorScheme.onSurface,
                                     )
                                     Text(
-                                        text = "MPI Klass • ${"ভার্সন ১.০.০".localized()}",
+                                        text = "MPI Klass • ${"সহায়তা ও তথ্য কেন্দ্র".localized()}",
                                         fontSize = 12.sp,
                                         fontFamily = hindSiliguri,
-                                        color = aboutAccent,
+                                        color = supportAccent,
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                 }
                             }
 
                             Surface(
-                                onClick = { showAboutDialog = false },
+                                onClick = { showSupportDialog = false },
                                 shape = CircleShape,
-                                color = aboutAccent.copy(alpha = 0.14f),
-                                border = BorderStroke(1.dp, aboutAccent.copy(alpha = 0.36f)),
+                                color = supportAccent.copy(alpha = 0.14f),
+                                border = BorderStroke(1.dp, supportAccent.copy(alpha = 0.36f)),
                                 modifier = Modifier
                                     .minimumInteractiveComponentSize()
-                                    .size(44.dp),
+                                    .size(44.dp)
+                                    .testTag("support_close_button"),
                             ) {
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = CloseIcon,
                                         contentDescription = "বন্ধ করুন".localized(),
-                                        tint = aboutAccent,
+                                        tint = supportAccent,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
@@ -944,7 +1021,7 @@ fun WelcomeScreen(
                         }
                     }
 
-                    // Scrollable Full-Screen Features Content
+                    // Scrollable Full-Screen Help & Support + Features Content
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -984,13 +1061,142 @@ fun WelcomeScreen(
                             }
                         }
 
+                        // Quick Language Toggle Row inside Support Screen
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = cardSurface,
+                            border = BorderStroke(1.dp, borderSubtle),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = LanguageGlobeIcon,
+                                        contentDescription = "ভাষা".localized(),
+                                        tint = supportAccent,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Text(
+                                        text = "ভাষা নির্বাচন করুন".localized(),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = hindSiliguri,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf(AppLanguage.BENGALI to "BN", AppLanguage.ENGLISH to "EN").forEach { (lang, code) ->
+                                        val selected = lang == currentLanguage
+                                        Surface(
+                                            onClick = { onLanguageChange(lang) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = if (selected) supportAccent else supportAccent.copy(alpha = 0.12f),
+                                        ) {
+                                            Text(
+                                                text = code,
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = hindSiliguri,
+                                                color = if (selected) Color.White else supportAccent,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Support & Quick Help Cards
+                        Text(
+                            text = "সহায়তা ও তথ্য কেন্দ্র".localized(),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp, start = 2.dp),
+                        )
+
+                        supportGuides.forEachIndexed { idx, (icon, accent, titleDesc) ->
+                            val (guideTitle, guideDesc) = titleDesc
+                            val isPortal = idx == 2
+                            Surface(
+                                onClick = {
+                                    if (isPortal) {
+                                        try {
+                                            uriHandler.openUri("https://mpi.politech.gov.bd")
+                                        } catch (_: Exception) {}
+                                    }
+                                },
+                                enabled = isPortal,
+                                shape = RoundedCornerShape(16.dp),
+                                color = cardSurface,
+                                border = BorderStroke(1.dp, borderSubtle),
+                                shadowElevation = 2.dp,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = accent.copy(alpha = 0.14f),
+                                        border = BorderStroke(1.dp, accent.copy(alpha = 0.35f)),
+                                        modifier = Modifier.size(40.dp),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = guideTitle.localized(),
+                                                tint = accent,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    }
+
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                                    ) {
+                                        Text(
+                                            text = guideTitle.localized(),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = hindSiliguri,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        Text(
+                                            text = guideDesc.localized(),
+                                            fontSize = 12.5.sp,
+                                            fontFamily = hindSiliguri,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                                            lineHeight = 18.sp,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         Text(
                             text = "অ্যাপের সকল ফিচারসমূহ".localized(),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = hindSiliguri,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 4.dp, start = 2.dp),
+                            modifier = Modifier.padding(top = 6.dp, start = 2.dp),
                         )
 
                         features.forEach { (icon, accent, titleDesc) ->
@@ -1056,10 +1262,10 @@ fun WelcomeScreen(
                             text = "বন্ধ করুন".localized(),
                             hindSiliguri = hindSiliguri,
                             isDark = isDark,
-                            customPrimaryColor = aboutAccent,
+                            customPrimaryColor = supportAccent,
                             height = 48.dp,
                             modifier = Modifier.fillMaxWidth(),
-                            onClick = { showAboutDialog = false },
+                            onClick = { showSupportDialog = false },
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -1068,235 +1274,121 @@ fun WelcomeScreen(
             }
         }
 
-        // Terms & Conditions Center Modal Popup with policy image at the very top and full-height scrollbar indicator
+        // Terms & Conditions Full-Screen Sub-Screen (No Popup)
         if (showTermsDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(100f)
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) { showTermsDialog = false },
-                contentAlignment = Alignment.Center,
-            ) {
-                AnimatedVisibility(
-                    visible = showTermsDialog,
-                    enter = fadeIn(animationSpec = tween(300)) + scaleIn(
-                        initialScale = 0.8f,
-                        animationSpec = spring(dampingRatio = 0.75f, stiffness = 300f),
-                    ),
-                    exit = fadeOut(animationSpec = tween(200)),
-                ) {
-                    val scrollState = rememberScrollState()
+            val termsAccent = MaterialTheme.colorScheme.primary
+            val cardSurface = if (isDark) Color(0xFF1E293B).copy(alpha = 0.86f) else Color.White.copy(alpha = 0.90f)
+            val borderSubtle = if (isDark) Color(0xFF334155).copy(alpha = 0.7f) else Color(0xFFE2E8F0)
+            val points = remember {
+                listOf(
+                    "গোপনীয়তা ও সুরক্ষা" to "শিক্ষার্থী ও শিক্ষকগণের অ্যাকাউন্টের গোপনীয়তা এবং ব্যক্তিগত তথ্য সম্পূর্ণ সুরক্ষিত রাখা হয়।",
+                    "নিরাপদ সাইন-ইন" to "নিরাপদ ও ভেরিফাইড অথেনটিকেশন ব্যবস্থার মাধ্যমে আপনার অ্যাকাউন্ট সুরক্ষিত থাকে।",
+                    "এআই স্টাডি সহায়তা" to "জেনারেটিভ এআই অ্যাসিস্ট্যান্ট শিক্ষার্থীদের পড়াশোনা, রুটিন এবং একাডেমিক প্রশ্নোত্তরে সহায়তা করে।",
+                    "অফিশিয়াল নোটিশ" to "প্রতিষ্ঠান ও ডিপার্টমেন্টের জরুরি নোটিশ এবং রুটিন নিয়মিত আপডেট করা হয়।",
+                    "নিয়মাবলী ও শৃঙ্খলা" to "অ্যাপ ব্যবহারের সময় প্রাতিষ্ঠানিক নিয়মকানুন ও শালীনতা বজায় রাখা বাধ্যতামূলক।",
+                    "সেবা আপডেট" to "শিক্ষার্থীদের সুবিধার্থে অ্যাপে নতুন ফিচার ও আপডেট নিয়মিত যুক্ত করা হবে।"
+                )
+            }
 
-                    // Outer Column to hold Surface and 5dp-below Close Button
+            Box(modifier = Modifier.fillMaxSize().zIndex(100f)) {
+                MinimalFullScreenSheet(
+                    title = "সেবার শর্তাবলী ও প্রাইভেসি পলিসি".localized(),
+                    subtitle = "দয়া করে নিচের নিয়মগুলো দেখে নিন:".localized(),
+                    icon = ShieldIcon,
+                    accent = termsAccent,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    navigationIcon = CloseIcon,
+                    closeTestTag = "terms_close_button",
+                    onDismiss = { showTermsDialog = false },
+                    maxContentWidth = 680.dp,
+                    headerActions = {
+                        HeaderSavePillButton(
+                            text = "ঠিক আছে".localized(),
+                            accent = termsAccent,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            onClick = { showTermsDialog = false },
+                        )
+                    },
+                ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .wrapContentHeight()
-                            .clickable(enabled = false) {},
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 500.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-                            shadowElevation = 16.dp,
+                            shape = RoundedCornerShape(18.dp),
+                            color = cardSurface,
+                            border = BorderStroke(1.dp, termsAccent.copy(alpha = 0.28f)),
+                            shadowElevation = 2.dp,
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                // Scrollable Content with 100% smooth linear scrolling
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .verticalScroll(scrollState)
-                                        .padding(horizontal = 22.dp, vertical = 22.dp)
-                                        .padding(end = 12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                                ) {
-                                    // 1. Policy Image at the top
-                                    Image(
-                                        painter = painterResource(Res.drawable.policy),
-                                        contentDescription = "Policy Illustration",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(130.dp)
-                                            .clip(RoundedCornerShape(12.dp)),
-                                        contentScale = ContentScale.Fit,
-                                    )
-
-                                    // 2. Title & Subtitle (normal flow)
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        Text(
-                                            text = "সেবার শর্তাবলী ও প্রাইভেসি পলিসি".localized(),
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                        Text(
-                                            text = "দয়া করে নিচের নিয়মগুলো দেখে নিন:".localized(),
-                                            fontSize = 13.sp,
-                                            fontFamily = hindSiliguri,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                                        )
-                                    }
-
-                                    // 3. Points items
-                                    val points = listOf(
-                                        "গোপনীয়তা ও সুরক্ষা" to "শিক্ষার্থী ও শিক্ষকগণের অ্যাকাউন্টের গোপনীয়তা এবং ব্যক্তিগত তথ্য সম্পূর্ণ সুরক্ষিত রাখা হয়।",
-                                        "নিরাপদ সাইন-ইন" to "নিরাপদ ও ভেরিফাইড অথেনটিকেশন ব্যবস্থার মাধ্যমে আপনার অ্যাকাউন্ট সুরক্ষিত থাকে।",
-                                        "এআই স্টাডি সহায়তা" to "জেনারেটিভ এআই অ্যাসিস্ট্যান্ট শিক্ষার্থীদের পড়াশোনা, রুটিন এবং একাডেমিক প্রশ্নোত্তরে সহায়তা করে।",
-                                        "অফিশিয়াল নোটিশ" to "প্রতিষ্ঠান ও ডিপার্টমেন্টের জরুরি নোটিশ এবং রুটিন নিয়মিত আপডেট করা হয়।",
-                                        "নিয়মাবলী ও শৃঙ্খলা" to "অ্যাপ ব্যবহারের সময় প্রাতিষ্ঠানিক নিয়মকানুন ও শালীনতা বজায় রাখা বাধ্যতামূলক।",
-                                        "সেবা আপডেট" to "শিক্ষার্থীদের সুবিধার্থে অ্যাপে নতুন ফিচার ও আপডেট নিয়মিত যুক্ত করা হবে।"
-                                    )
-
-                                    points.forEachIndexed { index, (title, desc) ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            verticalAlignment = Alignment.Top,
-                                        ) {
-                                            Text(
-                                                text = "${index + 1}.",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = MaterialTheme.colorScheme.primary,
-                                            )
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = title.localized(),
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontFamily = hindSiliguri,
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                )
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = desc.localized(),
-                                                    fontSize = 13.sp,
-                                                    fontFamily = hindSiliguri,
-                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                                                    lineHeight = 19.sp,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Sticky Header Overlay when scrolled past image threshold (~140px)
-                                val showStickyHeader by remember {
-                                    derivedStateOf { scrollState.value > 140 }
-                                }
-                                if (showStickyHeader) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surface,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .zIndex(10f),
-                                        shadowElevation = 4.dp,
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 22.dp)
-                                                .padding(top = 14.dp, bottom = 10.dp),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                        ) {
-                                            Text(
-                                                text = "সেবার শর্তাবলী ও প্রাইভেসি পলিসি".localized(),
-                                                fontSize = 17.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = MaterialTheme.colorScheme.primary,
-                                            )
-                                            Text(
-                                                text = "দয়া করে নিচের নিয়মগুলো দেখে নিন:".localized(),
-                                                fontSize = 13.sp,
-                                                fontFamily = hindSiliguri,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // Butter-smooth linear scrollbar indicator with zIndex(20f) so it's always above sticky header
-                                val hasMaxValue by remember {
-                                    derivedStateOf { scrollState.maxValue > 0 }
-                                }
-                                if (hasMaxValue) {
-                                    BoxWithConstraints(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .fillMaxHeight()
-                                            .zIndex(20f)
-                                    ) {
-                                        val viewportHeight = maxHeight
-                                        val scrollProgress by remember {
-                                            derivedStateOf {
-                                                if (scrollState.maxValue > 0) {
-                                                    scrollState.value.toFloat() / scrollState.maxValue.toFloat()
-                                                } else 0f
-                                            }
-                                        }
-                                        val thumbHeight = 44.dp
-                                        val maxOffset = (viewportHeight - thumbHeight - 32.dp).coerceAtLeast(0.dp)
-                                        val thumbOffset = maxOffset * scrollProgress
-
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.CenterEnd)
-                                                .padding(end = 8.dp, top = 16.dp, bottom = 16.dp)
-                                                .width(7.dp)
-                                                .fillMaxHeight()
-                                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(3.5.dp)),
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .offset(y = thumbOffset)
-                                                    .width(7.dp)
-                                                    .height(thumbHeight)
-                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), RoundedCornerShape(3.5.dp)),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            Image(
+                                painter = painterResource(Res.drawable.policy),
+                                contentDescription = "Policy Illustration",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp)
+                                    .padding(12.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Fit,
+                            )
                         }
 
-                        // Clean, elegant solid primary Close Button
-                        Surface(
-                            onClick = { showTermsDialog = false },
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .size(48.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.surface),
-                            shadowElevation = 6.dp,
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
+                        points.forEachIndexed { index, (title, desc) ->
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = cardSurface,
+                                border = BorderStroke(1.dp, borderSubtle),
+                                shadowElevation = 1.dp,
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Icon(
-                                    imageVector = CloseIcon,
-                                    contentDescription = "Close",
-                                    modifier = Modifier.size(20.dp),
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = termsAccent.copy(alpha = if (isDark) 0.22f else 0.12f),
+                                        border = BorderStroke(1.dp, termsAccent.copy(alpha = 0.35f)),
+                                        modifier = Modifier.size(30.dp),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                            Text(
+                                                text = "${index + 1}",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = hindSiliguri,
+                                                color = termsAccent,
+                                            )
+                                        }
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                                    ) {
+                                        Text(
+                                            text = title.localized(),
+                                            fontSize = 14.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = hindSiliguri,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        Text(
+                                            text = desc.localized(),
+                                            fontSize = 13.sp,
+                                            fontFamily = hindSiliguri,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f),
+                                            lineHeight = 19.sp,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1378,6 +1470,360 @@ internal fun RoleButton(
             )
         }
     }
+}
+
+@Composable
+private fun EmailLoginPanel(
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    buttonHorizontalPadding: androidx.compose.ui.unit.Dp,
+    currentLanguage: AppLanguage,
+    emailText: String,
+    passwordText: String,
+    activeField: LoginInputField?,
+    isCustomKeyboardVisible: Boolean,
+    onSelectField: (LoginInputField) -> Unit,
+    onLoginSubmit: () -> Unit,
+) {
+    val emailAccent = KlassFeaturePalette.routine(isDark).primary
+    val passwordAccent = KlassFeaturePalette.teaching(isDark).primary
+    val loginAccent = KlassFeaturePalette.admin(isDark).primary
+
+    val bgColor = if (isDark) Color(0xFF151F32).copy(alpha = 0.90f) else Color.White.copy(alpha = 0.92f)
+    val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val placeholderColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    val cursorTransition = rememberInfiniteTransition(label = "custom_login_cursor")
+    val cursorAlpha by cursorTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 520),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cursor_blink",
+    )
+
+    val emailScroll = rememberScrollState()
+    LaunchedEffect(emailText.length, activeField) {
+        emailScroll.animateScrollTo(emailScroll.maxValue)
+    }
+
+    val passwordScroll = rememberScrollState()
+    LaunchedEffect(passwordText.length, activeField, passwordVisible) {
+        passwordScroll.animateScrollTo(passwordScroll.maxValue)
+    }
+
+    val emailFocused = activeField == LoginInputField.EMAIL
+    val passwordFocused = activeField == LoginInputField.PASSWORD
+    val maskedPassword = remember(passwordText, passwordVisible) {
+        if (passwordVisible) passwordText else "•".repeat(countDisplayGlyphs(passwordText))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = buttonHorizontalPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // 1. Email Input Button Card (Tapping opens KlassCustomKeyboard instead of system IME)
+        val emailBorderWidth = if (emailFocused) 1.75.dp else 1.dp
+        val emailBorder = emailAccent.copy(alpha = if (emailFocused) 0.92f else if (isDark) 0.42f else 0.34f)
+        Surface(
+            onClick = { onSelectField(LoginInputField.EMAIL) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .testTag("login_email_input"),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(emailBorderWidth, emailBorder),
+            color = bgColor,
+            shadowElevation = if (emailFocused) 4.dp else 2.dp,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(emailAccent.copy(alpha = if (emailFocused) (if (isDark) 0.14f else 0.09f) else (if (isDark) 0.08f else 0.05f)))
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = emailAccent.copy(alpha = if (isDark) 0.20f else 0.12f),
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            imageVector = EnvelopeSolidIcon,
+                            contentDescription = "ইমেইল".localized(currentLanguage),
+                            tint = emailAccent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(emailScroll),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (emailText.isEmpty()) {
+                        if (emailFocused) {
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(18.dp)
+                                    .background(emailAccent.copy(alpha = cursorAlpha)),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = "ইমেইল".localized(currentLanguage),
+                            fontSize = 15.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = placeholderColor,
+                            maxLines = 1,
+                        )
+                    } else {
+                        Text(
+                            text = emailText,
+                            fontSize = 15.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = hindSiliguri,
+                            color = textColor,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                        if (emailFocused) {
+                            Spacer(modifier = Modifier.width(1.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(18.dp)
+                                    .background(emailAccent.copy(alpha = cursorAlpha)),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Password Input Button Card (Tapping opens KlassCustomKeyboard instead of system IME)
+        val passwordBorderWidth = if (passwordFocused) 1.75.dp else 1.dp
+        val passwordBorder = passwordAccent.copy(alpha = if (passwordFocused) 0.92f else if (isDark) 0.42f else 0.34f)
+        Surface(
+            onClick = { onSelectField(LoginInputField.PASSWORD) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .testTag("login_password_input"),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(passwordBorderWidth, passwordBorder),
+            color = bgColor,
+            shadowElevation = if (passwordFocused) 4.dp else 2.dp,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(passwordAccent.copy(alpha = if (passwordFocused) (if (isDark) 0.14f else 0.09f) else (if (isDark) 0.08f else 0.05f)))
+                    .padding(start = 14.dp, end = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = passwordAccent.copy(alpha = if (isDark) 0.20f else 0.12f),
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(
+                            imageVector = LockIcon,
+                            contentDescription = "পাসওয়ার্ড".localized(currentLanguage),
+                            tint = passwordAccent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(passwordScroll),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (passwordText.isEmpty()) {
+                        if (passwordFocused) {
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(18.dp)
+                                    .background(passwordAccent.copy(alpha = cursorAlpha)),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = "পাসওয়ার্ড".localized(currentLanguage),
+                            fontSize = 15.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = hindSiliguri,
+                            color = placeholderColor,
+                            maxLines = 1,
+                        )
+                    } else {
+                        Text(
+                            text = maskedPassword,
+                            fontSize = 15.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = hindSiliguri,
+                            color = textColor,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                        if (passwordFocused) {
+                            Spacer(modifier = Modifier.width(1.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(18.dp)
+                                    .background(passwordAccent.copy(alpha = cursorAlpha)),
+                            )
+                        }
+                    }
+                }
+
+                androidx.compose.material3.IconButton(
+                    onClick = { passwordVisible = !passwordVisible },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .testTag("login_password_toggle"),
+                ) {
+                    Icon(
+                        imageVector = if (passwordVisible) EyeOffIcon else EyeIcon,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = passwordAccent,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+
+        // 3. Login Action Button Card (Identical 3rd card in RoleSelectionScreen)
+        val loginBorder = loginAccent.copy(alpha = if (isDark) 0.42f else 0.34f)
+        Surface(
+            onClick = onLoginSubmit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .testTag("login_submit_button"),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, loginBorder),
+            color = bgColor,
+            shadowElevation = 2.dp,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(loginAccent.copy(alpha = if (isDark) 0.08f else 0.05f))
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = loginAccent.copy(alpha = if (isDark) 0.20f else 0.12f),
+                        modifier = Modifier.size(34.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(
+                                imageVector = LoginIcon,
+                                contentDescription = "লগইন করুন".localized(currentLanguage),
+                                tint = loginAccent,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "লগইন করুন".localized(currentLanguage),
+                        fontSize = 15.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = hindSiliguri,
+                        color = textColor,
+                    )
+                }
+
+                Icon(
+                    imageVector = ChevronRightIcon,
+                    contentDescription = null,
+                    tint = loginAccent,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = !isCustomKeyboardVisible,
+            enter = expandVertically(
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                expandFrom = Alignment.Top,
+            ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+            exit = shrinkVertically(
+                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                shrinkTowards = Alignment.Top,
+            ) + fadeOut(animationSpec = tween(durationMillis = 120)),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)),
+                )
+
+                Text(
+                    text = "ইমেইল ও পাসওয়ার্ড ব্যবহার করে লগইন করুন। নতুন ব্যবহারকারী হলে শুরু করুন বাটন থেকে সাইন ইন করুন।".localized(currentLanguage),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = hindSiliguri,
+                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+private fun countDisplayGlyphs(text: String): Int {
+    var count = 0
+    var i = 0
+    while (i < text.length) {
+        val c = text[i]
+        if (c.isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()) {
+            i += 2
+        } else {
+            i += 1
+        }
+        if (c != '\uFE0F' && c != '\uFE0E' && c != '\u200D') {
+            count++
+        }
+    }
+    return count
 }
 
 private val DeepBowArchShape = GenericShape { size, _ ->

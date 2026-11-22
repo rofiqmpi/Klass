@@ -1,12 +1,18 @@
 package com.mpi.klass
 
-import android.widget.Toast
-import com.mpi.klass.theme.getAppContext
+import android.os.Handler
+import android.os.Looper
+
+private val mainToastHandler = Handler(Looper.getMainLooper())
 
 actual fun showToast(message: String) {
-    getAppContext()?.let { ctx ->
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+    val clean = message.trim()
+    if (clean.isBlank()) return
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+        AppToastState.show(clean)
+    } else {
+        mainToastHandler.post {
+            AppToastState.show(clean)
         }
     }
 }

@@ -153,7 +153,7 @@ fun BooksLibraryScreen(
     var isDeletingBook by remember { mutableStateOf(false) }
 
     val booksAccent = KlassFeaturePalette.books(isDark)
-    val anyOverlay = showFormScreen || showFilterSheet || detailBook != null
+    val anyOverlay = showFormScreen || showFilterSheet || detailBook != null || bookToDelete != null
     LaunchedEffect(anyOverlay) {
         onFullScreenOverlayChange(anyOverlay)
     }
@@ -325,26 +325,14 @@ fun BooksLibraryScreen(
 
                     when {
                         isLoading && books.isEmpty() -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(
-                                        color = cs.primary,
-                                        strokeWidth = 2.5.dp,
-                                        modifier = Modifier.size(32.dp),
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = "Loading books...",
-                                        color = cs.onSurfaceVariant,
-                                        fontSize = 15.sp,
-                                        fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                }
-                            }
+                            KlassRowListSkeleton(
+                                isDark = isDark,
+                                showHeaderBar = true,
+                                showActionPill = false,
+                                badgeSize = 46.dp,
+                                badgeCornerRadius = 14.dp,
+                                rowLineCount = 3,
+                            )
                         }
 
                         filteredBooks.isEmpty() -> {
@@ -531,18 +519,12 @@ fun BooksLibraryScreen(
                             },
                         )
                     }
-                },
-                bottomBar = {
-                    WelcomeMinimal3DButton(
-                        text = "Show ${filteredBooks.size} Books",
-                        icon = CheckIcon,
-                        hindSiliguri = hindSiliguri,
+                    HeaderSavePillButton(
+                        text = "Show ${filteredBooks.size}",
+                        accent = booksAccent.primary,
                         isDark = isDark,
-                        customPrimaryColor = booksAccent.primary,
-                        customBaseColor = booksAccent.deep,
-                        height = 48.dp,
-                        cornerRadius = 24.dp,
-                        modifier = Modifier.fillMaxWidth(),
+                        hindSiliguri = hindSiliguri,
+                        testTag = "books_apply_filters_button",
                         onClick = { showFilterSheet = false },
                     )
                 },
@@ -703,9 +685,6 @@ private fun BookDetailFullSubScreen(
     val booksAccent = KlassFeaturePalette.books(isDark)
     val cleanCode = AppStrings.convertBengaliDigitsToAscii(book.subjectCode)
     val creditClean = AppStrings.convertBengaliDigitsToAscii(book.credit.ifBlank { "0" })
-    var inspectedDeptEntry by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
             title = book.title,
             subtitle = if (cleanCode.isNotBlank()) "Subject Code $cleanCode" else "BTEB Curriculum Book",
@@ -715,35 +694,31 @@ private fun BookDetailFullSubScreen(
             isDark = isDark,
             hindSiliguri = hindSiliguri,
             onDismiss = onDismiss,
-            bottomBar = if (canEdit) {
-                {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            headerActions = {
+                if (canEdit) {
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .testTag("book_detail_delete_button"),
                     ) {
-                        GoogleOutlinedButton(
-                            text = "Delete",
-                            icon = TrashCanIcon,
-                            hindSiliguri = hindSiliguri,
-                            contentColor = KlassFeaturePalette.error(isDark).primary,
-                            height = 46.dp,
-                            modifier = Modifier.weight(1f),
-                            onClick = onDeleteClick,
-                        )
-                        WelcomeMinimal3DButton(
-                            text = "Edit Book",
-                            icon = EditIcon,
-                            hindSiliguri = hindSiliguri,
-                            isDark = isDark,
-                            customPrimaryColor = booksAccent.primary,
-                            customBaseColor = booksAccent.deep,
-                            height = 46.dp,
-                            modifier = Modifier.weight(1.35f),
-                            onClick = onEditClick,
+                        Icon(
+                            imageVector = TrashCanIcon,
+                            contentDescription = "Delete Book",
+                            tint = KlassFeaturePalette.error(isDark).primary,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
+                    HeaderSavePillButton(
+                        text = "Edit",
+                        accent = booksAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        testTag = "book_detail_edit_button",
+                        onClick = onEditClick,
+                    )
                 }
-            } else null,
+            },
         ) {
             Column(
                 modifier = Modifier
@@ -751,26 +726,7 @@ private fun BookDetailFullSubScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 28.dp),
             ) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    KlassHeroBanner(
-                        title = book.title,
-                        subtitle = "সাপ্তাহিক ক্লাস ও ক্রেডিট কাঠামো",
-                        icon = BookIcon,
-                        accent = booksAccent.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        badges = buildList {
-                            if (cleanCode.isNotBlank()) add(cleanCode to booksAccent.primary)
-                            add("${book.theoryClassesPerWeek} Theory/wk" to KlassFeaturePalette.teachers(isDark).primary)
-                            add("${book.practicalClassesPerWeek} Practical/wk" to KlassFeaturePalette.classrooms(isDark).primary)
-                            add("$creditClean Credits" to KlassFeaturePalette.ai(isDark).primary)
-                        },
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
+                Spacer(modifier = Modifier.height(10.dp))
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     KlassDetailFieldRow(
                         label = "Theory Classes / Week",
@@ -815,15 +771,13 @@ private fun BookDetailFullSubScreen(
                             val semSummary = sems.joinToString(", ") { semKey ->
                                 librarySemesters.firstOrNull { it.key == semKey }?.shortEn ?: semKey
                             }
-                            KlassNavigationRow(
-                                title = deptShort,
-                                subtitle = semSummary,
+                            KlassDetailFieldRow(
+                                label = "$deptShort (${sems.size} Sem)",
+                                value = semSummary.ifBlank { "All Semesters" },
                                 icon = GraduationCapIcon,
                                 accent = deptAcc.primary,
-                                badgeText = "${sems.size} Sem",
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
-                                onClick = { inspectedDeptEntry = dept to sems },
                             )
                             if (idx < entries.lastIndex) {
                                 SocialInsetDivider(startIndent = 72.dp)
@@ -833,65 +787,6 @@ private fun BookDetailFullSubScreen(
                 }
             }
         }
-
-        // Level 2: Department Syllabus Mapping Breakdown Sub-Sub-Screen
-        KlassSubScreenHost(
-            visible = inspectedDeptEntry != null,
-            zIndex = 90f,
-        ) {
-            inspectedDeptEntry?.let { (deptName, sems) ->
-                val deptShort = deptName.substringBefore(" (").trim()
-                val deptAcc = departmentAccent(deptShort, isDark)
-                MinimalFullScreenSheet(
-                    title = "$deptShort Syllabus",
-                    subtitle = book.title,
-                    levelLabel = "বই লাইব্রেরি • $deptShort • সেমিস্টার",
-                    icon = GraduationCapIcon,
-                    accent = deptAcc.primary,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                    onDismiss = { inspectedDeptEntry = null },
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            KlassHeroBanner(
-                                title = deptShort,
-                                subtitle = "${book.title} (${cleanCode})",
-                                icon = GraduationCapIcon,
-                                accent = deptAcc.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                badges = listOf("${sems.size} সেমিস্টার" to deptAcc.primary),
-                            )
-                        }
-
-                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                            sems.forEachIndexed { idx, semKey ->
-                                val semLabel = librarySemesters.firstOrNull { it.key == semKey }?.shortEn ?: semKey
-                                KlassDetailFieldRow(
-                                    label = "$semLabel Semester ($semKey)",
-                                    value = "${book.theoryClassesPerWeek} Theory + ${book.practicalClassesPerWeek} Practical hrs/wk",
-                                    icon = LayerGroupIcon,
-                                    accent = deptAcc.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                )
-                                if (idx < sems.lastIndex) {
-                                    SocialInsetDivider(startIndent = 72.dp)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -1126,89 +1021,68 @@ private fun FullScreenBookFormScreen(
         dismissEnabled = !isSaving,
         closeTestTag = "book_dialog_close_button",
         maxContentWidth = 760.dp,
-        bottomBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                GoogleOutlinedButton(
-                    text = "Cancel",
-                    hindSiliguri = hindSiliguri,
-                    enabled = !isSaving,
-                    height = 48.dp,
-                    contentColor = cs.onSurface,
-                    testTag = "cancel_book_form_button",
-                    modifier = Modifier.weight(1f),
-                    onClick = onDismiss,
-                )
+        headerActions = {
+            HeaderSavePillButton(
+                text = if (isSaving) "Saving..." else "Save",
+                accent = booksAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                isLoading = isSaving,
+                enabled = !isSaving,
+                testTag = "save_book_button",
+                onClick = {
+                    if (isSaving) return@HeaderSavePillButton
+                    val cleanTitle = title.trim()
+                    val cleanCode = subjectCode.trim()
+                    if (cleanTitle.isBlank() || cleanCode.isBlank()) {
+                        showToast("Please enter book title and subject code.")
+                        return@HeaderSavePillButton
+                    }
 
-                WelcomeMinimal3DButton(
-                    text = if (isSaving) "Saving..." else "Save Book",
-                    icon = CheckIcon,
-                    hindSiliguri = hindSiliguri,
-                    isDark = isDark,
-                    customPrimaryColor = booksAccent.primary,
-                    customBaseColor = booksAccent.deep,
-                    isLoading = isSaving,
-                    enabled = !isSaving,
-                    height = 48.dp,
-                    cornerRadius = 24.dp,
-                    testTag = "save_book_button",
-                    modifier = Modifier.weight(1.35f),
-                    onClick = {
-                        if (isSaving) return@WelcomeMinimal3DButton
-                        val cleanTitle = title.trim()
-                        val cleanCode = subjectCode.trim()
-                        if (cleanTitle.isBlank() || cleanCode.isBlank()) {
-                            showToast("Please enter book title and subject code.")
-                            return@WelcomeMinimal3DButton
-                        }
-
-                        val orderedDeptSemMap = linkedMapOf<String, List<String>>()
-                        for (dept in libraryDepartments) {
-                            val sems = deptSelections[dept.shortCode].orEmpty()
-                            if (sems.isNotEmpty()) {
-                                val orderedSems = librarySemesters
-                                    .map { it.key }
-                                    .filter { it in sems }
-                                if (orderedSems.isNotEmpty()) {
-                                    orderedDeptSemMap[dept.shortCode] = orderedSems
-                                }
+                    val orderedDeptSemMap = linkedMapOf<String, List<String>>()
+                    for (dept in libraryDepartments) {
+                        val sems = deptSelections[dept.shortCode].orEmpty()
+                        if (sems.isNotEmpty()) {
+                            val orderedSems = librarySemesters
+                                .map { it.key }
+                                .filter { it in sems }
+                            if (orderedSems.isNotEmpty()) {
+                                orderedDeptSemMap[dept.shortCode] = orderedSems
                             }
                         }
-                        if (orderedDeptSemMap.isEmpty()) {
-                            showToast("Select at least one department and semester.")
-                            return@WelcomeMinimal3DButton
-                        }
+                    }
+                    if (orderedDeptSemMap.isEmpty()) {
+                        showToast("Select at least one department and semester.")
+                        return@HeaderSavePillButton
+                    }
 
-                        val theoryVal = AppStrings.convertBengaliDigitsToAscii(theoryText.trim())
-                            .filter { it.isDigit() }
-                            .toIntOrNull() ?: 0
-                        val practicalVal = AppStrings.convertBengaliDigitsToAscii(practicalText.trim())
-                            .filter { it.isDigit() }
-                            .toIntOrNull() ?: 0
-                        if (theoryVal + practicalVal <= 0) {
-                            showToast("Enter at least 1 weekly theory or practical class.")
-                            return@WelcomeMinimal3DButton
-                        }
-                        val cleanCredit = AppStrings.convertBengaliDigitsToAscii(creditText.trim())
-                            .ifBlank { "0" }
+                    val theoryVal = AppStrings.convertBengaliDigitsToAscii(theoryText.trim())
+                        .filter { it.isDigit() }
+                        .toIntOrNull() ?: 0
+                    val practicalVal = AppStrings.convertBengaliDigitsToAscii(practicalText.trim())
+                        .filter { it.isDigit() }
+                        .toIntOrNull() ?: 0
+                    if (theoryVal + practicalVal <= 0) {
+                        showToast("Enter at least 1 weekly theory or practical class.")
+                        return@HeaderSavePillButton
+                    }
+                    val cleanCredit = AppStrings.convertBengaliDigitsToAscii(creditText.trim())
+                        .ifBlank { "0" }
 
-                        isSaving = true
-                        val bookToSave = (initialBook ?: LibraryBook()).copy(
-                            title = cleanTitle,
-                            subjectCode = AppStrings.convertBengaliDigitsToAscii(cleanCode),
-                            departmentSemesters = orderedDeptSemMap,
-                            theoryClassesPerWeek = theoryVal,
-                            practicalClassesPerWeek = practicalVal,
-                            credit = cleanCredit,
-                        )
-                        onSave(bookToSave) {
-                            isSaving = false
-                        }
-                    },
-                )
-            }
+                    isSaving = true
+                    val bookToSave = (initialBook ?: LibraryBook()).copy(
+                        title = cleanTitle,
+                        subjectCode = AppStrings.convertBengaliDigitsToAscii(cleanCode),
+                        departmentSemesters = orderedDeptSemMap,
+                        theoryClassesPerWeek = theoryVal,
+                        practicalClassesPerWeek = practicalVal,
+                        credit = cleanCredit,
+                    )
+                    onSave(bookToSave) {
+                        isSaving = false
+                    }
+                },
+            )
         },
     ) {
         Column(

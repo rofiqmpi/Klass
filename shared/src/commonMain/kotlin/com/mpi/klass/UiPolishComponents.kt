@@ -3,6 +3,11 @@ package com.mpi.klass
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -20,22 +25,28 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -80,6 +91,7 @@ import com.mpi.klass.theme.BackArrowIcon
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.MessageBubbleIcon
 import com.mpi.klass.theme.SearchIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.rainbowScreenStops
@@ -309,14 +321,29 @@ internal fun GoogleTopAppBar(
     navigationContentDescription: String = "Back",
     onNavigationClick: (() -> Unit)? = null,
     navigationTestTag: String? = null,
-    showBottomDivider: Boolean = true,
+    showBottomDivider: Boolean = false,
     containerColor: Color = Color.Transparent,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
-    Surface(
-        color = containerColor,
-        modifier = modifier.fillMaxWidth(),
+    val isDark = isSystemInDarkTheme()
+    val fadeTopColor = if (containerColor != Color.Transparent) {
+        containerColor.copy(alpha = 0.88f)
+    } else {
+        if (isDark) cs.surface.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.76f)
+    }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        fadeTopColor,
+                        fadeTopColor.copy(alpha = 0.35f),
+                        Color.Transparent,
+                    )
+                )
+            ),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -367,7 +394,7 @@ internal fun GoogleTopAppBar(
             if (showBottomDivider) {
                 HorizontalDivider(
                     thickness = 0.5.dp,
-                    color = cs.outlineVariant.copy(alpha = 0.5f),
+                    color = cs.outlineVariant.copy(alpha = 0.35f),
                 )
             }
         }
@@ -375,20 +402,24 @@ internal fun GoogleTopAppBar(
 }
 
 /**
- * Distinct, color-coded AI (Violet) & Notification (Amber/Coral) circular icon buttons with 48.dp hit areas.
+ * Distinct, color-coded Messenger (Cobalt/Violet) & Notification (Amber/Coral) circular icon buttons
+ * with unread indicator dots.
  */
 @Composable
 internal fun HeaderAiNotificationActions(
     isDark: Boolean,
     showAi: Boolean = true,
     showNotification: Boolean = true,
+    hasUnreadNotifications: Boolean = NotificationSeenStore.hasUnread(),
+    unreadMessagesCount: Int = SocialChatState.totalUnreadMessages,
     onAiClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val aiAccent = KlassFeaturePalette.ai(isDark)
+    val msgAccent = KlassFeaturePalette.routine(isDark)
     val notiAccent = KlassFeaturePalette.notifications(isDark)
     val baseBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
+    val dotHaloColor = if (isDark) Color(0xFF0F172A) else Color.White
 
     Row(
         modifier = modifier.padding(end = 6.dp),
@@ -396,56 +427,88 @@ internal fun HeaderAiNotificationActions(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (showAi) {
-            Surface(
-                onClick = onAiClick,
-                shape = CircleShape,
-                color = baseBg,
-                border = BorderStroke(1.dp, aiAccent.borderTint),
-                shadowElevation = 1.dp,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .size(42.dp)
-                    .testTag("top_bar_ai_button"),
-            ) {
-                Box(
+            Box {
+                Surface(
+                    onClick = onAiClick,
+                    shape = CircleShape,
+                    color = baseBg,
+                    border = BorderStroke(1.dp, msgAccent.borderTint),
+                    shadowElevation = 0.dp,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(aiAccent.softTint),
-                    contentAlignment = Alignment.Center,
+                        .minimumInteractiveComponentSize()
+                        .size(42.dp)
+                        .testTag("top_bar_messages_button"),
                 ) {
-                    Icon(
-                        imageVector = SparkleIcon,
-                        contentDescription = "Zed AI",
-                        tint = aiAccent.primary,
-                        modifier = Modifier.size(19.dp),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(msgAccent.softTint),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = MessageBubbleIcon,
+                            contentDescription = "Messages",
+                            tint = msgAccent.primary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
+                if (unreadMessagesCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-1).dp, y = 1.dp)
+                            .size(11.dp)
+                            .clip(CircleShape)
+                            .background(dotHaloColor)
+                            .padding(1.5.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEF4444))
+                            .testTag("top_bar_messages_unread_dot"),
                     )
                 }
             }
         }
 
         if (showNotification) {
-            Surface(
-                onClick = onNotificationClick,
-                shape = CircleShape,
-                color = baseBg,
-                border = BorderStroke(1.dp, notiAccent.borderTint),
-                shadowElevation = 1.dp,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .size(42.dp)
-                    .testTag("top_bar_notification_button"),
-            ) {
-                Box(
+            Box {
+                Surface(
+                    onClick = onNotificationClick,
+                    shape = CircleShape,
+                    color = baseBg,
+                    border = BorderStroke(1.dp, notiAccent.borderTint),
+                    shadowElevation = 0.dp,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(notiAccent.softTint),
-                    contentAlignment = Alignment.Center,
+                        .minimumInteractiveComponentSize()
+                        .size(42.dp)
+                        .testTag("top_bar_notification_button"),
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.notification),
-                        contentDescription = "Notifications",
-                        tint = notiAccent.primary,
-                        modifier = Modifier.size(19.dp),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(notiAccent.softTint),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.notification),
+                            contentDescription = "Notifications",
+                            tint = notiAccent.primary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
+                if (hasUnreadNotifications) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-1).dp, y = 1.dp)
+                            .size(11.dp)
+                            .clip(CircleShape)
+                            .background(dotHaloColor)
+                            .padding(1.5.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEF4444))
+                            .testTag("top_bar_notification_unread_dot"),
                     )
                 }
             }
@@ -1108,7 +1171,7 @@ internal fun MinimalFullScreenSheet(
 
     val cs = MaterialTheme.colorScheme
     val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
-    val headerBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.82f)
+    val topHeaderFade = if (isDark) cs.surface.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.82f)
 
     Box(
         modifier = Modifier
@@ -1120,100 +1183,99 @@ internal fun MinimalFullScreenSheet(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
         ) {
-            Surface(
-                color = headerBg,
-                modifier = Modifier.fillMaxWidth(),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                topHeaderFade,
+                                topHeaderFade.copy(alpha = 0.48f),
+                                Color.Transparent,
+                            )
+                        )
+                    ),
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(resolvedAccent.copy(alpha = if (isDark) 0.10f else 0.055f)),
+                        .statusBarsPadding()
+                        .height(62.dp)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
+                    IconButton(
+                        onClick = onDismiss,
+                        enabled = dismissEnabled,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .height(62.dp)
-                            .padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                            .size(48.dp)
+                            .then(if (closeTestTag != null) Modifier.testTag(closeTestTag) else Modifier),
                     ) {
-                        IconButton(
-                            onClick = onDismiss,
-                            enabled = dismissEnabled,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .then(if (closeTestTag != null) Modifier.testTag(closeTestTag) else Modifier),
-                        ) {
+                        Icon(
+                            imageVector = navigationIcon,
+                            contentDescription = "Back",
+                            tint = cs.onSurface,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
+                        border = BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.38f)),
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Icon(
-                                imageVector = navigationIcon,
-                                contentDescription = "Back",
-                                tint = cs.onSurface,
-                                modifier = Modifier.size(22.dp),
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = resolvedAccent,
+                                modifier = Modifier.size(18.dp),
                             )
                         }
+                    }
 
-                        Surface(
-                            shape = CircleShape,
-                            color = resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
-                            border = BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.38f)),
-                            modifier = Modifier.size(36.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = null,
-                                    tint = resolvedAccent,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
+                    Spacer(modifier = Modifier.width(10.dp))
 
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            if (!levelLabel.isNullOrBlank()) {
-                                Text(
-                                    text = levelLabel,
-                                    color = resolvedAccent,
-                                    fontSize = 11.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
+                    Column(modifier = Modifier.weight(1f)) {
+                        if (!levelLabel.isNullOrBlank()) {
                             Text(
-                                text = title,
-                                color = cs.onSurface,
-                                fontSize = 19.sp,
+                                text = levelLabel,
+                                color = resolvedAccent,
+                                fontSize = 11.5.sp,
                                 fontFamily = hindSiliguri,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            if (subtitle.isNotBlank()) {
-                                Text(
-                                    text = subtitle,
-                                    color = cs.onSurfaceVariant,
-                                    fontSize = 13.5.sp,
-                                    fontFamily = hindSiliguri,
-                                    fontWeight = FontWeight.Normal,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
                         }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier = Modifier.padding(end = 6.dp),
-                            content = headerActions,
+                        Text(
+                            text = title,
+                            color = cs.onSurface,
+                            fontSize = 19.sp,
+                            fontFamily = hindSiliguri,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
+                        if (subtitle.isNotBlank()) {
+                            Text(
+                                text = subtitle,
+                                color = cs.onSurfaceVariant,
+                                fontSize = 13.5.sp,
+                                fontFamily = hindSiliguri,
+                                fontWeight = FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = resolvedAccent.copy(alpha = if (isDark) 0.30f else 0.20f),
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(end = 6.dp),
+                        content = headerActions,
                     )
                 }
             }
@@ -1234,30 +1296,792 @@ internal fun MinimalFullScreenSheet(
             }
 
             if (bottomBar != null) {
-                Surface(
-                    color = headerBg,
-                    modifier = Modifier.fillMaxWidth(),
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    topHeaderFade.copy(alpha = 0.85f),
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = resolvedAccent.copy(alpha = if (isDark) 0.30f else 0.22f),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = maxContentWidth)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        bottomBar()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun HeaderSavePillButton(
+    text: String,
+    accent: Color,
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    testTag: String? = null,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
+    val canClick = enabled && !isLoading
+    Surface(
+        onClick = onClick,
+        enabled = canClick,
+        shape = CircleShape,
+        color = if (canClick) resolvedAccent else resolvedAccent.copy(alpha = if (isDark) 0.25f else 0.16f),
+        shadowElevation = 0.dp,
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .height(36.dp)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(15.dp),
+                    strokeWidth = 2.dp,
+                    color = if (canClick) Color.White else resolvedAccent,
+                )
+            } else {
+                Text(
+                    text = text,
+                    color = if (canClick) Color.White else cs.onSurfaceVariant,
+                    fontSize = 13.5.sp,
+                    fontFamily = hindSiliguri,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SHARED SHIMMER ENGINE & CONTENT-MATCHED CARD SKELETON LOADERS
+// Matches NotificationScreen shimmer animation & cadence across all app screens
+// ══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+internal fun rememberKlassShimmerBrush(isDark: Boolean): Brush {
+    val transition = rememberInfiniteTransition(label = "KlassShimmer")
+    val shimmerTranslate by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1200f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1050, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "KlassShimmerOffset",
+    )
+    val baseTone = if (isDark) Color(0xFF263349) else Color(0xFFE2E8F0)
+    val highlightTone = if (isDark) Color(0xFF3A4B69) else Color(0xFFF8FAFC)
+    return Brush.linearGradient(
+        colors = listOf(baseTone, highlightTone, baseTone),
+        start = Offset(shimmerTranslate - 340f, 0f),
+        end = Offset(shimmerTranslate, 280f),
+    )
+}
+
+/**
+ * Full-screen row-card shimmer skeleton (used by Directory, Blood Finder, Teachers, Books,
+ * Classrooms, and Admin Approvals). Each row mirrors the real feed layout for that screen.
+ */
+@Composable
+internal fun KlassRowListSkeleton(
+    isDark: Boolean,
+    modifier: Modifier = Modifier,
+    showHeaderBar: Boolean = true,
+    showActionPill: Boolean = false,
+    showChipRow: Boolean = false,
+    badgeSize: Dp = 48.dp,
+    badgeCornerRadius: Dp = 24.dp,
+    rowLineCount: Int = 2,
+) {
+    val shimmerBrush = rememberKlassShimmerBrush(isDark)
+    val cardOverlay = if (isDark) {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f)
+    } else {
+        Color.White.copy(alpha = 0.56f)
+    }
+    val titleWidths = remember { listOf(0.56f, 0.70f, 0.48f, 0.64f, 0.52f, 0.68f, 0.44f, 0.60f) }
+    val subWidths = remember { listOf(0.80f, 0.68f, 0.86f, 0.74f, 0.82f, 0.64f, 0.78f, 0.70f) }
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val rowCount = ((maxHeight / 78.dp).toInt() + 2).coerceIn(8, 22)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = false,
+            contentPadding = PaddingValues(bottom = 24.dp),
+        ) {
+            if (showHeaderBar) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 4.dp, height = 16.dp)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
                         )
                         Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .widthIn(max = maxContentWidth)
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                            ) {
-                                bottomBar()
+                            modifier = Modifier
+                                .width(150.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(shimmerBrush),
+                        )
+                    }
+                }
+            }
+            items(count = rowCount) { index ->
+                val tw = titleWidths[index % titleWidths.size]
+                val sw = subWidths[index % subWidths.size]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(cardOverlay)
+                        .padding(horizontal = 16.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(badgeSize)
+                            .clip(RoundedCornerShape(badgeCornerRadius))
+                            .background(shimmerBrush),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(tw)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(shimmerBrush),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(sw)
+                                .height(11.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(shimmerBrush),
+                        )
+                        if (rowLineCount >= 3 || showChipRow) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(58.dp)
+                                        .height(18.dp)
+                                        .clip(CircleShape)
+                                        .background(shimmerBrush),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .width(72.dp)
+                                        .height(18.dp)
+                                        .clip(CircleShape)
+                                        .background(shimmerBrush),
+                                )
                             }
                         }
                     }
+                    if (showActionPill) {
+                        Box(
+                            modifier = Modifier
+                                .width(84.dp)
+                                .height(34.dp)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
+                        )
+                    }
                 }
+                if (index < rowCount - 1) {
+                    SocialInsetDivider(startIndent = 16.dp + badgeSize + 12.dp)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Facebook-style Profile shimmer skeleton mirroring Cover + Rounded Shoulder + Avatar +
+ * Centered Name/Category/Bio + Dual CTA Pills + Tabs + Detail Rows.
+ */
+@Composable
+internal fun KlassProfileSkeleton(
+    isDark: Boolean,
+    topContentPadding: Dp = 0.dp,
+    modifier: Modifier = Modifier,
+) {
+    val shimmerBrush = rememberKlassShimmerBrush(isDark)
+    val sheetBg = if (isDark) Color(0xFF0F172A) else Color.White
+    val statusBarTop = if (topContentPadding == 0.dp) {
+        WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    } else {
+        0.dp
+    }
+    val coverHeight = statusBarTop + 188.dp
+    val avatarSize = 140.dp
+    val headerContainerHeight = coverHeight + 76.dp
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
+            .padding(bottom = 28.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(headerContainerHeight),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(coverHeight)
+                    .background(shimmerBrush),
+            )
+            Surface(
+                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+                color = sheetBg,
+                shadowElevation = 0.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(98.dp)
+                    .align(Alignment.BottomCenter),
+            ) {}
+            Surface(
+                shape = CircleShape,
+                color = sheetBg,
+                border = BorderStroke(4.dp, sheetBg),
+                shadowElevation = 0.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp)
+                    .size(avatarSize),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(shimmerBrush),
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(sheetBg)
+                .padding(horizontal = 16.dp)
+                .padding(top = 6.dp, bottom = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(190.dp)
+                    .height(22.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.76f)
+                    .height(13.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(shimmerBrush),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(shimmerBrush),
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(shimmerBrush),
+                )
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                repeat(3) { idx ->
+                    Box(
+                        modifier = Modifier
+                            .width(if (idx == 0) 64.dp else 86.dp)
+                            .height(34.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+        }
+
+        SocialSectionDividerBand(isDark = isDark, height = 8.dp)
+        repeat(6) { idx ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(sheetBg)
+                    .padding(horizontal = 16.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(shimmerBrush),
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(if (idx % 2 == 0) 0.34f else 0.42f)
+                            .height(11.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(shimmerBrush),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(if (idx % 2 == 0) 0.68f else 0.56f)
+                            .height(14.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+            if (idx < 5) SocialInsetDivider(startIndent = 66.dp)
+        }
+    }
+}
+
+/**
+ * Hero Banner + Sectioned Toggle/Form Card Shimmer Skeleton
+ * (used by Sign-in Controls & Teacher Preferences).
+ */
+@Composable
+internal fun KlassHeroAndToggleListSkeleton(
+    isDark: Boolean,
+    rowCount: Int = 4,
+    showSwitchPills: Boolean = true,
+    showChipGrid: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val shimmerBrush = rememberKlassShimmerBrush(isDark)
+    val cardOverlay = if (isDark) {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f)
+    } else {
+        Color.White.copy(alpha = 0.58f)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
+            .padding(vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        // Hero card skeleton
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(cardOverlay)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(shimmerBrush),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.58f)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(shimmerBrush),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.84f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerBrush),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(82.dp)
+                            .height(22.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(82.dp)
+                            .height(22.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+        }
+
+        if (showChipGrid) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(cardOverlay)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(130.dp)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(shimmerBrush),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(4) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
+                        )
+                    }
+                }
+            }
+        }
+
+        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+            repeat(rowCount) { idx ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(if (idx % 2 == 0) 0.52f else 0.64f)
+                                .height(15.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(shimmerBrush),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(if (idx % 2 == 0) 0.78f else 0.70f)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(shimmerBrush),
+                        )
+                    }
+                    if (showSwitchPills) {
+                        Box(
+                            modifier = Modifier
+                                .width(46.dp)
+                                .height(26.dp)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
+                        )
+                    }
+                }
+                if (idx < rowCount - 1) SocialInsetDivider(startIndent = 70.dp)
+            }
+        }
+    }
+}
+
+/**
+ * Routine Engine Configure tab shimmer skeleton (readiness pills + hero + config blocks + chips).
+ */
+@Composable
+internal fun KlassRoutineEngineSkeleton(
+    isDark: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shimmerBrush = rememberKlassShimmerBrush(isDark)
+    val cardOverlay = if (isDark) {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f)
+    } else {
+        Color.White.copy(alpha = 0.58f)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
+            .padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Readiness badge strip
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            repeat(3) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(34.dp)
+                        .clip(CircleShape)
+                        .background(shimmerBrush),
+                )
+            }
+        }
+
+        // Schedule Parameters surface block
+        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+            repeat(4) { idx ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.45f)
+                                .height(11.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(shimmerBrush),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.66f)
+                                .height(15.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(shimmerBrush),
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .width(64.dp)
+                            .height(28.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                }
+                if (idx < 3) SocialInsetDivider(startIndent = 66.dp)
+            }
+        }
+
+        // Semesters chip matrix block
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(cardOverlay)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(150.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(shimmerBrush),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(4) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                }
+            }
+        }
+
+        // Primary CTA bar skeleton
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(shimmerBrush),
+        )
+    }
+}
+
+/**
+ * Subject Preferences detail sheet skeleton for Teachers Directory sub-screen.
+ */
+@Composable
+internal fun KlassSubjectsDetailSkeleton(
+    isDark: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shimmerBrush = rememberKlassShimmerBrush(isDark)
+    val cardOverlay = if (isDark) {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f)
+    } else {
+        Color.White.copy(alpha = 0.58f)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
+            .padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        repeat(4) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(cardOverlay)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .height(15.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(shimmerBrush),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(110.dp)
+                            .height(32.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(135.dp)
+                            .height(32.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .width(148.dp)
+                        .height(32.dp)
+                        .clip(CircleShape)
+                        .background(shimmerBrush),
+                )
             }
         }
     }

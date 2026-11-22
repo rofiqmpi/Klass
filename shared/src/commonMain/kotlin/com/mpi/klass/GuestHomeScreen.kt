@@ -2,18 +2,36 @@ package com.mpi.klass
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,9 +44,16 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.mpi.klass.theme.ChevronRightIcon
+import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.ThemeMode
+import com.mpi.klass.theme.UsersGroupIcon
 import com.mpi.klass.theme.getHindSiliguriFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -57,6 +82,7 @@ fun GuestHomeScreen(
     var currentPhotoUrl by remember { mutableStateOf(initialSession?.photoUrl) }
 
     var publishedPlan by remember { mutableStateOf<RoutinePlan?>(null) }
+    var isRoutineLoading by remember { mutableStateOf(true) }
     var tempRoutineFilter by remember { mutableStateOf<RoutineQuickFilter?>(null) }
     var isRoutineFilterExpanded by remember { mutableStateOf(false) }
     var isDownloadingRoutine by remember { mutableStateOf(false) }
@@ -67,12 +93,29 @@ fun GuestHomeScreen(
     var isProfileSubOverlayOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        publishedPlan = fetchRoutinePlanFromFirestore("master_6m_published")
+        isRoutineLoading = true
+        try {
+            publishedPlan = fetchRoutinePlanFromFirestore("master_6m_published")
+        } finally {
+            isRoutineLoading = false
+        }
     }
 
     val hindSiliguri = getHindSiliguriFontFamily()
     val tabBackStack = remember { mutableStateListOf("home") }
     val selectedTab = tabBackStack.lastOrNull() ?: "home"
+
+    LaunchedEffect(publishedPlan, selectedTab) {
+        val permissionGranted = hasNotificationPermission()
+        val actionIds = PushScheduleMath.activeActionNotificationIds(
+            role = null,
+            studentProfile = null,
+            teacherPref = null,
+            publishedPlan = publishedPlan,
+            permissionGranted = permissionGranted,
+        )
+        NotificationSeenStore.setActiveIds(actionIds)
+    }
 
     fun navigateTo(tab: String) {
         when (tab) {
@@ -169,6 +212,7 @@ fun GuestHomeScreen(
         Column(modifier = Modifier.fillMaxSize()) {
                 HorizontalPager(
                     state = pagerState,
+                    beyondViewportPageCount = 1,
                     userScrollEnabled = overlayTab == null,
                     modifier = Modifier
                         .weight(1f)
@@ -195,62 +239,106 @@ fun GuestHomeScreen(
                                 ?: RoutineRules.SHIFT_1
                             val headerBadgeText = tempRoutineFilter?.toBadgeText() ?: ""
 
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                HomeRoutineHeader(
-                                    isDark = isDark,
-                                    cardBg = cardBg,
-                                    photoUrl = currentPhotoUrl,
-                                    avatarSeed = guestSeed,
-                                    onProfileClick = { navigateTo("profile") },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNotificationClick = { navigateTo("notification") },
-                                    titleText = headerBadgeText,
-                                    subtitleText = "",
-                                    isExpanded = isRoutineFilterExpanded,
-                                    onToggleExpand = { isRoutineFilterExpanded = !isRoutineFilterExpanded },
-                                    isDownloading = isDownloadingRoutine,
-                                    onDownloadClick = {
-                                        if (displayedEntries.isEmpty()) {
-                                            showToast("No classes to download")
-                                        } else if (!isDownloadingRoutine) {
-                                            isDownloadingRoutine = true
-                                            val label = headerBadgeText.ifBlank { "Class_Routine" }
-                                            coroutineScope.launch {
-                                                try {
-                                                    val res = downloadRoutinePdf(
-                                                        label = label,
-                                                        shift = activeShiftForTime,
-                                                        config = cfg,
-                                                        entries = displayedEntries,
-                                                    )
-                                                    res.onSuccess { msg -> showToast(msg) }
-                                                        .onFailure { err -> showToast(err.message ?: "Could not save routine PDF") }
-                                                } finally {
-                                                    isDownloadingRoutine = false
-                                                }
-                                            }
-                                        }
-                                    },
-                                    activeTempFilter = tempRoutineFilter,
-                                    defaultFilter = RoutineQuickFilter(),
-                                    onTempFilterChange = { updated -> tempRoutineFilter = updated },
-                                )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    Spacer(
+                                        modifier = Modifier
+                                            .statusBarsPadding()
+                                            .height(56.dp),
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                            .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        ClassRoutineTable(
+                                            hindSiliguri = hindSiliguri,
+                                            isDark = isDark,
+                                            entries = displayedEntries,
+                                            periodsPerDay = cfg.periodsPerDay,
+                                            shift = activeShiftForTime,
+                                            config = cfg,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+                                }
+
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = isRoutineFilterExpanded,
+                                    enter = fadeIn(tween(80)),
+                                    exit = fadeOut(tween(110)),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(15f),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = if (isDark) 0.34f else 0.14f))
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = { isRoutineFilterExpanded = false },
+                                            ),
+                                    )
+                                }
 
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .weight(1f)
-                                        .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
-                                    contentAlignment = Alignment.Center,
+                                        .align(Alignment.TopCenter)
+                                        .zIndex(25f),
                                 ) {
-                                    ClassRoutineTable(
-                                        hindSiliguri = hindSiliguri,
+                                    HomeRoutineHeader(
                                         isDark = isDark,
-                                        entries = displayedEntries,
-                                        periodsPerDay = cfg.periodsPerDay,
-                                        shift = activeShiftForTime,
-                                        config = cfg,
-                                        modifier = Modifier.fillMaxSize(),
+                                        cardBg = cardBg,
+                                        photoUrl = currentPhotoUrl,
+                                        avatarSeed = guestSeed,
+                                        onProfileClick = {
+                                            isRoutineFilterExpanded = false
+                                            navigateTo("profile")
+                                        },
+                                        onAiClick = {
+                                            isRoutineFilterExpanded = false
+                                            navigateTo("messenger")
+                                        },
+                                        onNotificationClick = {
+                                            isRoutineFilterExpanded = false
+                                            navigateTo("notification")
+                                        },
+                                        titleText = headerBadgeText,
+                                        subtitleText = "",
+                                        isExpanded = isRoutineFilterExpanded,
+                                        onToggleExpand = { isRoutineFilterExpanded = !isRoutineFilterExpanded },
+                                        isDownloading = isDownloadingRoutine,
+                                        onDownloadClick = {
+                                            if (displayedEntries.isEmpty()) {
+                                                showToast("No classes to download")
+                                            } else if (!isDownloadingRoutine) {
+                                                isDownloadingRoutine = true
+                                                val label = headerBadgeText.ifBlank { "Class_Routine" }
+                                                coroutineScope.launch {
+                                                    try {
+                                                        val res = downloadRoutinePdf(
+                                                            label = label,
+                                                            shift = activeShiftForTime,
+                                                            config = cfg,
+                                                            entries = displayedEntries,
+                                                        )
+                                                        res.onSuccess { msg -> showToast(msg) }
+                                                            .onFailure { err -> showToast(err.message ?: "Could not save routine PDF") }
+                                                    } finally {
+                                                        isDownloadingRoutine = false
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        activeTempFilter = tempRoutineFilter,
+                                        defaultFilter = RoutineQuickFilter(),
+                                        onTempFilterChange = { updated -> tempRoutineFilter = updated },
                                     )
                                 }
                             }
@@ -269,7 +357,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messenger") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -291,6 +379,8 @@ fun GuestHomeScreen(
                                         onClassroomClick = { navigateTo("classrooms") },
                                         onBloodFinderClick = { navigateTo("blood_finder") },
                                         onAppearanceClick = { navigateTo("appearance") },
+                                        onMessagesClick = { navigateTo("messenger") },
+                                        onSignInClick = onSwitchToLogin,
                                         topContentPadding = 0.dp,
                                     )
                                 }
@@ -333,7 +423,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messenger") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -384,7 +474,7 @@ fun GuestHomeScreen(
                                             isDark = isDark,
                                             showAi = true,
                                             showNotification = false,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messenger") },
                                         )
                                     },
                                 )
@@ -418,7 +508,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messenger") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -449,7 +539,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messenger") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -475,6 +565,119 @@ fun GuestHomeScreen(
                             onThemeModeChange = onThemeModeChange,
                             onBack = { goBack() },
                         )
+                    }
+                    "messenger" -> {
+                        val cs = MaterialTheme.colorScheme
+                        val aiAccent = KlassFeaturePalette.ai(isDark)
+                        val fbBlue = Color(0xFF0866FF)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .rainbowScreenBackground(isDark)
+                                .navigationBarsPadding(),
+                        ) {
+                            GoogleTopAppBar(
+                                title = "মেসেজ".localized(),
+                                hindSiliguri = hindSiliguri,
+                                onNavigationClick = { goBack() },
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp),
+                            ) {
+                                GoogleSectionHeader(
+                                    title = "AI Assistant",
+                                    accent = aiAccent.primary,
+                                    hindSiliguri = hindSiliguri,
+                                )
+                                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { navigateTo("ai") }
+                                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                                            .testTag("guest_messenger_zed_ai_row"),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = aiAccent.softTint,
+                                            border = BorderStroke(1.dp, aiAccent.borderTint),
+                                            modifier = Modifier.size(48.dp),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = SparkleIcon,
+                                                    contentDescription = "Zed AI",
+                                                    tint = aiAccent.primary,
+                                                    modifier = Modifier.size(22.dp),
+                                                )
+                                            }
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                Text(
+                                                    text = "Zed AI",
+                                                    color = cs.onSurface,
+                                                    fontSize = 15.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = hindSiliguri,
+                                                )
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = aiAccent.softTint,
+                                                    border = BorderStroke(0.5.dp, aiAccent.borderTint),
+                                                ) {
+                                                    Text(
+                                                        text = "AI",
+                                                        color = aiAccent.primary,
+                                                        fontSize = 10.5.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontFamily = hindSiliguri,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                                    )
+                                                }
+                                            }
+                                            Text(
+                                                text = "Ask Zed AI 1-to-1 about routines, books & MPI campus",
+                                                color = cs.onSurfaceVariant,
+                                                fontSize = 13.sp,
+                                                fontFamily = hindSiliguri,
+                                                maxLines = 1,
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = ChevronRightIcon,
+                                            contentDescription = null,
+                                            tint = cs.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                ) {
+                                    KlassEmptyState(
+                                        icon = UsersGroupIcon,
+                                        title = "সবাইকে খুঁজুন".localized(),
+                                        subtitle = "Sign in to chat 1-to-1 with MPI students & teachers.",
+                                        accent = fbBlue,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        actionLabel = "সাইন ইন করুন".localized(),
+                                        onActionClick = onSwitchToLogin,
+                                    )
+                                }
+                            }
+                        }
                     }
                     "ai" -> {
                         Box(

@@ -38,7 +38,8 @@ kotlin {
             implementation(libs.coil.network.okhttp)
             implementation(project.dependencies.platform(libs.firebase.bom.get()))
             // implementation(libs.firebase.ai) // Removed: Zed AI uses local app data only
-            implementation("com.google.firebase:firebase-firestore")
+            implementation(libs.firebase.firestore)
+            implementation(libs.firebase.auth)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -50,12 +51,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.gitlive.firebase.common)
-            implementation(libs.gitlive.firebase.auth)
-            implementation(libs.gitlive.firebase.database)
-            implementation(libs.gitlive.firebase.firestore)
             implementation(libs.coil.compose)
-            implementation(libs.coil.svg)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

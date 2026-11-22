@@ -7,9 +7,14 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -57,13 +62,18 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.AppTheme
+import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.CloseIcon
+import com.mpi.klass.theme.InfoCircleIcon
+import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.getHindSiliguriFontFamily
 import com.mpi.klass.theme.loadThemeMode
@@ -74,6 +84,7 @@ import kotlin.math.sin
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.error404
 import klass.shared.generated.resources.timeouterror
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
@@ -87,6 +98,7 @@ sealed interface AppScreen {
         val photoUrl: String? = null,
         // Initial tab to show on entry ("home" or "profile")
         val initialTab: String = "home",
+        val showPasswordSetupOnEntry: Boolean = false,
     ) : AppScreen
 }
 
@@ -247,12 +259,14 @@ fun App(
                                     RoleConfig.saveAdminEmail(cleanEmail, userName, finalAdminPhoto)
                                     RoleConfig.saveUserProfile(cleanEmail, userName, finalAdminPhoto, "google", UserRole.ADMIN.name)
                                     saveUserSession(UserSession(role = UserRole.ADMIN.name, email = cleanEmail, name = userName, photoUrl = finalAdminPhoto))
+                                    val hasPassword = RoleConfig.hasPasswordSet(cleanEmail)
                                     triggerWelcomePush(userName, "Admin")
                                     currentScreen = AppScreen.RoleHome(
                                         role = UserRole.ADMIN,
                                         email = cleanEmail,
                                         name = userName,
                                         photoUrl = finalAdminPhoto,
+                                        showPasswordSetupOnEntry = !hasPassword,
                                     )
                                     isLoadingOverlay = false
                                 }
@@ -329,6 +343,7 @@ fun App(
 
                         RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
                         saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = finalName, photoUrl = finalPhoto))
+                        val hasPassword = RoleConfig.hasPasswordSet(cleanEmail)
                         val roleTitle = when (actualRole) {
                             UserRole.ADMIN -> "Admin"
                             UserRole.TEACHER -> "Teacher"
@@ -340,6 +355,7 @@ fun App(
                             email = cleanEmail,
                             name = finalName,
                             photoUrl = finalPhoto,
+                            showPasswordSetupOnEntry = !hasPassword,
                         )
                         isLoadingOverlay = false
                     }
@@ -347,6 +363,42 @@ fun App(
 
                 else -> {
                     isLoadingOverlay = false
+                }
+            }
+        }
+    }
+
+    fun launchEmailPasswordLogin(emailInput: String, passwordInput: String) {
+        isLoadingOverlay = true
+        coroutineScope.launch {
+            when (val res = RoleConfig.loginWithEmailPassword(emailInput, passwordInput)) {
+                is EmailPasswordLoginResult.Success -> {
+                    saveUserSession(
+                        UserSession(
+                            role = res.role.name,
+                            email = res.email,
+                            name = res.name,
+                            photoUrl = res.photoUrl,
+                        )
+                    )
+                    val roleTitle = when (res.role) {
+                        UserRole.ADMIN -> "Admin"
+                        UserRole.TEACHER -> "Teacher"
+                        UserRole.STUDENT -> "Student"
+                    }
+                    triggerWelcomePush(res.name, roleTitle)
+                    currentScreen = AppScreen.RoleHome(
+                        role = res.role,
+                        email = res.email,
+                        name = res.name,
+                        photoUrl = res.photoUrl,
+                        showPasswordSetupOnEntry = false,
+                    )
+                    isLoadingOverlay = false
+                }
+                is EmailPasswordLoginResult.Error -> {
+                    isLoadingOverlay = false
+                    showError(res.errorType, res.detail)
                 }
             }
         }
@@ -412,6 +464,9 @@ fun App(
                                 onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
                                 onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
                                 onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
+                                onEmailPasswordLogin = { emailInput, passwordInput ->
+                                    launchEmailPasswordLogin(emailInput, passwordInput)
+                                },
                                 onCloseApp = onCloseApp,
                             )
                         }
@@ -450,6 +505,7 @@ fun App(
                                         currentScreen = screen.copy(name = newName, photoUrl = newPhotoUrl)
                                     },
                                     initialTab = screen.initialTab,
+                                    promptPasswordSetup = screen.showPasswordSetupOnEntry,
                                 )
                             }
                         }
@@ -497,11 +553,17 @@ fun App(
                     }
                 }
 
-                // Error Image Popup Overlay with Theme-Aware Card & Floating Close Button
+                // Error Popup Card Overlay (modal card with scrim)
                 AnimatedVisibility(
                     visible = activeErrorType != null,
-                    enter = fadeIn(animationSpec = tween(300)),
-                    exit = fadeOut(animationSpec = tween(300)),
+                    enter = fadeIn(animationSpec = tween(200)) + scaleIn(
+                        initialScale = 0.92f,
+                        animationSpec = spring(dampingRatio = 0.78f, stiffness = 700f),
+                    ),
+                    exit = fadeOut(animationSpec = tween(160)) + scaleOut(
+                        targetScale = 0.94f,
+                        animationSpec = tween(160),
+                    ),
                     modifier = Modifier.zIndex(100f),
                 ) {
                     val errorLang = if (currentScreen is AppScreen.Welcome) appLanguage else AppLanguage.ENGLISH
@@ -517,10 +579,100 @@ fun App(
                         )
                     }
                 }
+
+                // Designed Floating Toast Overlay
+                AppToastHost(
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .zIndex(120f),
+                )
             }
         }
     }
 }
+}
+
+@Composable
+private fun AppToastHost(
+    isDark: Boolean,
+    hindSiliguri: androidx.compose.ui.text.font.FontFamily,
+    modifier: Modifier = Modifier,
+) {
+    val activeToast = AppToastState.currentToast
+    var lastToast by remember { mutableStateOf<AppToastMessage?>(null) }
+    if (activeToast != null) {
+        lastToast = activeToast
+    }
+
+    LaunchedEffect(activeToast?.id) {
+        val currentId = activeToast?.id ?: return@LaunchedEffect
+        delay(2400L)
+        AppToastState.dismiss(currentId)
+    }
+
+    AnimatedVisibility(
+        visible = activeToast != null,
+        enter = fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 2 },
+        exit = fadeOut(tween(180)) + slideOutVertically(tween(180)) { it / 2 },
+        modifier = modifier
+            .padding(horizontal = 20.dp, vertical = 22.dp),
+    ) {
+        val display = activeToast ?: lastToast ?: return@AnimatedVisibility
+        val accent = when (display.tone) {
+            AppToastTone.SUCCESS -> KlassFeaturePalette.success(isDark).primary
+            AppToastTone.ERROR -> KlassFeaturePalette.error(isDark).primary
+            AppToastTone.INFO -> KlassFeaturePalette.routine(isDark).primary
+        }
+        val icon = when (display.tone) {
+            AppToastTone.SUCCESS -> CheckIcon
+            AppToastTone.ERROR -> ShieldIcon
+            AppToastTone.INFO -> InfoCircleIcon
+        }
+        val surfaceBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.96f) else Color(0xFFFFFFFF).copy(alpha = 0.97f)
+        val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = surfaceBg,
+            border = BorderStroke(1.dp, accent.copy(alpha = if (isDark) 0.55f else 0.40f)),
+            shadowElevation = 8.dp,
+            onClick = { AppToastState.dismiss(display.id) },
+            modifier = Modifier
+                .padding(bottom = 52.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = accent.copy(alpha = if (isDark) 0.24f else 0.14f),
+                    modifier = Modifier.size(26.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = display.message,
+                    color = textColor,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = hindSiliguri,
+                    maxLines = 2,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
+            }
+        }
+    }
 }
 
 
@@ -609,139 +761,171 @@ fun ErrorImagePopup(
     }
 
     val cardBgColor = if (isDark) Color(0xFF151F32) else Color.White
-    val borderColor = titleColor.copy(alpha = if (isDark) 0.44f else 0.32f)
-    val stepsBgColor = titleColor.copy(alpha = if (isDark) 0.11f else 0.06f)
-    val stepsBorderColor = titleColor.copy(alpha = if (isDark) 0.34f else 0.24f)
+    val borderColor = titleColor.copy(alpha = if (isDark) 0.45f else 0.30f)
+    val stepsBgColor = titleColor.copy(alpha = if (isDark) 0.12f else 0.06f)
+    val stepsBorderColor = titleColor.copy(alpha = if (isDark) 0.30f else 0.20f)
 
     val textColorPrimary = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val textColorSecondary = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569)
     val fontBengali = getHindSiliguriFontFamily()
 
+    AppBackHandler(enabled = true) { onDismiss() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.65f))
+            .zIndex(100f)
+            .background(Color.Black.copy(alpha = if (isDark) 0.64f else 0.46f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onDismiss,
-            ),
+            )
+            .padding(horizontal = 20.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
+        Surface(
+            shape = RoundedCornerShape(26.dp),
+            color = cardBgColor,
+            border = BorderStroke(1.dp, borderColor),
+            shadowElevation = 14.dp,
             modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .wrapContentHeight()
-                .navigationBarsPadding()
-                .clickable(enabled = false) {},
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .fillMaxWidth()
+                .heightIn(max = 580.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                )
+                .testTag("error_popup_card"),
         ) {
-            Surface(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 540.dp),
-                shape = RoundedCornerShape(22.dp),
-                color = cardBgColor,
-                border = BorderStroke(1.dp, borderColor),
-                shadowElevation = 16.dp,
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Image(
-                        painter = painterResource(drawableRes),
-                        contentDescription = "Error Illustration",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(144.dp)
-                            .clip(RoundedCornerShape(14.dp)),
-                        contentScale = ContentScale.Fit,
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = title.localized(),
-                        fontFamily = fontBengali,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.5.sp,
-                        color = titleColor,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = description.localized(),
-                        fontFamily = fontBengali,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 13.5.sp,
-                        color = textColorSecondary,
-                        lineHeight = 19.sp,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        color = stepsBgColor,
-                        border = BorderStroke(1.dp, stepsBorderColor),
+                        shape = CircleShape,
+                        color = titleColor.copy(alpha = if (isDark) 0.22f else 0.12f),
+                        border = BorderStroke(0.75.dp, titleColor.copy(alpha = 0.35f)),
+                        modifier = Modifier.size(36.dp),
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text(
-                                text = "করণীয়:".localized(),
-                                fontFamily = fontBengali,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.5.sp,
-                                color = textColorPrimary,
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = ShieldIcon,
+                                contentDescription = null,
+                                tint = titleColor,
+                                modifier = Modifier.size(18.dp),
                             )
-
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            steps.forEach { stepText ->
-                                Row(
-                                    modifier = Modifier.padding(vertical = 3.dp),
-                                    verticalAlignment = Alignment.Top,
-                                ) {
-                                    Text(
-                                        text = "• ",
-                                        fontFamily = fontBengali,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                        color = titleColor,
-                                    )
-                                    Text(
-                                        text = stepText.localized(),
-                                        fontFamily = fontBengali,
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 12.5.sp,
-                                        color = textColorSecondary,
-                                        lineHeight = 17.5.sp,
-                                    )
-                                }
-                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    WelcomeMinimal3DButton(
-                        text = "ঠিক আছে".localized(),
-                        hindSiliguri = fontBengali,
-                        isDark = isDark,
-                        customPrimaryColor = titleColor,
-                        height = 46.dp,
-                        modifier = Modifier.fillMaxWidth(),
+                    androidx.compose.material3.IconButton(
                         onClick = onDismiss,
-                    )
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("error_screen_close_button"),
+                    ) {
+                        Icon(
+                            imageVector = CloseIcon,
+                            contentDescription = "Close",
+                            tint = textColorSecondary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
+
+                Image(
+                    painter = painterResource(drawableRes),
+                    contentDescription = "Error Illustration",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(126.dp)
+                        .clip(RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Fit,
+                )
+
+                Text(
+                    text = title.localized(),
+                    fontFamily = fontBengali,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 19.sp,
+                    color = titleColor,
+                    textAlign = TextAlign.Center,
+                )
+
+                Text(
+                    text = description.localized(),
+                    fontFamily = fontBengali,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 13.5.sp,
+                    color = textColorSecondary,
+                    lineHeight = 19.5.sp,
+                    textAlign = TextAlign.Center,
+                )
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = stepsBgColor,
+                    border = BorderStroke(0.75.dp, stepsBorderColor),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "করণীয়:".localized(),
+                            fontFamily = fontBengali,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            color = textColorPrimary,
+                        )
+                        steps.forEach { stepText ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Text(
+                                    text = "• ",
+                                    fontFamily = fontBengali,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = titleColor,
+                                )
+                                Text(
+                                    text = stepText.localized(),
+                                    fontFamily = fontBengali,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 12.5.sp,
+                                    color = textColorSecondary,
+                                    lineHeight = 18.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                WelcomeMinimal3DButton(
+                    text = "ঠিক আছে".localized(),
+                    hindSiliguri = fontBengali,
+                    isDark = isDark,
+                    customPrimaryColor = titleColor,
+                    height = 46.dp,
+                    cornerRadius = 23.dp,
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

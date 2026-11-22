@@ -1,9 +1,5 @@
 package com.mpi.klass
 
-import dev.gitlive.firebase.Firebase
-import dev.gitlive.firebase.auth.auth
-import dev.gitlive.firebase.database.database
-import dev.gitlive.firebase.firestore.firestore
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -38,11 +34,30 @@ data class UserProfile(
     val updatedAt: Long = 0L,
 )
 
+enum class ProfilePrivacy(
+    val key: String,
+    val labelBn: String,
+) {
+    PUBLIC("PUBLIC", "পাবলিক"),
+    CONNECTIONS("CONNECTIONS", "শুধু কানেকশন"),
+    PRIVATE("PRIVATE", "প্রাইভেট");
+
+    companion object {
+        fun fromKey(raw: String?): ProfilePrivacy = when (raw?.trim()?.uppercase()) {
+            "CONNECTIONS", "FRIENDS" -> CONNECTIONS
+            "PRIVATE", "ONLY_ME" -> PRIVATE
+            else -> PUBLIC
+        }
+    }
+}
+
 // Student / User Profile model supporting all Personal and Academic fields
 data class StudentProfile(
     val email: String = "",
     val name: String = "",
+    val bio: String = "",
     val photoUrl: String? = null,
+    val coverPhotoUrl: String? = null,
     val semester: String = "",
     val shift: String = "",
     val department: String = "",
@@ -62,7 +77,11 @@ data class StudentProfile(
     val registrationNumber: String = "",
     val profileSetupComplete: Boolean = true,
     val registeredAt: Long = 0L,
-)
+    val fieldPrivacy: Map<String, ProfilePrivacy> = emptyMap(),
+) {
+    fun privacyFor(fieldKey: String, defaultPrivacy: ProfilePrivacy = ProfilePrivacy.PUBLIC): ProfilePrivacy =
+        fieldPrivacy[fieldKey] ?: defaultPrivacy
+}
 
 data class SignInControlConfig(
     val adminSignInEnabled: Boolean = true,
@@ -113,11 +132,158 @@ data class LibraryBook(
     val updatedAt: Long = 0L,
 )
 
+sealed class EmailPasswordLoginResult {
+    data class Success(
+        val role: UserRole,
+        val email: String,
+        val name: String,
+        val photoUrl: String? = null,
+    ) : EmailPasswordLoginResult()
+
+    data class Error(
+        val errorType: ErrorImageType,
+        val detail: String? = null,
+    ) : EmailPasswordLoginResult()
+}
+
+enum class PasswordStrengthLevel {
+    EMPTY,
+    WEAK,
+    FAIR,
+    GOOD,
+    STRONG,
+}
+
+data class PasswordSecurityEvaluation(
+    val hasMinLength: Boolean = false,
+    val hasUppercase: Boolean = false,
+    val hasLowercase: Boolean = false,
+    val hasDigit: Boolean = false,
+    val hasSpecialChar: Boolean = false,
+    val hasNoWhitespace: Boolean = false,
+    val notCommonOrEmailDerived: Boolean = true,
+    val score: Int = 0, // 0..4 segments
+    val progress: Float = 0f,
+    val level: PasswordStrengthLevel = PasswordStrengthLevel.EMPTY,
+    val isAcceptable: Boolean = false,
+)
+
+private val COMMON_WEAK_PASSWORDS = setOf(
+    "password", "password1", "password123", "12345678", "123456789", "1234567890",
+    "qwerty123", "qwertyui", "admin123", "letmein1", "welcome1", "abc12345",
+    "11111111", "00000000", "iloveyou", "pass@123", "admin@123",
+)
+
+fun evaluatePasswordStrength(password: String, email: String = ""): PasswordSecurityEvaluation {
+    if (password.isEmpty()) return PasswordSecurityEvaluation()
+
+    val hasMinLength = password.length >= 8
+    val hasUppercase = password.any { it in 'A'..'Z' }
+    val hasLowercase = password.any { it in 'a'..'z' }
+    val hasDigit = password.any { it in '0'..'9' }
+    val hasSpecialChar = password.any { !it.isLetterOrDigit() && !it.isWhitespace() }
+    val hasNoWhitespace = password.none { it.isWhitespace() }
+
+    val lowerPw = password.lowercase()
+    val emailLocal = email.trim().lowercase().substringBefore("@")
+    val containsEmailPart = emailLocal.length >= 3 && lowerPw.contains(emailLocal)
+    val isCommonWeak = lowerPw in COMMON_WEAK_PASSWORDS || password.toSet().size <= 2
+    val notCommonOrEmailDerived = !containsEmailPart && !isCommonWeak
+
+    val criteriaMetCount = listOf(
+        hasMinLength,
+        hasUppercase && hasLowercase,
+        hasDigit,
+        hasSpecialChar,
+    ).count { it }
+
+    val isAcceptable = hasMinLength &&
+        hasUppercase &&
+        hasLowercase &&
+        hasDigit &&
+        hasSpecialChar &&
+        hasNoWhitespace &&
+        notCommonOrEmailDerived
+
+    val rawScore = when {
+        !hasNoWhitespace || !notCommonOrEmailDerived -> 1
+        criteriaMetCount == 0 -> 1
+        criteriaMetCount == 1 -> 1
+        criteriaMetCount == 2 -> 2
+        criteriaMetCount == 3 -> 3
+        isAcceptable && password.length >= 10 -> 4
+        isAcceptable -> 4
+        else -> 3
+    }.coerceIn(1, 4)
+
+    val level = when {
+        !hasNoWhitespace || !notCommonOrEmailDerived -> PasswordStrengthLevel.WEAK
+        rawScore <= 1 -> PasswordStrengthLevel.WEAK
+        rawScore == 2 -> PasswordStrengthLevel.FAIR
+        rawScore == 3 -> PasswordStrengthLevel.GOOD
+        else -> PasswordStrengthLevel.STRONG
+    }
+
+    return PasswordSecurityEvaluation(
+        hasMinLength = hasMinLength,
+        hasUppercase = hasUppercase,
+        hasLowercase = hasLowercase,
+        hasDigit = hasDigit,
+        hasSpecialChar = hasSpecialChar,
+        hasNoWhitespace = hasNoWhitespace,
+        notCommonOrEmailDerived = notCommonOrEmailDerived,
+        score = rawScore,
+        progress = rawScore / 4f,
+        level = level,
+        isAcceptable = isAcceptable,
+    )
+}
+
+fun validateLoginPassword(
+    password: String,
+    confirmPassword: String? = null,
+    email: String = "",
+): String? {
+    val eval = evaluatePasswordStrength(password, email)
+    if (password.isEmpty()) {
+        return "লগইন পাসওয়ার্ড লিখুন"
+    }
+    if (!eval.hasNoWhitespace) {
+        return "পাসওয়ার্ডে কোনো স্পেস ব্যবহার করা যাবে না"
+    }
+    if (!eval.hasMinLength) {
+        return "লগইন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে"
+    }
+    if (!eval.notCommonOrEmailDerived) {
+        return "ইমেইল বা সহজ পাসওয়ার্ডের পরিবর্তে শক্তিশালী পাসওয়ার্ড দিন"
+    }
+    if (!eval.hasUppercase || !eval.hasLowercase) {
+        return "পাসওয়ার্ডে অন্তত একটি বড় (A-Z) ও একটি ছোট (a-z) অক্ষর থাকতে হবে"
+    }
+    if (!eval.hasDigit) {
+        return "পাসওয়ার্ডে অন্তত একটি সংখ্যা (0-9) থাকতে হবে"
+    }
+    if (!eval.hasSpecialChar) {
+        return "পাসওয়ার্ডে অন্তত একটি বিশেষ চিহ্ন (@, #, $, ! ইত্যাদি) থাকতে হবে"
+    }
+    if (confirmPassword != null && password != confirmPassword) {
+        return "উভয় পাসওয়ার্ড একরকম হতে হবে"
+    }
+    return null
+}
+
 expect fun saveLocalProfile(email: String, name: String, photoUrl: String?, provider: String, category: String)
 expect fun fetchLocalProfile(email: String): UserProfile?
 expect fun fetchLocalStudentProfile(email: String): StudentProfile?
 expect fun deleteLocalProfile(email: String)
 expect fun updateLocalCategory(email: String, category: String)
+expect suspend fun setOrUpdateLoginPassword(
+    email: String,
+    newPassword: String,
+    currentPassword: String? = null,
+): Result<Unit>
+expect suspend fun checkHasLoginPassword(email: String): Boolean
+expect suspend fun signInWithEmailAndPasswordAccount(email: String, password: String): EmailPasswordLoginResult
 expect suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean
 expect suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
 expect suspend fun saveTeacherInFirestore(email: String, name: String, photoUrl: String?, provider: String): Result<Unit>
@@ -274,9 +440,6 @@ object RoleConfig {
 
         deleteLocalProfile(cleanEmail)
         deleteUserFromFirestore(cleanEmail, role.name)
-        try {
-            Firebase.auth.currentUser?.delete()
-        } catch (_: Exception) {}
 
         clearUserSession()
         return Result.success(Unit)
@@ -334,4 +497,14 @@ object RoleConfig {
     suspend fun saveLibraryBook(book: LibraryBook): Result<Unit> = saveLibraryBookInFirestore(book)
     suspend fun deleteLibraryBook(bookId: String): Result<Unit> = deleteLibraryBookFromFirestore(bookId)
     suspend fun seedBtebLibraryBooks(forceReseed: Boolean = false): Result<Int> = seedBtebLibraryBooksInFirestore(forceReseed)
+    suspend fun saveLoginPassword(
+        email: String,
+        newPassword: String,
+        currentPassword: String? = null,
+    ): Result<Unit> =
+        setOrUpdateLoginPassword(email, newPassword, currentPassword)
+    suspend fun hasPasswordSet(email: String): Boolean =
+        checkHasLoginPassword(email)
+    suspend fun loginWithEmailPassword(email: String, password: String): EmailPasswordLoginResult =
+        signInWithEmailAndPasswordAccount(email, password)
 }

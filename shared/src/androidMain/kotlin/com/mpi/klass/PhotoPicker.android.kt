@@ -50,15 +50,26 @@ actual fun rememberPhotoPickerLauncher(onPhotoPicked: (String) -> Unit): () -> U
     }
 }
 
-actual fun resolveProfileImageModel(photoUrl: String?): Any? {
-    if (photoUrl.isNullOrBlank()) return null
-    if (photoUrl.startsWith("data:image", ignoreCase = true) && photoUrl.contains("base64,", ignoreCase = true)) {
+private object DecodedAvatarCache {
+    private val cache = android.util.LruCache<String, ByteArray>(24)
+
+    fun getOrDecode(photoUrl: String): ByteArray? {
+        cache.get(photoUrl)?.let { return it }
         return try {
             val base64Part = photoUrl.substringAfter("base64,")
-            Base64.decode(base64Part, Base64.DEFAULT)
+            val decoded = Base64.decode(base64Part, Base64.DEFAULT)
+            cache.put(photoUrl, decoded)
+            decoded
         } catch (_: Exception) {
             null
         }
+    }
+}
+
+actual fun resolveProfileImageModel(photoUrl: String?): Any? {
+    if (photoUrl.isNullOrBlank()) return null
+    if (photoUrl.startsWith("data:image", ignoreCase = true) && photoUrl.contains("base64,", ignoreCase = true)) {
+        return DecodedAvatarCache.getOrDecode(photoUrl)
     }
     return photoUrl
 }

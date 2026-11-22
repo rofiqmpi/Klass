@@ -25,8 +25,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -195,12 +195,13 @@ fun BloodFinderScreen(
 
                     when {
                         isLoading && donors.isEmpty() -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(color = bloodAccent.primary, strokeWidth = 2.5.dp)
-                            }
+                            KlassRowListSkeleton(
+                                isDark = isDark,
+                                showHeaderBar = true,
+                                showActionPill = false,
+                                badgeSize = 46.dp,
+                                badgeCornerRadius = 23.dp,
+                            )
                         }
 
                         filteredDonors.isEmpty() -> {
@@ -408,69 +409,40 @@ private fun DonorDetailSubScreen(
         hindSiliguri = hindSiliguri,
         onDismiss = onDismiss,
         closeTestTag = "donor_detail_back_button",
-        bottomBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                if (donor.phone.isNotBlank()) {
-                    GoogleOutlinedButton(
-                        text = "Copy Phone",
-                        icon = CopyIcon,
-                        hindSiliguri = hindSiliguri,
-                        height = 48.dp,
-                        contentColor = bloodAccent.primary,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            clipboard.setText(AnnotatedString(donor.phone))
-                            showToast("Phone number copied!")
-                        },
+        headerActions = {
+            if (donor.phone.isNotBlank()) {
+                IconButton(
+                    onClick = {
+                        clipboard.setText(AnnotatedString(donor.phone))
+                        showToast("Phone number copied!")
+                    },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(
+                        imageVector = CopyIcon,
+                        contentDescription = "Copy Phone",
+                        tint = bloodAccent.primary,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
-                WelcomeMinimal3DButton(
-                    text = "Call Donor",
-                    icon = PhoneSolidIcon,
-                    hindSiliguri = hindSiliguri,
-                    isDark = isDark,
-                    customPrimaryColor = callAccent.primary,
-                    customBaseColor = callAccent.deep,
-                    height = 48.dp,
-                    cornerRadius = 16.dp,
-                    testTag = "donor_detail_call_button",
-                    modifier = Modifier.weight(if (donor.phone.isNotBlank()) 1.25f else 1f),
-                    onClick = { openPhoneDialer(donor.phone) },
-                )
             }
+            HeaderSavePillButton(
+                text = "Call",
+                accent = callAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                testTag = "donor_detail_call_button",
+                onClick = { openPhoneDialer(donor.phone) },
+            )
         },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(vertical = 12.dp),
+                .padding(vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                val badges = buildList {
-                    add(donor.bloodGroup to bloodAccent.primary)
-                    if (donor.roleLabel.isNotBlank()) {
-                        add(donor.roleLabel to KlassFeaturePalette.profile(isDark).primary)
-                    }
-                    if (donor.department.isNotBlank()) {
-                        add(RoutineRules.normalizeDepartmentShort(donor.department) to deptAccent.primary)
-                    }
-                }
-                KlassHeroBanner(
-                    title = donor.name.ifBlank { "MPI Member" },
-                    subtitle = "Verified MPI Blood Donor",
-                    icon = DropletIcon,
-                    accent = bloodAccent.primary,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                    badges = badges,
-                )
-            }
-
             SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                 KlassDetailFieldRow(
                     label = "Blood Group",

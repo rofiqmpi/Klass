@@ -8,6 +8,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +21,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,7 +43,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,9 +58,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.mpi.klass.theme.BackArrowIcon
 import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CalendarDaysIcon
 import com.mpi.klass.theme.CheckIcon
@@ -71,14 +82,19 @@ import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.RightArrowIcon
+import com.mpi.klass.theme.SearchIcon
 import com.mpi.klass.theme.ThemeMode
+import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.departmentAccent
 import com.mpi.klass.theme.getHindSiliguriFontFamily
+import klass.shared.generated.resources.Res
+import klass.shared.generated.resources.notification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun RoleHomeScreen(
@@ -93,10 +109,14 @@ fun RoleHomeScreen(
     onBackToWelcome: () -> Unit = {},
     onProfileUpdated: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
     initialTab: String = "home",
+    promptPasswordSetup: Boolean = false,
 ) {
     var currentUserName by remember(userName) { mutableStateOf(userName) }
     var currentPhotoUrl by remember(photoUrl) { mutableStateOf(photoUrl) }
     var currentRole by remember(role) { mutableStateOf(role) }
+    var showNewSignInPasswordDialog by remember(email, promptPasswordSetup) {
+        mutableStateOf(promptPasswordSetup && email.isNotBlank())
+    }
 
     var studentProfile by remember(email) {
         mutableStateOf(if (email.isNotBlank()) fetchLocalStudentProfile(email.trim().lowercase()) else null)
@@ -104,6 +124,7 @@ fun RoleHomeScreen(
     var teacherPref by remember(email) { mutableStateOf<TeacherSchedulingPref?>(null) }
     var teacherOnboardingDismissed by remember(email) { mutableStateOf(false) }
     var publishedPlan by remember { mutableStateOf<RoutinePlan?>(null) }
+    var isRoutineLoading by remember { mutableStateOf(true) }
     var classrooms by remember { mutableStateOf<List<ClassroomItem>>(emptyList()) }
 
     // Selected slot modal (for Teacher Edit Request or Details)
@@ -138,9 +159,48 @@ fun RoleHomeScreen(
     var isClassroomSubOverlayOpen by remember { mutableStateOf(false) }
     var isRoutineSubOverlayOpen by remember { mutableStateOf(false) }
     var isProfileSubOverlayOpen by remember { mutableStateOf(false) }
+    var isProfileEditing by remember(email) { mutableStateOf(false) }
     var isNotificationsSubOverlayOpen by remember { mutableStateOf(false) }
     var isBloodFinderSubOverlayOpen by remember { mutableStateOf(false) }
     var isTeacherPrefsSubOverlayOpen by remember { mutableStateOf(false) }
+    val cleanUserEmail = email.trim().lowercase()
+    var directoryMembers by remember(email) { mutableStateOf<List<DirectoryMember>>(emptyList()) }
+    var userConnections by remember(email) { mutableStateOf<List<ConnectionRecord>>(emptyList()) }
+    var isSocialLoading by remember(email) { mutableStateOf(false) }
+    var selectedChatPeer by remember { mutableStateOf<DirectoryMember?>(null) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    val liveConnections = if (cleanUserEmail.isNotBlank() && SocialChatState.connectionsOwnerEmail == cleanUserEmail) {
+        SocialChatState.connections
+    } else {
+        userConnections
+    }
+    val incomingRequestCount = if (cleanUserEmail.isNotBlank()) {
+        liveConnections.count {
+            !it.status.equals("ACCEPTED", ignoreCase = true) &&
+                it.receiverEmail.trim().lowercase() == cleanUserEmail
+        }
+    } else {
+        0
+    }
+
+    fun refreshSocialData(force: Boolean = false) {
+        if (cleanUserEmail.isBlank() || isSocialLoading) return
+        if (!force && directoryMembers.isNotEmpty() && liveConnections.isNotEmpty()) return
+        coroutineScope.launch {
+            isSocialLoading = true
+            try {
+                directoryMembers = fetchCampusDirectoryMembers(cleanUserEmail)
+                val fetched = fetchConnectionsForUser(cleanUserEmail)
+                userConnections = fetched
+                SocialChatState.publishConnections(cleanUserEmail, fetched)
+            } finally {
+                isSocialLoading = false
+            }
+        }
+    }
 
     fun navigateTo(tab: String) {
         when (tab) {
@@ -156,6 +216,9 @@ fun RoleHomeScreen(
             else -> {
                 if (selectedTab != tab) {
                     tabBackStack.add(tab)
+                }
+                if (tab == "messages" || tab == "friends") {
+                    refreshSocialData(force = directoryMembers.isEmpty())
                 }
             }
         }
@@ -205,12 +268,35 @@ fun RoleHomeScreen(
                 RoleConfig.seedBtebLibraryBooks(forceReseed = false)
             }
         }
-        publishedPlan = fetchRoutinePlanFromFirestore("master_6m_published")
+        isRoutineLoading = true
+        try {
+            publishedPlan = fetchRoutinePlanFromFirestore("master_6m_published")
+        } finally {
+            isRoutineLoading = false
+        }
         classrooms = fetchClassroomsFromFirestore()
+        if (cleanEmail.isNotBlank()) {
+            isSocialLoading = true
+            try {
+                directoryMembers = fetchCampusDirectoryMembers(cleanEmail)
+                val fetchedConnections = fetchConnectionsForUser(cleanEmail)
+                userConnections = fetchedConnections
+                SocialChatState.publishConnections(cleanEmail, fetchedConnections)
+                startChatRelayListener(cleanEmail)
+            } finally {
+                isSocialLoading = false
+            }
+        }
     }
 
-    LaunchedEffect(publishedPlan, currentRole, studentProfile, email) {
-        val plan = publishedPlan ?: return@LaunchedEffect
+    DisposableEffect(cleanUserEmail) {
+        onDispose {
+            stopChatRelayListener()
+        }
+    }
+
+    LaunchedEffect(publishedPlan, currentRole, studentProfile, teacherPref, selectedTab, email) {
+        val plan = publishedPlan
         val userEntries = PushScheduleMath.filterUserEntriesForAlerts(
             plan = plan,
             role = currentRole,
@@ -218,7 +304,7 @@ fun RoleHomeScreen(
             studentProfile = studentProfile,
         )
         val prefs = getNotificationPrefs()
-        if (prefs.enabled && userEntries.isNotEmpty()) {
+        val alerts = if (plan != null && prefs.enabled && userEntries.isNotEmpty()) {
             syncAutomaticClassPushNotifications(
                 entries = userEntries,
                 config = plan.config,
@@ -227,10 +313,19 @@ fun RoleHomeScreen(
             )
         } else {
             cancelAllClassPushNotifications()
+            emptyList()
         }
+        val permissionGranted = hasNotificationPermission()
+        val actionIds = PushScheduleMath.activeActionNotificationIds(
+            role = currentRole,
+            studentProfile = studentProfile,
+            teacherPref = teacherPref,
+            publishedPlan = plan,
+            permissionGranted = permissionGranted,
+        )
+        NotificationSeenStore.setActiveIds(actionIds + alerts.map { it.id })
     }
 
-    val coroutineScope = rememberCoroutineScope()
     val cardBg = if (isDark) Color(0xFF1E293B).copy(alpha = 0.86f) else Color.White.copy(alpha = 0.86f)
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
@@ -256,6 +351,12 @@ fun RoleHomeScreen(
 
     val activeBaseTab = tabBackStack.lastOrNull { it == "home" || it == "menu" } ?: "home"
     val overlayTab = if (selectedTab == "home" || selectedTab == "menu") null else selectedTab
+
+    LaunchedEffect(overlayTab) {
+        if (overlayTab != "profile") {
+            isProfileEditing = false
+        }
+    }
 
     val pagerState = rememberPagerState(
         initialPage = if (initialTab == "menu") 1 else 0,
@@ -300,6 +401,7 @@ fun RoleHomeScreen(
         Column(modifier = Modifier.fillMaxSize()) {
                 HorizontalPager(
                     state = pagerState,
+                    beyondViewportPageCount = 1,
                     userScrollEnabled = overlayTab == null,
                     modifier = Modifier
                         .weight(1f)
@@ -431,66 +533,110 @@ fun RoleHomeScreen(
                                 else -> ""
                             }
 
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                HomeRoutineHeader(
-                                    isDark = isDark,
-                                    cardBg = cardBg,
-                                    photoUrl = currentPhotoUrl,
-                                    avatarSeed = email.ifBlank { currentUserName },
-                                    onProfileClick = { navigateTo("profile") },
-                                    onAiClick = { navigateTo("ai") },
-                                    onNotificationClick = { navigateTo("notification") },
-                                    titleText = headerBadgeText,
-                                    subtitleText = "",
-                                    isExpanded = isRoutineFilterExpanded,
-                                    onToggleExpand = { isRoutineFilterExpanded = !isRoutineFilterExpanded },
-                                    isDownloading = isDownloadingRoutine,
-                                    onDownloadClick = {
-                                        if (displayedEntries.isEmpty()) {
-                                            showToast("No classes to download")
-                                        } else if (!isDownloadingRoutine) {
-                                            isDownloadingRoutine = true
-                                            val label = headerBadgeText.ifBlank {
-                                                if (currentRole == UserRole.TEACHER) "Teacher_Routine" else "Class_Routine"
-                                            }
-                                            coroutineScope.launch {
-                                                try {
-                                                    val res = downloadRoutinePdf(
-                                                        label = label,
-                                                        shift = activeShiftForTime,
-                                                        config = activeConfig,
-                                                        entries = displayedEntries,
-                                                    )
-                                                    res.onSuccess { msg -> showToast(msg) }
-                                                        .onFailure { err -> showToast(err.message ?: "Could not save routine PDF") }
-                                                } finally {
-                                                    isDownloadingRoutine = false
-                                                }
-                                            }
-                                        }
-                                    },
-                                    activeTempFilter = tempRoutineFilter,
-                                    defaultFilter = defaultQuickFilter,
-                                    onTempFilterChange = { updated -> tempRoutineFilter = updated },
-                                )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    Spacer(
+                                        modifier = Modifier
+                                            .statusBarsPadding()
+                                            .height(56.dp),
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                            .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        ClassRoutineTable(
+                                            hindSiliguri = hindSiliguri,
+                                            isDark = isDark,
+                                            entries = displayedEntries,
+                                            periodsPerDay = activeConfig.periodsPerDay,
+                                            shift = activeShiftForTime,
+                                            config = activeConfig,
+                                            showGroupOrRoomHint = currentRole == UserRole.TEACHER && tempRoutineFilter == null,
+                                            onSlotClick = { entry -> inspectedEntry = entry },
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+                                }
+
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = isRoutineFilterExpanded,
+                                    enter = fadeIn(tween(80)),
+                                    exit = fadeOut(tween(110)),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(15f),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = if (isDark) 0.34f else 0.14f))
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                                onClick = { isRoutineFilterExpanded = false },
+                                            ),
+                                    )
+                                }
 
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .weight(1f)
-                                        .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 8.dp),
-                                    contentAlignment = Alignment.Center,
+                                        .align(Alignment.TopCenter)
+                                        .zIndex(25f),
                                 ) {
-                                    ClassRoutineTable(
-                                        hindSiliguri = hindSiliguri,
+                                    HomeRoutineHeader(
                                         isDark = isDark,
-                                        entries = displayedEntries,
-                                        periodsPerDay = activeConfig.periodsPerDay,
-                                        shift = activeShiftForTime,
-                                        config = activeConfig,
-                                        showGroupOrRoomHint = currentRole == UserRole.TEACHER && tempRoutineFilter == null,
-                                        onSlotClick = { entry -> inspectedEntry = entry },
-                                        modifier = Modifier.fillMaxSize(),
+                                        cardBg = cardBg,
+                                        photoUrl = currentPhotoUrl,
+                                        avatarSeed = email.ifBlank { currentUserName },
+                                        onProfileClick = {
+                                            isRoutineFilterExpanded = false
+                                            navigateTo("profile")
+                                        },
+                                        onAiClick = {
+                                            isRoutineFilterExpanded = false
+                                            navigateTo("messages")
+                                        },
+                                        onNotificationClick = {
+                                            isRoutineFilterExpanded = false
+                                            navigateTo("notification")
+                                        },
+                                        titleText = headerBadgeText,
+                                        subtitleText = "",
+                                        isExpanded = isRoutineFilterExpanded,
+                                        onToggleExpand = { isRoutineFilterExpanded = !isRoutineFilterExpanded },
+                                        isDownloading = isDownloadingRoutine,
+                                        onDownloadClick = {
+                                            if (displayedEntries.isEmpty()) {
+                                                showToast("No classes to download")
+                                            } else if (!isDownloadingRoutine) {
+                                                isDownloadingRoutine = true
+                                                val label = headerBadgeText.ifBlank {
+                                                    if (currentRole == UserRole.TEACHER) "Teacher_Routine" else "Class_Routine"
+                                                }
+                                                coroutineScope.launch {
+                                                    try {
+                                                        val res = downloadRoutinePdf(
+                                                            label = label,
+                                                            shift = activeShiftForTime,
+                                                            config = activeConfig,
+                                                            entries = displayedEntries,
+                                                        )
+                                                        res.onSuccess { msg -> showToast(msg) }
+                                                            .onFailure { err -> showToast(err.message ?: "Could not save routine PDF") }
+                                                    } finally {
+                                                        isDownloadingRoutine = false
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        activeTempFilter = tempRoutineFilter,
+                                        defaultFilter = defaultQuickFilter,
+                                        onTempFilterChange = { updated -> tempRoutineFilter = updated },
                                     )
                                 }
                             }
@@ -509,7 +655,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -537,6 +683,17 @@ fun RoleHomeScreen(
                                         onAppearanceClick = { navigateTo("appearance") },
                                         onSignInControlClick = { navigateTo("admin_signin_control") },
                                         onAdminApprovalsClick = { navigateTo("admin_approvals") },
+                                        unreadMessagesCount = SocialChatState.totalUnreadMessages,
+                                        incomingRequestsCount = incomingRequestCount,
+                                        onMessagesClick = { navigateTo("messages") },
+                                        onConnectionsClick = { navigateTo("friends") },
+                                        onSignOutClick = {
+                                            stopChatRelayListener()
+                                            SocialChatState.clearConnections()
+                                            clearUserSession()
+                                            onSignOut()
+                                        },
+                                        onDeleteAccountClick = { showDeleteAccountDialog = true },
                                         topContentPadding = 0.dp,
                                     )
                                 }
@@ -567,82 +724,221 @@ fun RoleHomeScreen(
             ) { tab ->
                 when (tab) {
                     "profile" -> {
-                        Column(
+                        val hasUnread = NotificationSeenStore.hasUnread()
+                        val cs = MaterialTheme.colorScheme
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .rainbowScreenBackground(isDark),
                         ) {
-                            AnimatedVisibility(visible = !isProfileSubOverlayOpen) {
-                                GoogleTopAppBar(
-                                    title = "Profile",
-                                    hindSiliguri = hindSiliguri,
-                                    onNavigationClick = { goBack() },
-                                    actions = {
-                                        HeaderAiNotificationActions(
-                                            isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
-                                            onNotificationClick = { navigateTo("notification") },
+                            ProfileScreen(
+                                userName = currentUserName,
+                                role = currentRole,
+                                isDark = isDark,
+                                currentThemeMode = currentThemeMode,
+                                onThemeModeChange = onThemeModeChange,
+                                onSignOut = {
+                                    stopChatRelayListener()
+                                    SocialChatState.clearConnections()
+                                    clearUserSession()
+                                    onSignOut()
+                                },
+                                hindSiliguri = hindSiliguri,
+                                email = email,
+                                photoUrl = currentPhotoUrl,
+                                connections = liveConnections,
+                                directoryMembers = directoryMembers,
+                                onOpenConnections = { navigateTo("friends") },
+                                onOpenChat = { peer ->
+                                    selectedChatPeer = peer
+                                    navigateTo("chat")
+                                },
+                                topContentPadding = 0.dp,
+                                isEditingMode = isProfileEditing,
+                                onEditingModeChange = { isProfileEditing = it },
+                                onFullScreenOverlayChange = { isProfileSubOverlayOpen = it },
+                                onOpenTeachingPrefs = if (currentRole == UserRole.TEACHER) {
+                                    { navigateTo("teacher_prefs") }
+                                } else {
+                                    null
+                                },
+                                onUpdateProfile = { newName, newPhotoUrl ->
+                                    currentUserName = newName
+                                    currentPhotoUrl = newPhotoUrl
+                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
+                                    if (sessionEmail.isNotBlank()) {
+                                        saveLocalProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                        saveUserSession(
+                                            UserSession(
+                                                role = currentRole.name,
+                                                email = sessionEmail,
+                                                name = newName,
+                                                photoUrl = newPhotoUrl,
+                                            )
                                         )
-                                    },
-                                )
-                            }
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                                ProfileScreen(
-                                    userName = currentUserName,
-                                    role = currentRole,
-                                    isDark = isDark,
-                                    currentThemeMode = currentThemeMode,
-                                    onThemeModeChange = onThemeModeChange,
-                                    onSignOut = onSignOut,
-                                    hindSiliguri = hindSiliguri,
-                                    email = email,
-                                    photoUrl = currentPhotoUrl,
-                                    topContentPadding = 0.dp,
-                                    onFullScreenOverlayChange = { isProfileSubOverlayOpen = it },
-                                    onOpenTeachingPrefs = if (currentRole == UserRole.TEACHER) {
-                                        { navigateTo("teacher_prefs") }
-                                    } else {
-                                        null
-                                    },
-                                    onUpdateProfile = { newName, newPhotoUrl ->
-                                        currentUserName = newName
-                                        currentPhotoUrl = newPhotoUrl
-                                        val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }.trim().lowercase()
-                                        if (sessionEmail.isNotBlank()) {
-                                            saveLocalProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
-                                            saveUserSession(
-                                                UserSession(
-                                                    role = currentRole.name,
-                                                    email = sessionEmail,
-                                                    name = newName,
-                                                    photoUrl = newPhotoUrl,
+                                        CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+                                            if (currentRole == UserRole.ADMIN) {
+                                                RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
+                                            }
+                                            RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
+                                            studentProfile = RoleConfig.fetchStudentProfile(sessionEmail)
+                                        }
+                                    }
+                                    onProfileUpdated?.invoke(newName, newPhotoUrl)
+                                },
+                                onCategoryChanged = { newRole ->
+                                    currentRole = newRole
+                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
+                                    if (sessionEmail.isNotBlank()) {
+                                        saveUserSession(
+                                            UserSession(
+                                                role = newRole.name,
+                                                email = sessionEmail,
+                                                name = currentUserName,
+                                                photoUrl = currentPhotoUrl,
+                                            )
+                                        )
+                                    }
+                                },
+                            )
+
+                            AnimatedVisibility(
+                                visible = !isProfileSubOverlayOpen && !isProfileEditing,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .zIndex(5f),
+                            ) {
+                                val overlayCircleBg = Color.Black.copy(alpha = 0.36f)
+                                val overlayCircleBorder = Color.White.copy(alpha = 0.28f)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = 0.48f),
+                                                    Color.Black.copy(alpha = 0.16f),
+                                                    Color.Transparent,
                                                 )
                                             )
-                                            CoroutineScope(Dispatchers.IO + NonCancellable).launch {
-                                                if (currentRole == UserRole.ADMIN) {
-                                                    RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
-                                                }
-                                                RoleConfig.saveUserProfile(sessionEmail, newName, newPhotoUrl, "google", currentRole.name)
-                                                studentProfile = RoleConfig.fetchStudentProfile(sessionEmail)
+                                        ),
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .statusBarsPadding()
+                                            .height(56.dp)
+                                            .padding(horizontal = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Surface(
+                                            onClick = { goBack() },
+                                            shape = CircleShape,
+                                            color = overlayCircleBg,
+                                            border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                            shadowElevation = 0.dp,
+                                            modifier = Modifier
+                                                .minimumInteractiveComponentSize()
+                                                .size(40.dp)
+                                                .testTag("profile_back_button"),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                                Icon(
+                                                    imageVector = BackArrowIcon,
+                                                    contentDescription = "Back",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
                                             }
                                         }
-                                        onProfileUpdated?.invoke(newName, newPhotoUrl)
-                                    },
-                                    onCategoryChanged = { newRole ->
-                                        currentRole = newRole
-                                        val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
-                                        if (sessionEmail.isNotBlank()) {
-                                            saveUserSession(
-                                                UserSession(
-                                                    role = newRole.name,
-                                                    email = sessionEmail,
-                                                    name = currentUserName,
-                                                    photoUrl = currentPhotoUrl,
-                                                )
-                                            )
+
+                                        Spacer(modifier = Modifier.weight(1f))
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            Surface(
+                                                onClick = { isProfileEditing = true },
+                                                shape = CircleShape,
+                                                color = overlayCircleBg,
+                                                border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                                shadowElevation = 0.dp,
+                                                modifier = Modifier
+                                                    .minimumInteractiveComponentSize()
+                                                    .size(40.dp)
+                                                    .testTag("profile_edit_button"),
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                                    Icon(
+                                                        imageVector = EditIcon,
+                                                        contentDescription = "এডিট করুন".localized(),
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                onClick = { navigateTo("friends") },
+                                                shape = CircleShape,
+                                                color = overlayCircleBg,
+                                                border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                                shadowElevation = 0.dp,
+                                                modifier = Modifier
+                                                    .minimumInteractiveComponentSize()
+                                                    .size(40.dp)
+                                                    .testTag("profile_search_people_button"),
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                                    Icon(
+                                                        imageVector = SearchIcon,
+                                                        contentDescription = "সবাইকে খুঁজুন".localized(),
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                }
+                                            }
+
+                                            Box {
+                                                Surface(
+                                                    onClick = { navigateTo("notification") },
+                                                    shape = CircleShape,
+                                                    color = overlayCircleBg,
+                                                    border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                                    shadowElevation = 0.dp,
+                                                    modifier = Modifier
+                                                        .minimumInteractiveComponentSize()
+                                                        .size(40.dp)
+                                                        .testTag("top_bar_notification_button"),
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                                        Icon(
+                                                            painter = painterResource(Res.drawable.notification),
+                                                            contentDescription = "Notifications",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    }
+                                                }
+                                                if (hasUnread) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .offset(x = (-1).dp, y = 1.dp)
+                                                            .size(10.dp)
+                                                            .clip(CircleShape)
+                                                            .background(Color.White)
+                                                            .padding(1.5.dp)
+                                                            .clip(CircleShape)
+                                                            .background(Color(0xFFEF4444))
+                                                            .testTag("top_bar_notification_unread_dot"),
+                                                    )
+                                                }
+                                            }
                                         }
-                                    },
-                                )
+                                    }
+                                }
                             }
                         }
                     }
@@ -662,7 +958,7 @@ fun RoleHomeScreen(
                                             isDark = isDark,
                                             showAi = true,
                                             showNotification = false,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                         )
                                     },
                                 )
@@ -697,7 +993,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -728,7 +1024,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -759,7 +1055,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -790,7 +1086,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -825,7 +1121,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -867,7 +1163,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
+                                            onAiClick = { navigateTo("messages") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -923,6 +1219,63 @@ fun RoleHomeScreen(
                             )
                         }
                     }
+                    "messages" -> {
+                        MessagesScreen(
+                            viewerEmail = cleanUserEmail,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            members = directoryMembers,
+                            connections = liveConnections,
+                            isLoading = isSocialLoading,
+                            onRefresh = { refreshSocialData(force = true) },
+                            onBack = { goBack() },
+                            onOpenFriends = { navigateTo("friends") },
+                            onOpenChat = { peer ->
+                                selectedChatPeer = peer
+                                navigateTo("chat")
+                            },
+                            onOpenAiChat = { navigateTo("ai") },
+                        )
+                    }
+                    "friends" -> {
+                        FriendsScreen(
+                            viewerEmail = cleanUserEmail,
+                            viewerName = currentUserName,
+                            viewerPhotoUrl = currentPhotoUrl,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            members = directoryMembers,
+                            connections = liveConnections,
+                            isLoading = isSocialLoading,
+                            onRefresh = { refreshSocialData(force = true) },
+                            onBack = { goBack() },
+                            onOpenMessages = { navigateTo("messages") },
+                            onOpenChat = { peer ->
+                                selectedChatPeer = peer
+                                navigateTo("chat")
+                            },
+                            onConnectionsChanged = { updated ->
+                                userConnections = updated
+                                SocialChatState.publishConnections(cleanUserEmail, updated)
+                            },
+                        )
+                    }
+                    "chat" -> {
+                        val activePeer = selectedChatPeer
+                        if (activePeer != null) {
+                            DirectChatScreen(
+                                viewerEmail = cleanUserEmail,
+                                viewerName = currentUserName,
+                                viewerPhotoUrl = currentPhotoUrl,
+                                peer = activePeer,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                onBack = { goBack() },
+                            )
+                        } else {
+                            LaunchedEffect(Unit) { goBack() }
+                        }
+                    }
                 }
             }
             // Slot Inspection / Teacher Edit Request Dialog (inside root Box)
@@ -942,6 +1295,52 @@ fun RoleHomeScreen(
                         inspectedEntry = null
                         navigateTo("routine_manager")
                     },
+                )
+            }
+
+            // New Sign-In Prompt to set an Email + Password login password
+            if (showNewSignInPasswordDialog && email.isNotBlank() && selectedTab != "teacher_prefs") {
+                LoginPasswordSetupDialog(
+                    email = email.trim().lowercase(),
+                    hasExistingPassword = false,
+                    isOnboardingPrompt = true,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    onSuccess = { showNewSignInPasswordDialog = false },
+                    onDismiss = { showNewSignInPasswordDialog = false },
+                )
+            }
+
+            if (showDeleteAccountDialog) {
+                KlassConfirmDialog(
+                    title = "ডিলিট একাউন্ট".localized(),
+                    message = "আপনি কি নিশ্চিতভাবে আপনার অ্যাকাউন্টটি চিরতরে ডিলিট করতে চান? এটি করলে আপনার সকল তথ্য মুছে যাবে।".localized(),
+                    icon = TrashCanIcon,
+                    accent = KlassFeaturePalette.error(isDark).primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    confirmText = if (isDeletingAccount) "মুছে ফেলা হচ্ছে...".localized() else "হ্যাঁ".localized(),
+                    cancelText = "বাতিল".localized(),
+                    isDestructive = true,
+                    confirmTestTag = "confirm_delete_account_button",
+                    cancelTestTag = "cancel_delete_account_button",
+                    onConfirm = {
+                        if (!isDeletingAccount) {
+                            isDeletingAccount = true
+                            coroutineScope.launch {
+                                if (cleanUserEmail.isNotBlank()) {
+                                    RoleConfig.deleteAccountFromFirebase(cleanUserEmail, currentRole)
+                                }
+                                stopChatRelayListener()
+                                SocialChatState.clearConnections()
+                                clearUserSession()
+                                isDeletingAccount = false
+                                showDeleteAccountDialog = false
+                                onSignOut()
+                            }
+                        }
+                    },
+                    onDismiss = { if (!isDeletingAccount) showDeleteAccountDialog = false },
                 )
             }
     }
@@ -983,7 +1382,6 @@ private fun SlotInspectionDialog(
 
     // Sub-screen navigation stack inside SlotInspection:
     // 0 = Slot Detail (Level 1)
-    // 1 = Room Quick-Peek (Level 2)
     // 2 = Request Edit Step 1: Select Day/Period/Room (Level 2)
     // 3 = Request Edit Step 2: Review & Reason Confirm (Level 3)
     var subStep by remember(entry) { mutableIntStateOf(0) }
@@ -991,7 +1389,7 @@ private fun SlotInspectionDialog(
     var reqDay by remember(entry) { mutableStateOf(entry.day) }
     var reqPeriod by remember(entry) { mutableIntStateOf(entry.periodIndex) }
     var reqRoom by remember(entry) { mutableStateOf(entry.roomNumber) }
-    var reqReason by remember(entry) { mutableStateOf("") }
+    var reqReason by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
     val matchedRoom = remember(entry, classrooms) {
@@ -999,6 +1397,9 @@ private fun SlotInspectionDialog(
     }
 
     val metaFields = remember(entry, matchedRoom, isDark) {
+        val roomDetail = matchedRoom?.let {
+            "Room ${entry.roomNumber} (${entry.shift}) • ${it.roomType.label} • Cap ${it.capacity}"
+        } ?: "Room ${entry.roomNumber} (${entry.shift})"
         listOf(
             SlotMetaField(
                 label = "Schedule",
@@ -1014,10 +1415,9 @@ private fun SlotInspectionDialog(
             ),
             SlotMetaField(
                 label = "Classroom / Lab",
-                value = "Room ${entry.roomNumber} (${entry.shift})",
+                value = roomDetail,
                 icon = DoorOpenIcon,
                 accent = roomAccent.primary,
-                onClick = if (matchedRoom != null) { { subStep = 1 } } else null,
             ),
             SlotMetaField(
                 label = "Instructor",
@@ -1088,45 +1488,23 @@ private fun SlotInspectionDialog(
             onDismiss = { if (!isSubmitting) onDismiss() },
             dismissEnabled = !isSubmitting,
             maxContentWidth = 760.dp,
-            bottomBar = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    GoogleOutlinedButton(
-                        text = "Close",
+            headerActions = {
+                if (role == UserRole.TEACHER) {
+                    HeaderSavePillButton(
+                        text = "Request",
+                        accent = slotAccent.primary,
+                        isDark = isDark,
                         hindSiliguri = hindSiliguri,
-                        enabled = !isSubmitting,
-                        height = 48.dp,
-                        contentColor = cs.onSurface,
-                        modifier = Modifier.weight(1f),
-                        onClick = onDismiss,
+                        onClick = { subStep = 2 },
                     )
-                    if (role == UserRole.TEACHER) {
-                        WelcomeMinimal3DButton(
-                            text = "Request Change",
-                            icon = EditIcon,
-                            hindSiliguri = hindSiliguri,
-                            isDark = isDark,
-                            customPrimaryColor = slotAccent.primary,
-                            customBaseColor = slotAccent.deep,
-                            height = 48.dp,
-                            modifier = Modifier.weight(1.35f),
-                            onClick = { subStep = 2 },
-                        )
-                    } else if (role == UserRole.ADMIN) {
-                        WelcomeMinimal3DButton(
-                            text = "Edit in Engine",
-                            icon = EditIcon,
-                            hindSiliguri = hindSiliguri,
-                            isDark = isDark,
-                            customPrimaryColor = slotAccent.primary,
-                            customBaseColor = slotAccent.deep,
-                            height = 48.dp,
-                            modifier = Modifier.weight(1.35f),
-                            onClick = onOpenRoutineManager,
-                        )
-                    }
+                } else if (role == UserRole.ADMIN) {
+                    HeaderSavePillButton(
+                        text = "Edit Engine",
+                        accent = slotAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        onClick = onOpenRoutineManager,
+                    )
                 }
             },
         ) {
@@ -1135,22 +1513,7 @@ private fun SlotInspectionDialog(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
             ) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    KlassHeroBanner(
-                        title = entry.subjectTitle,
-                        subtitle = "${entry.department} • ${RoutineRules.semesterDisplayLabel(entry.semester)}",
-                        icon = if (entry.isPractical) GraduationCapIcon else BookIcon,
-                        accent = slotAccent.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        badges = listOf(
-                            (if (entry.isPractical) "Lab Session" else "Theory Class") to slotAccent.primary,
-                            "Room ${entry.roomNumber}" to roomAccent.primary,
-                            "${entry.startTime}–${entry.endTime}" to booksAccent.primary,
-                        ),
-                    )
-                }
-
+                Spacer(modifier = Modifier.height(10.dp))
                 GoogleSectionHeader(
                     title = "Class Metadata",
                     accent = slotAccent.primary,
@@ -1165,21 +1528,6 @@ private fun SlotInspectionDialog(
                             accent = field.accent,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
-                            onClick = field.onClick,
-                            trailingContent = if (field.onClick != null) {
-                                {
-                                    KlassTonalButton(
-                                        text = "Room Info",
-                                        accent = roomAccent.primary,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                        height = 36.dp,
-                                        onClick = field.onClick,
-                                    )
-                                }
-                            } else {
-                                null
-                            },
                         )
                         if (idx < metaFields.lastIndex) {
                             SocialInsetDivider(startIndent = 68.dp)
@@ -1187,72 +1535,6 @@ private fun SlotInspectionDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        // Level 2A: Room Quick-Peek Sub-Sub-Screen
-        KlassSubScreenHost(visible = subStep == 1 && matchedRoom != null, zIndex = 92f) {
-            val room = matchedRoom
-            if (room != null) {
-                MinimalFullScreenSheet(
-                    title = "Room ${room.roomNumber}",
-                    subtitle = "${room.roomType.label} • ${room.shifts.joinToString(", ")}",
-                    levelLabel = "Routine › Slot › Room Info",
-                    icon = DoorOpenIcon,
-                    accent = roomAccent.primary,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                    onDismiss = { subStep = 0 },
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                            KlassHeroBanner(
-                                title = "Room ${room.roomNumber}",
-                                subtitle = room.department.ifBlank { "Shared Campus Facility" },
-                                icon = DoorOpenIcon,
-                                accent = roomAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                badges = listOf(
-                                    room.roomType.label to roomAccent.primary,
-                                    "Capacity ${room.capacity}" to booksAccent.primary,
-                                ),
-                            )
-                        }
-                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                            KlassDetailFieldRow(
-                                label = "Room Type",
-                                value = room.roomType.label,
-                                icon = InfoCircleIcon,
-                                accent = roomAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                            )
-                            SocialInsetDivider(startIndent = 68.dp)
-                            KlassDetailFieldRow(
-                                label = "Seating Capacity",
-                                value = "${room.capacity} Students",
-                                icon = PersonIcon,
-                                accent = booksAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                            )
-                            SocialInsetDivider(startIndent = 68.dp)
-                            KlassDetailFieldRow(
-                                label = "Primary Department",
-                                value = room.department.ifBlank { "General / Multi-Department" },
-                                icon = GraduationCapIcon,
-                                accent = teacherAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                            )
-                        }
-                    }
-                }
             }
         }
 
@@ -1267,31 +1549,14 @@ private fun SlotInspectionDialog(
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
                 onDismiss = { subStep = 0 },
-                bottomBar = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        GoogleOutlinedButton(
-                            text = "Back",
-                            hindSiliguri = hindSiliguri,
-                            height = 48.dp,
-                            contentColor = cs.onSurface,
-                            modifier = Modifier.weight(1f),
-                            onClick = { subStep = 0 },
-                        )
-                        WelcomeMinimal3DButton(
-                            text = "Continue",
-                            icon = RightArrowIcon,
-                            hindSiliguri = hindSiliguri,
-                            isDark = isDark,
-                            customPrimaryColor = slotAccent.primary,
-                            customBaseColor = slotAccent.deep,
-                            height = 48.dp,
-                            modifier = Modifier.weight(1.3f),
-                            onClick = { subStep = 3 },
-                        )
-                    }
+                headerActions = {
+                    HeaderSavePillButton(
+                        text = "Next",
+                        accent = slotAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        onClick = { subStep = 3 },
+                    )
                 },
             ) {
                 Column(
@@ -1415,34 +1680,16 @@ private fun SlotInspectionDialog(
                 hindSiliguri = hindSiliguri,
                 onDismiss = { if (!isSubmitting) subStep = 2 },
                 dismissEnabled = !isSubmitting,
-                bottomBar = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        GoogleOutlinedButton(
-                            text = "Back",
-                            hindSiliguri = hindSiliguri,
-                            enabled = !isSubmitting,
-                            height = 48.dp,
-                            contentColor = cs.onSurface,
-                            modifier = Modifier.weight(1f),
-                            onClick = { subStep = 2 },
-                        )
-                        WelcomeMinimal3DButton(
-                            text = if (isSubmitting) "Submitting..." else "Submit Request",
-                            icon = CheckIcon,
-                            hindSiliguri = hindSiliguri,
-                            isDark = isDark,
-                            customPrimaryColor = successAccent.primary,
-                            customBaseColor = successAccent.deep,
-                            isLoading = isSubmitting,
-                            enabled = !isSubmitting,
-                            height = 48.dp,
-                            modifier = Modifier.weight(1.4f),
-                            onClick = { submitEditRequest() },
-                        )
-                    }
+                headerActions = {
+                    HeaderSavePillButton(
+                        text = if (isSubmitting) "..." else "Submit",
+                        accent = successAccent.primary,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        isLoading = isSubmitting,
+                        enabled = !isSubmitting,
+                        onClick = { submitEditRequest() },
+                    )
                 },
             ) {
                 Column(
@@ -1452,18 +1699,25 @@ private fun SlotInspectionDialog(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    KlassHeroBanner(
-                        title = "${entry.subjectTitle} (${entry.subjectCode})",
-                        subtitle = "${entry.department} • ${entry.group}",
-                        icon = CheckIcon,
-                        accent = successAccent.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        badges = listOf(
-                            "From: ${entry.day} P${entry.periodIndex + 1} (${entry.roomNumber})" to booksAccent.primary,
-                            "To: $reqDay P${reqPeriod + 1} (${reqRoom.ifBlank { entry.roomNumber }})" to successAccent.primary,
-                        ),
-                    )
+                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                        KlassDetailFieldRow(
+                            label = "From Slot",
+                            value = "${entry.day} P${entry.periodIndex + 1} • Room ${entry.roomNumber}",
+                            icon = ClockIcon,
+                            accent = booksAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                        )
+                        SocialInsetDivider(startIndent = 68.dp)
+                        KlassDetailFieldRow(
+                            label = "To Slot",
+                            value = "$reqDay P${reqPeriod + 1} • Room ${reqRoom.ifBlank { entry.roomNumber }}",
+                            icon = CheckIcon,
+                            accent = successAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                        )
+                    }
 
                     OutlinedTextField(
                         value = reqReason,

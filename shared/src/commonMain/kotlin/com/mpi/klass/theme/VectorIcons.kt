@@ -1607,4 +1607,375 @@ val DownloadIcon: ImageVector
         }
     }.build()
 
+val LockIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Lock",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(7f, 11f)
+            verticalLineTo(7f)
+            curveTo(7f, 4.24f, 9.24f, 2f, 12f, 2f)
+            curveTo(14.76f, 2f, 17f, 4.24f, 17f, 7f)
+            verticalLineTo(11f)
+            moveTo(6f, 11f)
+            horizontalLineTo(18f)
+            curveTo(19.1f, 11f, 20f, 11.9f, 20f, 13f)
+            verticalLineTo(20f)
+            curveTo(20f, 21.1f, 19.1f, 22f, 18f, 22f)
+            horizontalLineTo(6f)
+            curveTo(4.9f, 22f, 4f, 21.1f, 4f, 20f)
+            verticalLineTo(13f)
+            curveTo(4f, 11.9f, 4.9f, 11f, 6f, 11f)
+            close()
+            moveTo(12f, 15.5f)
+            verticalLineTo(17.5f)
+        }
+    }.build()
+
+val LoginIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Login",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(15f, 3f)
+            horizontalLineTo(19f)
+            curveTo(20.1f, 3f, 21f, 3.9f, 21f, 5f)
+            verticalLineTo(19f)
+            curveTo(21f, 20.1f, 20.1f, 21f, 19f, 21f)
+            horizontalLineTo(15f)
+            moveTo(10f, 17f)
+            lineTo(15f, 12f)
+            lineTo(10f, 7f)
+            moveTo(15f, 12f)
+            horizontalLineTo(3f)
+        }
+    }.build()
+
+val EyeIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Eye",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(1f, 12f)
+            curveTo(1f, 12f, 5f, 5f, 12f, 5f)
+            curveTo(19f, 5f, 23f, 12f, 23f, 12f)
+            curveTo(23f, 12f, 19f, 19f, 12f, 19f)
+            curveTo(5f, 19f, 1f, 12f, 1f, 12f)
+            close()
+            moveTo(12f, 15f)
+            curveTo(13.66f, 15f, 15f, 13.66f, 15f, 12f)
+            curveTo(15f, 10.34f, 13.66f, 9f, 12f, 9f)
+            curveTo(10.34f, 9f, 9f, 10.34f, 9f, 12f)
+            curveTo(9f, 13.66f, 10.34f, 15f, 12f, 15f)
+            close()
+        }
+    }.build()
+
+val EyeOffIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "EyeOff",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(17.94f, 17.94f)
+            curveTo(16.23f, 19.24f, 14.15f, 20f, 12f, 20f)
+            curveTo(5f, 20f, 1f, 12f, 1f, 12f)
+            curveTo(2.24f, 9.68f, 3.97f, 7.66f, 6.06f, 6.06f)
+            moveTo(9.9f, 4.24f)
+            curveTo(10.59f, 4.08f, 11.29f, 4f, 12f, 4f)
+            curveTo(19f, 4f, 23f, 12f, 23f, 12f)
+            curveTo(22.39f, 13.14f, 21.66f, 14.2f, 20.82f, 15.17f)
+            moveTo(14.12f, 14.12f)
+            curveTo(13.56f, 14.68f, 12.8f, 15f, 12f, 15f)
+            curveTo(10.34f, 15f, 9f, 13.66f, 9f, 12f)
+            curveTo(9f, 11.2f, 9.32f, 10.44f, 9.88f, 9.88f)
+            moveTo(1f, 1f)
+            lineTo(23f, 23f)
+        }
+    }.build()
+
+val HelpCircleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "HelpCircle",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 22f)
+            curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+            curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f)
+            curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+            curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f)
+            close()
+            moveTo(9.09f, 9f)
+            curveTo(9.58f, 7.62f, 10.89f, 6.75f, 12.35f, 7f)
+            curveTo(13.69f, 7.22f, 14.77f, 8.27f, 14.95f, 9.61f)
+            curveTo(15.17f, 11.22f, 13.79f, 12.23f, 12.5f, 12.83f)
+            curveTo(12.14f, 13f, 12f, 13.38f, 12f, 13.78f)
+            verticalLineTo(14.5f)
+            moveTo(12f, 17.5f)
+            horizontalLineTo(12.01f)
+        }
+    }.build()
+
+val HomeIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Home",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(3f, 9f)
+            lineTo(12f, 2f)
+            lineTo(21f, 9f)
+            verticalLineTo(20f)
+            curveTo(21f, 21.1f, 20.1f, 22f, 19f, 22f)
+            horizontalLineTo(5f)
+            curveTo(3.9f, 22f, 3f, 21.1f, 3f, 20f)
+            close()
+            moveTo(9f, 22f)
+            verticalLineTo(12f)
+            horizontalLineTo(15f)
+            verticalLineTo(22f)
+        }
+    }.build()
+
+val PinIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "Pin",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(12f, 17f)
+            verticalLineTo(22f)
+            moveTo(9f, 10.76f)
+            arcTo(2f, 2f, 0f, false, true, 7.89f, 12.55f)
+            lineTo(6.55f, 13.22f)
+            arcTo(1f, 1f, 0f, false, false, 6f, 14.11f)
+            verticalLineTo(16f)
+            arcTo(1f, 1f, 0f, false, false, 7f, 17f)
+            horizontalLineTo(17f)
+            arcTo(1f, 1f, 0f, false, false, 18f, 16f)
+            verticalLineTo(14.11f)
+            arcTo(1f, 1f, 0f, false, false, 17.45f, 13.22f)
+            lineTo(16.11f, 12.55f)
+            arcTo(2f, 2f, 0f, false, true, 15f, 10.76f)
+            verticalLineTo(7f)
+            arcTo(1f, 1f, 0f, false, true, 16f, 6f)
+            arcTo(2f, 2f, 0f, false, false, 16f, 2f)
+            horizontalLineTo(8f)
+            arcTo(2f, 2f, 0f, false, false, 8f, 6f)
+            arcTo(1f, 1f, 0f, false, true, 9f, 7f)
+            close()
+        }
+    }.build()
+
+val HandWaveIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "HandWave",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(18f, 11f)
+            verticalLineTo(6f)
+            arcTo(2f, 2f, 0f, false, false, 14f, 6f)
+            moveTo(14f, 10f)
+            verticalLineTo(4f)
+            arcTo(2f, 2f, 0f, false, false, 10f, 4f)
+            moveTo(10f, 10.5f)
+            verticalLineTo(6f)
+            arcTo(2f, 2f, 0f, false, false, 6f, 6f)
+            verticalLineTo(14f)
+            arcTo(6f, 6f, 0f, false, false, 18f, 14f)
+            verticalLineTo(8f)
+            arcTo(2f, 2f, 0f, false, true, 22f, 8f)
+            verticalLineTo(14f)
+            arcTo(8f, 8f, 0f, false, true, 6f, 14f)
+        }
+    }.build()
+
+val MessageBubbleIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "MessageBubble",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(21f, 11.5f)
+            arcTo(8.38f, 8.38f, 0f, false, true, 20.1f, 15.3f)
+            arcTo(8.5f, 8.5f, 0f, false, true, 12.5f, 20f)
+            arcTo(8.38f, 8.38f, 0f, false, true, 8.7f, 19.1f)
+            lineTo(3f, 21f)
+            lineTo(4.9f, 15.3f)
+            arcTo(8.38f, 8.38f, 0f, false, true, 4f, 11.5f)
+            arcTo(8.5f, 8.5f, 0f, false, true, 8.7f, 3.9f)
+            arcTo(8.38f, 8.38f, 0f, false, true, 12.5f, 3f)
+            horizontalLineTo(13f)
+            arcTo(8.48f, 8.48f, 0f, false, true, 21f, 11f)
+            close()
+        }
+    }.build()
+
+val UserPlusIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "UserPlus",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(16f, 21f)
+            verticalLineTo(19f)
+            arcTo(4f, 4f, 0f, false, false, 12f, 15f)
+            horizontalLineTo(5f)
+            arcTo(4f, 4f, 0f, false, false, 1f, 19f)
+            verticalLineTo(21f)
+            moveTo(8.5f, 11f)
+            arcTo(4f, 4f, 0f, true, false, 8.5f, 3f)
+            arcTo(4f, 4f, 0f, true, false, 8.5f, 11f)
+            close()
+            moveTo(20f, 8f)
+            verticalLineTo(14f)
+            moveTo(23f, 11f)
+            horizontalLineTo(17f)
+        }
+    }.build()
+
+val UsersGroupIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "UsersGroup",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ) {
+            moveTo(17f, 21f)
+            verticalLineTo(19f)
+            arcTo(4f, 4f, 0f, false, false, 13f, 15f)
+            horizontalLineTo(5f)
+            arcTo(4f, 4f, 0f, false, false, 1f, 19f)
+            verticalLineTo(21f)
+            moveTo(9f, 11f)
+            arcTo(4f, 4f, 0f, true, false, 9f, 3f)
+            arcTo(4f, 4f, 0f, true, false, 9f, 11f)
+            close()
+            moveTo(23f, 21f)
+            verticalLineTo(19f)
+            arcTo(4f, 4f, 0f, false, false, 20f, 15.13f)
+            moveTo(16f, 3.13f)
+            arcTo(4f, 4f, 0f, false, true, 16f, 10.87f)
+        }
+    }.build()
+
+val MoreHorizIcon: ImageVector
+    get() = ImageVector.Builder(
+        name = "MoreHoriz",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(6f, 12f)
+            moveToRelative(-1.8f, 0f)
+            arcTo(1.8f, 1.8f, 0f, true, true, 7.8f, 12f)
+            arcTo(1.8f, 1.8f, 0f, true, true, 4.2f, 12f)
+            moveTo(12f, 12f)
+            moveToRelative(-1.8f, 0f)
+            arcTo(1.8f, 1.8f, 0f, true, true, 13.8f, 12f)
+            arcTo(1.8f, 1.8f, 0f, true, true, 10.2f, 12f)
+            moveTo(18f, 12f)
+            moveToRelative(-1.8f, 0f)
+            arcTo(1.8f, 1.8f, 0f, true, true, 19.8f, 12f)
+            arcTo(1.8f, 1.8f, 0f, true, true, 16.2f, 12f)
+        }
+    }.build()
+
+
+
+
 

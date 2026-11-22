@@ -278,9 +278,7 @@ fun RoutineGeneratorScreen(
                     )
 
                     if (isLoading && currentPlan == null && books.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = genAccent.primary, strokeWidth = 2.5.dp)
-                        }
+                        KlassRoutineEngineSkeleton(isDark = isDark)
                         return@Column
                     }
 
@@ -1056,17 +1054,12 @@ private fun ExplorerFilterSubScreen(
             isDark = isDark,
             hindSiliguri = hindSiliguri,
             onDismiss = onDismiss,
-            bottomBar = {
-                WelcomeMinimal3DButton(
-                    text = "Apply View",
-                    icon = CheckIcon,
-                    hindSiliguri = hindSiliguri,
+            headerActions = {
+                HeaderSavePillButton(
+                    text = "Done",
+                    accent = teacherAccent.primary,
                     isDark = isDark,
-                    customPrimaryColor = teacherAccent.primary,
-                    customBaseColor = teacherAccent.deep,
-                    height = 48.dp,
-                    cornerRadius = 16.dp,
-                    modifier = Modifier.fillMaxWidth(),
+                    hindSiliguri = hindSiliguri,
                     onClick = onDismiss,
                 )
             },
@@ -1303,66 +1296,41 @@ private fun RequestReviewSubScreen(
         hindSiliguri = hindSiliguri,
         onDismiss = onDismiss,
         dismissEnabled = !isProcessing,
-        bottomBar = if (req.status == EditRequestStatus.PENDING) {
-            {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    GoogleOutlinedButton(
-                        text = "Decline",
-                        icon = CloseIcon,
-                        hindSiliguri = hindSiliguri,
-                        enabled = !isProcessing,
-                        height = 48.dp,
-                        contentColor = declineAccent.primary,
-                        modifier = Modifier.weight(1f),
-                        onClick = onDecline,
-                    )
-                    WelcomeMinimal3DButton(
-                        text = "Approve",
-                        icon = CheckIcon,
-                        hindSiliguri = hindSiliguri,
-                        isDark = isDark,
-                        isLoading = isProcessing,
-                        customPrimaryColor = approveAccent.primary,
-                        customBaseColor = approveAccent.deep,
-                        height = 48.dp,
-                        cornerRadius = 16.dp,
-                        modifier = Modifier.weight(1.25f),
-                        onClick = onApprove,
-                    )
-                }
+        headerActions = {
+            if (req.status == EditRequestStatus.PENDING) {
+                KlassTonalButton(
+                    text = "Decline",
+                    accent = declineAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    enabled = !isProcessing,
+                    height = 36.dp,
+                    onClick = onDecline,
+                )
+                HeaderSavePillButton(
+                    text = if (isProcessing) "..." else "Approve",
+                    accent = approveAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    isLoading = isProcessing,
+                    enabled = !isProcessing,
+                    onClick = onApprove,
+                )
             }
-        } else {
-            null
         },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                KlassHeroBanner(
-                    title = req.subjectTitle,
-                    subtitle = "${req.department} • ${RoutineRules.semesterDisplayLabel(req.semester)} • ${req.group}",
-                    icon = SwapIcon,
-                    accent = adminAccent.primary,
-                    isDark = isDark,
-                    hindSiliguri = hindSiliguri,
-                    badges = listOf(
-                        req.status.label to when (req.status) {
-                            EditRequestStatus.PENDING -> adminAccent.primary
-                            EditRequestStatus.APPROVED -> approveAccent.primary
-                            EditRequestStatus.DECLINED -> declineAccent.primary
-                        },
-                        req.shift to KlassFeaturePalette.routine(isDark).primary,
-                    ),
-                )
-            }
+            GoogleSectionHeader(
+                title = "${req.department} • ${RoutineRules.semesterDisplayLabel(req.semester)} • ${req.group} • ${req.status.label}",
+                accent = adminAccent.primary,
+                hindSiliguri = hindSiliguri,
+            )
 
             SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                 KlassDetailFieldRow(
@@ -1506,60 +1474,42 @@ private fun ManualSlotEditorOverlay(
             onDismiss = onDismiss,
             dismissEnabled = !isSaving,
             maxContentWidth = 820.dp,
-            bottomBar = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    GoogleOutlinedButton(
-                        text = "Cancel",
-                        hindSiliguri = hindSiliguri,
-                        enabled = !isSaving,
-                        height = 48.dp,
-                        contentColor = cs.onSurface,
-                        modifier = Modifier.weight(1f),
-                        onClick = onDismiss,
-                    )
-                    WelcomeMinimal3DButton(
-                        text = if (liveClashes.isEmpty()) "Save Slot" else "Force Save",
-                        icon = EditIcon,
-                        hindSiliguri = hindSiliguri,
-                        isDark = isDark,
-                        isLoading = isSaving,
-                        customPrimaryColor = statusAccent.primary,
-                        customBaseColor = statusAccent.deep,
-                        height = 48.dp,
-                        cornerRadius = 16.dp,
-                        modifier = Modifier.weight(1.3f),
-                        onClick = {
-                            val teacherObj = teachers.firstOrNull { it.email.equals(selectedTeacherEmail, true) }
-                            val roomObj = classrooms.firstOrNull { it.roomNumber.equals(selectedRoomNumber, true) }
-                            val (st, et) = RoutineRules.periodTimeRange(shift, selectedPeriod, plan.config)
-                            onSaveSlot(
-                                RoutineEntry(
-                                    id = entryId,
-                                    day = selectedDay,
-                                    periodIndex = selectedPeriod,
-                                    startTime = st,
-                                    endTime = et,
-                                    shift = shift,
-                                    department = dept,
-                                    semester = sem,
-                                    group = group,
-                                    subjectCode = subjectCode,
-                                    subjectTitle = subjectTitle,
-                                    isPractical = initialEntry?.isPractical ?: (roomObj?.roomType == ClassroomType.LAB),
-                                    teacherEmail = teacherObj?.email ?: selectedTeacherEmail,
-                                    teacherName = teacherObj?.name ?: (initialEntry?.teacherName ?: selectedTeacherEmail),
-                                    roomId = roomObj?.id ?: (initialEntry?.roomId ?: ""),
-                                    roomNumber = roomObj?.roomNumber ?: selectedRoomNumber,
-                                    isManualOverride = true,
-                                ),
-                                conflict?.id,
-                            )
-                        },
-                    )
-                }
+            headerActions = {
+                HeaderSavePillButton(
+                    text = if (liveClashes.isEmpty()) "Save" else "Force Save",
+                    accent = statusAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    isLoading = isSaving,
+                    enabled = !isSaving,
+                    onClick = {
+                        val teacherObj = teachers.firstOrNull { it.email.equals(selectedTeacherEmail, true) }
+                        val roomObj = classrooms.firstOrNull { it.roomNumber.equals(selectedRoomNumber, true) }
+                        val (st, et) = RoutineRules.periodTimeRange(shift, selectedPeriod, plan.config)
+                        onSaveSlot(
+                            RoutineEntry(
+                                id = entryId,
+                                day = selectedDay,
+                                periodIndex = selectedPeriod,
+                                startTime = st,
+                                endTime = et,
+                                shift = shift,
+                                department = dept,
+                                semester = sem,
+                                group = group,
+                                subjectCode = subjectCode,
+                                subjectTitle = subjectTitle,
+                                isPractical = initialEntry?.isPractical ?: (roomObj?.roomType == ClassroomType.LAB),
+                                teacherEmail = teacherObj?.email ?: selectedTeacherEmail,
+                                teacherName = teacherObj?.name ?: (initialEntry?.teacherName ?: selectedTeacherEmail),
+                                roomId = roomObj?.id ?: (initialEntry?.roomId ?: ""),
+                                roomNumber = roomObj?.roomNumber ?: selectedRoomNumber,
+                                isManualOverride = true,
+                            ),
+                            conflict?.id,
+                        )
+                    },
+                )
             },
         ) {
             Column(

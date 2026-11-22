@@ -108,7 +108,7 @@ fun ClassroomManagementScreen(
     var confirmFreshReset by remember { mutableStateOf(false) }
     var isBusy by remember { mutableStateOf(false) }
 
-    val anyOverlay = isAddEditorOpen || editingRoom != null || inspectScheduleRoom != null
+    val anyOverlay = isAddEditorOpen || editingRoom != null || inspectScheduleRoom != null || confirmDeleteRoom != null || confirmFreshReset
     LaunchedEffect(anyOverlay) {
         onFullScreenOverlayChange(anyOverlay)
     }
@@ -246,9 +246,14 @@ fun ClassroomManagementScreen(
 
                     when {
                         isLoading && rooms.isEmpty() -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = classroomAccent.primary, strokeWidth = 2.5.dp)
-                            }
+                            KlassRowListSkeleton(
+                                isDark = isDark,
+                                showHeaderBar = true,
+                                showChipRow = true,
+                                showActionPill = false,
+                                badgeSize = 46.dp,
+                                badgeCornerRadius = 14.dp,
+                            )
                         }
 
                         filteredRooms.isEmpty() -> {
@@ -696,35 +701,17 @@ private fun RoomEditorFullScreen(
             onDismiss = onDismiss,
             dismissEnabled = !isSaving,
             maxContentWidth = 760.dp,
-            bottomBar = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    GoogleOutlinedButton(
-                        text = "Cancel",
-                        hindSiliguri = hindSiliguri,
-                        enabled = !isSaving,
-                        height = 48.dp,
-                        contentColor = cs.onSurface,
-                        modifier = Modifier.weight(1f),
-                        onClick = onDismiss,
-                    )
-                    WelcomeMinimal3DButton(
-                        text = if (initialRoom == null) "Save Room" else "Update Room",
-                        icon = CheckIcon,
-                        hindSiliguri = hindSiliguri,
-                        isDark = isDark,
-                        isLoading = isSaving,
-                        customPrimaryColor = classroomAccent.primary,
-                        customBaseColor = classroomAccent.deep,
-                        height = 48.dp,
-                        cornerRadius = 16.dp,
-                        modifier = Modifier.weight(1.3f),
-                        testTag = "save_room_button",
-                        onClick = { submitRoom() },
-                    )
-                }
+            headerActions = {
+                HeaderSavePillButton(
+                    text = if (initialRoom == null) "Save" else "Update",
+                    accent = classroomAccent.primary,
+                    isDark = isDark,
+                    hindSiliguri = hindSiliguri,
+                    isLoading = isSaving,
+                    enabled = !isSaving,
+                    testTag = "save_room_button",
+                    onClick = { submitRoom() },
+                )
             },
         ) {
             Column(
@@ -980,26 +967,8 @@ private fun RoomScheduleViewerFullScreen(
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp),
+                        contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
                     ) {
-                        item {
-                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                                KlassHeroBanner(
-                                    title = "Room ${room.roomNumber}",
-                                    subtitle = room.buildingOrFloor.ifBlank { "${room.roomType.label} Space" },
-                                    icon = DoorOpenIcon,
-                                    accent = roomAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    badges = listOf(
-                                        room.roomType.label to roomAccent.primary,
-                                        "Cap ${room.capacity}" to KlassFeaturePalette.books(isDark).primary,
-                                        "${roomEntries.size} Occupied" to KlassFeaturePalette.routine(isDark).primary,
-                                    ),
-                                )
-                            }
-                            SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                        }
 
                         itemsIndexed(dayRows) { rowIdx, rowDays ->
                             Row(
@@ -1132,24 +1101,9 @@ private fun RoomScheduleViewerFullScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            KlassHeroBanner(
-                                title = slot.subjectTitle,
-                                subtitle = "Code ${slot.subjectCode} • ${slot.startTime}–${slot.endTime}",
-                                icon = BookIcon,
-                                accent = dayAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                badges = listOf(
-                                    "Room ${slot.roomNumber}" to roomAccent.primary,
-                                    (if (slot.isPractical) "Practical" else "Theory") to KlassFeaturePalette.teaching(isDark).primary,
-                                ),
-                            )
-                        }
-
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassDetailFieldRow(
                                 label = "Department & Group",

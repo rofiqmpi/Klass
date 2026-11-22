@@ -2,16 +2,22 @@ package com.mpi.klass
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,8 +35,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,10 +45,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,18 +64,25 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.mpi.klass.theme.ChevronDownIcon
 import com.mpi.klass.theme.DownloadIcon
 import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.MessageBubbleIcon
 import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.departmentAccent
@@ -69,6 +91,8 @@ import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.home
 import klass.shared.generated.resources.menu
 import klass.shared.generated.resources.notification
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 data class RoutineQuickFilter(
@@ -89,9 +113,10 @@ data class RoutineQuickFilter(
 }
 
 /**
- * Floating Home Routine header with color-coded Profile ring, wide fully-rounded 1-line
- * batch info pill (expandable in-place to browse any semester/shift/dept/group temporarily)
- * with inline PDF Download button, plus AI and Notification buttons.
+ * Floating Home Routine header with color-coded Profile ring, wide shadowless capsule
+ * 1-line batch badge (when expanded, hides AI button smoothly to reclaim its width and
+ * expands downward into a 4-column snap-wheel picker popup over the routine),
+ * plus AI button and Notification button with unread red dot.
  */
 @Composable
 fun HomeRoutineHeader(
@@ -108,6 +133,8 @@ fun HomeRoutineHeader(
     onToggleExpand: () -> Unit = onProfileClick,
     onDownloadClick: (() -> Unit)? = null,
     isDownloading: Boolean = false,
+    hasUnreadNotifications: Boolean = NotificationSeenStore.hasUnread(),
+    unreadMessagesCount: Int = SocialChatState.totalUnreadMessages,
     activeTempFilter: RoutineQuickFilter? = null,
     defaultFilter: RoutineQuickFilter = RoutineQuickFilter(),
     onTempFilterChange: (RoutineQuickFilter?) -> Unit = {},
@@ -121,10 +148,18 @@ fun HomeRoutineHeader(
 
     val textColor = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val glassBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.90f)
+    val glassBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.90f) else Color.White.copy(alpha = 0.92f)
+    // 100% solid opaque popup background so underlying table lines never bleed through during pop expansion
+    val expandedSolidBg = if (isDark) Color(0xFF10192C) else Color(0xFFFFFFFF)
+    val pillBgColor by animateColorAsState(
+        targetValue = if (isExpanded) expandedSolidBg else glassBg,
+        animationSpec = tween(durationMillis = 60),
+        label = "HeaderPillBgColor",
+    )
+    val dotHaloColor = if (isDark) Color(0xFF0F172A) else Color.White
     val chevronRotation by animateFloatAsState(
         targetValue = if (isExpanded) 180f else 0f,
-        animationSpec = tween(220),
+        animationSpec = spring(dampingRatio = 0.76f, stiffness = 850f),
         label = "HeaderChevronRotation",
     )
 
@@ -134,87 +169,91 @@ fun HomeRoutineHeader(
         }
     }
 
-    Column(
+    // All 4 header items sit in uniform 48.dp touch slots with 42.dp visual height (exact 24.dp vertical center!)
+    val fadeTopColor = if (isDark) cs.surface.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.76f)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        fadeTopColor,
+                        fadeTopColor.copy(alpha = 0.35f),
+                        Color.Transparent,
+                    )
+                )
+            ),
+    ) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .animateContentSize(animationSpec = tween(220))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                onClick = onProfileClick,
-                shape = CircleShape,
-                color = glassBg,
-                border = BorderStroke(1.5.dp, profileAccent.primary.copy(alpha = 0.72f)),
-                shadowElevation = 2.dp,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .testTag("home_profile_button"),
-            ) {
-                if (!photoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = resolveProfileImageModel(photoUrl),
-                        contentDescription = "Profile Photo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    DynamicAvatar(
-                        seed = avatarSeed,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
+        // 1. Profile Avatar Button (48.dp touch box, 42.dp visual circle centered at y = 24.dp)
+        HomeProfileAvatarSlot(
+            photoUrl = photoUrl,
+            avatarSeed = avatarSeed,
+            glassBg = glassBg,
+            borderColor = profileAccent.primary.copy(alpha = 0.78f),
+            onClick = onProfileClick,
+        )
 
-            // Full-width pill-round 1-line batch badge + Download button; tapping opens selector below
-            val pillBorderColor = when {
-                isExpanded -> routineAccent.primary
-                activeTempFilter != null -> aiAccent.borderTint
-                else -> routineAccent.borderTint
-            }
-            Surface(
-                onClick = onToggleExpand,
-                shape = CircleShape,
-                color = glassBg,
-                border = BorderStroke(if (isExpanded) 1.4.dp else 1.dp, pillBorderColor),
-                shadowElevation = 2.dp,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp)
-                    .testTag("home_header_profile_badge"),
-            ) {
+        // 2. Dynamic Pill: 42.dp top strip aligned at top = 3.dp (center y = 24.dp), pops out crisply with hairline expanded border!
+        val workingFilter = activeTempFilter ?: defaultFilter
+        val pillBorderColor = when {
+            isExpanded -> routineAccent.primary.copy(alpha = if (isDark) 0.30f else 0.22f)
+            activeTempFilter != null -> aiAccent.borderTint
+            else -> routineAccent.borderTint
+        }
+        val pillDisplayTitle = when {
+            titleText.isNotBlank() -> titleText
+            isExpanded -> workingFilter.toBadgeText()
+            else -> ""
+        }
+
+        Surface(
+            shape = RoundedCornerShape(21.dp),
+            color = pillBgColor,
+            border = BorderStroke(if (isExpanded) 0.5.dp else 1.dp, pillBorderColor),
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp, end = 4.dp, top = 3.dp)
+                .testTag("home_header_profile_badge"),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Top 1-line pill strip (always 42.dp height to match Profile/AI/Notification circles)
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .height(42.dp)
+                        .clickable(onClick = onToggleExpand)
                         .background(
                             Brush.horizontalGradient(
                                 listOf(
-                                    if (activeTempFilter != null) aiAccent.softTint else routineAccent.softTint,
+                                    if (activeTempFilter != null || isExpanded) aiAccent.softTint else routineAccent.softTint,
                                     Color.Transparent,
                                 )
                             )
                         )
-                        .padding(start = 12.dp, end = 4.dp),
+                        .padding(start = 13.dp, end = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (titleText.isNotBlank()) {
+                    if (pillDisplayTitle.isNotBlank()) {
                         Box(
                             modifier = Modifier
                                 .size(7.dp)
                                 .clip(CircleShape)
-                                .background(if (activeTempFilter != null) aiAccent.primary else routineAccent.primary),
+                                .background(
+                                    if (activeTempFilter != null) aiAccent.primary else routineAccent.primary
+                                ),
                         )
                         Spacer(modifier = Modifier.width(7.dp))
                         Text(
-                            text = titleText,
+                            text = pillDisplayTitle,
                             fontSize = 13.5.sp,
                             fontFamily = hindSiliguri,
                             fontWeight = FontWeight.Bold,
@@ -237,15 +276,17 @@ fun HomeRoutineHeader(
                     )
 
                     if (onDownloadClick != null) {
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(5.dp))
                         Surface(
                             onClick = onDownloadClick,
                             enabled = !isDownloading,
                             shape = CircleShape,
                             color = routineAccent.softTint,
                             border = BorderStroke(0.75.dp, routineAccent.borderTint),
+                            shadowElevation = 0.dp,
+                            tonalElevation = 0.dp,
                             modifier = Modifier
-                                .size(30.dp)
+                                .size(32.dp)
                                 .testTag("home_routine_download_button"),
                         ) {
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -267,196 +308,154 @@ fun HomeRoutineHeader(
                         }
                     }
                 }
-            }
 
-            Surface(
-                onClick = onAiClick,
-                shape = CircleShape,
-                color = glassBg,
-                border = BorderStroke(1.dp, aiAccent.borderTint),
-                shadowElevation = 2.dp,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .size(42.dp)
-                    .testTag("home_ai_button"),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(aiAccent.softTint),
-                    contentAlignment = Alignment.Center,
+                // Connected 4-column snap-wheel picker inside the widened solid popup pill
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = expandVertically(
+                        animationSpec = spring(dampingRatio = 0.76f, stiffness = 880f),
+                        expandFrom = Alignment.Top,
+                    ) + fadeIn(animationSpec = tween(durationMillis = 70)),
+                    exit = shrinkVertically(
+                        animationSpec = tween(durationMillis = 130, easing = FastOutSlowInEasing),
+                        shrinkTowards = Alignment.Top,
+                    ) + fadeOut(animationSpec = tween(durationMillis = 70)),
                 ) {
-                    Icon(
-                        imageVector = SparkleIcon,
-                        contentDescription = "Zed AI",
-                        tint = aiAccent.primary,
-                        modifier = Modifier.size(19.dp),
+                    val allowedGroups = RoutineRules.groupsForDepartment(workingFilter.department)
+                    val deptAccent = departmentAccent(workingFilter.department, isDark).primary
+                    val colDividerColor = cs.outlineVariant.copy(alpha = 0.28f)
+                    val lensGradient = Brush.horizontalGradient(
+                        listOf(
+                            routineAccent.softTint.copy(alpha = if (isDark) 0.55f else 0.72f),
+                            aiAccent.softTint.copy(alpha = if (isDark) 0.50f else 0.65f),
+                            deptAccent.copy(alpha = if (isDark) 0.22f else 0.14f),
+                        )
                     )
-                }
-            }
 
-            Surface(
-                onClick = onNotificationClick,
-                shape = CircleShape,
-                color = glassBg,
-                border = BorderStroke(1.dp, notiAccent.borderTint),
-                shadowElevation = 2.dp,
-                modifier = Modifier
-                    .minimumInteractiveComponentSize()
-                    .size(42.dp)
-                    .testTag("home_notification_button"),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(notiAccent.softTint),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.notification),
-                        contentDescription = "Notifications",
-                        tint = notiAccent.primary,
-                        modifier = Modifier.size(19.dp),
-                    )
-                }
-            }
-        }
-
-        // Expandable Temporary Batch Selector (Semester / Shift / Department / Group)
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = expandVertically(animationSpec = tween(220)) + fadeIn(animationSpec = tween(180)),
-            exit = shrinkVertically(animationSpec = tween(180)) + fadeOut(animationSpec = tween(140)),
-        ) {
-            val workingFilter = activeTempFilter ?: defaultFilter
-            val allowedGroups = RoutineRules.groupsForDepartment(workingFilter.department)
-            val deptAccent = departmentAccent(workingFilter.department, isDark)
-
-            Surface(
-                shape = RoundedCornerShape(22.dp),
-                color = glassBg,
-                border = BorderStroke(1.dp, routineAccent.borderTint),
-                shadowElevation = 4.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("home_routine_quick_filter_panel"),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("home_routine_quick_filter_panel"),
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (activeTempFilter != null) {
-                                    "Viewing ${workingFilter.toBadgeText()}"
-                                } else {
-                                    "Browse Any Routine"
-                                },
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = hindSiliguri,
-                                color = cs.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = "Temporary preview only — saved profile stays unchanged",
-                                fontSize = 11.5.sp,
-                                fontFamily = hindSiliguri,
-                                color = subTextColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        HorizontalDivider(thickness = 0.5.dp, color = colDividerColor)
 
+                        // Column headers with subtle rainbow accents
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (activeTempFilter != null) {
-                                Surface(
-                                    onClick = { onTempFilterChange(null) },
-                                    shape = CircleShape,
-                                    color = notiAccent.softTint,
-                                    border = BorderStroke(0.75.dp, notiAccent.borderTint),
-                                    modifier = Modifier
-                                        .height(30.dp)
-                                        .testTag("home_filter_reset_button"),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = RefreshIcon,
-                                            contentDescription = "Reset to saved profile",
-                                            tint = notiAccent.primary,
-                                            modifier = Modifier.size(13.dp),
-                                        )
-                                        Text(
-                                            text = "Reset",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            color = notiAccent.primary,
-                                        )
-                                    }
-                                }
-                            }
+                            QuickColumnHeader("Sem", hindSiliguri, routineAccent.primary, Modifier.weight(0.95f))
+                            QuickColumnHeader("Shift", hindSiliguri, aiAccent.primary, Modifier.weight(0.9f))
+                            QuickColumnHeader("Dept", hindSiliguri, deptAccent, Modifier.weight(1.25f))
+                            QuickColumnHeader("Grp", hindSiliguri, profileAccent.primary, Modifier.weight(0.85f))
+                        }
 
-                            Surface(
-                                onClick = onToggleExpand,
-                                shape = CircleShape,
-                                color = routineAccent.primary,
+                        // 3D Snap-Wheel 4-Column Area with Center Selection Lens & Top/Bottom Fade
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(126.dp),
+                        ) {
+                            // Centered Selection Lens Pill spanning across all 4 columns
+                            Box(
                                 modifier = Modifier
-                                    .height(30.dp)
-                                    .testTag("home_filter_done_button"),
+                                    .align(Alignment.Center)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp)
+                                    .height(38.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(lensGradient)
+                                    .then(
+                                        Modifier.background(Color.Transparent)
+                                    ),
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.Transparent,
+                                border = BorderStroke(0.5.dp, routineAccent.primary.copy(alpha = if (isDark) 0.24f else 0.18f)),
+                                shadowElevation = 0.dp,
+                                tonalElevation = 0.dp,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp)
+                                    .height(38.dp),
+                            ) {}
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 4.dp),
                             ) {
-                                Box(
-                                    modifier = Modifier.padding(horizontal = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "Done",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                        color = if (routineAccent.primary.luminance() > 0.52f) Color(0xFF0B1120) else Color.White,
+                                // Col 1: Semester wheel
+                                val semIndex = RoutineRules.ALL_SEMESTER_KEYS.indexOf(
+                                    RoutineRules.canonicalSemesterKey(workingFilter.semesterKey)
+                                ).coerceAtLeast(0)
+                                QuickWheelColumn(
+                                    items = RoutineRules.ALL_SEMESTER_KEYS,
+                                    selectedIndex = semIndex,
+                                    itemLabel = { RoutineRules.semesterShortLabel(it) },
+                                    accent = routineAccent.primary,
+                                    hindSiliguri = hindSiliguri,
+                                    onSelect = { semKey ->
+                                        onTempFilterChange(workingFilter.copy(semesterKey = semKey))
+                                    },
+                                    testTag = "quick_filter_col_semester",
+                                    modifier = Modifier
+                                        .weight(0.95f)
+                                        .fillMaxHeight(),
+                                )
+
+                                VerticalDivider(
+                                    thickness = 0.5.dp,
+                                    color = colDividerColor,
+                                    modifier = Modifier.padding(vertical = 12.dp),
+                                )
+
+                                // Col 2: Shift wheel
+                                val shiftOptions = remember {
+                                    listOf(
+                                        RoutineRules.SHIFT_1 to "1st",
+                                        RoutineRules.SHIFT_2 to "2nd",
                                     )
                                 }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = cs.outlineVariant.copy(alpha = 0.45f),
-                    )
-
-                    // Department selector
-                    QuickFilterRowLabel("Department", hindSiliguri, subTextColor) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            contentPadding = PaddingValues(end = 4.dp),
-                        ) {
-                            items(RoutineRules.TECH_DEPARTMENTS) { dept ->
-                                val isSel = workingFilter.department == dept
-                                val accent = departmentAccent(dept, isDark).primary
-                                QuickFilterPillChip(
-                                    label = dept,
-                                    selected = isSel,
-                                    accent = accent,
-                                    isDark = isDark,
+                                val shiftIndex = shiftOptions.indexOfFirst {
+                                    it.first == RoutineRules.normalizeShift(workingFilter.shift)
+                                }.coerceAtLeast(0)
+                                QuickWheelColumn(
+                                    items = shiftOptions,
+                                    selectedIndex = shiftIndex,
+                                    itemLabel = { it.second },
+                                    accent = aiAccent.primary,
                                     hindSiliguri = hindSiliguri,
-                                    onClick = {
+                                    onSelect = { (shiftKey, _) ->
+                                        onTempFilterChange(workingFilter.copy(shift = shiftKey))
+                                    },
+                                    testTag = "quick_filter_col_shift",
+                                    modifier = Modifier
+                                        .weight(0.9f)
+                                        .fillMaxHeight(),
+                                )
+
+                                VerticalDivider(
+                                    thickness = 0.5.dp,
+                                    color = colDividerColor,
+                                    modifier = Modifier.padding(vertical = 12.dp),
+                                )
+
+                                // Col 3: Department wheel
+                                val deptIndex = RoutineRules.TECH_DEPARTMENTS.indexOf(
+                                    RoutineRules.normalizeDepartmentShort(workingFilter.department)
+                                ).coerceAtLeast(0)
+                                QuickWheelColumn(
+                                    items = RoutineRules.TECH_DEPARTMENTS,
+                                    selectedIndex = deptIndex,
+                                    itemLabel = { it },
+                                    accent = deptAccent,
+                                    hindSiliguri = hindSiliguri,
+                                    onSelect = { dept ->
                                         val normGrp = RoutineRules.normalizeGroup(dept, workingFilter.group)
                                         onTempFilterChange(
                                             workingFilter.copy(
@@ -465,92 +464,141 @@ fun HomeRoutineHeader(
                                             )
                                         )
                                     },
+                                    testTag = "quick_filter_col_department",
+                                    modifier = Modifier
+                                        .weight(1.25f)
+                                        .fillMaxHeight(),
                                 )
-                            }
-                        }
-                    }
 
-                    // Semester selector
-                    QuickFilterRowLabel("Semester", hindSiliguri, subTextColor) {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            contentPadding = PaddingValues(end = 4.dp),
-                        ) {
-                            items(RoutineRules.ALL_SEMESTER_KEYS) { semKey ->
-                                val isSel = RoutineRules.canonicalSemesterKey(workingFilter.semesterKey) == semKey
-                                QuickFilterPillChip(
-                                    label = RoutineRules.semesterShortLabel(semKey),
-                                    selected = isSel,
-                                    accent = routineAccent.primary,
-                                    isDark = isDark,
+                                VerticalDivider(
+                                    thickness = 0.5.dp,
+                                    color = colDividerColor,
+                                    modifier = Modifier.padding(vertical = 12.dp),
+                                )
+
+                                // Col 4: Group wheel
+                                val grpIndex = allowedGroups.indexOf(
+                                    RoutineRules.normalizeGroup(workingFilter.department, workingFilter.group)
+                                ).coerceAtLeast(0)
+                                QuickWheelColumn(
+                                    items = allowedGroups,
+                                    selectedIndex = grpIndex,
+                                    itemLabel = { it.removePrefix("Group ").trim() },
+                                    accent = profileAccent.primary,
                                     hindSiliguri = hindSiliguri,
-                                    onClick = {
-                                        onTempFilterChange(workingFilter.copy(semesterKey = semKey))
+                                    onSelect = { grp ->
+                                        onTempFilterChange(workingFilter.copy(group = grp))
                                     },
+                                    testTag = "quick_filter_col_group",
+                                    modifier = Modifier
+                                        .weight(0.85f)
+                                        .fillMaxHeight(),
                                 )
                             }
-                        }
-                    }
 
-                    // Shift & Group row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text(
-                                text = "Shift",
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = hindSiliguri,
-                                color = subTextColor,
+                            // Top smooth fade gradient overlay
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .height(22.dp)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(expandedSolidBg, Color.Transparent)
+                                        )
+                                    ),
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf(
-                                    RoutineRules.SHIFT_1 to "1st",
-                                    RoutineRules.SHIFT_2 to "2nd",
-                                ).forEach { (shiftKey, shortLabel) ->
-                                    QuickFilterPillChip(
-                                        label = shortLabel,
-                                        selected = RoutineRules.normalizeShift(workingFilter.shift) == shiftKey,
-                                        accent = aiAccent.primary,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                        onClick = {
-                                            onTempFilterChange(workingFilter.copy(shift = shiftKey))
-                                        },
-                                    )
+
+                            // Bottom smooth fade gradient overlay
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .height(22.dp)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            listOf(Color.Transparent, expandedSolidBg)
+                                        )
+                                    ),
+                            )
+                        }
+
+                        HorizontalDivider(thickness = 0.5.dp, color = colDividerColor)
+
+                        // Bottom action bar inside the pill
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (activeTempFilter != null) {
+                                Surface(
+                                    onClick = { onTempFilterChange(null) },
+                                    shape = CircleShape,
+                                    color = notiAccent.softTint,
+                                    border = BorderStroke(0.75.dp, notiAccent.borderTint),
+                                    shadowElevation = 0.dp,
+                                    tonalElevation = 0.dp,
+                                    modifier = Modifier
+                                        .height(28.dp)
+                                        .testTag("home_filter_reset_button"),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 9.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = RefreshIcon,
+                                            contentDescription = "Reset to saved profile",
+                                            tint = notiAccent.primary,
+                                            modifier = Modifier.size(12.dp),
+                                        )
+                                        Text(
+                                            text = "Reset",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = hindSiliguri,
+                                            color = notiAccent.primary,
+                                            maxLines = 1,
+                                        )
+                                    }
                                 }
+                            } else {
+                                Text(
+                                    text = "Temporary preview",
+                                    fontSize = 11.sp,
+                                    fontFamily = hindSiliguri,
+                                    color = subTextColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
                             }
-                        }
 
-                        Column(
-                            modifier = Modifier.weight(1.25f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text(
-                                text = "Group",
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = hindSiliguri,
-                                color = subTextColor,
-                            )
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(allowedGroups) { grp ->
-                                    val shortGrp = grp.removePrefix("Group ").trim()
-                                    QuickFilterPillChip(
-                                        label = shortGrp,
-                                        selected = RoutineRules.normalizeGroup(workingFilter.department, workingFilter.group) == grp,
-                                        accent = deptAccent.primary,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                        onClick = {
-                                            onTempFilterChange(workingFilter.copy(group = grp))
-                                        },
+                            Surface(
+                                onClick = onToggleExpand,
+                                shape = CircleShape,
+                                color = routineAccent.primary,
+                                shadowElevation = 0.dp,
+                                tonalElevation = 0.dp,
+                                modifier = Modifier
+                                    .height(28.dp)
+                                    .testTag("home_filter_done_button"),
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 14.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "Done",
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = hindSiliguri,
+                                        color = if (routineAccent.primary.luminance() > 0.52f) Color(0xFF0B1120) else Color.White,
+                                        maxLines = 1,
                                     )
                                 }
                             }
@@ -559,66 +607,398 @@ fun HomeRoutineHeader(
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun QuickFilterRowLabel(
-    label: String,
-    hindSiliguri: FontFamily,
-    labelColor: Color,
-    content: @Composable () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = label,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = hindSiliguri,
-            color = labelColor,
-        )
-        content()
-    }
-}
-
-@Composable
-private fun QuickFilterPillChip(
-    label: String,
-    selected: Boolean,
-    accent: Color,
-    isDark: Boolean,
-    hindSiliguri: FontFamily,
-    onClick: () -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    val bgColor = if (selected) accent else if (isDark) cs.surfaceContainerHigh.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.85f)
-    val fgColor = if (selected) {
-        if (accent.luminance() > 0.52f) Color(0xFF0B1120) else Color.White
-    } else {
-        cs.onSurface
-    }
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = bgColor,
-        border = if (!selected) BorderStroke(0.75.dp, accent.copy(alpha = 0.30f)) else null,
-        modifier = Modifier.height(32.dp),
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            contentAlignment = Alignment.Center,
+        // 3. Messages Button (replaces standalone AI button -> opens Messenger hub with Zed AI + peers)
+        AnimatedVisibility(
+            visible = !isExpanded,
+            enter = fadeIn(tween(120, delayMillis = 20)) +
+                scaleIn(
+                    initialScale = 0.68f,
+                    animationSpec = spring(dampingRatio = 0.74f, stiffness = 880f),
+                ) +
+                expandHorizontally(
+                    animationSpec = spring(dampingRatio = 0.80f, stiffness = 880f),
+                    expandFrom = Alignment.Start,
+                ),
+            exit = fadeOut(tween(75)) +
+                scaleOut(
+                    targetScale = 0.60f,
+                    animationSpec = tween(90, easing = FastOutSlowInEasing),
+                ) +
+                shrinkHorizontally(
+                    animationSpec = tween(120, easing = FastOutSlowInEasing),
+                    shrinkTowards = Alignment.End,
+                ),
         ) {
-            Text(
-                text = label,
-                fontSize = 12.5.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                fontFamily = hindSiliguri,
-                color = fgColor,
-                maxLines = 1,
-                softWrap = false,
-            )
+            Box(modifier = Modifier.size(48.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .clickable(onClick = onAiClick)
+                        .testTag("home_messages_button"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = glassBg,
+                        border = BorderStroke(1.dp, routineAccent.borderTint),
+                        shadowElevation = 0.dp,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.size(42.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(routineAccent.softTint),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = MessageBubbleIcon,
+                                contentDescription = "Messages",
+                                tint = routineAccent.primary,
+                                modifier = Modifier.size(19.dp),
+                            )
+                        }
+                    }
+                }
+                if (unreadMessagesCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-3).dp, y = 3.dp)
+                            .size(11.dp)
+                            .clip(CircleShape)
+                            .background(dotHaloColor)
+                            .padding(1.5.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEF4444))
+                            .testTag("home_messages_unread_dot"),
+                    )
+                }
+            }
+        }
+
+        // 4. Notification Button (48.dp touch box, 42.dp visual circle centered at y = 24.dp) + crisp Red Dot
+        Box(modifier = Modifier.size(48.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .clickable(onClick = onNotificationClick)
+                    .testTag("home_notification_button"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = glassBg,
+                    border = BorderStroke(1.dp, notiAccent.borderTint),
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.size(42.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(notiAccent.softTint),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.notification),
+                            contentDescription = "Notifications",
+                            tint = notiAccent.primary,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
+            }
+
+            if (hasUnreadNotifications) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-3).dp, y = 3.dp)
+                        .size(11.dp)
+                        .clip(CircleShape)
+                        .background(dotHaloColor)
+                        .padding(1.5.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEF4444))
+                        .testTag("home_notification_unread_dot"),
+                )
+            }
         }
     }
+    }
+}
+
+@Composable
+private fun HomeProfileAvatarSlot(
+    photoUrl: String?,
+    avatarSeed: String,
+    glassBg: Color,
+    borderColor: Color,
+    onClick: () -> Unit,
+) {
+    val platformContext = LocalPlatformContext.current
+    val resolvedModel = remember(photoUrl) { resolveProfileImageModel(photoUrl) }
+    val imageRequest = remember(resolvedModel, photoUrl, platformContext) {
+        if (resolvedModel != null && !photoUrl.isNullOrBlank()) {
+            ImageRequest.Builder(platformContext)
+                .data(resolvedModel)
+                .memoryCacheKey("home_avatar_${photoUrl.hashCode()}")
+                .crossfade(false)
+                .build()
+        } else {
+            null
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .testTag("home_profile_button"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = glassBg,
+            border = BorderStroke(1.5.dp, borderColor),
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape),
+        ) {
+            if (imageRequest != null) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = "Profile Photo",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                DynamicAvatar(
+                    seed = avatarSeed,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickColumnHeader(
+    label: String,
+    hindSiliguri: FontFamily,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = label,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = hindSiliguri,
+        color = accent,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Infinite bidirectional circular 3D Snap-Wheel column with real-time distance scaling,
+ * opacity depth, snap fling physics, live center selection on settle, and tap-to-center.
+ * Scrolls infinitely in BOTH directions (up and down) like a mechanical drum.
+ */
+@Composable
+private fun <T> QuickWheelColumn(
+    items: List<T>,
+    selectedIndex: Int,
+    itemLabel: (T) -> String,
+    accent: Color,
+    hindSiliguri: FontFamily,
+    onSelect: (T) -> Unit,
+    testTag: String,
+    modifier: Modifier = Modifier,
+) {
+    val n = items.size
+    if (n == 0) {
+        Box(modifier = modifier.testTag(testTag))
+        return
+    }
+
+    val cs = MaterialTheme.colorScheme
+    val safeIndex = selectedIndex.coerceIn(0, n - 1)
+    val isCircular = n > 1
+    val loopMultiplier = 4_000
+    val totalCount = if (isCircular) n * loopMultiplier else 1
+    val middleBase = if (isCircular) (loopMultiplier / 2) * n else 0
+    val initialVirtual = middleBase + safeIndex
+
+    // Recreate wheel cleanly if option count changes (e.g., Department changing Group count 2 <-> 3)
+    key(n) {
+        val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialVirtual)
+        val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+        val coroutineScope = rememberCoroutineScope()
+
+        val currentItems by rememberUpdatedState(items)
+        val currentSelectedIdx by rememberUpdatedState(safeIndex)
+        val currentOnSelect by rememberUpdatedState(onSelect)
+        var pendingTapVirtual by remember { mutableStateOf<Int?>(null) }
+
+        val density = LocalDensity.current
+        val itemHeight = 38.dp
+        val itemHeightPx = with(density) { itemHeight.toPx() }
+
+        val centeredVirtualIndex by remember {
+            derivedStateOf {
+                val info = listState.layoutInfo
+                val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                info.visibleItemsInfo.minByOrNull { item ->
+                    kotlin.math.abs((item.offset + item.size / 2) - viewportCenter)
+                }?.index ?: listState.firstVisibleItemIndex
+            }
+        }
+
+        // Sync external changes (e.g., Reset button) to nearest matching circular virtual row
+        LaunchedEffect(safeIndex) {
+            if (!isCircular) return@LaunchedEffect
+            val tapped = pendingTapVirtual
+            if (tapped != null) {
+                val tappedLogical = ((tapped % n) + n) % n
+                if (tappedLogical == safeIndex) {
+                    return@LaunchedEffect
+                }
+            }
+            val anchor = centeredVirtualIndex.coerceIn(0, totalCount - 1)
+            val currentLogical = ((anchor % n) + n) % n
+            if (currentLogical != safeIndex || (!listState.isScrollInProgress && listState.firstVisibleItemScrollOffset != 0)) {
+                val targetVirtual = nearestCircularVirtualIndex(
+                    anchorVirtual = anchor,
+                    targetLogicalIndex = safeIndex,
+                    n = n,
+                    totalCount = totalCount,
+                )
+                if (!listState.isScrollInProgress && anchor != targetVirtual) {
+                    listState.animateScrollToItem(targetVirtual)
+                }
+            }
+        }
+
+        // Emit selected logical item when scroll settles & silently re-center if far from middle
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.isScrollInProgress }
+                .distinctUntilChanged()
+                .collect { scrolling ->
+                    if (!scrolling && currentItems.isNotEmpty()) {
+                        pendingTapVirtual = null
+                        val info = listState.layoutInfo
+                        val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                        val centered = info.visibleItemsInfo.minByOrNull { item ->
+                            kotlin.math.abs((item.offset + item.size / 2) - viewportCenter)
+                        }
+                        if (centered != null && centered.index in 0 until totalCount) {
+                            val logicalIndex = ((centered.index % n) + n) % n
+                            if (logicalIndex != currentSelectedIdx) {
+                                currentOnSelect(currentItems[logicalIndex])
+                            }
+                            if (isCircular && (centered.index < n * 100 || centered.index > totalCount - n * 100)) {
+                                listState.scrollToItem(middleBase + logicalIndex)
+                            }
+                        }
+                    }
+                }
+        }
+
+        LazyColumn(
+            state = listState,
+            flingBehavior = flingBehavior,
+            contentPadding = PaddingValues(vertical = 44.dp),
+            modifier = modifier.testTag(testTag),
+        ) {
+            items(
+                count = totalCount,
+                key = { it },
+            ) { virtualIndex ->
+                val logicalIndex = if (isCircular) ((virtualIndex % n) + n) % n else 0
+                val item = items[logicalIndex]
+                val isCentered = virtualIndex == centeredVirtualIndex
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeight)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            pendingTapVirtual = virtualIndex
+                            if (logicalIndex != safeIndex) {
+                                onSelect(item)
+                            }
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(virtualIndex)
+                            }
+                        }
+                        .graphicsLayer {
+                            val layoutInfo = listState.layoutInfo
+                            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                            val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == virtualIndex }
+                            if (itemInfo != null) {
+                                val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                                val normDist = (kotlin.math.abs(itemCenter - viewportCenter) / itemHeightPx)
+                                    .coerceIn(0f, 1.3f)
+                                val factor = normDist.coerceAtMost(1f)
+                                val scale = 1.07f - (0.23f * factor)
+                                val fade = 1f - (0.60f * factor)
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = fade
+                            } else {
+                                scaleX = 0.84f
+                                scaleY = 0.84f
+                                alpha = 0.40f
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = itemLabel(item),
+                        fontSize = if (isCentered) 13.5.sp else 12.sp,
+                        fontWeight = if (isCentered) FontWeight.Bold else FontWeight.Medium,
+                        fontFamily = hindSiliguri,
+                        color = if (isCentered) accent else cs.onSurface.copy(alpha = 0.80f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun nearestCircularVirtualIndex(
+    anchorVirtual: Int,
+    targetLogicalIndex: Int,
+    n: Int,
+    totalCount: Int,
+): Int {
+    if (n <= 1 || totalCount <= 1) return 0
+    val currentMod = ((anchorVirtual % n) + n) % n
+    var delta = targetLogicalIndex - currentMod
+    if (delta > n / 2) delta -= n
+    if (delta < -n / 2) delta += n
+    val candidate = anchorVirtual + delta
+    return when {
+        candidate < 0 -> candidate + n
+        candidate >= totalCount -> candidate - n
+        else -> candidate
+    }.coerceIn(0, totalCount - 1)
 }
 
 /**

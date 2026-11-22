@@ -3,11 +3,17 @@ package com.mpi.klass
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.tasks.Task
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.mpi.klass.theme.getAppContext
+import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.seconds
@@ -96,7 +102,9 @@ actual fun fetchLocalStudentProfile(email: String): StudentProfile? {
     val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return null
     val cleanEmail = email.trim().lowercase()
     val localName = prefs.getString("${cleanEmail}_student_name", "")?.ifBlank { prefs.getString("${cleanEmail}_name", "") } ?: ""
+    val localBio = prefs.getString("${cleanEmail}_student_bio", "") ?: ""
     val localPhoto = prefs.getString("${cleanEmail}_student_photo", "")?.ifBlank { prefs.getString("${cleanEmail}_photo", "")?.ifBlank { null } }
+    val localCoverPhoto = prefs.getString("${cleanEmail}_student_cover_photo", "")?.ifBlank { null }
     val localComplete = prefs.getBoolean("${cleanEmail}_student_complete", false)
     val semester = prefs.getString("${cleanEmail}_student_semester", "") ?: ""
     val shift = prefs.getString("${cleanEmail}_student_shift", "") ?: ""
@@ -113,16 +121,19 @@ actual fun fetchLocalStudentProfile(email: String): StudentProfile? {
     val gender = prefs.getString("${cleanEmail}_student_gender", "") ?: ""
     val marital = prefs.getString("${cleanEmail}_student_marital", "") ?: ""
     val contactEmail = prefs.getString("${cleanEmail}_student_contact_email", "") ?: ""
-    val permanentAddress = prefs.getString("${cleanEmail}_student_permanent_address", "") ?: ""
+    val permAddr = prefs.getString("${cleanEmail}_student_permanent_address", "") ?: ""
     val reg = prefs.getString("${cleanEmail}_student_registration", "") ?: ""
+    val privacyMap = decodeFieldPrivacyJson(prefs.getString("${cleanEmail}_student_field_privacy", null))
 
-    if (!localComplete && localName.isBlank() && localPhoto.isNullOrBlank() && phone.isBlank() && dept.isBlank() && roll.isBlank()) {
+    if (!localComplete && localName.isBlank() && localBio.isBlank() && localPhoto.isNullOrBlank() && localCoverPhoto.isNullOrBlank() && phone.isBlank() && dept.isBlank() && roll.isBlank()) {
         return null
     }
     return StudentProfile(
         email = cleanEmail,
         name = localName,
+        bio = localBio,
         photoUrl = localPhoto,
+        coverPhotoUrl = localCoverPhoto,
         semester = semester,
         shift = shift,
         department = dept,
@@ -138,10 +149,51 @@ actual fun fetchLocalStudentProfile(email: String): StudentProfile? {
         gender = gender,
         maritalStatus = marital,
         contactEmail = contactEmail,
-        permanentAddress = permanentAddress,
+        permanentAddress = permAddr,
         registrationNumber = reg,
         profileSetupComplete = localComplete,
+        fieldPrivacy = privacyMap,
     )
+}
+
+internal fun encodeFieldPrivacyJson(map: Map<String, ProfilePrivacy>): String {
+    if (map.isEmpty()) return ""
+    val obj = JSONObject()
+    map.forEach { (k, v) ->
+        if (k.isNotBlank()) obj.put(k.trim(), v.key)
+    }
+    return obj.toString()
+}
+
+internal fun decodeFieldPrivacyJson(raw: String?): Map<String, ProfilePrivacy> {
+    if (raw.isNullOrBlank()) return emptyMap()
+    return try {
+        val obj = JSONObject(raw)
+        val out = linkedMapOf<String, ProfilePrivacy>()
+        val keys = obj.keys()
+        while (keys.hasNext()) {
+            val k = keys.next().trim()
+            if (k.isNotBlank()) {
+                out[k] = ProfilePrivacy.fromKey(obj.optString(k))
+            }
+        }
+        out
+    } catch (_: Exception) {
+        emptyMap()
+    }
+}
+
+internal fun decodeFieldPrivacyMap(raw: Any?): Map<String, ProfilePrivacy> {
+    val map = raw as? Map<*, *> ?: return emptyMap()
+    val out = linkedMapOf<String, ProfilePrivacy>()
+    map.forEach { (k, v) ->
+        val key = (k as? String)?.trim()
+        val valStr = v as? String
+        if (!key.isNullOrBlank() && valStr != null) {
+            out[key] = ProfilePrivacy.fromKey(valStr)
+        }
+    }
+    return out
 }
 
 actual fun deleteLocalProfile(email: String) {
@@ -154,7 +206,9 @@ actual fun deleteLocalProfile(email: String) {
         .remove("${cleanEmail}_category")
         .remove("${cleanEmail}_time")
         .remove("${cleanEmail}_student_name")
+        .remove("${cleanEmail}_student_bio")
         .remove("${cleanEmail}_student_photo")
+        .remove("${cleanEmail}_student_cover_photo")
         .remove("${cleanEmail}_student_semester")
         .remove("${cleanEmail}_student_shift")
         .remove("${cleanEmail}_student_department")
@@ -172,8 +226,15 @@ actual fun deleteLocalProfile(email: String) {
         .remove("${cleanEmail}_student_contact_email")
         .remove("${cleanEmail}_student_permanent_address")
         .remove("${cleanEmail}_student_registration")
+        .remove("${cleanEmail}_student_field_privacy")
         .remove("${cleanEmail}_student_complete")
         .remove("${cleanEmail}_student_time")
+        .remove("${cleanEmail}_pw_salt")
+        .remove("${cleanEmail}_pw_hash")
+        .remove("${cleanEmail}_pw_algo")
+        .remove("${cleanEmail}_has_pw")
+        .remove("${cleanEmail}_pw_fail_count")
+        .remove("${cleanEmail}_pw_lock_until")
         .apply()
 }
 
@@ -183,6 +244,404 @@ actual fun updateLocalCategory(email: String, category: String) {
     prefs.edit()
         .putString("${cleanEmail}_category", category)
         .apply()
+}
+
+private const val PW_ALGO_PBKDF2 = "pbkdf2_hmac_sha256_120k"
+private const val PW_PBKDF2_ITERATIONS = 120_000
+private const val PW_PBKDF2_KEY_BITS = 256
+private const val PW_MAX_FAILED_ATTEMPTS = 5
+private const val PW_LOCKOUT_DURATION_MS = 60_000L
+
+private fun generatePasswordSaltHex(): String {
+    val bytes = ByteArray(16)
+    SecureRandom().nextBytes(bytes)
+    return bytes.joinToString("") { "%02x".format(it) }
+}
+
+private fun hexToBytes(hex: String): ByteArray {
+    val clean = hex.trim()
+    if (clean.length % 2 != 0) return ByteArray(0)
+    return ByteArray(clean.length / 2) { idx ->
+        clean.substring(idx * 2, idx * 2 + 2).toInt(16).toByte()
+    }
+}
+
+private fun hashPasswordPbkdf2(saltHex: String, password: String): String {
+    return try {
+        val saltBytes = hexToBytes(saltHex).takeIf { it.isNotEmpty() } ?: saltHex.toByteArray(Charsets.UTF_8)
+        val spec = PBEKeySpec(password.toCharArray(), saltBytes, PW_PBKDF2_ITERATIONS, PW_PBKDF2_KEY_BITS)
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val derived = factory.generateSecret(spec).encoded
+        spec.clearPassword()
+        derived.joinToString("") { "%02x".format(it) }
+    } catch (_: Exception) {
+        hashPasswordLegacySha256(saltHex, password)
+    }
+}
+
+private fun hashPasswordLegacySha256(saltHex: String, password: String): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    val digest = md.digest("$saltHex:$password".toByteArray(Charsets.UTF_8))
+    return digest.joinToString("") { "%02x".format(it) }
+}
+
+private fun saveLocalPasswordHash(cleanEmail: String, password: String): Pair<String, String> {
+    val salt = generatePasswordSaltHex()
+    val hash = hashPasswordPbkdf2(salt, password)
+    val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE)
+    prefs?.edit()
+        ?.putString("${cleanEmail}_pw_salt", salt)
+        ?.putString("${cleanEmail}_pw_hash", hash)
+        ?.putString("${cleanEmail}_pw_algo", PW_ALGO_PBKDF2)
+        ?.putBoolean("${cleanEmail}_has_pw", true)
+        ?.remove("${cleanEmail}_pw_fail_count")
+        ?.remove("${cleanEmail}_pw_lock_until")
+        ?.apply()
+    return salt to hash
+}
+
+private fun hasLocalPasswordRecord(cleanEmail: String): Boolean {
+    val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return false
+    val salt = prefs.getString("${cleanEmail}_pw_salt", "") ?: ""
+    val hash = prefs.getString("${cleanEmail}_pw_hash", "") ?: ""
+    return prefs.getBoolean("${cleanEmail}_has_pw", false) && salt.isNotBlank() && hash.isNotBlank()
+}
+
+private fun getLockoutRemainingSeconds(cleanEmail: String): Long {
+    val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return 0L
+    val lockUntil = prefs.getLong("${cleanEmail}_pw_lock_until", 0L)
+    val remainingMs = lockUntil - System.currentTimeMillis()
+    return if (remainingMs > 0L) ((remainingMs + 999L) / 1000L) else 0L
+}
+
+private fun recordFailedPasswordAttempt(cleanEmail: String): Long {
+    val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return 0L
+    val nextCount = prefs.getInt("${cleanEmail}_pw_fail_count", 0) + 1
+    val editor = prefs.edit()
+    return if (nextCount >= PW_MAX_FAILED_ATTEMPTS) {
+        val lockUntil = System.currentTimeMillis() + PW_LOCKOUT_DURATION_MS
+        editor.putInt("${cleanEmail}_pw_fail_count", 0)
+            .putLong("${cleanEmail}_pw_lock_until", lockUntil)
+            .apply()
+        PW_LOCKOUT_DURATION_MS / 1000L
+    } else {
+        editor.putInt("${cleanEmail}_pw_fail_count", nextCount).apply()
+        0L
+    }
+}
+
+private fun resetPasswordAttemptCounter(cleanEmail: String) {
+    val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return
+    prefs.edit()
+        .remove("${cleanEmail}_pw_fail_count")
+        .remove("${cleanEmail}_pw_lock_until")
+        .apply()
+}
+
+private fun verifyLocalPasswordHash(cleanEmail: String, password: String): Boolean {
+    val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE) ?: return false
+    val salt = prefs.getString("${cleanEmail}_pw_salt", null)?.takeIf { it.isNotBlank() } ?: return false
+    val expectedHash = prefs.getString("${cleanEmail}_pw_hash", null)?.takeIf { it.isNotBlank() } ?: return false
+    val algo = prefs.getString("${cleanEmail}_pw_algo", null)
+
+    val matched = if (algo == PW_ALGO_PBKDF2) {
+        val actualHash = hashPasswordPbkdf2(salt, password)
+        MessageDigest.isEqual(
+            expectedHash.toByteArray(Charsets.UTF_8),
+            actualHash.toByteArray(Charsets.UTF_8),
+        )
+    } else {
+        val pbkdf2Attempt = hashPasswordPbkdf2(salt, password)
+        val legacyAttempt = hashPasswordLegacySha256(salt, password)
+        val matchedPbkdf2 = MessageDigest.isEqual(
+            expectedHash.toByteArray(Charsets.UTF_8),
+            pbkdf2Attempt.toByteArray(Charsets.UTF_8),
+        )
+        val matchedLegacy = MessageDigest.isEqual(
+            expectedHash.toByteArray(Charsets.UTF_8),
+            legacyAttempt.toByteArray(Charsets.UTF_8),
+        )
+        if (matchedLegacy) {
+            // Silently upgrade legacy hash to PBKDF2
+            saveLocalPasswordHash(cleanEmail, password)
+        }
+        matchedPbkdf2 || matchedLegacy
+    }
+    return matched
+}
+
+actual suspend fun setOrUpdateLoginPassword(
+    email: String,
+    newPassword: String,
+    currentPassword: String?,
+): Result<Unit> {
+    val cleanEmail = email.trim().lowercase()
+    if (cleanEmail.isBlank()) return Result.failure(Exception("সঠিক ইমেইল পাওয়া যায়নি"))
+
+    val lockoutSecs = getLockoutRemainingSeconds(cleanEmail)
+    if (lockoutSecs > 0L) {
+        return Result.failure(Exception("অনেকবার ভুল পাসওয়ার্ড দেওয়া হয়েছে। $lockoutSecs সেকেন্ড পর আবার চেষ্টা করুন।"))
+    }
+
+    val validationErr = validateLoginPassword(newPassword, email = cleanEmail)
+    if (validationErr != null) return Result.failure(Exception(validationErr))
+
+    val hasExisting = checkHasLoginPassword(cleanEmail)
+    if (hasExisting && !currentPassword.isNullOrEmpty()) {
+        if (currentPassword == newPassword) {
+            return Result.failure(Exception("নতুন পাসওয়ার্ডটি বর্তমান পাসওয়ার্ড থেকে ভিন্ন হতে হবে"))
+        }
+        var currentVerified = if (hasLocalPasswordRecord(cleanEmail)) {
+            verifyLocalPasswordHash(cleanEmail, currentPassword)
+        } else {
+            false
+        }
+        val fbUser = FirebaseAuth.getInstance().currentUser
+        if (!currentVerified && fbUser != null && fbUser.email?.trim()?.lowercase() == cleanEmail) {
+            val reauthOk = try {
+                val cred = EmailAuthProvider.getCredential(cleanEmail, currentPassword)
+                withTimeoutOrNull(6.seconds) {
+                    fbUser.reauthenticate(cred).awaitTask()
+                    true
+                } ?: false
+            } catch (_: Exception) {
+                false
+            }
+            if (reauthOk) currentVerified = true
+        }
+        if (!currentVerified) {
+            val lockAfterFail = recordFailedPasswordAttempt(cleanEmail)
+            return if (lockAfterFail > 0L) {
+                Result.failure(Exception("অনেকবার ভুল পাসওয়ার্ড দেওয়া হয়েছে। $lockAfterFail সেকেন্ড পর আবার চেষ্টা করুন।"))
+            } else {
+                Result.failure(Exception("বর্তমান পাসওয়ার্ডটি সঠিক নয়"))
+            }
+        }
+        resetPasswordAttemptCounter(cleanEmail)
+    } else if (hasExisting && currentPassword != null && currentPassword.isBlank()) {
+        return Result.failure(Exception("বর্তমান পাসওয়ার্ডটি লিখুন"))
+    }
+
+    val (salt, hash) = saveLocalPasswordHash(cleanEmail, newPassword)
+    val now = System.currentTimeMillis()
+
+    try {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null && currentUser.email?.trim()?.lowercase() == cleanEmail) {
+            val hasEmailProvider = currentUser.providerData.any { it.providerId == EmailAuthProvider.PROVIDER_ID }
+            if (hasEmailProvider) {
+                if (!currentPassword.isNullOrEmpty()) {
+                    try {
+                        withTimeoutOrNull(6.seconds) {
+                            currentUser.reauthenticate(EmailAuthProvider.getCredential(cleanEmail, currentPassword)).awaitTask()
+                        }
+                    } catch (_: Exception) {}
+                }
+                withTimeoutOrNull(6.seconds) {
+                    currentUser.updatePassword(newPassword).awaitTask()
+                }
+            } else {
+                val credential = EmailAuthProvider.getCredential(cleanEmail, newPassword)
+                withTimeoutOrNull(6.seconds) {
+                    currentUser.linkWithCredential(credential).awaitTask()
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Firebase Auth password link/update deferred to salted Firestore store: ${e.message}")
+    }
+
+    val pwPatch = mapOf<String, Any>(
+        "email" to cleanEmail,
+        "password_salt" to salt,
+        "password_hash" to hash,
+        "password_algo" to PW_ALGO_PBKDF2,
+        "has_password" to true,
+        "password_updated_at" to now,
+        "updated_at" to now,
+    )
+    withTimeoutOrNull(6.seconds) {
+        for ((db, dbLabel) in getFirestoreInstances()) {
+            try {
+                db.collection("users").document(cleanEmail).set(pwPatch, SetOptions.merge()).awaitTask()
+            } catch (e: Exception) {
+                Log.w(TAG, "[$dbLabel] Password metadata save warning: ${e.message}")
+            }
+        }
+    }
+
+    return Result.success(Unit)
+}
+
+actual suspend fun checkHasLoginPassword(email: String): Boolean {
+    val cleanEmail = email.trim().lowercase()
+    if (cleanEmail.isBlank()) return false
+    if (hasLocalPasswordRecord(cleanEmail)) return true
+
+    val remoteHasPw = withTimeoutOrNull(5.seconds) {
+        for ((db, _) in getFirestoreInstances()) {
+            try {
+                val doc = db.collection("users").document(cleanEmail).get().awaitTask()
+                if (doc.exists()) {
+                    val hasPw = doc.getBoolean("has_password") == true
+                    val salt = (doc.getString("password_salt") ?: "").trim()
+                    val hash = (doc.getString("password_hash") ?: "").trim()
+                    if (hasPw || (salt.isNotBlank() && hash.isNotBlank())) {
+                        if (salt.isNotBlank() && hash.isNotBlank()) {
+                            val prefs = getAppContext()?.getSharedPreferences("klass_local_db", Context.MODE_PRIVATE)
+                            prefs?.edit()
+                                ?.putString("${cleanEmail}_pw_salt", salt)
+                                ?.putString("${cleanEmail}_pw_hash", hash)
+                                ?.putBoolean("${cleanEmail}_has_pw", true)
+                                ?.apply()
+                        }
+                        return@withTimeoutOrNull true
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        false
+    } ?: false
+
+    return remoteHasPw
+}
+
+actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: String): EmailPasswordLoginResult {
+    val cleanEmail = email.trim().lowercase()
+    if (cleanEmail.isBlank() || !cleanEmail.contains("@") || !cleanEmail.contains(".")) {
+        return EmailPasswordLoginResult.Error(
+            ErrorImageType.GENERAL_ERROR,
+            "সঠিক ইমেইল ঠিকানা লিখুন",
+        )
+    }
+    if (password.isBlank()) {
+        return EmailPasswordLoginResult.Error(
+            ErrorImageType.GENERAL_ERROR,
+            "অনুগ্রহ করে আপনার পাসওয়ার্ড লিখুন",
+        )
+    }
+
+        val lockoutRemaining = getLockoutRemainingSeconds(cleanEmail)
+        if (lockoutRemaining > 0L) {
+            return EmailPasswordLoginResult.Error(
+                ErrorImageType.GENERAL_ERROR,
+                "অনেকবার ভুল পাসওয়ার্ড দেওয়া হয়েছে। $lockoutRemaining সেকেন্ড পর আবার চেষ্টা করুন।",
+            )
+        }
+
+        var firebaseAuthSucceeded = false
+        var networkFailed = false
+        try {
+            if (isNetworkAvailable()) {
+                val authResult = withTimeoutOrNull(10.seconds) {
+                    FirebaseAuth.getInstance().signInWithEmailAndPassword(cleanEmail, password).awaitTask()
+                }
+                if (authResult?.user != null) {
+                    firebaseAuthSucceeded = true
+                    resetPasswordAttemptCounter(cleanEmail)
+                    saveLocalPasswordHash(cleanEmail, password)
+                }
+            } else {
+                networkFailed = true
+            }
+        } catch (e: FirebaseNetworkException) {
+            networkFailed = true
+            Log.w(TAG, "Email login network exception: ${e.message}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Firebase signInWithEmailAndPassword fallback check: ${e.message}")
+        }
+
+        val hasLocalRecord = hasLocalPasswordRecord(cleanEmail)
+        if (!firebaseAuthSucceeded) {
+            if (hasLocalRecord) {
+                if (!verifyLocalPasswordHash(cleanEmail, password)) {
+                    val lockedFor = recordFailedPasswordAttempt(cleanEmail)
+                    val msg = if (lockedFor > 0L) {
+                        "অনেকবার ভুল পাসওয়ার্ড দেওয়া হয়েছে। $lockedFor সেকেন্ড পর আবার চেষ্টা করুন।"
+                    } else {
+                        "ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। দয়া করে আবার চেষ্টা করুন।"
+                    }
+                    return EmailPasswordLoginResult.Error(
+                        ErrorImageType.GENERAL_ERROR,
+                        msg,
+                    )
+                }
+                resetPasswordAttemptCounter(cleanEmail)
+                // If local PBKDF2 verified while online and no FirebaseAuth session exists, try linking/creating email session
+                if (isNetworkAvailable() && FirebaseAuth.getInstance().currentUser == null) {
+                    try {
+                        val created = withTimeoutOrNull(8.seconds) {
+                            FirebaseAuth.getInstance().createUserWithEmailAndPassword(cleanEmail, password).awaitTask()
+                        }
+                        if (created?.user != null) {
+                            firebaseAuthSucceeded = true
+                        }
+                    } catch (_: Exception) {}
+                }
+            } else {
+                if (!networkFailed && isNetworkAvailable()) {
+                    recordFailedPasswordAttempt(cleanEmail)
+                }
+                return if (networkFailed || !isNetworkAvailable()) {
+                    EmailPasswordLoginResult.Error(ErrorImageType.NO_INTERNET)
+                } else {
+                    EmailPasswordLoginResult.Error(
+                        ErrorImageType.GENERAL_ERROR,
+                        "ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। নতুন ব্যবহারকারী হলে 'শুরু করুন' থেকে সাইন-ইন করে প্রোফাইলে পাসওয়ার্ড সেট করুন।",
+                    )
+                }
+            }
+        }
+
+    // Resolve saved role, admin status, and profile details
+    val localProf = fetchLocalProfile(cleanEmail)
+    val remoteProf = if (firebaseAuthSucceeded && isNetworkAvailable()) RoleConfig.fetchUserProfile(cleanEmail) else null
+    val mergedProf = remoteProf ?: localProf
+    val studentProf = RoleConfig.fetchStudentProfile(cleanEmail)
+
+    var resolvedRole = UserRole.fromRaw(mergedProf?.category) ?: UserRole.STUDENT
+    if (firebaseAuthSucceeded && isNetworkAvailable()) {
+        val adminStatus = getAdminStatusFromFirestore(cleanEmail)
+        if (adminStatus == AdminStatus.DECLINED) {
+            return EmailPasswordLoginResult.Error(ErrorImageType.ADMIN_REQUEST_DECLINED)
+        }
+        if (adminStatus == AdminStatus.PENDING && resolvedRole == UserRole.ADMIN) {
+            return EmailPasswordLoginResult.Error(ErrorImageType.ADMIN_REQUEST_PENDING)
+        }
+        if (adminStatus == AdminStatus.APPROVED) {
+            resolvedRole = UserRole.ADMIN
+        } else if (resolvedRole == UserRole.ADMIN) {
+            return EmailPasswordLoginResult.Error(ErrorImageType.ADMIN_NOT_AUTHORIZED)
+        }
+
+        val control = fetchSignInControlFromFirestore()
+        val roleEnabled = when (resolvedRole) {
+            UserRole.ADMIN -> control.adminSignInEnabled
+            UserRole.TEACHER -> control.teacherSignInEnabled
+            UserRole.STUDENT -> control.studentSignInEnabled
+        }
+        if (!roleEnabled && !RoleConfig.isUserRegisteredForRole(cleanEmail, resolvedRole)) {
+            return EmailPasswordLoginResult.Error(ErrorImageType.SIGN_IN_DISABLED)
+        }
+    }
+
+    val finalName = mergedProf?.name?.ifBlank { null }
+        ?: studentProf?.name?.ifBlank { null }
+        ?: cleanEmail.substringBefore("@")
+    val finalPhoto = listOfNotNull(
+        mergedProf?.photoUrl?.ifBlank { null },
+        studentProf?.photoUrl?.ifBlank { null },
+    ).firstOrNull { it.startsWith("data:image") }
+        ?: mergedProf?.photoUrl?.ifBlank { null }
+        ?: studentProf?.photoUrl?.ifBlank { null }
+
+    saveLocalProfile(cleanEmail, finalName, finalPhoto, mergedProf?.provider ?: "email", resolvedRole.name)
+    return EmailPasswordLoginResult.Success(
+        role = resolvedRole,
+        email = cleanEmail,
+        name = finalName,
+        photoUrl = finalPhoto,
+    )
 }
 
 private fun isDocMatchingEmail(doc: DocumentSnapshot, cleanEmail: String): Boolean {
@@ -396,6 +855,7 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
 
     // 1. Save locally in SharedPreferences (never wipe existing photo or category with blank)
     val editor = prefs?.edit()
+        ?.putString("${cleanEmail}_student_bio", profile.bio)
         ?.putString("${cleanEmail}_student_semester", profile.semester)
         ?.putString("${cleanEmail}_student_shift", profile.shift)
         ?.putString("${cleanEmail}_student_department", profile.department)
@@ -413,6 +873,7 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         ?.putString("${cleanEmail}_student_contact_email", profile.contactEmail)
         ?.putString("${cleanEmail}_student_permanent_address", profile.permanentAddress)
         ?.putString("${cleanEmail}_student_registration", profile.registrationNumber)
+        ?.putString("${cleanEmail}_student_field_privacy", encodeFieldPrivacyJson(profile.fieldPrivacy))
         ?.putBoolean("${cleanEmail}_student_complete", profile.profileSetupComplete)
         ?.putLong("${cleanEmail}_student_time", now)
     if (prefs?.contains("${cleanEmail}_category") != true) {
@@ -426,12 +887,17 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         editor?.putString("${cleanEmail}_photo", profile.photoUrl)
         editor?.putString("${cleanEmail}_student_photo", profile.photoUrl)
     }
+    if (!profile.coverPhotoUrl.isNullOrBlank()) {
+        editor?.putString("${cleanEmail}_student_cover_photo", profile.coverPhotoUrl)
+    }
     editor?.apply()
 
     // 2. Save in Firestore collections ('students', 'users', and role collection if TEACHER/ADMIN)
+    val privacyFirestoreMap = profile.fieldPrivacy.entries.associate { it.key to it.value.key }
     val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to profile.name,
+        "bio" to profile.bio,
         "role" to category,
         "semester" to profile.semester,
         "shift" to profile.shift,
@@ -450,23 +916,32 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         "contact_email" to profile.contactEmail,
         "permanent_address" to profile.permanentAddress,
         "registration_number" to profile.registrationNumber,
+        "field_privacy" to privacyFirestoreMap,
         "profile_setup_complete" to profile.profileSetupComplete,
         "updated_at" to now,
     )
     if (!profile.photoUrl.isNullOrBlank()) {
         data["photo_url"] = profile.photoUrl
     }
+    if (!profile.coverPhotoUrl.isNullOrBlank()) {
+        data["cover_photo_url"] = profile.coverPhotoUrl
+    }
 
     val userPatch = mutableMapOf<String, Any>(
         "email" to cleanEmail,
         "name" to profile.name,
+        "bio" to profile.bio,
         "phone" to profile.phone,
         "department" to profile.department,
         "address" to profile.address,
+        "field_privacy" to privacyFirestoreMap,
         "updated_at" to now,
     )
     if (!profile.photoUrl.isNullOrBlank()) {
         userPatch["photo_url"] = profile.photoUrl
+    }
+    if (!profile.coverPhotoUrl.isNullOrBlank()) {
+        userPatch["cover_photo_url"] = profile.coverPhotoUrl
     }
 
     val teacherPatch = userPatch.toMutableMap().apply {
@@ -563,11 +1038,15 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
     val localTime = prefs?.getLong("${cleanEmail}_student_time", 0L) ?: 0L
     val localComplete = prefs?.getBoolean("${cleanEmail}_student_complete", false) ?: false
     val localName = prefs?.getString("${cleanEmail}_student_name", "")?.ifBlank { prefs.getString("${cleanEmail}_name", "") } ?: ""
+    val localBio = prefs?.getString("${cleanEmail}_student_bio", "") ?: ""
     val localPhoto = prefs?.getString("${cleanEmail}_student_photo", "")?.ifBlank { prefs.getString("${cleanEmail}_photo", "")?.ifBlank { null } }
+    val localCoverPhoto = prefs?.getString("${cleanEmail}_student_cover_photo", "")?.ifBlank { null }
     val localProfile = StudentProfile(
         email = cleanEmail,
         name = localName,
+        bio = localBio,
         photoUrl = localPhoto,
+        coverPhotoUrl = localCoverPhoto,
         semester = prefs?.getString("${cleanEmail}_student_semester", "") ?: "",
         shift = prefs?.getString("${cleanEmail}_student_shift", "") ?: "",
         department = prefs?.getString("${cleanEmail}_student_department", "") ?: "",
@@ -586,6 +1065,7 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
         permanentAddress = prefs?.getString("${cleanEmail}_student_permanent_address", "") ?: "",
         registrationNumber = prefs?.getString("${cleanEmail}_student_registration", "") ?: "",
         profileSetupComplete = localComplete,
+        fieldPrivacy = decodeFieldPrivacyJson(prefs?.getString("${cleanEmail}_student_field_privacy", null)),
     )
 
     // 2. Always attempt to fetch latest document from Firestore 'students' collection and merge cleanly
@@ -598,7 +1078,9 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                     val d = doc.data ?: continue
                     val remoteUpdatedAt = (d["updated_at"] as? Number)?.toLong() ?: 0L
                     val remoteName = (d["name"] as? String) ?: ""
+                    val remoteBio = (d["bio"] as? String) ?: ""
                     val remotePhoto = (d["photo_url"] as? String)?.ifBlank { null }
+                    val remoteCoverPhoto = (d["cover_photo_url"] as? String)?.ifBlank { null }
                     val remoteSemester = (d["semester"] as? String) ?: ""
                     val remoteShift = (d["shift"] as? String) ?: ""
                     val remoteDepartment = (d["department"] as? String) ?: ""
@@ -617,10 +1099,17 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                     val remotePermAddress = (d["permanent_address"] as? String) ?: ""
                     val remoteReg = (d["registration_number"] as? String) ?: ""
                     val remoteComplete = (d["profile_setup_complete"] as? Boolean) ?: false
+                    val remotePrivacy = decodeFieldPrivacyMap(d["field_privacy"])
 
                     val preferLocal = localTime > remoteUpdatedAt && localComplete
                     fun pick(remoteVal: String, localVal: String): String =
                         if (preferLocal) localVal.ifBlank { remoteVal } else remoteVal.ifBlank { localVal }
+
+                    val mergedPrivacy = if (preferLocal) {
+                        remotePrivacy + localProfile.fieldPrivacy
+                    } else {
+                        localProfile.fieldPrivacy + remotePrivacy
+                    }
 
                     val mergedPhoto = when {
                         preferLocal && !localPhoto.isNullOrBlank() -> localPhoto
@@ -628,11 +1117,19 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         localPhoto != null && localPhoto.startsWith("data:image", ignoreCase = true) -> localPhoto
                         else -> remotePhoto ?: localPhoto
                     }
+                    val mergedCoverPhoto = when {
+                        preferLocal && !localCoverPhoto.isNullOrBlank() -> localCoverPhoto
+                        remoteCoverPhoto != null && remoteCoverPhoto.startsWith("data:image", ignoreCase = true) -> remoteCoverPhoto
+                        localCoverPhoto != null && localCoverPhoto.startsWith("data:image", ignoreCase = true) -> localCoverPhoto
+                        else -> remoteCoverPhoto ?: localCoverPhoto
+                    }
 
                     val merged = StudentProfile(
                         email = (d["email"] as? String)?.ifBlank { cleanEmail } ?: cleanEmail,
                         name = pick(remoteName, localProfile.name),
+                        bio = pick(remoteBio, localProfile.bio),
                         photoUrl = mergedPhoto,
+                        coverPhotoUrl = mergedCoverPhoto,
                         semester = pick(remoteSemester, localProfile.semester),
                         shift = pick(remoteShift, localProfile.shift),
                         department = pick(remoteDepartment, localProfile.department),
@@ -651,10 +1148,12 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         permanentAddress = pick(remotePermAddress, localProfile.permanentAddress),
                         registrationNumber = pick(remoteReg, localProfile.registrationNumber),
                         profileSetupComplete = remoteComplete || localComplete,
+                        fieldPrivacy = mergedPrivacy,
                     )
 
                     // Update local cache with merged authoritative data
                     val cacheEditor = prefs?.edit()
+                        ?.putString("${cleanEmail}_student_bio", merged.bio)
                         ?.putString("${cleanEmail}_student_semester", merged.semester)
                         ?.putString("${cleanEmail}_student_shift", merged.shift)
                         ?.putString("${cleanEmail}_student_department", merged.department)
@@ -672,6 +1171,7 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                         ?.putString("${cleanEmail}_student_contact_email", merged.contactEmail)
                         ?.putString("${cleanEmail}_student_permanent_address", merged.permanentAddress)
                         ?.putString("${cleanEmail}_student_registration", merged.registrationNumber)
+                        ?.putString("${cleanEmail}_student_field_privacy", encodeFieldPrivacyJson(merged.fieldPrivacy))
                         ?.putBoolean("${cleanEmail}_student_complete", merged.profileSetupComplete)
                         ?.putLong("${cleanEmail}_student_time", maxOf(localTime, remoteUpdatedAt))
                     if (merged.name.isNotBlank()) {
@@ -681,6 +1181,9 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
                     if (!merged.photoUrl.isNullOrBlank()) {
                         cacheEditor?.putString("${cleanEmail}_photo", merged.photoUrl)
                         cacheEditor?.putString("${cleanEmail}_student_photo", merged.photoUrl)
+                    }
+                    if (!merged.coverPhotoUrl.isNullOrBlank()) {
+                        cacheEditor?.putString("${cleanEmail}_student_cover_photo", merged.coverPhotoUrl)
                     }
                     cacheEditor?.apply()
                     return@withTimeoutOrNull merged
@@ -697,7 +1200,7 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
     val hasAnyLocal = localComplete || localProfile.semester.isNotBlank() || localProfile.department.isNotBlank() ||
         localProfile.rollNumber.isNotBlank() || localProfile.fatherName.isNotBlank() ||
         localProfile.registrationNumber.isNotBlank() || localProfile.phone.isNotBlank() ||
-        localProfile.address.isNotBlank() || !localPhoto.isNullOrBlank() || localName.isNotBlank()
+        localProfile.address.isNotBlank() || !localPhoto.isNullOrBlank() || !localCoverPhoto.isNullOrBlank() || localName.isNotBlank()
     if (hasAnyLocal) return localProfile
 
     val basicUser = fetchLocalProfile(cleanEmail)
@@ -840,6 +1343,9 @@ actual suspend fun deleteUserFromFirestore(email: String, role: String): Result<
                 }
             } catch (_: Exception) {}
         }
+        try {
+            FirebaseAuth.getInstance().currentUser?.delete()?.awaitTask()
+        } catch (_: Exception) {}
     }
     return Result.success(Unit)
 }

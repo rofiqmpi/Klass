@@ -1,6 +1,9 @@
 package com.mpi.klass
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 data class NotificationPrefs(
     val enabled: Boolean = true,
@@ -26,7 +29,78 @@ data class ScheduledClassAlert(
     val isPreClassReminder: Boolean,
 )
 
+internal object NotificationSeenStore {
+    private var cachedSeenIds by mutableStateOf<Set<String>?>(null)
+    private var cachedActiveIds by mutableStateOf<List<String>>(emptyList())
+
+    fun seenIds(): Set<String> {
+        val current = cachedSeenIds
+        if (current != null) return current
+        val loaded = getSeenNotificationIds()
+        cachedSeenIds = loaded
+        return loaded
+    }
+
+    fun setActiveIds(ids: List<String>) {
+        if (cachedActiveIds != ids) {
+            cachedActiveIds = ids
+        }
+    }
+
+    fun hasUnread(): Boolean {
+        val seen = seenIds()
+        return cachedActiveIds.any { it !in seen }
+    }
+
+    fun unreadCount(): Int {
+        val seen = seenIds()
+        return cachedActiveIds.count { it !in seen }
+    }
+
+    fun markSeen(id: String) {
+        val updated = seenIds() + id
+        if (updated != cachedSeenIds) {
+            cachedSeenIds = updated
+            saveSeenNotificationIds(updated)
+        }
+    }
+
+    fun markUnseen(id: String) {
+        val updated = seenIds() - id
+        if (updated != cachedSeenIds) {
+            cachedSeenIds = updated
+            saveSeenNotificationIds(updated)
+        }
+    }
+}
+
 internal object PushScheduleMath {
+
+    fun activeActionNotificationIds(
+        role: UserRole?,
+        studentProfile: StudentProfile?,
+        teacherPref: TeacherSchedulingPref?,
+        publishedPlan: RoutinePlan?,
+        permissionGranted: Boolean,
+    ): List<String> = buildList {
+        if (role == UserRole.STUDENT &&
+            (studentProfile == null || studentProfile.department.isBlank() || studentProfile.semester.isBlank())
+        ) {
+            add("action_complete_profile")
+        }
+        if (role == UserRole.TEACHER && (teacherPref == null || !teacherPref.schedulingSetupComplete)) {
+            add("action_teacher_prefs")
+        }
+        if (role == UserRole.ADMIN && publishedPlan == null) {
+            add("action_admin_publish")
+        }
+        if (!permissionGranted) {
+            add("action_enable_push")
+        }
+        if (role == null) {
+            add("action_guest_signin")
+        }
+    }
 
     fun parseHourMinute24(raw: String): Pair<Int, Int>? {
         val clean = raw.trim().uppercase()
@@ -144,6 +218,10 @@ expect fun rememberNotificationPermissionLauncher(onResult: (Boolean) -> Unit): 
 expect fun getNotificationPrefs(): NotificationPrefs
 
 expect fun saveNotificationPrefs(prefs: NotificationPrefs)
+
+expect fun getSeenNotificationIds(): Set<String>
+
+expect fun saveSeenNotificationIds(ids: Set<String>)
 
 expect fun sendWelcomePushNotification(userName: String, roleLabel: String)
 

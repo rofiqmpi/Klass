@@ -23,19 +23,19 @@ val LightOnError = Color(0xFFFFFFFF)
 val LightErrorContainer = Color(0xFFFEE2E2)
 val LightOnErrorContainer = Color(0xFF991B1B)
 
-val LightBackground = Color(0xFFF8FAFC)
+val LightBackground = Color(0xFFF6F9FE)
 val LightOnBackground = Color(0xFF0F172A)
-val LightSurface = Color(0xFFF8FAFC)
+val LightSurface = Color(0xFFF6F9FE)
 val LightOnSurface = Color(0xFF0F172A)
-val LightSurfaceVariant = Color(0xFFE2E8F0)
-val LightOnSurfaceVariant = Color(0xFF64748B)
+val LightSurfaceVariant = Color(0xFFE6EDF7)
+val LightOnSurfaceVariant = Color(0xFF475569)
 val LightSurfaceContainerLowest = Color(0xFFFFFFFF)
-val LightSurfaceContainerLow = Color(0xFFFFFFFF)
-val LightSurfaceContainer = Color(0xFFF1F5F9)
-val LightSurfaceContainerHigh = Color(0xFFE9EFF6)
-val LightSurfaceContainerHighest = Color(0xFFDCE5F0)
+val LightSurfaceContainerLow = Color(0xFFFCFDFE)
+val LightSurfaceContainer = Color(0xFFF1F5FB)
+val LightSurfaceContainerHigh = Color(0xFFE7EEF7)
+val LightSurfaceContainerHighest = Color(0xFFDCE5F2)
 val LightOutline = Color(0xFF94A3B8)
-val LightOutlineVariant = Color(0xFFE2E8F0)
+val LightOutlineVariant = Color(0xFFDCE4EF)
 
 // Clean, Crisp Midnight Slate Dark Palette
 val DarkPrimary = Color(0xFF60A5FA)
@@ -58,39 +58,39 @@ val DarkOnError = Color(0xFF450A0A)
 val DarkErrorContainer = Color(0xFF7F1D1D)
 val DarkOnErrorContainer = Color(0xFFFEE2E2)
 
-val DarkBackground = Color(0xFF0B1120)
+val DarkBackground = Color(0xFF0A101D)
 val DarkOnBackground = Color(0xFFF8FAFC)
-val DarkSurface = Color(0xFF0B1120)
+val DarkSurface = Color(0xFF0A101D)
 val DarkOnSurface = Color(0xFFF8FAFC)
-val DarkSurfaceVariant = Color(0xFF1E293B)
-val DarkOnSurfaceVariant = Color(0xFF94A3B8)
+val DarkSurfaceVariant = Color(0xFF1A2538)
+val DarkOnSurfaceVariant = Color(0xFFA0AEC0)
 val DarkSurfaceContainerLowest = Color(0xFF070B14)
-val DarkSurfaceContainerLow = Color(0xFF151F32)
-val DarkSurfaceContainer = Color(0xFF1E293B)
-val DarkSurfaceContainerHigh = Color(0xFF263348)
-val DarkSurfaceContainerHighest = Color(0xFF334155)
+val DarkSurfaceContainerLow = Color(0xFF131D30)
+val DarkSurfaceContainer = Color(0xFF1A263C)
+val DarkSurfaceContainerHigh = Color(0xFF23314A)
+val DarkSurfaceContainerHighest = Color(0xFF2E3E5B)
 val DarkOutline = Color(0xFF475569)
-val DarkOutlineVariant = Color(0xFF253247)
+val DarkOutlineVariant = Color(0xFF27364F)
 
 // Clean, Luminous Rainbow Screen Background Canvas (Light pastel & Dark aurora)
 val RainbowScreenLightStops: List<Color> = listOf(
-    Color(0xFFFFE4EC), // Soft Rose Blush
-    Color(0xFFFFEFE0), // Soft Peach Apricot
-    Color(0xFFFEF9DB), // Soft Sunlit Cream
-    Color(0xFFE2FCEE), // Soft Mint Breeze
-    Color(0xFFE0F2FE), // Soft Sky Mist
-    Color(0xFFE8ECFF), // Soft Periwinkle
-    Color(0xFFF3E8FF), // Soft Lavender Glow
+    Color(0xFFFFEEF4), // Soft Rose Blush
+    Color(0xFFFFF4EA), // Soft Peach Apricot
+    Color(0xFFFEFBEA), // Soft Sunlit Cream
+    Color(0xFFEAFDF4), // Soft Mint Breeze
+    Color(0xFFEBF6FF), // Soft Sky Mist
+    Color(0xFFEEF2FF), // Soft Periwinkle
+    Color(0xFFF6EFFF), // Soft Lavender Glow
 )
 
 val RainbowScreenDarkStops: List<Color> = listOf(
-    Color(0xFF2B1123), // Aurora Rose
-    Color(0xFF281715), // Aurora Coral
-    Color(0xFF242010), // Aurora Amber
-    Color(0xFF0C2620), // Aurora Emerald
-    Color(0xFF0C1E35), // Aurora Sky
-    Color(0xFF151836), // Aurora Indigo
-    Color(0xFF241335), // Aurora Violet
+    Color(0xFF1E1022), // Aurora Rose
+    Color(0xFF1E1419), // Aurora Coral
+    Color(0xFF1B1912), // Aurora Amber
+    Color(0xFF0C1F1D), // Aurora Emerald
+    Color(0xFF0B192E), // Aurora Sky
+    Color(0xFF121630), // Aurora Indigo
+    Color(0xFF1D122E), // Aurora Violet
 )
 
 fun rainbowScreenStops(isDark: Boolean): List<Color> =

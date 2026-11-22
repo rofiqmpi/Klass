@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -66,6 +65,9 @@ import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LightModeIcon
+import com.mpi.klass.theme.LoginIcon
+import com.mpi.klass.theme.LogoutIcon
+import com.mpi.klass.theme.MessageBubbleIcon
 import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.PaletteIcon
 import com.mpi.klass.theme.PersonIcon
@@ -73,6 +75,8 @@ import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.ThemeMode
+import com.mpi.klass.theme.TrashCanIcon
+import com.mpi.klass.theme.UsersGroupIcon
 import kotlinx.coroutines.launch
 
 private data class MenuTileSpec(
@@ -104,6 +108,13 @@ fun MenuScreen(
     onAppearanceClick: () -> Unit = {},
     onSignInControlClick: () -> Unit = {},
     onAdminApprovalsClick: () -> Unit = {},
+    unreadMessagesCount: Int = 0,
+    incomingRequestsCount: Int = 0,
+    onMessagesClick: () -> Unit = {},
+    onConnectionsClick: () -> Unit = {},
+    onSignOutClick: () -> Unit = {},
+    onDeleteAccountClick: () -> Unit = {},
+    onSignInClick: () -> Unit = {},
     topContentPadding: Dp = 0.dp,
 ) {
     val academicTiles = remember(role, isDark) {
@@ -168,43 +179,76 @@ fun MenuScreen(
         }
     }
 
-    val campusServicesTiles = remember(isDark) {
-        listOf(
-            MenuTileSpec(
-                id = "notices",
-                title = "Class Push Alerts",
-                subtitle = "Automatic pre-class reminders",
-                icon = NotificationIcon,
-                accent = KlassFeaturePalette.notifications(isDark),
-                onClick = onNoticeClick,
-            ),
-            MenuTileSpec(
-                id = "blood_finder",
-                title = "Blood Finder",
-                subtitle = "Verified campus donor directory",
-                icon = DropletIcon,
-                accent = KlassFeaturePalette.blood(isDark),
-                badgeText = "SOS",
-                onClick = onBloodFinderClick,
-            ),
-            MenuTileSpec(
-                id = "ai_assistant",
-                title = "Zed AI",
-                subtitle = "Books, teachers, mpi.politech & web search",
-                icon = SparkleIcon,
-                accent = KlassFeaturePalette.ai(isDark),
-                badgeText = "ZED",
-                onClick = onAiClick,
-            ),
-            MenuTileSpec(
-                id = "profile",
-                title = "Profile",
-                subtitle = "Academic info & account settings",
-                icon = PersonIcon,
-                accent = KlassFeaturePalette.profile(isDark),
-                onClick = onProfileClick,
-            ),
-        )
+    val currentLang = LocalAppLanguage.current
+    val campusServicesTiles = remember(isDark, role, unreadMessagesCount, incomingRequestsCount, currentLang) {
+        buildList {
+            if (role != null) {
+                add(
+                    MenuTileSpec(
+                        id = "messages",
+                        title = "মেসেজ".localized(currentLang),
+                        subtitle = "1-on-1 messenger & Zed AI chat",
+                        icon = MessageBubbleIcon,
+                        accent = KlassFeaturePalette.routine(isDark),
+                        badgeText = if (unreadMessagesCount > 0) "$unreadMessagesCount" else null,
+                        onClick = onMessagesClick,
+                    )
+                )
+                add(
+                    MenuTileSpec(
+                        id = "friends",
+                        title = "বন্ধু ও কানেকশন".localized(currentLang),
+                        subtitle = "Friend requests & campus directory",
+                        icon = UsersGroupIcon,
+                        accent = KlassFeaturePalette.profile(isDark),
+                        badgeText = if (incomingRequestsCount > 0) "$incomingRequestsCount" else null,
+                        onClick = onConnectionsClick,
+                    )
+                )
+            }
+            add(
+                MenuTileSpec(
+                    id = "notices",
+                    title = "Class Push Alerts",
+                    subtitle = "Automatic pre-class reminders",
+                    icon = NotificationIcon,
+                    accent = KlassFeaturePalette.notifications(isDark),
+                    onClick = onNoticeClick,
+                )
+            )
+            add(
+                MenuTileSpec(
+                    id = "blood_finder",
+                    title = "Blood Finder",
+                    subtitle = "Verified campus donor directory",
+                    icon = DropletIcon,
+                    accent = KlassFeaturePalette.blood(isDark),
+                    badgeText = "SOS",
+                    onClick = onBloodFinderClick,
+                )
+            )
+            add(
+                MenuTileSpec(
+                    id = "ai_assistant",
+                    title = "Zed AI",
+                    subtitle = "Books, teachers, mpi.politech & web search",
+                    icon = SparkleIcon,
+                    accent = KlassFeaturePalette.ai(isDark),
+                    badgeText = "ZED",
+                    onClick = onAiClick,
+                )
+            )
+            add(
+                MenuTileSpec(
+                    id = "profile",
+                    title = "Profile",
+                    subtitle = "Academic info & profile overview",
+                    icon = PersonIcon,
+                    accent = KlassFeaturePalette.profile(isDark),
+                    onClick = onProfileClick,
+                )
+            )
+        }
     }
 
     val adminTiles = remember(role, isDark) {
@@ -323,6 +367,56 @@ fun MenuScreen(
                         hindSiliguri = hindSiliguri,
                     )
                 }
+
+                SocialSectionDividerBand(isDark = isDark, height = 6.dp)
+                GoogleSectionHeader(
+                    title = "অ্যাকাউন্ট".localized(),
+                    accent = if (role != null) {
+                        KlassFeaturePalette.notifications(isDark).primary
+                    } else {
+                        KlassFeaturePalette.profile(isDark).primary
+                    },
+                    hindSiliguri = hindSiliguri,
+                )
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    if (role != null) {
+                        KlassNavigationRow(
+                            title = "লগআউট করুন".localized(),
+                            subtitle = "বর্তমান অ্যাকাউন্ট থেকে বের হন".localized(),
+                            icon = LogoutIcon,
+                            accent = KlassFeaturePalette.notifications(isDark).primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            showChevron = false,
+                            testTag = "menu_logout_button",
+                            onClick = onSignOutClick,
+                        )
+                        SocialInsetDivider(startIndent = 72.dp)
+                        KlassNavigationRow(
+                            title = "ডিলিট একাউন্ট".localized(),
+                            subtitle = "সকল তথ্য স্থায়ীভাবে মুছে ফেলুন".localized(),
+                            icon = TrashCanIcon,
+                            accent = KlassFeaturePalette.error(isDark).primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            showChevron = false,
+                            testTag = "menu_delete_account_button",
+                            onClick = onDeleteAccountClick,
+                        )
+                    } else {
+                        KlassNavigationRow(
+                            title = "সাইন ইন করুন".localized(),
+                            subtitle = "Sign in to access your routine & campus connections",
+                            icon = LoginIcon,
+                            accent = KlassFeaturePalette.profile(isDark).primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            showChevron = true,
+                            testTag = "menu_sign_in_button",
+                            onClick = onSignInClick,
+                        )
+                    }
+                }
             }
         }
     }
@@ -358,7 +452,6 @@ fun AppearanceSubScreen(
 ) {
     val cs = MaterialTheme.colorScheme
     val appearanceAccent = KlassFeaturePalette.appearance(isDark)
-    var showPreviewSubScreen by remember { mutableStateOf(false) }
 
     val options = remember(isDark) {
         listOf(
@@ -368,194 +461,90 @@ fun AppearanceSubScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MinimalFullScreenSheet(
-            title = "Appearance",
-            subtitle = "Theme mode & live display",
-            levelLabel = "Menu › Preferences",
-            icon = PaletteIcon,
-            accent = appearanceAccent.primary,
-            isDark = isDark,
-            hindSiliguri = hindSiliguri,
-            onDismiss = onBack,
-            closeTestTag = "appearance_back_button",
+    MinimalFullScreenSheet(
+        title = "Appearance",
+        subtitle = "Active: ${currentThemeMode.name.lowercase().replaceFirstChar { it.uppercase() }}",
+        levelLabel = "Menu › Preferences",
+        icon = PaletteIcon,
+        accent = appearanceAccent.primary,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onBack,
+        closeTestTag = "appearance_back_button",
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                    KlassHeroBanner(
-                        title = "Theme Customization",
-                        subtitle = "Active: ${currentThemeMode.name.lowercase().replaceFirstChar { it.uppercase() }}",
-                        icon = PaletteIcon,
-                        accent = appearanceAccent.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        badges = listOf(
-                            "Rainbow Aurora" to KlassFeaturePalette.ai(isDark).primary,
-                            "Material 3" to KlassFeaturePalette.routine(isDark).primary,
-                        ),
-                    )
-                }
-
-                GoogleSectionHeader(
-                    title = "Select Theme Mode",
-                    accent = appearanceAccent.primary,
-                    hindSiliguri = hindSiliguri,
-                )
-                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                    options.forEachIndexed { idx, (mode, texts, iconAndAccent) ->
-                        val (label, desc) = texts
-                        val (icon, optionAccent) = iconAndAccent
-                        val isSelected = currentThemeMode == mode
-                        Surface(
-                            onClick = { onThemeModeChange(mode) },
-                            color = if (isSelected) optionAccent.softTint else Color.Transparent,
+            Spacer(modifier = Modifier.height(10.dp))
+            GoogleSectionHeader(
+                title = "Select Theme Mode",
+                accent = appearanceAccent.primary,
+                hindSiliguri = hindSiliguri,
+            )
+            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                options.forEachIndexed { idx, (mode, texts, iconAndAccent) ->
+                    val (label, desc) = texts
+                    val (icon, optionAccent) = iconAndAccent
+                    val isSelected = currentThemeMode == mode
+                    Surface(
+                        onClick = { onThemeModeChange(mode) },
+                        color = if (isSelected) optionAccent.softTint else Color.Transparent,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("appearance_mode_${mode.name.lowercase()}"),
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("appearance_mode_${mode.name.lowercase()}"),
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            Surface(
+                                shape = CircleShape,
+                                color = optionAccent.softTint,
+                                border = BorderStroke(0.75.dp, optionAccent.borderTint),
+                                modifier = Modifier.size(42.dp),
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = optionAccent.softTint,
-                                    border = BorderStroke(0.75.dp, optionAccent.borderTint),
-                                    modifier = Modifier.size(42.dp),
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = label,
-                                            tint = optionAccent.primary,
-                                            modifier = Modifier.size(20.dp),
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 16.5.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                                        fontFamily = hindSiliguri,
-                                        color = if (isSelected) optionAccent.primary else cs.onSurface,
-                                    )
-                                    Text(
-                                        text = desc,
-                                        fontSize = 13.sp,
-                                        fontFamily = hindSiliguri,
-                                        color = cs.onSurfaceVariant,
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = label,
+                                        tint = optionAccent.primary,
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = null,
-                                    colors = RadioButtonDefaults.colors(selectedColor = optionAccent.primary),
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = label,
+                                    fontSize = 16.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                    fontFamily = hindSiliguri,
+                                    color = if (isSelected) optionAccent.primary else cs.onSurface,
+                                )
+                                Text(
+                                    text = desc,
+                                    fontSize = 13.sp,
+                                    fontFamily = hindSiliguri,
+                                    color = cs.onSurfaceVariant,
                                 )
                             }
-                        }
-                        if (idx < options.lastIndex) {
-                            SocialInsetDivider(startIndent = 72.dp)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                GoogleSectionHeader(
-                    title = "Theme Inspection",
-                    accent = KlassFeaturePalette.ai(isDark).primary,
-                    hindSiliguri = hindSiliguri,
-                )
-                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                    KlassNavigationRow(
-                        title = "Color Spectrum & Button Preview",
-                        subtitle = "Inspect palette swatches & component styles",
-                        icon = SparkleIcon,
-                        accent = KlassFeaturePalette.ai(isDark).primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        badgeText = "Preview",
-                        onClick = { showPreviewSubScreen = true },
-                    )
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        // Level 2: Color Spectrum & Component Preview Sub-Sub-Screen
-        KlassSubScreenHost(visible = showPreviewSubScreen, zIndex = 50f) {
-            MinimalFullScreenSheet(
-                title = "Color & Button System",
-                subtitle = "Live semantic palette preview",
-                levelLabel = "Menu › Appearance › Spectrum",
-                icon = SparkleIcon,
-                accent = KlassFeaturePalette.ai(isDark).primary,
-                isDark = isDark,
-                hindSiliguri = hindSiliguri,
-                onDismiss = { showPreviewSubScreen = false },
-            ) {
-                val samples = listOf(
-                    "Routine Engine" to KlassFeaturePalette.routine(isDark),
-                    "Teaching Subjects" to KlassFeaturePalette.teaching(isDark),
-                    "Books Library" to KlassFeaturePalette.books(isDark),
-                    "Teachers Directory" to KlassFeaturePalette.teachers(isDark),
-                    "Classrooms & Labs" to KlassFeaturePalette.classrooms(isDark),
-                    "Blood Finder" to KlassFeaturePalette.blood(isDark),
-                    "Zed AI" to KlassFeaturePalette.ai(isDark),
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                        samples.forEachIndexed { idx, (name, acc) ->
-                            KlassDetailFieldRow(
-                                label = "Feature Accent",
-                                value = name,
-                                icon = SparkleIcon,
-                                accent = acc.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                trailingContent = {
-                                    KlassTonalButton(
-                                        text = "Active",
-                                        accent = acc.primary,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                        height = 36.dp,
-                                        onClick = { },
-                                    )
-                                },
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(selectedColor = optionAccent.primary),
                             )
-                            if (idx < samples.lastIndex) {
-                                SocialInsetDivider(startIndent = 68.dp)
-                            }
                         }
                     }
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        WelcomeMinimal3DButton(
-                            text = "Back to Appearance",
-                            hindSiliguri = hindSiliguri,
-                            isDark = isDark,
-                            customPrimaryColor = KlassFeaturePalette.ai(isDark).primary,
-                            customBaseColor = KlassFeaturePalette.ai(isDark).deep,
-                            height = 48.dp,
-                            onClick = { showPreviewSubScreen = false },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                    if (idx < options.lastIndex) {
+                        SocialInsetDivider(startIndent = 72.dp)
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -566,13 +555,11 @@ fun SignInControlSubScreen(
     hindSiliguri: FontFamily,
     onBack: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     val adminAccent = KlassFeaturePalette.admin(isDark)
     val coroutineScope = rememberCoroutineScope()
     var signInControl by remember { mutableStateOf(SignInControlConfig()) }
     var isLoading by remember { mutableStateOf(true) }
     var isUpdating by remember { mutableStateOf(false) }
-    var showPolicySubScreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         try {
@@ -594,158 +581,73 @@ fun SignInControlSubScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        MinimalFullScreenSheet(
-            title = "Sign-in Controls",
-            subtitle = "Role access switches",
-            levelLabel = "Menu › Admin",
-            icon = ShieldIcon,
-            accent = adminAccent.primary,
-            isDark = isDark,
-            hindSiliguri = hindSiliguri,
-            onDismiss = onBack,
-            closeTestTag = "signin_control_back_button",
-        ) {
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = adminAccent.primary, strokeWidth = 2.5.dp)
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                        KlassHeroBanner(
-                            title = "Authentication Gate",
-                            subtitle = "Enable or pause sign-in access per campus role",
-                            icon = ShieldIcon,
-                            accent = adminAccent.primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            badges = listOf(
-                                (if (signInControl.studentSignInEnabled) "Student ON" else "Student OFF") to
-                                    if (signInControl.studentSignInEnabled) KlassFeaturePalette.success(isDark).primary else KlassFeaturePalette.error(isDark).primary,
-                                (if (signInControl.teacherSignInEnabled) "Teacher ON" else "Teacher OFF") to
-                                    if (signInControl.teacherSignInEnabled) KlassFeaturePalette.teaching(isDark).primary else KlassFeaturePalette.error(isDark).primary,
-                            ),
-                        )
-                    }
-
-                    GoogleSectionHeader(
-                        title = "Role Switches",
-                        accent = adminAccent.primary,
-                        hindSiliguri = hindSiliguri,
-                    )
-                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                        SignInToggleRow(
-                            title = "Admin Sign-in",
-                            subtitle = "Requires approved admin account",
-                            icon = CrownIcon,
-                            accent = adminAccent.primary,
-                            isDark = isDark,
-                            checked = signInControl.adminSignInEnabled,
-                            enabled = !isUpdating,
-                            hindSiliguri = hindSiliguri,
-                            onToggle = { updateControl(signInControl.copy(adminSignInEnabled = it)) },
-                        )
-                        SocialInsetDivider(startIndent = 72.dp)
-                        SignInToggleRow(
-                            title = "Teacher Sign-in",
-                            subtitle = "Faculty routine & preference setup",
-                            icon = GraduationCapIcon,
-                            accent = KlassFeaturePalette.teaching(isDark).primary,
-                            isDark = isDark,
-                            checked = signInControl.teacherSignInEnabled,
-                            enabled = !isUpdating,
-                            hindSiliguri = hindSiliguri,
-                            onToggle = { updateControl(signInControl.copy(teacherSignInEnabled = it)) },
-                        )
-                        SocialInsetDivider(startIndent = 72.dp)
-                        SignInToggleRow(
-                            title = "Student Sign-in",
-                            subtitle = "Personal class routine & push alerts",
-                            icon = PersonIcon,
-                            accent = KlassFeaturePalette.routine(isDark).primary,
-                            isDark = isDark,
-                            checked = signInControl.studentSignInEnabled,
-                            enabled = !isUpdating,
-                            hindSiliguri = hindSiliguri,
-                            onToggle = { updateControl(signInControl.copy(studentSignInEnabled = it)) },
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    GoogleSectionHeader(
-                        title = "Security Details",
-                        accent = cs.onSurfaceVariant,
-                        hindSiliguri = hindSiliguri,
-                    )
-                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                        KlassNavigationRow(
-                            title = "Role Access Policy",
-                            subtitle = "How existing vs new sign-ins are checked",
-                            icon = InfoCircleIcon,
-                            accent = KlassFeaturePalette.teachers(isDark).primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            onClick = { showPolicySubScreen = true },
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-            }
-        }
-
-        // Level 2: Role Access Policy Sub-Sub-Screen
-        KlassSubScreenHost(visible = showPolicySubScreen, zIndex = 50f) {
-            MinimalFullScreenSheet(
-                title = "Role Access Policy",
-                subtitle = "Zero-trust authentication rules",
-                levelLabel = "Menu › Admin › Sign-in › Policy",
-                icon = InfoCircleIcon,
-                accent = KlassFeaturePalette.teachers(isDark).primary,
+    MinimalFullScreenSheet(
+        title = "Sign-in Controls",
+        subtitle = "Role access switches",
+        levelLabel = "Menu › Admin",
+        icon = ShieldIcon,
+        accent = adminAccent.primary,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onBack,
+        closeTestTag = "signin_control_back_button",
+    ) {
+        if (isLoading) {
+            KlassHeroAndToggleListSkeleton(
                 isDark = isDark,
-                hindSiliguri = hindSiliguri,
-                onDismiss = { showPolicySubScreen = false },
+                rowCount = 3,
+                showSwitchPills = true,
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                        KlassDetailFieldRow(
-                            label = "Existing Accounts",
-                            value = "Registered users keep access even when new sign-ups are paused",
-                            icon = PersonIcon,
-                            accent = KlassFeaturePalette.routine(isDark).primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-                        SocialInsetDivider(startIndent = 68.dp)
-                        KlassDetailFieldRow(
-                            label = "Admin Verification",
-                            value = "New admins enter Pending Approval queue automatically",
-                            icon = CrownIcon,
-                            accent = KlassFeaturePalette.books(isDark).primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-                        SocialInsetDivider(startIndent = 68.dp)
-                        KlassDetailFieldRow(
-                            label = "Guest Preview Mode",
-                            value = "Read-only public access to master routine, rooms & blood guide",
-                            icon = DoorOpenIcon,
-                            accent = KlassFeaturePalette.classrooms(isDark).primary,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    }
+                Spacer(modifier = Modifier.height(10.dp))
+                GoogleSectionHeader(
+                    title = "Role Switches",
+                    accent = adminAccent.primary,
+                    hindSiliguri = hindSiliguri,
+                )
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    SignInToggleRow(
+                        title = "Admin Sign-in",
+                        subtitle = "Requires approved admin account",
+                        icon = CrownIcon,
+                        accent = adminAccent.primary,
+                        isDark = isDark,
+                        checked = signInControl.adminSignInEnabled,
+                        enabled = !isUpdating,
+                        hindSiliguri = hindSiliguri,
+                        onToggle = { updateControl(signInControl.copy(adminSignInEnabled = it)) },
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    SignInToggleRow(
+                        title = "Teacher Sign-in",
+                        subtitle = "Faculty routine & preference setup",
+                        icon = GraduationCapIcon,
+                        accent = KlassFeaturePalette.teaching(isDark).primary,
+                        isDark = isDark,
+                        checked = signInControl.teacherSignInEnabled,
+                        enabled = !isUpdating,
+                        hindSiliguri = hindSiliguri,
+                        onToggle = { updateControl(signInControl.copy(teacherSignInEnabled = it)) },
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    SignInToggleRow(
+                        title = "Student Sign-in",
+                        subtitle = "Personal class routine & push alerts",
+                        icon = PersonIcon,
+                        accent = KlassFeaturePalette.routine(isDark).primary,
+                        isDark = isDark,
+                        checked = signInControl.studentSignInEnabled,
+                        enabled = !isUpdating,
+                        hindSiliguri = hindSiliguri,
+                        onToggle = { updateControl(signInControl.copy(studentSignInEnabled = it)) },
+                    )
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -880,9 +782,11 @@ fun AdminApprovalsSubScreen(
         ) {
             when {
                 isLoading && pendingRequests.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = booksAccent.primary, strokeWidth = 2.5.dp)
-                    }
+                    KlassRowListSkeleton(
+                        isDark = isDark,
+                        showHeaderBar = true,
+                        showActionPill = true,
+                    )
                 }
                 pendingRequests.isEmpty() -> {
                     Box(
@@ -954,35 +858,25 @@ fun AdminApprovalsSubScreen(
                     hindSiliguri = hindSiliguri,
                     onDismiss = { if (!isItemProcessing) selectedItem = null },
                     dismissEnabled = !isItemProcessing,
-                    bottomBar = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            GoogleOutlinedButton(
-                                text = if (isItemProcessing && processingAction == "DECLINE") "Declining..." else "Decline",
-                                icon = CloseIcon,
-                                hindSiliguri = hindSiliguri,
-                                enabled = processingEmail == null,
-                                height = 48.dp,
-                                contentColor = errorAccent.primary,
-                                modifier = Modifier.weight(1f),
-                                onClick = { handleDecision(activeItem, approve = false) },
-                            )
-                            WelcomeMinimal3DButton(
-                                text = if (isItemProcessing && processingAction == "APPROVE") "Approving..." else "Approve Admin",
-                                icon = CheckIcon,
-                                hindSiliguri = hindSiliguri,
-                                isDark = isDark,
-                                customPrimaryColor = successAccent.primary,
-                                customBaseColor = successAccent.deep,
-                                isLoading = isItemProcessing && processingAction == "APPROVE",
-                                enabled = processingEmail == null,
-                                height = 48.dp,
-                                modifier = Modifier.weight(1.3f),
-                                onClick = { handleDecision(activeItem, approve = true) },
-                            )
-                        }
+                    headerActions = {
+                        KlassTonalButton(
+                            text = if (isItemProcessing && processingAction == "DECLINE") "..." else "Decline",
+                            accent = errorAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            height = 36.dp,
+                            enabled = processingEmail == null,
+                            onClick = { handleDecision(activeItem, approve = false) },
+                        )
+                        HeaderSavePillButton(
+                            text = if (isItemProcessing && processingAction == "APPROVE") "..." else "Approve",
+                            accent = successAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            isLoading = isItemProcessing && processingAction == "APPROVE",
+                            enabled = processingEmail == null,
+                            onClick = { handleDecision(activeItem, approve = true) },
+                        )
                     },
                 ) {
                     Column(
@@ -990,17 +884,7 @@ fun AdminApprovalsSubScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState()),
                     ) {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-                            KlassHeroBanner(
-                                title = activeItem.name.ifBlank { "Admin Applicant" },
-                                subtitle = "Requests full administrative privileges",
-                                icon = CrownIcon,
-                                accent = booksAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                badges = listOf("Pending Review" to booksAccent.primary),
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassDetailFieldRow(
                                 label = "Applicant Email",

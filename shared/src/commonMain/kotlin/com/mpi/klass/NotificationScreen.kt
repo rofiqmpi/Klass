@@ -12,14 +12,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,7 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,19 +69,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mpi.klass.theme.BookIcon
 import com.mpi.klass.theme.CalendarDaysIcon
+import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.ChevronRightIcon
 import com.mpi.klass.theme.ClockIcon
 import com.mpi.klass.theme.DoorOpenIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.PersonIcon
-import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.dayPaletteAt
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.notiscreen
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 private data class ActionNotificationItem(
@@ -115,14 +116,14 @@ fun NotificationScreen(
     val adminAccent = KlassFeaturePalette.admin(isDark)
     val errorAccent = KlassFeaturePalette.error(isDark)
 
-    val coroutineScope = rememberCoroutineScope()
     var activePlan by remember(publishedPlan) { mutableStateOf(publishedPlan) }
     var isLoading by remember { mutableStateOf(publishedPlan == null) }
     val prefs = remember { getNotificationPrefs() }
     var permissionGranted by remember { mutableStateOf(hasNotificationPermission()) }
     var scheduledAlerts by remember { mutableStateOf<List<ScheduledClassAlert>>(emptyList()) }
     var selectedAlert by remember { mutableStateOf<ScheduledClassAlert?>(null) }
-    var readAlertIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val seenIds = NotificationSeenStore.seenIds()
 
     LaunchedEffect(selectedAlert) {
         onFullScreenOverlayChange(selectedAlert != null)
@@ -144,23 +145,16 @@ fun NotificationScreen(
         }
     }
 
-    suspend fun loadNotifications(forceNetwork: Boolean) {
+    LaunchedEffect(email, role, publishedPlan) {
         isLoading = true
         try {
-            if (activePlan == null || forceNetwork) {
-                val fetched = fetchRoutinePlanFromFirestore("master_6m_published")
-                if (fetched != null || activePlan == null) {
-                    activePlan = fetched
-                }
+            if (activePlan == null) {
+                activePlan = fetchRoutinePlanFromFirestore("master_6m_published")
             }
             permissionGranted = hasNotificationPermission()
         } finally {
             isLoading = false
         }
-    }
-
-    LaunchedEffect(email, role, publishedPlan) {
-        loadNotifications(forceNetwork = publishedPlan == null)
     }
 
     LaunchedEffect(activePlan, role, email, studentProfile, prefs, permissionGranted) {
@@ -196,7 +190,7 @@ fun NotificationScreen(
         }
     }
 
-    // Action notifications moved cleanly from Home header banners
+    // Action notifications moved from Home header banners
     val actionNotifications = remember(
         role,
         studentProfile,
@@ -286,12 +280,25 @@ fun NotificationScreen(
         }
     }
 
+    LaunchedEffect(actionNotifications, scheduledAlerts) {
+        NotificationSeenStore.setActiveIds(
+            actionNotifications.map { it.id } + scheduledAlerts.map { it.id }
+        )
+    }
+
+    // Sort unread notifications to top so seen items naturally settle beneath unread ones
+    val sortedActions = remember(actionNotifications, seenIds) {
+        actionNotifications.sortedBy { it.id in seenIds }
+    }
+    val sortedAlerts = remember(scheduledAlerts, seenIds) {
+        scheduledAlerts.sortedBy { it.id in seenIds }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
+        val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         MinimalBackdrop(isDark = isDark, focusAccent = notiAccent.primary) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .navigationBarsPadding(),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.TopCenter,
             ) {
                 Column(
@@ -314,10 +321,11 @@ fun NotificationScreen(
                             )
                         }
 
-                        actionNotifications.isEmpty() && scheduledAlerts.isEmpty() -> {
+                        sortedActions.isEmpty() && sortedAlerts.isEmpty() -> {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .navigationBarsPadding()
                                     .padding(horizontal = 24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center,
@@ -345,17 +353,6 @@ fun NotificationScreen(
                                     color = cs.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                KlassTonalButton(
-                                    text = "Refresh",
-                                    icon = RefreshIcon,
-                                    accent = notiAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    onClick = {
-                                        coroutineScope.launch { loadNotifications(forceNetwork = true) }
-                                    },
-                                )
                             }
                         }
 
@@ -364,89 +361,67 @@ fun NotificationScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .testTag("notifications_feed_list"),
-                                contentPadding = PaddingValues(top = 4.dp, bottom = 32.dp),
+                                contentPadding = PaddingValues(top = 2.dp, bottom = navBarBottom + 28.dp),
                             ) {
-                                if (actionNotifications.isNotEmpty()) {
-                                    item(key = "section_actions_header") {
-                                        FacebookSectionHeaderRow(
-                                            title = "New",
-                                            trailingText = "${actionNotifications.size}",
-                                            accent = notiAccent.primary,
-                                            hindSiliguri = hindSiliguri,
-                                            onRefreshClick = {
-                                                coroutineScope.launch { loadNotifications(forceNetwork = true) }
-                                            },
-                                        )
-                                    }
-
-                                    itemsIndexed(
-                                        items = actionNotifications,
-                                        key = { _, item -> item.id },
-                                    ) { index, item ->
-                                        FacebookNotificationRow(
-                                            titlePrefix = item.title,
-                                            bodyText = item.body,
-                                            metaText = item.metaLabel,
-                                            isUnread = true,
-                                            icon = item.icon,
-                                            badgeIcon = item.badgeIcon,
-                                            accent = item.accent,
-                                            isDark = isDark,
-                                            hindSiliguri = hindSiliguri,
-                                            testTag = item.testTag,
-                                            onClick = item.onClick,
-                                        )
-                                        if (index < actionNotifications.lastIndex || scheduledAlerts.isNotEmpty()) {
-                                            SocialInsetDivider(startIndent = 84.dp)
-                                        }
+                                itemsIndexed(
+                                    items = sortedActions,
+                                    key = { _, item -> item.id },
+                                ) { index, item ->
+                                    val isUnread = item.id !in seenIds
+                                    FacebookNotificationRow(
+                                        titlePrefix = item.title,
+                                        bodyText = item.body,
+                                        metaText = if (isUnread) item.metaLabel else "${item.metaLabel} • Seen",
+                                        isUnread = isUnread,
+                                        icon = item.icon,
+                                        badgeIcon = if (isUnread) item.badgeIcon else CheckIcon,
+                                        accent = item.accent,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        testTag = item.testTag,
+                                        onClick = {
+                                            NotificationSeenStore.markSeen(item.id)
+                                            item.onClick()
+                                        },
+                                    )
+                                    if (index < sortedActions.lastIndex || sortedAlerts.isNotEmpty()) {
+                                        SocialInsetDivider(startIndent = 84.dp)
                                     }
                                 }
 
-                                if (scheduledAlerts.isNotEmpty()) {
-                                    item(key = "section_alerts_header") {
-                                        FacebookSectionHeaderRow(
-                                            title = "Class Alerts",
-                                            trailingText = "${scheduledAlerts.size} upcoming",
-                                            accent = routineAccent.primary,
-                                            hindSiliguri = hindSiliguri,
-                                            onRefreshClick = if (actionNotifications.isEmpty()) {
-                                                { coroutineScope.launch { loadNotifications(forceNetwork = true) } }
-                                            } else {
-                                                null
-                                            },
-                                        )
+                                itemsIndexed(
+                                    items = sortedAlerts,
+                                    key = { _, alert -> alert.id },
+                                ) { index, alert ->
+                                    val countdown = remember(alert.nextTriggerMillis, nowMillis) {
+                                        PushScheduleMath.formatCountdownUntil(alert.nextTriggerMillis, nowMillis)
                                     }
+                                    val dayIdx = RoutineRules.dayOrderIndex(alert.day).coerceAtLeast(0)
+                                    val rowAccent = if (alert.isPreClassReminder) notiAccent else dayPaletteAt(dayIdx, isDark)
+                                    val isUnread = alert.id !in seenIds
 
-                                    itemsIndexed(
-                                        items = scheduledAlerts,
-                                        key = { _, alert -> alert.id },
-                                    ) { index, alert ->
-                                        val countdown = remember(alert.nextTriggerMillis, nowMillis) {
-                                            PushScheduleMath.formatCountdownUntil(alert.nextTriggerMillis, nowMillis)
-                                        }
-                                        val dayIdx = RoutineRules.dayOrderIndex(alert.day).coerceAtLeast(0)
-                                        val rowAccent = if (alert.isPreClassReminder) notiAccent else dayPaletteAt(dayIdx, isDark)
-                                        val isUnread = alert.id !in readAlertIds
-
-                                        FacebookNotificationRow(
-                                            titlePrefix = alert.subjectTitle,
-                                            bodyText = "Room ${alert.roomNumber} • ${alert.classTimeRange.ifBlank { alert.triggerTimeLabel }} (${alert.day})",
-                                            metaText = "$countdown • ${alert.triggerTimeLabel}",
-                                            isUnread = isUnread,
-                                            icon = if (alert.isPreClassReminder) ClockIcon else NotificationIcon,
-                                            badgeIcon = CalendarDaysIcon,
-                                            accent = rowAccent.primary,
-                                            isDark = isDark,
-                                            hindSiliguri = hindSiliguri,
-                                            testTag = "notification_alert_row_${alert.id}",
-                                            onClick = {
-                                                readAlertIds = readAlertIds + alert.id
-                                                selectedAlert = alert
-                                            },
-                                        )
-                                        if (index < scheduledAlerts.lastIndex) {
-                                            SocialInsetDivider(startIndent = 84.dp)
-                                        }
+                                    FacebookNotificationRow(
+                                        titlePrefix = alert.subjectTitle,
+                                        bodyText = "Room ${alert.roomNumber} • ${alert.classTimeRange.ifBlank { alert.triggerTimeLabel }} (${alert.day})",
+                                        metaText = if (isUnread) {
+                                            "$countdown • ${alert.triggerTimeLabel}"
+                                        } else {
+                                            "$countdown • Seen"
+                                        },
+                                        isUnread = isUnread,
+                                        icon = if (alert.isPreClassReminder) ClockIcon else NotificationIcon,
+                                        badgeIcon = if (isUnread) CalendarDaysIcon else CheckIcon,
+                                        accent = rowAccent.primary,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        testTag = "notification_alert_row_${alert.id}",
+                                        onClick = {
+                                            NotificationSeenStore.markSeen(alert.id)
+                                            selectedAlert = alert
+                                        },
+                                    )
+                                    if (index < sortedAlerts.lastIndex) {
+                                        SocialInsetDivider(startIndent = 84.dp)
                                     }
                                 }
                             }
@@ -462,28 +437,55 @@ fun NotificationScreen(
                 val dayIdx = RoutineRules.dayOrderIndex(alert.day).coerceAtLeast(0)
                 val alertAccent = dayPaletteAt(dayIdx, isDark)
                 val countdown = PushScheduleMath.formatCountdownUntil(alert.nextTriggerMillis, nowMillis)
+                val isCurrentlySeen = alert.id in seenIds
 
                 MinimalFullScreenSheet(
                     title = alert.subjectTitle,
                     subtitle = "${alert.day} • Period ${alert.periodIndex + 1}",
-                    levelLabel = "Notification Details",
+                    levelLabel = if (isCurrentlySeen) "Seen Notification" else "Unread Notification",
                     icon = if (alert.isPreClassReminder) ClockIcon else NotificationIcon,
                     accent = alertAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
                     onDismiss = { selectedAlert = null },
                     closeTestTag = "notification_detail_back_button",
-                    bottomBar = {
-                        WelcomeMinimal3DButton(
-                            text = "Send Preview Push",
-                            icon = NotificationIcon,
-                            hindSiliguri = hindSiliguri,
+                    headerActions = {
+                        Surface(
+                            onClick = {
+                                if (isCurrentlySeen) {
+                                    NotificationSeenStore.markUnseen(alert.id)
+                                    showToast("Marked as unread")
+                                } else {
+                                    NotificationSeenStore.markSeen(alert.id)
+                                    showToast("Marked as seen")
+                                }
+                            },
+                            shape = CircleShape,
+                            color = alertAccent.softTint,
+                            border = BorderStroke(0.75.dp, alertAccent.borderTint),
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .height(32.dp)
+                                .testTag("notification_toggle_seen_button"),
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = if (isCurrentlySeen) "Mark Unread" else "Mark Seen",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = hindSiliguri,
+                                    color = alertAccent.primary,
+                                )
+                            }
+                        }
+                        HeaderSavePillButton(
+                            text = "Preview",
+                            accent = alertAccent.primary,
                             isDark = isDark,
-                            customPrimaryColor = alertAccent.primary,
-                            customBaseColor = alertAccent.deep,
-                            height = 48.dp,
-                            cornerRadius = 16.dp,
-                            modifier = Modifier.fillMaxWidth(),
+                            hindSiliguri = hindSiliguri,
                             onClick = {
                                 sendInstantTestPushNotification(
                                     title = alert.triggerTitle,
@@ -498,25 +500,9 @@ fun NotificationScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(vertical = 12.dp),
+                            .padding(vertical = 10.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            KlassHeroBanner(
-                                title = alert.triggerTitle,
-                                subtitle = alert.triggerBody,
-                                icon = if (alert.isPreClassReminder) ClockIcon else NotificationIcon,
-                                accent = alertAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                badges = listOf(
-                                    countdown to alertAccent.primary,
-                                    "Room ${alert.roomNumber}" to KlassFeaturePalette.classrooms(isDark).primary,
-                                    (if (alert.isPreClassReminder) "${prefs.reminderMinutesBefore}m Before" else "Class Start") to notiAccent.primary,
-                                ),
-                            )
-                        }
-
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassDetailFieldRow(
                                 label = "Subject",
@@ -564,70 +550,6 @@ fun NotificationScreen(
 }
 
 @Composable
-private fun FacebookSectionHeaderRow(
-    title: String,
-    trailingText: String,
-    accent: Color,
-    hindSiliguri: FontFamily,
-    onRefreshClick: (() -> Unit)? = null,
-) {
-    val cs = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = title,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = hindSiliguri,
-                color = cs.onSurface,
-            )
-            Surface(
-                shape = CircleShape,
-                color = accent.copy(alpha = 0.14f),
-            ) {
-                Text(
-                    text = trailingText,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = hindSiliguri,
-                    color = accent,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp),
-                )
-            }
-        }
-
-        if (onRefreshClick != null) {
-            Surface(
-                onClick = onRefreshClick,
-                shape = CircleShape,
-                color = cs.surfaceContainerHigh.copy(alpha = 0.65f),
-                modifier = Modifier
-                    .size(34.dp)
-                    .testTag("notifications_refresh_button"),
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Icon(
-                        imageVector = RefreshIcon,
-                        contentDescription = "Refresh notifications",
-                        tint = cs.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun FacebookNotificationRow(
     titlePrefix: String,
     bodyText: String,
@@ -642,13 +564,13 @@ private fun FacebookNotificationRow(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val unreadBg = accent.copy(alpha = if (isDark) 0.13f else 0.08f)
+    val unreadBg = accent.copy(alpha = if (isDark) 0.14f else 0.08f)
     val rowBg = if (isUnread) {
         unreadBg
     } else if (isDark) {
-        cs.surfaceContainerLow.copy(alpha = 0.45f)
+        cs.surfaceContainerLow.copy(alpha = 0.42f)
     } else {
-        Color.White.copy(alpha = 0.56f)
+        Color.White.copy(alpha = 0.52f)
     }
     val ringBg = if (isDark) Color(0xFF0F172A) else Color.White
 
@@ -661,22 +583,28 @@ private fun FacebookNotificationRow(
             .testTag(testTag),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Facebook-style 54.dp avatar circle + bottom-right mini badge
         Box(
             modifier = Modifier.size(56.dp),
             contentAlignment = Alignment.Center,
         ) {
             Surface(
                 shape = CircleShape,
-                color = accent.copy(alpha = if (isDark) 0.24f else 0.15f),
-                border = BorderStroke(1.dp, accent.copy(alpha = 0.36f)),
+                color = if (isUnread) {
+                    accent.copy(alpha = if (isDark) 0.24f else 0.15f)
+                } else {
+                    cs.surfaceContainerHighest.copy(alpha = 0.55f)
+                },
+                border = BorderStroke(
+                    1.dp,
+                    if (isUnread) accent.copy(alpha = 0.36f) else cs.outlineVariant.copy(alpha = 0.45f),
+                ),
                 modifier = Modifier.size(52.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = accent,
+                        tint = if (isUnread) accent else cs.onSurfaceVariant,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -684,7 +612,7 @@ private fun FacebookNotificationRow(
 
             Surface(
                 shape = CircleShape,
-                color = accent,
+                color = if (isUnread) accent else cs.outline,
                 border = BorderStroke(2.dp, ringBg),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -709,7 +637,12 @@ private fun FacebookNotificationRow(
         ) {
             Text(
                 text = buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = cs.onSurface)) {
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = if (isUnread) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (isUnread) cs.onSurface else cs.onSurface.copy(alpha = 0.78f),
+                        )
+                    ) {
                         append(titlePrefix)
                     }
                     if (bodyText.isNotBlank()) {
@@ -717,7 +650,7 @@ private fun FacebookNotificationRow(
                         withStyle(
                             SpanStyle(
                                 fontWeight = FontWeight.Normal,
-                                color = cs.onSurface.copy(alpha = 0.86f),
+                                color = cs.onSurface.copy(alpha = if (isUnread) 0.86f else 0.65f),
                             )
                         ) {
                             append(bodyText)
@@ -749,13 +682,13 @@ private fun FacebookNotificationRow(
                 modifier = Modifier
                     .size(10.dp)
                     .clip(CircleShape)
-                    .background(accent),
+                    .background(Color(0xFFEF4444)),
             )
         } else {
             Icon(
                 imageVector = ChevronRightIcon,
                 contentDescription = null,
-                tint = cs.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = cs.onSurfaceVariant.copy(alpha = 0.55f),
                 modifier = Modifier.size(16.dp),
             )
         }
@@ -795,7 +728,7 @@ private fun FacebookNotificationSkeletonScreen(
         Color.White.copy(alpha = 0.52f)
     }
 
-    val barWidths = remember {
+    val patterns = remember {
         listOf(
             Triple(0.76f, 0.92f, 0.36f),
             Triple(0.84f, 0.86f, 0.42f),
@@ -808,94 +741,81 @@ private fun FacebookNotificationSkeletonScreen(
         )
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        userScrollEnabled = false,
-        contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
-    ) {
-        item(key = "skeleton_header") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val rowCount = ((maxHeight / 80.dp).toInt() + 2).coerceIn(12, 24)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = false,
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            items(count = rowCount) { index ->
+                val (w1, w2, w3) = patterns[index % patterns.size]
+                Row(
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(18.dp)
-                        .clip(CircleShape)
-                        .background(shimmerBrush),
-                )
-            }
-        }
-
-        itemsIndexed(barWidths) { index, (w1, w2, w3) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(cardOverlay)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(modifier = Modifier.size(56.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .align(Alignment.Center)
-                            .clip(CircleShape)
-                            .background(shimmerBrush),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .align(Alignment.BottomEnd)
-                            .clip(CircleShape)
-                            .background(highlightTone),
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                        .fillMaxWidth()
+                        .background(cardOverlay)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Box(modifier = Modifier.size(56.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .align(Alignment.Center)
+                                .clip(CircleShape)
+                                .background(shimmerBrush),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .align(Alignment.BottomEnd)
+                                .clip(CircleShape)
+                                .background(highlightTone),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(w1)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(shimmerBrush),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(w2)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(shimmerBrush),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(w3)
+                                .height(10.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(shimmerBrush),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(w1)
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(7.dp))
-                            .background(shimmerBrush),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(w2)
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(shimmerBrush),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(w3)
-                            .height(10.dp)
-                            .clip(RoundedCornerShape(5.dp))
+                            .size(10.dp)
+                            .clip(CircleShape)
                             .background(shimmerBrush),
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(shimmerBrush),
-                )
-            }
-
-            if (index < barWidths.lastIndex) {
-                SocialInsetDivider(startIndent = 84.dp)
+                if (index < rowCount - 1) {
+                    SocialInsetDivider(startIndent = 84.dp)
+                }
             }
         }
     }

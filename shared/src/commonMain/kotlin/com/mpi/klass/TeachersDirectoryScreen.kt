@@ -102,8 +102,9 @@ fun TeachersDirectoryScreen(
     var teacherToDelete by remember { mutableStateOf<TeacherDirectoryItem?>(null) }
     var isDeletingTeacher by remember { mutableStateOf(false) }
 
-    LaunchedEffect(selectedTeacher != null) {
-        onFullScreenOverlayChange(selectedTeacher != null)
+    val anyOverlay = selectedTeacher != null || teacherToDelete != null
+    LaunchedEffect(anyOverlay) {
+        onFullScreenOverlayChange(anyOverlay)
     }
     DisposableEffect(Unit) {
         onDispose { onFullScreenOverlayChange(false) }
@@ -214,26 +215,13 @@ fun TeachersDirectoryScreen(
 
                     when {
                         isLoading && teachers.isEmpty() -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(
-                                        color = cs.primary,
-                                        strokeWidth = 2.5.dp,
-                                        modifier = Modifier.size(32.dp),
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = "Loading faculty directory...",
-                                        color = cs.onSurfaceVariant,
-                                        fontSize = 15.sp,
-                                        fontFamily = hindSiliguri,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                }
-                            }
+                            KlassRowListSkeleton(
+                                isDark = isDark,
+                                showHeaderBar = true,
+                                showActionPill = false,
+                                badgeSize = 48.dp,
+                                badgeCornerRadius = 24.dp,
+                            )
                         }
 
                         filteredTeachers.isEmpty() -> {
@@ -615,22 +603,18 @@ private fun FullScreenTeacherDetailScreen(
             onDismiss = onDismiss,
             closeTestTag = "teacher_detail_close_button",
             maxContentWidth = 760.dp,
-            bottomBar = if (canEdit) {
-                {
-                    WelcomeMinimal3DButton(
-                        text = "Remove Teacher",
-                        icon = TrashCanIcon,
-                        hindSiliguri = hindSiliguri,
-                        isDestructive = true,
+            headerActions = {
+                if (canEdit) {
+                    HeaderSavePillButton(
+                        text = "Remove",
+                        accent = KlassFeaturePalette.error(isDark).primary,
                         isDark = isDark,
-                        height = 46.dp,
-                        cornerRadius = 23.dp,
+                        hindSiliguri = hindSiliguri,
                         testTag = "teacher_detail_delete_button",
-                        modifier = Modifier.fillMaxWidth(),
                         onClick = onDeleteClick,
                     )
                 }
-            } else null,
+            },
         ) {
             Column(
                 modifier = Modifier
@@ -829,12 +813,7 @@ private fun FullScreenTeacherDetailScreen(
             ) {
                 when {
                     isLoadingPref -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                color = KlassFeaturePalette.teaching(isDark).primary,
-                                strokeWidth = 2.5.dp,
-                            )
-                        }
+                        KlassSubjectsDetailSkeleton(isDark = isDark)
                     }
                     teacherPref == null || teacherPref?.semesterSubjects.orEmpty().isEmpty() -> {
                         Box(
@@ -860,23 +839,14 @@ private fun FullScreenTeacherDetailScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
-                                .padding(vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                                .padding(vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                KlassHeroBanner(
-                                    title = pref.department.ifBlank { deptShort },
-                                    subtitle = "Preferred Hours: ${pref.timePreference.label}",
-                                    icon = GraduationCapIcon,
-                                    accent = KlassFeaturePalette.teaching(isDark).primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    badges = listOf(
-                                        pref.shift to KlassFeaturePalette.routine(isDark).primary,
-                                        "${semEntries.sumOf { it.value.size }} Subjects" to KlassFeaturePalette.teaching(isDark).primary,
-                                    ),
-                                )
-                            }
+                            GoogleSectionHeader(
+                                title = "${pref.department.ifBlank { deptShort }} • ${pref.shift} • ${pref.timePreference.label}",
+                                accent = KlassFeaturePalette.teaching(isDark).primary,
+                                hindSiliguri = hindSiliguri,
+                            )
                             SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                                 semEntries.forEachIndexed { idx, (semKey, codes) ->
                                     val semAcc = dayPaletteAt(idx, isDark)

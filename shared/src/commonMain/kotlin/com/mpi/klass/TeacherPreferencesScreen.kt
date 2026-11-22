@@ -214,14 +214,61 @@ fun TeacherPreferencesScreen(
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
                 } else {
+                    Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 if (isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = teachingAccent.primary, strokeWidth = 2.5.dp)
-                    }
+                    KlassHeroAndToggleListSkeleton(
+                        isDark = isDark,
+                        rowCount = 5,
+                        showSwitchPills = false,
+                        showChipGrid = true,
+                    )
                     return@Column
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 920.dp)
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "$totalSelectedCount subjects selected",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = hindSiliguri,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (isOnboardingPrompt && onDismissOnboarding != null) {
+                            KlassTonalButton(
+                                text = "Skip",
+                                accent = teachingAccent.primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                height = 34.dp,
+                                testTag = "skip_teacher_setup_button",
+                                onClick = onDismissOnboarding,
+                            )
+                        }
+                        HeaderSavePillButton(
+                            text = if (isSaving) "Saving..." else "Save",
+                            accent = teachingAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            isLoading = isSaving,
+                            enabled = !isSaving,
+                            testTag = "save_teacher_preferences_button",
+                            onClick = { savePrefs() },
+                        )
+                    }
                 }
 
                 Column(
@@ -232,41 +279,8 @@ fun TeacherPreferencesScreen(
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
                     ) {
-                        // Top Hero Summary
-                        item {
-                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                                KlassHeroBanner(
-                                    title = teacherName.ifBlank { "Teaching Setup" },
-                                    subtitle = "Select department, shift & subjects per semester",
-                                    icon = GraduationCapIcon,
-                                    accent = teachingAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    badges = listOf(
-                                        selectedDept to deptColor.primary,
-                                        selectedShift to teachingAccent.primary,
-                                        "$totalSelectedCount Subjects" to KlassFeaturePalette.books(isDark).primary,
-                                    ),
-                                    trailingContent = if (isOnboardingPrompt && onDismissOnboarding != null) {
-                                        {
-                                            KlassTonalButton(
-                                                text = "Skip",
-                                                accent = teachingAccent.primary,
-                                                isDark = isDark,
-                                                hindSiliguri = hindSiliguri,
-                                                testTag = "skip_teacher_setup_button",
-                                                onClick = onDismissOnboarding,
-                                            )
-                                        }
-                                    } else {
-                                        null
-                                    },
-                                )
-                            }
-                            SocialSectionDividerBand(isDark = isDark, height = 10.dp)
-                        }
 
                         // Department, Shift & Preferred Class Hours (2-col on wide screens)
                         item {
@@ -471,43 +485,6 @@ fun TeacherPreferencesScreen(
                         }
                     }
                 }
-
-                // Calibrated Bottom Save Bar
-                Surface(
-                    color = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.94f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = teachingAccent.borderTint,
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .widthIn(max = 920.dp)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                        ) {
-                            WelcomeMinimal3DButton(
-                                text = "Save Preferences ($totalSelectedCount)",
-                                icon = CheckIcon,
-                                hindSiliguri = hindSiliguri,
-                                isDark = isDark,
-                                isLoading = isSaving,
-                                customPrimaryColor = teachingAccent.primary,
-                                customBaseColor = teachingAccent.deep,
-                                height = 48.dp,
-                                cornerRadius = 16.dp,
-                                testTag = "save_teacher_preferences_button",
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = { savePrefs() },
-                            )
-                        }
-                    }
-                }
             }
         }
 
@@ -613,18 +590,11 @@ private fun SemesterSubjectPickerSubScreen(
                         onClick = onClearSemester,
                     )
                 }
-            },
-            bottomBar = {
-                WelcomeMinimal3DButton(
-                    text = "Done (${selectedCodes.size} selected)",
-                    icon = CheckIcon,
-                    hindSiliguri = hindSiliguri,
+                HeaderSavePillButton(
+                    text = "Done",
+                    accent = teachingAccent.primary,
                     isDark = isDark,
-                    customPrimaryColor = teachingAccent.primary,
-                    customBaseColor = teachingAccent.deep,
-                    height = 48.dp,
-                    cornerRadius = 16.dp,
-                    modifier = Modifier.fillMaxWidth(),
+                    hindSiliguri = hindSiliguri,
                     onClick = onDismiss,
                 )
             },
@@ -760,18 +730,12 @@ private fun SemesterSubjectPickerSubScreen(
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
                     onDismiss = { inspectingBook = null },
-                    bottomBar = {
-                        WelcomeMinimal3DButton(
-                            text = if (isSelected) "Remove Subject" else "Select Subject",
-                            icon = if (isSelected) CloseIcon else CheckIcon,
-                            hindSiliguri = hindSiliguri,
+                    headerActions = {
+                        HeaderSavePillButton(
+                            text = if (isSelected) "Remove" else "Select",
+                            accent = if (isSelected) KlassFeaturePalette.error(isDark).primary else dayAccent.primary,
                             isDark = isDark,
-                            isDestructive = isSelected,
-                            customPrimaryColor = if (isSelected) null else dayAccent.primary,
-                            customBaseColor = if (isSelected) null else dayAccent.deep,
-                            height = 48.dp,
-                            cornerRadius = 16.dp,
-                            modifier = Modifier.fillMaxWidth(),
+                            hindSiliguri = hindSiliguri,
                             onClick = {
                                 onToggleCode(book.subjectCode.trim())
                                 inspectingBook = null
@@ -783,25 +747,14 @@ private fun SemesterSubjectPickerSubScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
-                            .padding(vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            KlassHeroBanner(
-                                title = book.title,
-                                subtitle = "Code ${book.subjectCode}",
-                                icon = BookIcon,
-                                accent = dayAccent.primary,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                badges = listOf(
-                                    "${book.theoryClassesPerWeek} Theory/wk" to KlassFeaturePalette.routine(isDark).primary,
-                                    "${book.practicalClassesPerWeek} Practical/wk" to teachingAccent.primary,
-                                    "${book.credit} Credit" to KlassFeaturePalette.books(isDark).primary,
-                                ),
-                            )
-                        }
-
+                        GoogleSectionHeader(
+                            title = "${book.theoryClassesPerWeek}T • ${book.practicalClassesPerWeek}P • ${book.credit} Cr",
+                            accent = dayAccent.primary,
+                            hindSiliguri = hindSiliguri,
+                        )
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             book.departmentSemesters.entries.forEachIndexed { idx, (dept, sems) ->
                                 val dAccent = departmentAccent(dept, isDark)

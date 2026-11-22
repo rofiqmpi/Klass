@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Core MPI Klass user account record",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "photo_url": { "type": "string" },
+        "cover_photo_url": { "type": "string" },
+        "provider": { "type": "string" },
+        "category": { "type": "string", "enum": ["ADMIN", "TEACHER", "STUDENT"] },
+        "field_privacy": { "type": "object" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["email"]
+    },
+    "StudentProfile": {
+      "title": "StudentProfile",
+      "description": "Extended personal, academic, and per-field privacy profile for Student/Teacher/Admin",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "bio": { "type": "string" },
+        "photo_url": { "type": "string" },
+        "cover_photo_url": { "type": "string" },
+        "role": { "type": "string" },
+        "semester": { "type": "string" },
+        "shift": { "type": "string" },
+        "department": { "type": "string" },
+        "section": { "type": "string" },
+        "phone": { "type": "string" },
+        "blood_group": { "type": "string" },
+        "address": { "type": "string" },
+        "roll_number": { "type": "string" },
+        "father_name": { "type": "string" },
+        "mother_name": { "type": "string" },
+        "dob": { "type": "string" },
+        "religion": { "type": "string" },
+        "gender": { "type": "string" },
+        "marital_status": { "type": "string" },
+        "contact_email": { "type": "string" },
+        "permanent_address": { "type": "string" },
+        "registration_number": { "type": "string" },
+        "field_privacy": { "type": "object" },
+        "profile_setup_complete": { "type": "boolean" },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["email"]
+    },
+    "Connection": {
+      "title": "Connection",
+      "description": "Bidirectional social friend/connection request and link between two MPI users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array" },
+        "requester_email": { "type": "string" },
+        "receiver_email": { "type": "string" },
+        "requester_name": { "type": "string" },
+        "receiver_name": { "type": "string" },
+        "requester_photo_url": { "type": "string" },
+        "receiver_photo_url": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED"] },
+        "updated_at": { "type": "number" }
+      },
+      "required": ["id", "participants", "requester_email", "receiver_email", "status", "updated_at"]
+    },
+    "ChatRelayMessage": {
+      "title": "ChatRelayMessage",
+      "description": "Transient delivery message in chat_relay deleted immediately after recipient saves locally",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sender_email": { "type": "string" },
+        "sender_name": { "type": "string" },
+        "sender_photo_url": { "type": "string" },
+        "receiver_email": { "type": "string" },
+        "text": { "type": "string" },
+        "sent_at": { "type": "number" }
+      },
+      "required": ["id", "sender_email", "receiver_email", "text", "sent_at"]
+    }
+  },
+  "firestore": {
+    "/config/{configId}": { "schema": "User", "description": "App configuration" },
+    "/admins/{adminId}": { "schema": "User", "description": "Admin directory and status" },
+    "/teachers/{teacherId}": { "schema": "StudentProfile", "description": "Teacher profiles and schedules" },
+    "/students/{studentId}": { "schema": "StudentProfile", "description": "Extended user profiles with per-field privacy" },
+    "/users/{userId}": { "schema": "User", "description": "General signed-in user accounts" },
+    "/books/{bookId}": { "schema": "User", "description": "Official BTEB Probidhan-2022 curriculum books" },
+    "/classrooms/{roomId}": { "schema": "User", "description": "Classrooms and labs" },
+    "/routines/{routineId}": { "schema": "User", "description": "Published and draft weekly routines" },
+    "/routine_edit_requests/{requestId}": { "schema": "User", "description": "Teacher routine swap requests" },
+    "/notifications/{notificationId}": { "schema": "User", "description": "System announcements" },
+    "/connections/{connectionId}": { "schema": "Connection", "description": "Social friend requests and accepted connections" },
+    "/chat_relay/{messageId}": { "schema": "ChatRelayMessage", "description": "Zero-retention transient message relay" }
+  }
+}

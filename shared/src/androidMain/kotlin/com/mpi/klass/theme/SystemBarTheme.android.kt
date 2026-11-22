@@ -24,6 +24,8 @@ actual fun SystemBarTheme(isDark: Boolean) {
         val window = view.context.findActivity()?.window
         if (window != null) {
             @Suppress("DEPRECATION")
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            @Suppress("DEPRECATION")
             window.navigationBarColor = navColor
             val insetsController = WindowInsetsControllerCompat(window, view)
             insetsController.isAppearanceLightStatusBars = !isDark
