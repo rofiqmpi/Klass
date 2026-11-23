@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.secrets)
 }
 
 kotlin {
@@ -84,4 +85,9 @@ android {
             isIncludeAndroidResources = true
         }
     }
+}
+
+secrets {
+    propertiesFileName = ".env"
+    defaultPropertiesFileName = ".env.example"
 }

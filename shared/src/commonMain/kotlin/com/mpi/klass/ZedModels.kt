@@ -3,9 +3,12 @@ package com.mpi.klass
 data class ZedContextSnapshot(
     val books: List<LibraryBook> = emptyList(),
     val teachers: List<TeacherDirectoryItem> = emptyList(),
+    val teacherPrefs: List<TeacherSchedulingPref> = emptyList(),
+    val classrooms: List<ClassroomItem> = emptyList(),
     val routinePlan: RoutinePlan? = null,
     val donors: List<BloodDonorItem> = emptyList(),
     val userProfile: StudentProfile? = null,
+    val userFullProfile: UserProfile? = null,
     val userRole: UserRole? = null,
     val userDisplayName: String = "Friend",
 )

@@ -626,7 +626,6 @@ fun RoleHomeScreen(
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
                                         onClassroomClick = { navigateTo("classrooms") },
-                                        onCampusMapClick = { navigateTo("admin_campus_map") },
                                         onBooksClick = { navigateTo("books") },
                                         onTeachersClick = { navigateTo("teachers") },
                                         onRoutineManagerClick = { navigateTo("routine_manager") },
@@ -1126,34 +1125,6 @@ fun RoleHomeScreen(
                             onBack = { goBack() },
                         )
                     }
-                    "admin_campus_map" -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
-                        ) {
-                            GoogleTopAppBar(
-                                title = "Campus Map",
-                                hindSiliguri = hindSiliguri,
-                                onNavigationClick = { goBack() },
-                                actions = {
-                                    HeaderAiNotificationActions(
-                                        isDark = isDark,
-                                        onAiClick = { navigateTo("ai") },
-                                        onNotificationClick = { navigateTo("notification") },
-                                    )
-                                },
-                            )
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                                CampusMapScreen(
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    topContentPadding = 0.dp,
-                                    onSaved = { goBack() },
-                                )
-                            }
-                        }
-                    }
                     "ai" -> {
                         Box(
                             modifier = Modifier
@@ -1291,7 +1262,8 @@ private fun SlotInspectionDialog(
 
     val metaFields = remember(entry, matchedRoom, isDark) {
         val roomDetail = matchedRoom?.let {
-            val zonePart = it.nearestDepartment.takeIf { z -> z.isNotBlank() && !z.equals("ALL", true) }?.let { z -> " • Near $z" } ?: ""
+            val nearList = it.effectiveNearestDepartments()
+            val zonePart = if (nearList.isNotEmpty()) " • Near ${nearList.joinToString(", ")}" else ""
             "Room ${entry.roomNumber} (${entry.shift}) • ${it.roomType.label}$zonePart"
         } ?: "Room ${entry.roomNumber} (${entry.shift})"
         listOf(
@@ -1555,7 +1527,7 @@ private fun SlotInspectionDialog(
                     options = classrooms,
                     selectedOption = classrooms.firstOrNull { it.roomNumber.equals(reqRoom, true) },
                     optionLabel = { "Room ${it.roomNumber}" },
-                    optionSubtitle = { "${it.roomType.label}" + (it.nearestDepartment.takeIf { z -> z.isNotBlank() && !z.equals("ALL", true) }?.let { z -> " • Near $z" } ?: "") },
+                    optionSubtitle = { "${it.roomType.label}" + (it.effectiveNearestDepartments().takeIf { l -> l.isNotEmpty() }?.let { l -> " • Near ${l.joinToString(", ")}" } ?: "") },
                     onSelect = { reqRoom = it.roomNumber },
                     onDismiss = { activePickerKind = null },
                 )

@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
+        ZedAiKeyProvider.setApiKey(BuildConfig.GEMINI_API_KEY)
         configureAppCheck(this, intent)
         ensurePushNotificationChannels(this)
 
@@ -201,20 +202,18 @@ fun configureAppCheck(context: Context, intent: Intent?) {
             FirebaseApp.initializeApp(context)
         }
         if (BuildConfig.DEBUG) {
-            val debugToken = intent?.getStringExtra(DEBUG_TOKEN_EXTRA)
-            if (!debugToken.isNullOrEmpty()) {
-                val persistenceKey = FirebaseApp.getInstance().persistenceKey
-                val prefs = context.getSharedPreferences(
-                    "$DEBUG_STORE_PREFIX$persistenceKey",
-                    Context.MODE_PRIVATE,
-                )
-                prefs.edit()
-                    .putString(DEBUG_SECRET_KEY, debugToken)
-                    .commit()
-                Log.d(APPCHECK_TAG, "App Check debug secret configured.")
-            } else {
-                Log.w(APPCHECK_TAG, "No debug token found in Intent extra.")
-            }
+            val persistenceKey = FirebaseApp.getInstance().persistenceKey
+            val prefs = context.getSharedPreferences(
+                "$DEBUG_STORE_PREFIX$persistenceKey",
+                Context.MODE_PRIVATE,
+            )
+            val intentToken = intent?.getStringExtra(DEBUG_TOKEN_EXTRA)
+            val tokenToUse = if (!intentToken.isNullOrBlank()) intentToken else APP_CHECK_DEBUG_TOKEN
+            prefs.edit()
+                .putString(DEBUG_SECRET_KEY, tokenToUse)
+                .commit()
+            Log.d(APPCHECK_TAG, "App Check debug secret configured: $tokenToUse")
+
             FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
                 DebugAppCheckProviderFactory.getInstance(),
             )

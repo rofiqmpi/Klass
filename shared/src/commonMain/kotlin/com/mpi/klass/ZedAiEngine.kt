@@ -22,6 +22,13 @@ object ZedAiEngine {
 
         val q = raw.lowercase()
 
+        val asksDebugToken = q.contains("debug token") || q.contains("app check") ||
+            q.contains("debug secret") || q.contains("ডিবাগ টোকেন") ||
+            (q.contains("টোকেন") && (q.contains("ডিবাগ") || q.contains("চেক")))
+        if (asksDebugToken) {
+            return formatDebugTokenReply(isBn)
+        }
+
         // 1. Blood Donor
         val matchedBloodGroup = RoutineRules.BLOOD_GROUPS.firstOrNull { bg ->
             Regex("(?i)(?:^|\\s)${Regex.escape(bg)}(?:\\s|\$|[?,!।])").containsMatchIn(raw)
@@ -79,9 +86,17 @@ object ZedAiEngine {
             return formatBooksReply(directMatches, raw, snapshot, isBn)
         }
 
-        // Generic "class" fallback
-        if (q.contains("class") || q.contains("ক্লাস")) {
+        // Generic "class" or "shift" fallback
+        if (q.contains("class") || q.contains("ক্লাস") || q.contains("shift") || q.contains("শিফট")) {
             return formatRoutineReply(q, snapshot, todayEnglishDay, isBn)
+        }
+
+        // Department or semester overview
+        val askedDeptOnly = detectRequestedDept(q)
+        val mentionsSemesterWord = q.contains("semester") || q.contains("sem ") || q.endsWith(" sem") || q.contains("সেমিস্টার")
+        val askedSemOnly = if (mentionsSemesterWord) RoutineRules.semesterNumber(raw) else null
+        if (askedDeptOnly != null || askedSemOnly != null || q.contains("department") || q.contains("ডিপার্টমেন্ট") || q.contains("probidhan") || q.contains("প্রবিধান")) {
+            return formatBooksReply(emptyList(), raw, snapshot, isBn)
         }
 
         // Strict Boundary
@@ -132,16 +147,20 @@ object ZedAiEngine {
         val l = raw.lowercase().trim()
         val greetings = setOf(
             "hi", "hello", "hey", "hii", "yo", "salam", "assalamu", "assalamualaikum",
-            "nomoshkar", "kemon acho", "kemon aso", "হাই", "হ্যালো", "সালাম", "আসসালামু আলাইকুম",
+            "nomoshkar", "kemon acho", "kemon aso", "kemon achen", "হাই", "হ্যালো", "সালাম", "আসসালামু আলাইকুম",
+            "কেমন আছেন", "কেমন আছো", "কেমন আছিস", "কি খবর", "কী খবর", "কি অবস্থা", "কী অবস্থা",
+            "ki khobor", "ki obostha", "how are you", "who are you", "tumi ke", "apni ke", "তুমি কে", "আপনি কে",
+            "help", "sahajjo", "sahajjyo", "সাহায্য", "হেল্প", "what can you do", "parba", "parbe",
+            "good morning", "good evening", "good afternoon", "shuvo sokal", "শুভ সকাল", "শুভ সন্ধ্যা",
         )
-        val isGreeting = l.length <= 36 && greetings.any { g ->
+        val isGreeting = l.length <= 48 && greetings.any { g ->
             l == g || Regex("(^|\\s)${Regex.escape(g)}(\\s|\$|[?!.,])").containsMatchIn(l)
         }
         if (isGreeting) {
             val txt = if (isBn) {
-                "হ্যালো $firstName! Books, Blood Donor, Teachers বা Routine নিয়ে যেকোনো প্রশ্ন লিখুন।"
+                "হ্যালো $firstName! আমি Zed, আপনার ক্যাম্পাস অ্যাসিস্ট্যান্ট। Books, Teachers, Donors বা Routine নিয়ে যেকোনো প্রশ্ন করুন।"
             } else {
-                "Hi $firstName! Ask anything about Books Library, Blood Donor, Teachers, or Class Routine."
+                "Hi $firstName! I am Zed, your MPI Klass assistant. Ask anything about Books, Teachers, Donors, or Routine."
             }
             return ZedReply(
                 answerText = txt,
@@ -158,6 +177,15 @@ object ZedAiEngine {
                             ZedStatMetric("Teachers", snapshot.teachers.size.toString()),
                             ZedStatMetric("Donors", snapshot.donors.size.toString()),
                         )
+                    ),
+                    ZedA2UiBlock.KeyValueCard(
+                        title = if (isBn) "আমি যেসব তথ্য দিতে পারি" else "Supported Modules",
+                        items = listOf(
+                            ZedKeyValue("Books Library", if (isBn) "BTEB সিলেবাস, বিষয় কোড ও ক্রেডিট" else "BTEB curriculum, subject codes & credits"),
+                            ZedKeyValue("Teachers", if (isBn) "শিক্ষক তালিকা, শিফট ও যোগাযোগ" else "Faculty members, shifts & contacts"),
+                            ZedKeyValue("Blood Donor", if (isBn) "জরুরী রক্তের গ্রুপ ও ডোনার ফোন" else "Verified blood groups & donor dialer"),
+                            ZedKeyValue("Class Routine", if (isBn) "দৈনিক ক্লাস, শিক্ষক ও রুম নম্বর" else "Daily timetable slots, teachers & rooms"),
+                        ),
                     ),
                 ),
             )
@@ -201,11 +229,22 @@ object ZedAiEngine {
         isBn: Boolean,
     ): ZedReply {
         if (snapshot.books.isEmpty()) {
-            val emptyTxt = if (isBn) "লাইব্রেরিতে এখনো কোনো বই নেই।" else "No books are available in the library yet."
+            val emptyTxt = if (isBn) {
+                "লাইব্রেরিতে কাস্টম বই সংরক্ষিত নেই। BTEB প্রবিধান অনুযায়ী নির্ধারিত বিষয়সমূহ Books Library মেনু থেকে দেখতে পাবেন।"
+            } else {
+                "No custom books stored yet. Standard BTEB curriculum subjects are available from Books Library."
+            }
             return ZedReply(
                 answerText = emptyTxt,
                 sourceBadge = "Books Library",
-                blocks = listOf(ZedA2UiBlock.CalloutCard(emptyTxt, isWarning = true)),
+                blocks = listOf(
+                    ZedA2UiBlock.HeaderBanner(
+                        title = "Books Library",
+                        subtitle = "BTEB Curriculum Catalog",
+                        domain = "BOOKS",
+                    ),
+                    ZedA2UiBlock.CalloutCard(emptyTxt, isWarning = false),
+                ),
             )
         }
         val q = rawQuery.lowercase()
@@ -325,6 +364,21 @@ object ZedAiEngine {
             ),
         )
         if (filtered.isEmpty()) {
+            blocks.add(
+                ZedA2UiBlock.KeyValueCard(
+                    title = if (isBn) "ব্লাড ডোনার তথ্য" else "Donor Registration Info",
+                    items = listOf(
+                        ZedKeyValue(
+                            if (isBn) "উপলব্ধ গ্রুপসমূহ" else "Supported Groups",
+                            RoutineRules.BLOOD_GROUPS.joinToString(", "),
+                        ),
+                        ZedKeyValue(
+                            if (isBn) "যুক্ত হওয়ার উপায়" else "How to Register",
+                            if (isBn) "Profile বা Edit Profile থেকে নিজের রক্তের গ্রুপ ও ফোন নম্বর সেভ করুন।" else "Save your blood group & phone in Edit Profile to appear here.",
+                        ),
+                    ),
+                )
+            )
             blocks.add(ZedA2UiBlock.CalloutCard(message = summary, isWarning = false))
         } else {
             blocks.add(
@@ -361,11 +415,42 @@ object ZedAiEngine {
         isBn: Boolean,
     ): ZedReply {
         if (snapshot.teachers.isEmpty()) {
-            val msg = if (isBn) "টিচার ডিরেক্টরিতে এখনো কোনো তথ্য নেই।" else "No teachers found in the directory yet."
+            val msg = if (isBn) {
+                "টিচার ডিরেক্টরিতে এখনো কোনো শিক্ষক যুক্ত হননি। ময়মনসিংহ পলিটেকনিকের ৮টি টেকনোলজি বিভাগ রয়েছে:"
+            } else {
+                "No teachers found in the directory yet. Mymensingh Polytechnic has 8 technology departments:"
+            }
             return ZedReply(
                 answerText = msg,
                 sourceBadge = "Teachers",
-                blocks = listOf(ZedA2UiBlock.CalloutCard(msg, isWarning = true)),
+                blocks = listOf(
+                    ZedA2UiBlock.HeaderBanner(
+                        title = "Faculty & Teachers",
+                        subtitle = "Mymensingh Polytechnic Institute",
+                        domain = "TEACHERS",
+                    ),
+                    ZedA2UiBlock.KeyValueCard(
+                        title = if (isBn) "একাডেমিক বিভাগসমূহ" else "Academic Departments",
+                        items = listOf(
+                            ZedKeyValue("CST", "Computer Science & Technology"),
+                            ZedKeyValue("CT", "Civil Technology"),
+                            ZedKeyValue("ET", "Electrical Technology"),
+                            ZedKeyValue("MT", "Mechanical Technology"),
+                            ZedKeyValue("PT", "Power Technology"),
+                            ZedKeyValue("ENT", "Electronics Technology"),
+                            ZedKeyValue("EMT", "Electro-Medical Technology"),
+                            ZedKeyValue("Non-Tech", "RS / Related Studies"),
+                        ),
+                    ),
+                    ZedA2UiBlock.CalloutCard(
+                        message = if (isBn) {
+                            "শিক্ষকগণ 'Teacher' হিসেবে সাইন ইন করলে বা প্রোফাইল আপডেট করলে তাদের যোগাযোগের তথ্য এখানে যুক্ত হবে।"
+                        } else {
+                            "Teacher contact info and schedules appear here automatically as faculty members register."
+                        },
+                        isWarning = false,
+                    ),
+                ),
             )
         }
 
@@ -448,11 +533,38 @@ object ZedAiEngine {
     ): ZedReply {
         val entries = snapshot.routinePlan?.entries.orEmpty()
         if (entries.isEmpty()) {
-            val msg = if (isBn) "এখনো কোনো ক্লাস রুটিন পাবলিশ করা হয়নি।" else "No published class routine is available yet."
+            val msg = if (isBn) {
+                "এখনো কোনো ক্লাস রুটিন পাবলিশ করা হয়নি। নিচে সাধারণ শিফট সময়সূচি দেওয়া হলো:"
+            } else {
+                "No published class routine is available yet. Standard shift timings below:"
+            }
             return ZedReply(
                 answerText = msg,
                 sourceBadge = "Routine",
-                blocks = listOf(ZedA2UiBlock.CalloutCard(msg, isWarning = true)),
+                blocks = listOf(
+                    ZedA2UiBlock.HeaderBanner(
+                        title = "Class Routine",
+                        subtitle = if (isBn) "MPI শিফট ও ক্লাস সময়সূচি" else "MPI Standard Shift Timings",
+                        domain = "ROUTINE",
+                    ),
+                    ZedA2UiBlock.KeyValueCard(
+                        title = if (isBn) "MPI শিফট সূচি" else "MPI Shift Schedule",
+                        items = listOf(
+                            ZedKeyValue(if (isBn) "১ম শিফট" else "1st Shift", "08:00 AM – 01:15 PM"),
+                            ZedKeyValue(if (isBn) "২য় শিফট" else "2nd Shift", "01:30 PM – 06:45 PM"),
+                            ZedKeyValue(if (isBn) "কার্যদিবস" else "Working Days", if (isBn) "রবিবার – বৃহস্পতিবার" else "Sunday – Thursday"),
+                            ZedKeyValue(if (isBn) "স্ট্যাটাস" else "Status", if (isBn) "এডমিন প্যানেল থেকে রুটিন পাবলিশ হলে বিস্তারিত ক্লাস স্লট দেখা যাবে।" else "Full timetable slots will appear once published by admin."),
+                        ),
+                    ),
+                    ZedA2UiBlock.CalloutCard(
+                        message = if (isBn) {
+                            "রুটিন তৈরি করতে বা দেখতে 'Routine Management' স্ক্রিন ব্যবহার করুন।"
+                        } else {
+                            "Use 'Routine Management' to view or publish updated timetable plans."
+                        },
+                        isWarning = false,
+                    ),
+                ),
             )
         }
 
@@ -531,6 +643,43 @@ object ZedAiEngine {
             answerText = summary,
             sourceBadge = "Routine",
             blocks = blocks,
+        )
+    }
+
+    private fun formatDebugTokenReply(isBn: Boolean): ZedReply {
+        val summary = if (isBn) {
+            "আপনার Firebase App Check ডিবাগ টোকেন: $APP_CHECK_DEBUG_TOKEN"
+        } else {
+            "Your Firebase App Check debug token: $APP_CHECK_DEBUG_TOKEN"
+        }
+        return ZedReply(
+            answerText = summary,
+            sourceBadge = "Firebase App Check",
+            isSupportedDomain = true,
+            blocks = listOf(
+                ZedA2UiBlock.HeaderBanner(
+                    title = "App Check Debug Token",
+                    subtitle = "Firebase Console Allow-list Configuration",
+                    domain = "GENERAL",
+                ),
+                ZedA2UiBlock.KeyValueCard(
+                    title = "Firebase Credentials",
+                    items = listOf(
+                        ZedKeyValue("Debug Token", APP_CHECK_DEBUG_TOKEN),
+                        ZedKeyValue("Package Name", "com.klass.mpi"),
+                        ZedKeyValue("Project ID", "klassmpi"),
+                        ZedKeyValue("SHA-1", "CC:B0:44:70:6B:4D:01:C4:9A:5B:ED:12:A6:03:6A:76:A3:1E:58:FF"),
+                    ),
+                ),
+                ZedA2UiBlock.CalloutCard(
+                    message = if (isBn) {
+                        "Firebase Console -> App Check -> Apps -> com.klass.mpi -> ৩ ডট মেনু -> 'Manage debug tokens' -> 'Add debug token'-এ গিয়ে এই টোকেনটি পেস্ট করুন।"
+                    } else {
+                        "Paste this token in Firebase Console -> App Check -> Apps -> com.klass.mpi -> 3-dots menu -> 'Manage debug tokens' -> 'Add debug token'."
+                    },
+                    isWarning = false,
+                ),
+            ),
         )
     }
 }

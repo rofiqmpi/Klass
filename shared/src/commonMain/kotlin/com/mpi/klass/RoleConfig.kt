@@ -49,6 +49,8 @@ enum class ProfilePrivacy(
     }
 }
 
+const val APP_CHECK_DEBUG_TOKEN = "b81a2f64-9d18-4e5c-a352-78d91f42e316"
+
 // Student / User Profile model supporting all Personal and Academic fields
 data class StudentProfile(
     val email: String = "",

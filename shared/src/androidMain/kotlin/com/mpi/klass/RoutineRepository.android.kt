@@ -104,14 +104,18 @@ private fun teacherPrefFromJson(obj: JSONObject): TeacherSchedulingPref {
 }
 
 private fun classroomToJson(room: ClassroomItem): JSONObject = JSONObject().apply {
+    val effectiveDepts = room.effectiveNearestDepartments()
     put("id", room.id)
     put("room_number", room.roomNumber)
     put("building_or_floor", room.buildingOrFloor)
     put("room_type", room.roomType.key)
     put("department", room.department)
-    put("nearest_department", room.nearestDepartment)
+    put("nearest_department", effectiveDepts.joinToString(", "))
     put("capacity", room.capacity)
     put("updated_at", room.updatedAt)
+    val ndArr = JSONArray()
+    effectiveDepts.forEach { ndArr.put(it) }
+    put("nearest_departments", ndArr)
     val sArr = JSONArray()
     room.shifts.forEach { sArr.put(it) }
     put("shifts", sArr)
@@ -126,13 +130,29 @@ private fun classroomFromJson(obj: JSONObject): ClassroomItem {
             if (s.isNotBlank()) shifts.add(s)
         }
     }
+    val nearDepts = mutableListOf<String>()
+    val ndArr = obj.optJSONArray("nearest_departments")
+    if (ndArr != null) {
+        for (i in 0 until ndArr.length()) {
+            val d = RoutineRules.normalizeDepartmentShort(ndArr.optString(i))
+            if (d.isNotBlank() && d != "ALL" && d !in nearDepts) nearDepts.add(d)
+        }
+    }
+    val legacyNear = obj.optString("nearest_department", "")
+    if (nearDepts.isEmpty() && legacyNear.isNotBlank()) {
+        legacyNear.split(",", "/").forEach { part ->
+            val d = RoutineRules.normalizeDepartmentShort(part)
+            if (d.isNotBlank() && d != "ALL" && d !in nearDepts) nearDepts.add(d)
+        }
+    }
     return ClassroomItem(
         id = obj.optString("id"),
         roomNumber = obj.optString("room_number"),
         buildingOrFloor = obj.optString("building_or_floor"),
         roomType = ClassroomType.fromRaw(obj.optString("room_type")),
         department = obj.optString("department", "ALL").ifBlank { "ALL" },
-        nearestDepartment = obj.optString("nearest_department", ""),
+        nearestDepartment = nearDepts.joinToString(", "),
+        nearestDepartments = nearDepts,
         shifts = shifts.ifEmpty { listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2) },
         capacity = obj.optInt("capacity", 40),
         updatedAt = obj.optLong("updated_at", 0L),
@@ -437,13 +457,27 @@ actual suspend fun fetchClassroomsFromFirestore(): List<ClassroomItem> {
                         ?.mapNotNull { (it as? String)?.trim()?.takeIf { s -> s.isNotBlank() } }
                         ?.ifEmpty { listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2) }
                         ?: listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2)
+                    val rawNearList = (data["nearest_departments"] as? List<*>)
+                        ?.mapNotNull { (it as? String)?.trim()?.takeIf { d -> d.isNotBlank() } }
+                        ?.map { RoutineRules.normalizeDepartmentShort(it) }
+                        ?.filter { it.isNotBlank() && it != "ALL" }
+                        ?.distinct()
+                        ?: emptyList()
+                    val legacyNear = (data["nearest_department"] as? String)?.trim().orEmpty()
+                    val resolvedNear = rawNearList.ifEmpty {
+                        legacyNear.split(",", "/")
+                            .map { RoutineRules.normalizeDepartmentShort(it) }
+                            .filter { it.isNotBlank() && it != "ALL" }
+                            .distinct()
+                    }
                     val incoming = ClassroomItem(
                         id = id,
                         roomNumber = (data["room_number"] as? String)?.trim() ?: "",
                         buildingOrFloor = (data["building_or_floor"] as? String)?.trim() ?: "",
                         roomType = ClassroomType.fromRaw(data["room_type"] as? String),
                         department = ((data["department"] as? String)?.trim()?.ifBlank { "ALL" } ?: "ALL"),
-                        nearestDepartment = ((data["nearest_department"] as? String)?.trim() ?: ""),
+                        nearestDepartment = resolvedNear.joinToString(", "),
+                        nearestDepartments = resolvedNear,
                         shifts = shifts,
                         capacity = (data["capacity"] as? Number)?.toInt() ?: 40,
                         updatedAt = (data["updated_at"] as? Number)?.toLong() ?: 0L,
@@ -472,12 +506,14 @@ actual suspend fun saveClassroomInFirestore(room: ClassroomItem): Result<Unit> {
     val now = System.currentTimeMillis()
     val safeRoom = room.roomNumber.trim().replace(Regex("[^A-Za-z0-9_-]"), "")
     val roomId = room.id.trim().ifBlank { "room_${now}_${safeRoom.ifBlank { (100..999).random().toString() }}" }
+    val effectiveNear = room.effectiveNearestDepartments()
     val cleanRoom = room.copy(
         id = roomId,
         roomNumber = room.roomNumber.trim(),
         buildingOrFloor = room.buildingOrFloor.trim(),
         department = room.department.ifBlank { "ALL" },
-        nearestDepartment = room.nearestDepartment.trim(),
+        nearestDepartment = effectiveNear.joinToString(", "),
+        nearestDepartments = effectiveNear,
         updatedAt = now,
     )
 
@@ -493,6 +529,7 @@ actual suspend fun saveClassroomInFirestore(room: ClassroomItem): Result<Unit> {
         "room_type" to cleanRoom.roomType.key,
         "department" to cleanRoom.department,
         "nearest_department" to cleanRoom.nearestDepartment,
+        "nearest_departments" to cleanRoom.nearestDepartments,
         "shifts" to cleanRoom.shifts,
         "capacity" to cleanRoom.capacity,
         "updated_at" to cleanRoom.updatedAt,
@@ -857,111 +894,5 @@ actual suspend fun fetchBloodDonorsFromFirestore(): List<BloodDonorItem> {
     }
 }
 
-// ─── 6. Campus Map Coordinates Persistence ───────────────────────────────────
 
-private fun campusMapToJson(cfg: CampusMapConfig): JSONObject = JSONObject().apply {
-    put("origin_set", cfg.originSet)
-    put("updated_at", cfg.updatedAt)
-    val ptsObj = JSONObject()
-    for ((dept, pt) in cfg.departmentPoints) {
-        ptsObj.put(
-            dept,
-            JSONObject().apply {
-                put("department", pt.department.ifBlank { dept })
-                put("x", pt.xMeters.toDouble())
-                put("y", pt.yMeters.toDouble())
-                put("heading", pt.headingDegrees.toDouble())
-                put("updated_at", pt.updatedAt)
-            },
-        )
-    }
-    put("department_points", ptsObj)
-}
-
-private fun campusMapFromJson(obj: JSONObject): CampusMapConfig {
-    val map = linkedMapOf<String, DepartmentPoint>()
-    val ptsObj = obj.optJSONObject("department_points")
-    if (ptsObj != null) {
-        val keys = ptsObj.keys()
-        while (keys.hasNext()) {
-            val k = keys.next()
-            val item = ptsObj.optJSONObject(k) ?: continue
-            val norm = RoutineRules.normalizeDepartmentShort(item.optString("department", k))
-            if (norm.isNotBlank()) {
-                map[norm] = DepartmentPoint(
-                    department = norm,
-                    xMeters = item.optDouble("x", 0.0).toFloat(),
-                    yMeters = item.optDouble("y", 0.0).toFloat(),
-                    headingDegrees = item.optDouble("heading", 0.0).toFloat(),
-                    updatedAt = item.optLong("updated_at", 0L),
-                )
-            }
-        }
-    }
-    return CampusMapConfig(
-        departmentPoints = map,
-        originSet = obj.optBoolean("origin_set", map.isNotEmpty()),
-        updatedAt = obj.optLong("updated_at", 0L),
-    )
-}
-
-actual suspend fun saveCampusMapConfigInFirestore(config: CampusMapConfig): Result<Unit> {
-    val now = System.currentTimeMillis()
-    val updated = config.copy(updatedAt = now, originSet = config.originSet || config.departmentPoints.isNotEmpty())
-    val jsonStr = campusMapToJson(updated).toString()
-    cacheString("campus_map_json", jsonStr)
-
-    val data = mapOf(
-        "origin_set" to updated.originSet,
-        "updated_at" to updated.updatedAt,
-        "payload_json" to jsonStr,
-    )
-
-    var ok = false
-    var err: Exception? = null
-    withTimeoutOrNull(8.seconds) {
-        for ((db, _) in getRepoFirestoreInstances()) {
-            try {
-                db.collection("config").document("campus_map").set(data, SetOptions.merge()).awaitTask()
-                ok = true
-            } catch (e: Exception) {
-                err = e
-                Log.w(REPO_TAG, "Failed saving campus map: ${e.message}")
-            }
-        }
-    }
-    return if (ok) Result.success(Unit) else Result.failure(err ?: Exception("Failed saving campus map"))
-}
-
-actual suspend fun fetchCampusMapConfigFromFirestore(): CampusMapConfig {
-    val cached = readCacheString("campus_map_json")?.let { raw ->
-        try { campusMapFromJson(JSONObject(raw)) } catch (_: Exception) { CampusMapConfig() }
-    } ?: CampusMapConfig()
-    if (!isFirebaseSignedIn()) return cached
-
-    var bestRemote: CampusMapConfig? = null
-    withTimeoutOrNull(7.seconds) {
-        for ((db, _) in getRepoFirestoreInstances()) {
-            try {
-                val doc = db.collection("config").document("campus_map").get().awaitTask()
-                if (doc.exists()) {
-                    val jsonStr = doc.getString("payload_json") ?: continue
-                    val parsed = campusMapFromJson(JSONObject(jsonStr))
-                    if (bestRemote == null || parsed.updatedAt >= (bestRemote?.updatedAt ?: 0L)) {
-                        bestRemote = parsed
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(REPO_TAG, "Failed fetching campus map: ${e.message}")
-            }
-        }
-    }
-
-    return if (bestRemote != null && bestRemote!!.updatedAt >= cached.updatedAt) {
-        cacheString("campus_map_json", campusMapToJson(bestRemote!!).toString())
-        bestRemote!!
-    } else {
-        cached
-    }
-}
 

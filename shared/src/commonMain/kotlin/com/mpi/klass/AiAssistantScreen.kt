@@ -118,6 +118,7 @@ fun AiAssistantScreen(
                 userRole = userRole,
                 userDisplayName = userDisplayName,
                 userProfile = if (userEmail.isNotBlank()) fetchLocalStudentProfile(userEmail) else null,
+                userFullProfile = if (userEmail.isNotBlank()) fetchLocalProfile(userEmail) else null,
             )
         )
     }
@@ -130,6 +131,8 @@ fun AiAssistantScreen(
                         ?.takeIf { it.isNotEmpty() } ?: BtebBooksCatalog.books
                 }
                 val teachersDef = async { runCatching { RoleConfig.fetchLoggedInTeachers() }.getOrElse { emptyList() } }
+                val teacherPrefsDef = async { runCatching { fetchAllTeacherSchedulingPrefsFromFirestore() }.getOrElse { emptyList() } }
+                val classroomsDef = async { runCatching { fetchClassroomsFromFirestore() }.getOrElse { emptyList() } }
                 val routineDef = async {
                     runCatching {
                         fetchRoutinePlanFromFirestore("master_6m_published")
@@ -137,13 +140,28 @@ fun AiAssistantScreen(
                     }.getOrNull()
                 }
                 val donorsDef = async { runCatching { fetchBloodDonorsFromFirestore() }.getOrElse { emptyList() } }
+                val studentProfDef = async {
+                    if (userEmail.isNotBlank()) {
+                        runCatching { RoleConfig.fetchStudentProfile(userEmail) }.getOrNull()
+                            ?: fetchLocalStudentProfile(userEmail)
+                    } else null
+                }
+                val fullProfDef = async {
+                    if (userEmail.isNotBlank()) {
+                        runCatching { RoleConfig.fetchRemoteUserProfile(userEmail) }.getOrNull()
+                            ?: fetchLocalProfile(userEmail)
+                    } else null
+                }
 
                 contextSnapshot = ZedContextSnapshot(
                     books = booksDef.await(),
                     teachers = teachersDef.await(),
+                    teacherPrefs = teacherPrefsDef.await(),
+                    classrooms = classroomsDef.await(),
                     routinePlan = routineDef.await(),
                     donors = donorsDef.await(),
-                    userProfile = if (userEmail.isNotBlank()) fetchLocalStudentProfile(userEmail) else null,
+                    userProfile = studentProfDef.await(),
+                    userFullProfile = fullProfDef.await(),
                     userRole = userRole,
                     userDisplayName = userDisplayName,
                 )
@@ -159,13 +177,13 @@ fun AiAssistantScreen(
         mutableStateListOf(
             AiChatMessage(
                 id = "zed_welcome",
-                text = "হাই $firstName! আমি Zed।\nBooks Library, Blood Donor, Teachers বা Class Routine সম্পর্কে যেকোনো প্রশ্ন লিখুন।",
+                text = "হাই $firstName! আমি Zed।\nMPI Klass অ্যাপের যেকোনো তথ্য কিংবা দুনিয়ার যেকোনো সাধারণ প্রশ্ন নির্দ্বিধায় জিজ্ঞাসা করুন।",
                 isFromUser = false,
                 sourceBadge = "Zed AI",
                 blocks = listOf(
                     ZedA2UiBlock.HeaderBanner(
-                        title = "Zed Campus Assistant",
-                        subtitle = "Powered by Firebase AI Logic • Structured A2UI",
+                        title = "Zed AI Assistant",
+                        subtitle = "Campus Knowledge + General Gemini AI • A2UI",
                         domain = "GENERAL",
                     )
                 ),
@@ -178,6 +196,7 @@ fun AiAssistantScreen(
         if (trimmed.isBlank() || isAiTyping) return
         inputText = ""
 
+        val priorHistory = messages.filter { !it.id.startsWith("zed_welcome") && !it.id.startsWith("zed_reset_") }
         val baseId = "${messages.size}_${getCurrentTimeMillis()}"
         messages.add(
             AiChatMessage(
@@ -195,10 +214,11 @@ fun AiAssistantScreen(
                     prompt = trimmed,
                     snapshot = contextSnapshot,
                     todayEnglishDay = currentDayNameEnglish(),
+                    history = priorHistory,
                 )
                 val elapsed = getCurrentTimeMillis() - startedAt
-                if (elapsed < 600L) {
-                    delay(600L - elapsed)
+                if (elapsed < 450L) {
+                    delay(450L - elapsed)
                 }
                 messages.add(
                     AiChatMessage(
@@ -246,12 +266,12 @@ fun AiAssistantScreen(
                                 messages.add(
                                     AiChatMessage(
                                         id = "zed_reset_${getCurrentTimeMillis()}",
-                                        text = "নতুন চ্যাট শুরু হলো, $firstName! Books, Blood Donor, Teachers বা Routine সম্পর্কে প্রশ্ন লিখুন।",
+                                        text = "নতুন চ্যাট শুরু হলো, $firstName! ক্যাম্পাস বা যেকোনো বিষয়ে প্রশ্ন লিখুন।",
                                         isFromUser = false,
                                         sourceBadge = "Zed AI",
                                         blocks = listOf(
                                             ZedA2UiBlock.HeaderBanner(
-                                                title = "Zed Campus Assistant",
+                                                title = "Zed AI Assistant",
                                                 subtitle = "Ready for your query",
                                                 domain = "GENERAL",
                                             )
@@ -348,7 +368,7 @@ fun AiAssistantScreen(
                             ) {
                                 if (inputText.isEmpty()) {
                                     Text(
-                                        text = "Books, Blood, Teachers বা Routine...",
+                                        text = "যেকোনো প্রশ্ন লিখুন...",
                                         fontSize = 15.sp,
                                         fontFamily = hindSiliguri,
                                         color = cs.onSurfaceVariant,

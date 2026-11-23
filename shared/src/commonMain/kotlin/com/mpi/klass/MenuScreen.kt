@@ -43,7 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,7 +112,6 @@ fun MenuScreen(
     onAppearanceClick: () -> Unit = {},
     onSignInControlClick: () -> Unit = {},
     onAdminApprovalsClick: () -> Unit = {},
-    onCampusMapClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
     onDeleteAccountClick: () -> Unit = {},
     onSignInClick: () -> Unit = {},
@@ -206,7 +207,7 @@ fun MenuScreen(
                 MenuTileSpec(
                     id = "ai_assistant",
                     title = "Zed AI",
-                    subtitle = "Books, teachers, mpi.politech & web search",
+                    subtitle = "App knowledge & any general question",
                     icon = SparkleIcon,
                     accent = KlassFeaturePalette.ai(isDark),
                     badgeText = "ZED",
@@ -246,15 +247,6 @@ fun MenuScreen(
                     icon = CrownIcon,
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onAdminApprovalsClick,
-                ),
-                MenuTileSpec(
-                    id = "admin_campus_map",
-                    title = "Campus Map & Proximity",
-                    subtitle = "Pin department locations & shortest-room routing",
-                    icon = LocationDotIcon,
-                    accent = KlassFeaturePalette.classrooms(isDark),
-                    badgeText = "Map",
-                    onClick = onCampusMapClick,
                 ),
             )
         }
@@ -346,6 +338,24 @@ fun MenuScreen(
                             accent = KlassFeaturePalette.appearance(isDark),
                             badgeText = themeLabel,
                             onClick = onAppearanceClick,
+                        ),
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    val clipboard = LocalClipboardManager.current
+                    SocialMenuRow(
+                        tile = MenuTileSpec(
+                            id = "debug_token",
+                            title = "App Check Debug Token",
+                            subtitle = "Tap to copy: $APP_CHECK_DEBUG_TOKEN",
+                            icon = ShieldIcon,
+                            accent = KlassFeaturePalette.ai(isDark),
+                            badgeText = "Copy",
+                            onClick = {
+                                clipboard.setText(AnnotatedString(APP_CHECK_DEBUG_TOKEN))
+                                showToast("App Check Debug Token copied!")
+                            },
                         ),
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,

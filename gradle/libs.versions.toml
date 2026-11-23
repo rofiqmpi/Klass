@@ -25,6 +25,7 @@ kotlinx-datetime = "0.7.1"
 material3 = "1.9.0"
 compottie = "2.1.0"
 robolectric = "4.14.1"
+secretsGradlePlugin = "2.0.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -77,3 +78,4 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }

@@ -138,4 +138,17 @@ class ZedAiEngineTest {
         assertTrue(greet.answerText.contains("Nabil"))
         assertTrue(greet.answerText.lines().size <= 2)
     }
+
+    @Test
+    fun keyProviderRejectsPlaceholderAndStoresConfiguredKey() {
+        ZedAiKeyProvider.setApiKey("GEMINI_API_KEY_DEFAULT_VALUE")
+        assertTrue(ZedAiKeyProvider.getApiKey().isEmpty())
+
+        ZedAiKeyProvider.setApiKey("   ")
+        assertTrue(ZedAiKeyProvider.getApiKey().isEmpty())
+
+        ZedAiKeyProvider.setApiKey("sample-test-key-123")
+        assertTrue(ZedAiKeyProvider.getApiKey() == "sample-test-key-123")
+        ZedAiKeyProvider.setApiKey("")
+    }
 }

@@ -50,10 +50,21 @@ data class ClassroomItem(
     val roomType: ClassroomType = ClassroomType.THEORY,
     val department: String = "ALL",
     val nearestDepartment: String = "",
+    val nearestDepartments: List<String> = emptyList(),
     val shifts: List<String> = listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2),
     val capacity: Int = 40,
     val updatedAt: Long = 0L,
-)
+) {
+    fun effectiveNearestDepartments(): List<String> {
+        val raw = nearestDepartments.ifEmpty {
+            nearestDepartment.split(",", "/").map { it.trim() }
+        }
+        return raw
+            .map { RoutineRules.normalizeDepartmentShort(it) }
+            .filter { it.isNotBlank() && it != "ALL" }
+            .distinct()
+    }
+}
 
 data class RoutineConfig(
     val shift1StartTime: String = "08:00",

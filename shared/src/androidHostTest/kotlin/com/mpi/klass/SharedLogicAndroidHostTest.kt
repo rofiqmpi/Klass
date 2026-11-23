@@ -46,18 +46,9 @@ class SharedLogicAndroidHostTest {
     }
 
     @Test
-    fun campusMapRanksNearestRoomByEuclideanDistance() {
-        val map = CampusMapConfig(
-            originSet = true,
-            departmentPoints = mapOf(
-                "CST" to DepartmentPoint("CST", xMeters = 0f, yMeters = 0f),
-                "CT" to DepartmentPoint("CT", xMeters = 10f, yMeters = 0f),
-                "MT" to DepartmentPoint("MT", xMeters = 50f, yMeters = 0f),
-            ),
-        )
-        assertEquals(0.0, map.distanceBetween("CST", "CST"), 0.01)
-        assertEquals(10.0, map.distanceBetween("CST", "CT"), 0.01)
-        assertEquals(50.0, map.distanceBetween("CST", "MT"), 0.01)
+    fun multiNearestDepartmentRoomRanksMatchingDepartmentsFirst() {
+        val parsed = ClassroomItem(nearestDepartment = "CST, CT")
+        assertEquals(listOf("CST", "CT"), parsed.effectiveNearestDepartments())
 
         val books = listOf(
             LibraryBook(
@@ -82,19 +73,21 @@ class SharedLogicAndroidHostTest {
         )
         val classrooms = listOf(
             ClassroomItem(
-                id = "r_far",
+                id = "r_other",
                 roomNumber = "501",
                 roomType = ClassroomType.THEORY,
                 department = "ALL",
                 nearestDepartment = "MT",
+                nearestDepartments = listOf("MT"),
                 shifts = listOf(RoutineRules.SHIFT_1),
             ),
             ClassroomItem(
-                id = "r_near",
+                id = "r_near_multi",
                 roomNumber = "201",
                 roomType = ClassroomType.THEORY,
                 department = "ALL",
-                nearestDepartment = "CT",
+                nearestDepartment = "CST, CT",
+                nearestDepartments = listOf("CST", "CT"),
                 shifts = listOf(RoutineRules.SHIFT_1),
             ),
         )
@@ -105,10 +98,9 @@ class SharedLogicAndroidHostTest {
             classrooms = classrooms,
             generatedBy = "admin@mpi.edu",
             nowMillis = 1_000L,
-            campusMap = map,
         )
         assertTrue(plan.entries.isNotEmpty(), "Expected generated routine entries")
-        assertTrue(plan.entries.all { it.roomNumber == "201" }, "Expected nearer CT-zone room 201 to be chosen over MT-zone 501")
+        assertTrue(plan.entries.all { it.roomNumber == "201" }, "Expected multi-select CST/CT room 201 to be chosen over MT room 501")
     }
 
     @Test

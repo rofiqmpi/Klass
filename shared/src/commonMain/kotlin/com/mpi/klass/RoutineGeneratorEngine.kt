@@ -78,7 +78,6 @@ object RoutineGeneratorEngine {
         classrooms: List<ClassroomItem>,
         generatedBy: String,
         nowMillis: Long,
-        campusMap: CampusMapConfig = CampusMapConfig(),
     ): RoutinePlan {
         val periodsPerDay = config.periodsPerDay.coerceIn(4, 10)
         val activeSemesters = config.activeSemesters
@@ -215,22 +214,24 @@ object RoutineGeneratorEngine {
             }
         }
 
-        // Helper to match all free compatible classrooms ranked by shortest walking distance from CampusMapConfig
+        // Helper to match all free compatible classrooms ranked by multi-selected nearest departments
         fun matchingRooms(dept: String, shift: String, isLab: Boolean): List<ClassroomItem> {
             val targetType = if (isLab) ClassroomType.LAB else ClassroomType.THEORY
+            val normDept = RoutineRules.normalizeDepartmentShort(dept)
             val matching = classrooms.filter { room ->
                 room.roomType == targetType &&
                     (room.shifts.isEmpty() || room.shifts.any { RoutineRules.normalizeShift(it) == shift })
             }
             return matching.sortedWith(
                 compareBy<ClassroomItem> { room ->
-                    val roomZone = room.nearestDepartment.ifBlank { room.department }
-                    campusMap.distanceBetween(dept, roomZone)
+                    val nearList = room.effectiveNearestDepartments()
+                    when {
+                        normDept in nearList -> 0
+                        nearList.isEmpty() -> 1
+                        else -> 2
+                    }
                 }.thenBy { room ->
-                    val roomZone = RoutineRules.normalizeDepartmentShort(
-                        room.nearestDepartment.ifBlank { room.department }
-                    )
-                    if (roomZone == RoutineRules.normalizeDepartmentShort(dept)) 0 else 1
+                    room.effectiveNearestDepartments().size
                 }.thenBy { it.roomNumber.lowercase() }
             )
         }
