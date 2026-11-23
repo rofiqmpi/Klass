@@ -82,7 +82,7 @@ import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.RightArrowIcon
-import com.mpi.klass.theme.SearchIcon
+import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.departmentAccent
@@ -122,7 +122,6 @@ fun RoleHomeScreen(
         mutableStateOf(if (email.isNotBlank()) fetchLocalStudentProfile(email.trim().lowercase()) else null)
     }
     var teacherPref by remember(email) { mutableStateOf<TeacherSchedulingPref?>(null) }
-    var teacherOnboardingDismissed by remember(email) { mutableStateOf(false) }
     var publishedPlan by remember { mutableStateOf<RoutinePlan?>(null) }
     var isRoutineLoading by remember { mutableStateOf(true) }
     var classrooms by remember { mutableStateOf<List<ClassroomItem>>(emptyList()) }
@@ -164,43 +163,9 @@ fun RoleHomeScreen(
     var isBloodFinderSubOverlayOpen by remember { mutableStateOf(false) }
     var isTeacherPrefsSubOverlayOpen by remember { mutableStateOf(false) }
     val cleanUserEmail = email.trim().lowercase()
-    var directoryMembers by remember(email) { mutableStateOf<List<DirectoryMember>>(emptyList()) }
-    var userConnections by remember(email) { mutableStateOf<List<ConnectionRecord>>(emptyList()) }
-    var isSocialLoading by remember(email) { mutableStateOf(false) }
-    var selectedChatPeer by remember { mutableStateOf<DirectoryMember?>(null) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-
-    val liveConnections = if (cleanUserEmail.isNotBlank() && SocialChatState.connectionsOwnerEmail == cleanUserEmail) {
-        SocialChatState.connections
-    } else {
-        userConnections
-    }
-    val incomingRequestCount = if (cleanUserEmail.isNotBlank()) {
-        liveConnections.count {
-            !it.status.equals("ACCEPTED", ignoreCase = true) &&
-                it.receiverEmail.trim().lowercase() == cleanUserEmail
-        }
-    } else {
-        0
-    }
-
-    fun refreshSocialData(force: Boolean = false) {
-        if (cleanUserEmail.isBlank() || isSocialLoading) return
-        if (!force && directoryMembers.isNotEmpty() && liveConnections.isNotEmpty()) return
-        coroutineScope.launch {
-            isSocialLoading = true
-            try {
-                directoryMembers = fetchCampusDirectoryMembers(cleanUserEmail)
-                val fetched = fetchConnectionsForUser(cleanUserEmail)
-                userConnections = fetched
-                SocialChatState.publishConnections(cleanUserEmail, fetched)
-            } finally {
-                isSocialLoading = false
-            }
-        }
-    }
 
     fun navigateTo(tab: String) {
         when (tab) {
@@ -217,14 +182,18 @@ fun RoleHomeScreen(
                 if (selectedTab != tab) {
                     tabBackStack.add(tab)
                 }
-                if (tab == "messages" || tab == "friends") {
-                    refreshSocialData(force = directoryMembers.isEmpty())
-                }
             }
         }
     }
 
     fun goBack() {
+        val mustLockTeacherPrefs = selectedTab == "teacher_prefs" &&
+            currentRole == UserRole.TEACHER &&
+            teacherPref?.schedulingSetupComplete != true
+        if (mustLockTeacherPrefs) {
+            showToast("Please select your teaching subjects and tap Save first.")
+            return
+        }
         if (tabBackStack.size > 1) {
             tabBackStack.removeAt(tabBackStack.lastIndex)
         } else {
@@ -257,7 +226,7 @@ fun RoleHomeScreen(
             if (currentRole == UserRole.TEACHER) {
                 val loadedPref = fetchTeacherSchedulingPrefFromFirestore(cleanEmail)
                 teacherPref = loadedPref
-                if ((loadedPref == null || !loadedPref.schedulingSetupComplete) && !teacherOnboardingDismissed) {
+                if (loadedPref == null || !loadedPref.schedulingSetupComplete) {
                     navigateTo("teacher_prefs")
                 }
             }
@@ -275,24 +244,6 @@ fun RoleHomeScreen(
             isRoutineLoading = false
         }
         classrooms = fetchClassroomsFromFirestore()
-        if (cleanEmail.isNotBlank()) {
-            isSocialLoading = true
-            try {
-                directoryMembers = fetchCampusDirectoryMembers(cleanEmail)
-                val fetchedConnections = fetchConnectionsForUser(cleanEmail)
-                userConnections = fetchedConnections
-                SocialChatState.publishConnections(cleanEmail, fetchedConnections)
-                startChatRelayListener(cleanEmail)
-            } finally {
-                isSocialLoading = false
-            }
-        }
-    }
-
-    DisposableEffect(cleanUserEmail) {
-        onDispose {
-            stopChatRelayListener()
-        }
     }
 
     LaunchedEffect(publishedPlan, currentRole, studentProfile, teacherPref, selectedTab, email) {
@@ -599,7 +550,7 @@ fun RoleHomeScreen(
                                         },
                                         onAiClick = {
                                             isRoutineFilterExpanded = false
-                                            navigateTo("messages")
+                                            navigateTo("ai")
                                         },
                                         onNotificationClick = {
                                             isRoutineFilterExpanded = false
@@ -655,7 +606,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -675,6 +626,7 @@ fun RoleHomeScreen(
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
                                         onClassroomClick = { navigateTo("classrooms") },
+                                        onCampusMapClick = { navigateTo("admin_campus_map") },
                                         onBooksClick = { navigateTo("books") },
                                         onTeachersClick = { navigateTo("teachers") },
                                         onRoutineManagerClick = { navigateTo("routine_manager") },
@@ -683,13 +635,7 @@ fun RoleHomeScreen(
                                         onAppearanceClick = { navigateTo("appearance") },
                                         onSignInControlClick = { navigateTo("admin_signin_control") },
                                         onAdminApprovalsClick = { navigateTo("admin_approvals") },
-                                        unreadMessagesCount = SocialChatState.totalUnreadMessages,
-                                        incomingRequestsCount = incomingRequestCount,
-                                        onMessagesClick = { navigateTo("messages") },
-                                        onConnectionsClick = { navigateTo("friends") },
                                         onSignOutClick = {
-                                            stopChatRelayListener()
-                                            SocialChatState.clearConnections()
                                             clearUserSession()
                                             onSignOut()
                                         },
@@ -738,21 +684,12 @@ fun RoleHomeScreen(
                                 currentThemeMode = currentThemeMode,
                                 onThemeModeChange = onThemeModeChange,
                                 onSignOut = {
-                                    stopChatRelayListener()
-                                    SocialChatState.clearConnections()
                                     clearUserSession()
                                     onSignOut()
                                 },
                                 hindSiliguri = hindSiliguri,
                                 email = email,
                                 photoUrl = currentPhotoUrl,
-                                connections = liveConnections,
-                                directoryMembers = directoryMembers,
-                                onOpenConnections = { navigateTo("friends") },
-                                onOpenChat = { peer ->
-                                    selectedChatPeer = peer
-                                    navigateTo("chat")
-                                },
                                 topContentPadding = 0.dp,
                                 isEditingMode = isProfileEditing,
                                 onEditingModeChange = { isProfileEditing = it },
@@ -785,20 +722,6 @@ fun RoleHomeScreen(
                                         }
                                     }
                                     onProfileUpdated?.invoke(newName, newPhotoUrl)
-                                },
-                                onCategoryChanged = { newRole ->
-                                    currentRole = newRole
-                                    val sessionEmail = email.ifBlank { loadUserSession()?.email ?: "" }
-                                    if (sessionEmail.isNotBlank()) {
-                                        saveUserSession(
-                                            UserSession(
-                                                role = newRole.name,
-                                                email = sessionEmail,
-                                                name = currentUserName,
-                                                photoUrl = currentPhotoUrl,
-                                            )
-                                        )
-                                    }
                                 },
                             )
 
@@ -880,7 +803,7 @@ fun RoleHomeScreen(
                                             }
 
                                             Surface(
-                                                onClick = { navigateTo("friends") },
+                                                onClick = { navigateTo("ai") },
                                                 shape = CircleShape,
                                                 color = overlayCircleBg,
                                                 border = BorderStroke(0.75.dp, overlayCircleBorder),
@@ -888,12 +811,12 @@ fun RoleHomeScreen(
                                                 modifier = Modifier
                                                     .minimumInteractiveComponentSize()
                                                     .size(40.dp)
-                                                    .testTag("profile_search_people_button"),
+                                                    .testTag("profile_ai_button"),
                                             ) {
                                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                                     Icon(
-                                                        imageVector = SearchIcon,
-                                                        contentDescription = "সবাইকে খুঁজুন".localized(),
+                                                        imageVector = SparkleIcon,
+                                                        contentDescription = "Zed AI",
                                                         tint = Color.White,
                                                         modifier = Modifier.size(18.dp),
                                                     )
@@ -958,7 +881,7 @@ fun RoleHomeScreen(
                                             isDark = isDark,
                                             showAi = true,
                                             showNotification = false,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                         )
                                     },
                                 )
@@ -993,7 +916,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -1024,7 +947,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -1055,7 +978,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -1086,7 +1009,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -1105,6 +1028,8 @@ fun RoleHomeScreen(
                         }
                     }
                     "teacher_prefs" -> {
+                        val mustCompleteTeacherSetup = currentRole == UserRole.TEACHER &&
+                            teacherPref?.schedulingSetupComplete != true
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1114,16 +1039,16 @@ fun RoleHomeScreen(
                                 GoogleTopAppBar(
                                     title = "Teaching Subjects",
                                     hindSiliguri = hindSiliguri,
-                                    onNavigationClick = {
-                                        teacherOnboardingDismissed = true
-                                        goBack()
-                                    },
+                                    navigationIcon = if (mustCompleteTeacherSetup) null else BackArrowIcon,
+                                    onNavigationClick = if (mustCompleteTeacherSetup) null else ({ goBack() }),
                                     actions = {
-                                        HeaderAiNotificationActions(
-                                            isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
-                                            onNotificationClick = { navigateTo("notification") },
-                                        )
+                                        if (!mustCompleteTeacherSetup) {
+                                            HeaderAiNotificationActions(
+                                                isDark = isDark,
+                                                onAiClick = { navigateTo("ai") },
+                                                onNotificationClick = { navigateTo("notification") },
+                                            )
+                                        }
                                     },
                                 )
                             }
@@ -1134,16 +1059,15 @@ fun RoleHomeScreen(
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     topContentPadding = 0.dp,
-                                    isOnboardingPrompt = !(teacherPref?.schedulingSetupComplete ?: true),
+                                    isOnboardingPrompt = mustCompleteTeacherSetup,
                                     onFullScreenOverlayChange = { isTeacherPrefsSubOverlayOpen = it },
-                                    onDismissOnboarding = {
-                                        teacherOnboardingDismissed = true
-                                        goBack()
-                                    },
                                     onSaved = { saved ->
                                         teacherPref = saved
-                                        teacherOnboardingDismissed = true
-                                        goBack()
+                                        if (tabBackStack.size > 1) {
+                                            tabBackStack.removeAt(tabBackStack.lastIndex)
+                                        } else {
+                                            navigateTo("home")
+                                        }
                                     },
                                 )
                             }
@@ -1163,7 +1087,7 @@ fun RoleHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messages") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -1202,6 +1126,34 @@ fun RoleHomeScreen(
                             onBack = { goBack() },
                         )
                     }
+                    "admin_campus_map" -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .rainbowScreenBackground(isDark),
+                        ) {
+                            GoogleTopAppBar(
+                                title = "Campus Map",
+                                hindSiliguri = hindSiliguri,
+                                onNavigationClick = { goBack() },
+                                actions = {
+                                    HeaderAiNotificationActions(
+                                        isDark = isDark,
+                                        onAiClick = { navigateTo("ai") },
+                                        onNotificationClick = { navigateTo("notification") },
+                                    )
+                                },
+                            )
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                CampusMapScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    topContentPadding = 0.dp,
+                                    onSaved = { goBack() },
+                                )
+                            }
+                        }
+                    }
                     "ai" -> {
                         Box(
                             modifier = Modifier
@@ -1217,63 +1169,6 @@ fun RoleHomeScreen(
                                 userRole = currentRole,
                                 userEmail = email,
                             )
-                        }
-                    }
-                    "messages" -> {
-                        MessagesScreen(
-                            viewerEmail = cleanUserEmail,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            members = directoryMembers,
-                            connections = liveConnections,
-                            isLoading = isSocialLoading,
-                            onRefresh = { refreshSocialData(force = true) },
-                            onBack = { goBack() },
-                            onOpenFriends = { navigateTo("friends") },
-                            onOpenChat = { peer ->
-                                selectedChatPeer = peer
-                                navigateTo("chat")
-                            },
-                            onOpenAiChat = { navigateTo("ai") },
-                        )
-                    }
-                    "friends" -> {
-                        FriendsScreen(
-                            viewerEmail = cleanUserEmail,
-                            viewerName = currentUserName,
-                            viewerPhotoUrl = currentPhotoUrl,
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            members = directoryMembers,
-                            connections = liveConnections,
-                            isLoading = isSocialLoading,
-                            onRefresh = { refreshSocialData(force = true) },
-                            onBack = { goBack() },
-                            onOpenMessages = { navigateTo("messages") },
-                            onOpenChat = { peer ->
-                                selectedChatPeer = peer
-                                navigateTo("chat")
-                            },
-                            onConnectionsChanged = { updated ->
-                                userConnections = updated
-                                SocialChatState.publishConnections(cleanUserEmail, updated)
-                            },
-                        )
-                    }
-                    "chat" -> {
-                        val activePeer = selectedChatPeer
-                        if (activePeer != null) {
-                            DirectChatScreen(
-                                viewerEmail = cleanUserEmail,
-                                viewerName = currentUserName,
-                                viewerPhotoUrl = currentPhotoUrl,
-                                peer = activePeer,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                                onBack = { goBack() },
-                            )
-                        } else {
-                            LaunchedEffect(Unit) { goBack() }
                         }
                     }
                 }
@@ -1331,8 +1226,6 @@ fun RoleHomeScreen(
                                 if (cleanUserEmail.isNotBlank()) {
                                     RoleConfig.deleteAccountFromFirebase(cleanUserEmail, currentRole)
                                 }
-                                stopChatRelayListener()
-                                SocialChatState.clearConnections()
                                 clearUserSession()
                                 isDeletingAccount = false
                                 showDeleteAccountDialog = false
@@ -1398,7 +1291,8 @@ private fun SlotInspectionDialog(
 
     val metaFields = remember(entry, matchedRoom, isDark) {
         val roomDetail = matchedRoom?.let {
-            "Room ${entry.roomNumber} (${entry.shift}) • ${it.roomType.label} • Cap ${it.capacity}"
+            val zonePart = it.nearestDepartment.takeIf { z -> z.isNotBlank() && !z.equals("ALL", true) }?.let { z -> " • Near $z" } ?: ""
+            "Room ${entry.roomNumber} (${entry.shift}) • ${it.roomType.label}$zonePart"
         } ?: "Room ${entry.roomNumber} (${entry.shift})"
         listOf(
             SlotMetaField(
@@ -1661,7 +1555,7 @@ private fun SlotInspectionDialog(
                     options = classrooms,
                     selectedOption = classrooms.firstOrNull { it.roomNumber.equals(reqRoom, true) },
                     optionLabel = { "Room ${it.roomNumber}" },
-                    optionSubtitle = { "${it.roomType.label} • Capacity ${it.capacity}" },
+                    optionSubtitle = { "${it.roomType.label}" + (it.nearestDepartment.takeIf { z -> z.isNotBlank() && !z.equals("ALL", true) }?.let { z -> " • Near $z" } ?: "") },
                     onSelect = { reqRoom = it.roomNumber },
                     onDismiss = { activePickerKind = null },
                 )

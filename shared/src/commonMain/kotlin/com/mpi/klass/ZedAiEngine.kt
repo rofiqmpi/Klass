@@ -1,13 +1,9 @@
 package com.mpi.klass
 
 /**
- * Local-only Zed Assistant strictly scoped to 4 app domains:
- * 1. Books Library
- * 2. Blood Donor
- * 3. Teachers
- * 4. Class Routine
- *
- * Zero external API calls. Every reply is concise, structured, and short.
+ * Local structured campus intelligence engine (and fallback for Firebase AI Logic).
+ * Scoped strictly to 4 app domains: Books Library, Blood Donor, Teachers, and Class Routine.
+ * Outputs declarative A2UI blocks alongside concise summary text, with zero preset questions.
  */
 object ZedAiEngine {
 
@@ -22,8 +18,7 @@ object ZedAiEngine {
             ?.takeIf { it.isNotBlank() && !it.equals("User", true) }
             ?: if (isBn) "বন্ধু" else "Friend"
 
-        // Simple short greeting only
-        evaluateGreeting(raw, firstName, isBn)?.let { return it }
+        evaluateGreeting(raw, firstName, isBn, snapshot)?.let { return it }
 
         val q = raw.lowercase()
 
@@ -37,7 +32,7 @@ object ZedAiEngine {
             return formatBloodReply(matchedBloodGroup, q, snapshot, isBn)
         }
 
-        // 2. Class Routine (check explicit routine/day/period before generic subject/teacher)
+        // 2. Class Routine
         val mentionsRoutineKeyword = q.contains("routine") || q.contains("schedule") ||
             q.contains("period") || q.contains("today class") || q.contains("my class") ||
             q.contains("ajke") || q.contains("ajker") || q.contains("রুটিন") ||
@@ -63,7 +58,7 @@ object ZedAiEngine {
             return formatTeachersReply(matchedTeachersByName, q, snapshot, isBn)
         }
 
-        // 4. Books Library (by 4-6 digit code, title, or book keyword)
+        // 4. Books Library
         val digitCodes = Regex("\\b\\d{4,6}\\b").findAll(q).map { it.value }.toList()
         val matchedBooksByCode = if (digitCodes.isNotEmpty()) {
             snapshot.books.filter { book ->
@@ -84,26 +79,32 @@ object ZedAiEngine {
             return formatBooksReply(directMatches, raw, snapshot, isBn)
         }
 
-        // Generic "class" fallback (if user asked e.g. "ক্লাস কয়টায়" or "CST 5th class") -> Routine
+        // Generic "class" fallback
         if (q.contains("class") || q.contains("ক্লাস")) {
             return formatRoutineReply(q, snapshot, todayEnglishDay, isBn)
         }
 
-        // Strict Boundary: reject everything else cleanly & briefly
+        // Strict Boundary
         val rejectMsg = if (isBn) {
-            "দুঃখিত $firstName, আমি কেবল **Books Library, Blood Donor, Teachers** এবং **Class Routine** সম্পর্কেই সংক্ষিপ্ত উত্তর দিতে পারি। এর বাইরে কিছু জানাতে পারছি না।"
+            "দুঃখিত $firstName, আমি কেবল Books Library, Blood Donor, Teachers এবং Class Routine সম্পর্কেই উত্তর দিতে পারি।"
         } else {
-            "Sorry $firstName, I can only answer short questions about **Books Library, Blood Donor, Teachers**, and **Class Routine**."
+            "Sorry $firstName, I am scoped strictly to Books Library, Blood Donor, Teachers, and Class Routine."
         }
         return ZedReply(
             answerText = rejectMsg,
             sourceBadge = "Zed AI",
             isSupportedDomain = false,
-            suggestedFollowUps = if (isBn) {
-                listOf("CST বই দেখাও", "ব্লাড ডোনার", "টিচার তালিকা", "আজকের রুটিন")
-            } else {
-                listOf("CST Books", "Blood Donors", "Teachers", "Today's Routine")
-            },
+            blocks = listOf(
+                ZedA2UiBlock.HeaderBanner(
+                    title = if (isBn) "সীমাবদ্ধ বিষয়" else "Supported Campus Topics",
+                    subtitle = "Books • Blood Donor • Teachers • Routine",
+                    domain = "GENERAL",
+                ),
+                ZedA2UiBlock.CalloutCard(
+                    message = rejectMsg,
+                    isWarning = false,
+                ),
+            ),
         )
     }
 
@@ -122,7 +123,12 @@ object ZedAiEngine {
         }
     }
 
-    private fun evaluateGreeting(raw: String, firstName: String, isBn: Boolean): ZedReply? {
+    private fun evaluateGreeting(
+        raw: String,
+        firstName: String,
+        isBn: Boolean,
+        snapshot: ZedContextSnapshot,
+    ): ZedReply? {
         val l = raw.lowercase().trim()
         val greetings = setOf(
             "hi", "hello", "hey", "hii", "yo", "salam", "assalamu", "assalamualaikum",
@@ -133,24 +139,39 @@ object ZedAiEngine {
         }
         if (isGreeting) {
             val txt = if (isBn) {
-                "হ্যালো $firstName! 👋 **Books, Blood Donor, Teachers** বা **Routine** নিয়ে যেকোনো প্রশ্ন করো—সংক্ষেপে উত্তর দিচ্ছি।"
+                "হ্যালো $firstName! Books, Blood Donor, Teachers বা Routine নিয়ে যেকোনো প্রশ্ন লিখুন।"
             } else {
-                "Hi $firstName! 👋 Ask me about **Books Library, Blood Donor, Teachers**, or **Routine** for a quick summary."
+                "Hi $firstName! Ask anything about Books Library, Blood Donor, Teachers, or Class Routine."
             }
             return ZedReply(
                 answerText = txt,
                 sourceBadge = "Zed AI",
-                suggestedFollowUps = if (isBn) {
-                    listOf("CST বই", "ব্লাড ডোনার", "টিচার তালিকা", "আজকের রুটিন")
-                } else {
-                    listOf("CST Books", "Blood Donors", "Teachers", "Today's Routine")
-                },
+                blocks = listOf(
+                    ZedA2UiBlock.HeaderBanner(
+                        title = "Zed Campus Assistant",
+                        subtitle = if (isBn) "MPI Klass লাইভ ডিরেক্টরি ও রুটিন" else "MPI Klass Live Campus Knowledge",
+                        domain = "GENERAL",
+                    ),
+                    ZedA2UiBlock.StatRow(
+                        listOf(
+                            ZedStatMetric("Books", snapshot.books.size.toString()),
+                            ZedStatMetric("Teachers", snapshot.teachers.size.toString()),
+                            ZedStatMetric("Donors", snapshot.donors.size.toString()),
+                        )
+                    ),
+                ),
             )
         }
         if (l.contains("thank") || l.contains("dhonnobad") || l.contains("tnx") || l.contains("ধন্যবাদ")) {
             return ZedReply(
-                answerText = if (isBn) "স্বাগতম $firstName! 😊" else "You're welcome, $firstName! 😊",
+                answerText = if (isBn) "স্বাগতম $firstName!" else "You're welcome, $firstName!",
                 sourceBadge = "Zed AI",
+                blocks = listOf(
+                    ZedA2UiBlock.CalloutCard(
+                        message = if (isBn) "আরও কোনো প্রশ্ন থাকলে লিখুন।" else "Feel free to ask any campus question anytime.",
+                        isWarning = false,
+                    )
+                ),
             )
         }
         return null
@@ -180,9 +201,11 @@ object ZedAiEngine {
         isBn: Boolean,
     ): ZedReply {
         if (snapshot.books.isEmpty()) {
+            val emptyTxt = if (isBn) "লাইব্রেরিতে এখনো কোনো বই নেই।" else "No books are available in the library yet."
             return ZedReply(
-                answerText = if (isBn) "লাইব্রেরিতে এখনো কোনো বই নেই।" else "No books are available in the library yet.",
+                answerText = emptyTxt,
                 sourceBadge = "Books Library",
+                blocks = listOf(ZedA2UiBlock.CalloutCard(emptyTxt, isWarning = true)),
             )
         }
         val q = rawQuery.lowercase()
@@ -212,30 +235,56 @@ object ZedAiEngine {
             .joinToString(" • ")
             .takeIf { it.isNotBlank() }
 
-        val header = if (isBn) {
-            "📚 **Books Library** — ${filtered.size}টি বই" + (scopeTag?.let { " ($it)" } ?: "") + ":"
+        val topBookTag = filtered.firstOrNull()?.let { ": ${it.title} (${it.subjectCode})" }.orEmpty()
+        val summary = if (isBn) {
+            "Books Library — ${filtered.size}টি বই" + (scopeTag?.let { " ($it)" } ?: "") + topBookTag
         } else {
-            "📚 **Books Library** — ${filtered.size} book(s)" + (scopeTag?.let { " ($it)" } ?: "") + ":"
+            "Books Library — ${filtered.size} book(s)" + (scopeTag?.let { " ($it)" } ?: "") + topBookTag
         }
 
-        val body = if (filtered.isEmpty()) {
-            if (isBn) "কোনো বই মেলেনি। কোড বা ডিপার্টমেন্ট (CST, CT, ET) দিয়ে খুঁজুন।"
-            else "No matching books found. Try a subject code or department (CST, CT, ET)."
+        val blocks = mutableListOf<ZedA2UiBlock>(
+            ZedA2UiBlock.HeaderBanner(
+                title = "Books Library",
+                subtitle = scopeTag ?: "BTEB Curriculum Catalog",
+                domain = "BOOKS",
+            ),
+            ZedA2UiBlock.StatRow(
+                listOf(
+                    ZedStatMetric("Matched", filtered.size.toString()),
+                    ZedStatMetric("Catalog", snapshot.books.size.toString()),
+                )
+            ),
+        )
+        if (filtered.isEmpty()) {
+            blocks.add(
+                ZedA2UiBlock.CalloutCard(
+                    message = if (isBn) "কোনো বই মেলেনি। কোড বা ডিপার্টমেন্ট (CST, CT, ET) লিখে খুঁজুন।"
+                    else "No matching books found. Search by subject code or department (CST, CT, ET).",
+                    isWarning = false,
+                )
+            )
         } else {
-            filtered.take(4).joinToString("\n") { b ->
-                val deptInfo = b.departmentSemesters.entries.take(2).joinToString(", ") { (d, sems) ->
-                    "$d ${sems.joinToString("/")}"
-                }.ifBlank { "General" }
-                "• **${b.subjectCode}** • ${b.title} (${b.credit} Cr | $deptInfo)"
-            } + if (filtered.size > 4) {
-                if (isBn) "\n• +${filtered.size - 4}টি আরও বই" else "\n• +${filtered.size - 4} more books"
-            } else ""
+            blocks.add(
+                ZedA2UiBlock.EntityListCard(
+                    title = if (isBn) "পাওয়া বইসমূহ" else "Matched Subjects",
+                    entities = filtered.take(6).map { b ->
+                        val deptInfo = b.departmentSemesters.entries.take(2).joinToString(", ") { (d, sems) ->
+                            "$d ${sems.joinToString("/") { RoutineRules.semesterShortLabel(it) }}"
+                        }.ifBlank { "General" }
+                        ZedEntityItem(
+                            primary = b.title,
+                            secondary = "${b.credit} Cr • ${b.theoryClassesPerWeek}T/${b.practicalClassesPerWeek}P • $deptInfo",
+                            badge = b.subjectCode,
+                        )
+                    },
+                )
+            )
         }
 
         return ZedReply(
-            answerText = "$header\n$body",
+            answerText = summary,
             sourceBadge = "Books Library",
-            suggestedFollowUps = if (isBn) listOf("CST বই দেখাও", "৫ম সেমিস্টার বই") else listOf("CST books", "5th semester books"),
+            blocks = blocks,
         )
     }
 
@@ -251,36 +300,57 @@ object ZedAiEngine {
             val deptOk = requestedDept == null || d.department.equals(requestedDept, ignoreCase = true)
             groupOk && deptOk
         }
-
-        if (filtered.isEmpty()) {
+        val groupTitle = requestedGroup ?: (if (isBn) "সকল গ্রুপ" else "All Groups")
+        val topDonorTag = filtered.firstOrNull()?.let { ": ${it.name} (${it.phone.ifBlank { it.department }})" }.orEmpty()
+        val summary = if (filtered.isEmpty()) {
             val label = requestedGroup ?: (requestedDept ?: "")
-            return ZedReply(
-                answerText = if (isBn) {
-                    "🩸 ${label.ifBlank { "এই ক্যাটাগরির" }} কোনো ব্লাড ডোনার এখনো পাওয়া যায়নি (মোট ${snapshot.donors.size} জন)।"
-                } else {
-                    "🩸 No ${label.ifBlank { "matching" }} blood donors found (${snapshot.donors.size} total)."
-                },
-                sourceBadge = "Blood Donor",
+            if (isBn) "${label.ifBlank { "এই ক্যাটাগরির" }} কোনো ব্লাড ডোনার পাওয়া যায়নি।"
+            else "No ${label.ifBlank { "matching" }} blood donors found (${snapshot.donors.size} total)."
+        } else {
+            if (isBn) "Blood Donor ($groupTitle) — ${filtered.size} জন$topDonorTag"
+            else "Blood Donor ($groupTitle) — ${filtered.size} donor(s)$topDonorTag"
+        }
+
+        val blocks = mutableListOf<ZedA2UiBlock>(
+            ZedA2UiBlock.HeaderBanner(
+                title = "Blood Donor Directory",
+                subtitle = groupTitle + (requestedDept?.let { " • $it" } ?: ""),
+                domain = "BLOOD",
+            ),
+            ZedA2UiBlock.StatRow(
+                listOf(
+                    ZedStatMetric("Available", filtered.size.toString()),
+                    ZedStatMetric("Total Registered", snapshot.donors.size.toString()),
+                )
+            ),
+        )
+        if (filtered.isEmpty()) {
+            blocks.add(ZedA2UiBlock.CalloutCard(message = summary, isWarning = false))
+        } else {
+            blocks.add(
+                ZedA2UiBlock.EntityListCard(
+                    title = if (isBn) "ডোনার তালিকা" else "Verified Donors",
+                    entities = filtered.take(6).map { d ->
+                        val meta = listOfNotNull(
+                            d.department.ifBlank { "MPI" },
+                            d.roleLabel.takeIf { it.isNotBlank() },
+                            d.address.takeIf { it.isNotBlank() },
+                        ).joinToString(" • ")
+                        ZedEntityItem(
+                            primary = d.name,
+                            secondary = meta,
+                            badge = d.bloodGroup,
+                            phone = d.phone.takeIf { it.isNotBlank() },
+                        )
+                    },
+                )
             )
         }
 
-        val groupTitle = requestedGroup ?: (if (isBn) "সকল গ্রুপ" else "All Groups")
-        val header = if (isBn) {
-            "🩸 **Blood Donor ($groupTitle)** — ${filtered.size} জন:"
-        } else {
-            "🩸 **Blood Donor ($groupTitle)** — ${filtered.size} donor(s):"
-        }
-        val list = filtered.take(4).joinToString("\n") { d ->
-            val dept = d.department.ifBlank { "MPI" }
-            "• **${d.name}** [${d.bloodGroup}] • $dept — 📞 ${d.phone.ifBlank { "N/A" }}"
-        } + if (filtered.size > 4) {
-            if (isBn) "\n• +${filtered.size - 4} জন আরও ডোনার" else "\n• +${filtered.size - 4} more donors"
-        } else ""
-
         return ZedReply(
-            answerText = "$header\n$list",
+            answerText = summary,
             sourceBadge = "Blood Donor",
-            suggestedFollowUps = listOf("O+ blood donor", "A+ blood donor", "B+ blood donor"),
+            blocks = blocks,
         )
     }
 
@@ -291,9 +361,11 @@ object ZedAiEngine {
         isBn: Boolean,
     ): ZedReply {
         if (snapshot.teachers.isEmpty()) {
+            val msg = if (isBn) "টিচার ডিরেক্টরিতে এখনো কোনো তথ্য নেই।" else "No teachers found in the directory yet."
             return ZedReply(
-                answerText = if (isBn) "টিচার ডিরেক্টরিতে এখনো কোনো তথ্য নেই।" else "No teachers found in the directory yet.",
+                answerText = msg,
                 sourceBadge = "Teachers",
+                blocks = listOf(ZedA2UiBlock.CalloutCard(msg, isWarning = true)),
             )
         }
 
@@ -305,36 +377,66 @@ object ZedAiEngine {
         }
 
         val routineEntries = snapshot.routinePlan?.entries.orEmpty()
-        val header = if (isBn) {
-            "👨‍🏫 **Teachers** — ${filtered.size} জন" + (requestedDept?.let { " ($it)" } ?: "") + ":"
+        val topTeacherTag = filtered.firstOrNull()?.let { t ->
+            val cnt = routineEntries.count {
+                (t.email.isNotBlank() && it.teacherEmail.equals(t.email, true)) ||
+                    it.teacherName.equals(t.name, true)
+            }
+            if (isBn) ": ${t.name} ($cnt টি ক্লাস)" else ": ${t.name} ($cnt class(es))"
+        }.orEmpty()
+        val summary = if (isBn) {
+            "Teachers Directory — ${filtered.size} জন" + (requestedDept?.let { " ($it)" } ?: "") + topTeacherTag
         } else {
-            "👨‍🏫 **Teachers** — ${filtered.size} member(s)" + (requestedDept?.let { " ($it)" } ?: "") + ":"
+            "Teachers Directory — ${filtered.size} member(s)" + (requestedDept?.let { " ($it)" } ?: "") + topTeacherTag
         }
 
-        val body = if (filtered.isEmpty()) {
-            if (isBn) "$requestedDept বিভাগের কোনো শিক্ষক পাওয়া যায়নি।" else "No teachers found for $requestedDept."
+        val blocks = mutableListOf<ZedA2UiBlock>(
+            ZedA2UiBlock.HeaderBanner(
+                title = "Faculty & Teachers",
+                subtitle = requestedDept ?: "All Departments",
+                domain = "TEACHERS",
+            ),
+            ZedA2UiBlock.StatRow(
+                listOf(
+                    ZedStatMetric("Matched", filtered.size.toString()),
+                    ZedStatMetric("Total Faculty", snapshot.teachers.size.toString()),
+                )
+            ),
+        )
+        if (filtered.isEmpty()) {
+            blocks.add(
+                ZedA2UiBlock.CalloutCard(
+                    message = if (isBn) "$requestedDept বিভাগের কোনো শিক্ষক পাওয়া যায়নি।" else "No teachers found for $requestedDept.",
+                    isWarning = false,
+                )
+            )
         } else {
-            filtered.take(4).joinToString("\n") { t ->
-                val classCount = routineEntries.count {
-                    (t.email.isNotBlank() && it.teacherEmail.equals(t.email, true)) ||
-                        it.teacherName.equals(t.name, true)
-                }
-                val deptInfo = t.department.ifBlank { "MPI" }
-                val shiftInfo = t.shift.ifBlank { "Flexible" }
-                val classPart = if (classCount > 0) {
-                    if (isBn) " • $classCount টি ক্লাস" else " • $classCount class(es)"
-                } else ""
-                val phonePart = t.phone.takeIf { it.isNotBlank() }?.let { " • 📞 $it" } ?: ""
-                "• **${t.name}** ($deptInfo, $shiftInfo)$classPart$phonePart"
-            } + if (filtered.size > 4) {
-                if (isBn) "\n• +${filtered.size - 4} জন আরও শিক্ষক" else "\n• +${filtered.size - 4} more teachers"
-            } else ""
+            blocks.add(
+                ZedA2UiBlock.EntityListCard(
+                    title = if (isBn) "শিক্ষক তালিকা" else "Faculty Members",
+                    entities = filtered.take(6).map { t ->
+                        val classCount = routineEntries.count {
+                            (t.email.isNotBlank() && it.teacherEmail.equals(t.email, true)) ||
+                                it.teacherName.equals(t.name, true)
+                        }
+                        val deptInfo = t.department.ifBlank { "MPI" }
+                        val shiftInfo = t.shift.ifBlank { "Flexible" }
+                        val cls = if (classCount > 0) " • $classCount classes/wk" else ""
+                        ZedEntityItem(
+                            primary = t.name,
+                            secondary = "$shiftInfo$cls",
+                            badge = deptInfo,
+                            phone = t.phone.takeIf { it.isNotBlank() },
+                        )
+                    },
+                )
+            )
         }
 
         return ZedReply(
-            answerText = "$header\n$body",
+            answerText = summary,
             sourceBadge = "Teachers",
-            suggestedFollowUps = if (isBn) listOf("CST টিচার", "আজকের রুটিন") else listOf("CST teachers", "Today's routine"),
+            blocks = blocks,
         )
     }
 
@@ -346,9 +448,11 @@ object ZedAiEngine {
     ): ZedReply {
         val entries = snapshot.routinePlan?.entries.orEmpty()
         if (entries.isEmpty()) {
+            val msg = if (isBn) "এখনো কোনো ক্লাস রুটিন পাবলিশ করা হয়নি।" else "No published class routine is available yet."
             return ZedReply(
-                answerText = if (isBn) "এখনো কোনো ক্লাস রুটিন পাবলিশ করা হয়নি।" else "No published class routine is available yet.",
+                answerText = msg,
                 sourceBadge = "Routine",
+                blocks = listOf(ZedA2UiBlock.CalloutCard(msg, isWarning = true)),
             )
         }
 
@@ -375,32 +479,58 @@ object ZedAiEngine {
 
         val scopeLabel = listOfNotNull(askedDay, qDept, qSem?.let { "Sem $it" })
             .joinToString(" • ")
-            .ifBlank { "Published" }
+            .ifBlank { "Published Routine" }
 
-        val header = if (isBn) {
-            "🗓️ **Routine ($scopeLabel)** — ${filtered.size}টি ক্লাস:"
+        val topSlotTag = filtered.firstOrNull()?.let { e ->
+            ": ${e.subjectTitle} • Room ${e.roomNumber.ifBlank { "TBA" }}"
+        }.orEmpty()
+        val summary = if (isBn) {
+            "Routine ($scopeLabel) — ${filtered.size}টি ক্লাস$topSlotTag"
         } else {
-            "🗓️ **Routine ($scopeLabel)** — ${filtered.size} class(es):"
+            "Routine ($scopeLabel) — ${filtered.size} class(es)$topSlotTag"
         }
 
-        val body = if (filtered.isEmpty()) {
-            if (isBn) "এই ফিল্টারে কোনো ক্লাস পাওয়া যায়নি।" else "No classes matched that filter."
+        val blocks = mutableListOf<ZedA2UiBlock>(
+            ZedA2UiBlock.HeaderBanner(
+                title = "Class Routine",
+                subtitle = scopeLabel,
+                domain = "ROUTINE",
+            ),
+            ZedA2UiBlock.StatRow(
+                listOf(
+                    ZedStatMetric("Classes", filtered.size.toString()),
+                    ZedStatMetric("Labs", filtered.count { it.isPractical }.toString()),
+                )
+            ),
+        )
+        if (filtered.isEmpty()) {
+            blocks.add(
+                ZedA2UiBlock.CalloutCard(
+                    message = if (isBn) "এই ফিল্টারে কোনো ক্লাস পাওয়া যায়নি।" else "No classes matched that filter.",
+                    isWarning = false,
+                )
+            )
         } else {
-            filtered.take(5).joinToString("\n") { e ->
-                val dayShort = e.day.take(3)
-                val labTag = if (e.isPractical) " [Lab]" else ""
-                val teacher = e.teacherName.ifBlank { "TBA" }
-                val room = e.roomNumber.ifBlank { "TBA" }
-                "• **$dayShort P${e.periodIndex}** (${e.startTime}): ${e.subjectTitle}$labTag — $teacher (Room $room)"
-            } + if (filtered.size > 5) {
-                if (isBn) "\n• +${filtered.size - 5}টি আরও ক্লাস" else "\n• +${filtered.size - 5} more classes"
-            } else ""
+            blocks.add(
+                ZedA2UiBlock.ScheduleListCard(
+                    title = if (isBn) "ক্লাস সময়সূচি" else "Timetable Slots",
+                    slots = filtered.take(6).map { e ->
+                        ZedScheduleSlot(
+                            dayAndPeriod = "${e.day.take(3)} P${e.periodIndex + 1}",
+                            timeRange = "${e.startTime} – ${e.endTime}",
+                            subject = "${e.subjectTitle} (${e.subjectCode})",
+                            detail = "${e.teacherName.ifBlank { "TBA" }} • Room ${e.roomNumber.ifBlank { "TBA" }}",
+                            isPractical = e.isPractical,
+                        )
+                    },
+                )
+            )
         }
 
         return ZedReply(
-            answerText = "$header\n$body",
+            answerText = summary,
             sourceBadge = "Routine",
-            suggestedFollowUps = if (isBn) listOf("Sunday রুটিন", "CST ৫ম সেমিস্টার রুটিন") else listOf("Sunday routine", "CST routine"),
+            blocks = blocks,
         )
     }
 }

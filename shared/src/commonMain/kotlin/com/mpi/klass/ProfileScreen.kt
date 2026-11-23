@@ -139,15 +139,10 @@ internal fun canViewerSeeProfileField(
     ownerProfile: StudentProfile,
     ownerRole: UserRole,
     isOwnProfile: Boolean,
-    relationStatus: ConnectionRelationStatus,
 ): Boolean {
     if (isOwnProfile) return true
     val resolved = ownerProfile.fieldPrivacy[fieldKey] ?: defaultProfileFieldPrivacy(fieldKey, ownerRole)
-    return when (resolved) {
-        ProfilePrivacy.PUBLIC -> true
-        ProfilePrivacy.CONNECTIONS -> relationStatus == ConnectionRelationStatus.CONNECTED
-        ProfilePrivacy.PRIVATE -> false
-    }
+    return resolved == ProfilePrivacy.PUBLIC
 }
 
 @Composable
@@ -161,17 +156,12 @@ fun ProfileScreen(
     hindSiliguri: FontFamily,
     email: String = "",
     photoUrl: String? = null,
-    connections: List<ConnectionRecord> = emptyList(),
-    directoryMembers: List<DirectoryMember> = emptyList(),
-    onOpenConnections: (() -> Unit)? = null,
-    onOpenChat: ((DirectoryMember) -> Unit)? = null,
     onUpdateProfile: ((newName: String, newPhotoUrl: String?) -> Unit)? = null,
-    onCategoryChanged: ((UserRole) -> Unit)? = null,
-    onOpenTeachingPrefs: (() -> Unit)? = null,
     topContentPadding: Dp = 0.dp,
     isEditingMode: Boolean = false,
     onEditingModeChange: ((Boolean) -> Unit)? = null,
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
+    onOpenTeachingPrefs: (() -> Unit)? = null,
 ) {
     if (role == null) {
         GuestSignInPrompt(
@@ -384,10 +374,6 @@ fun ProfileScreen(
                 cleanEmail = cleanEmail,
                 role = role,
                 isOwnProfile = true,
-                relationStatus = ConnectionRelationStatus.CONNECTED,
-                isRelationBusy = false,
-                connections = connections,
-                directoryMembers = directoryMembers,
                 isLoading = isLoadingProfile,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
@@ -395,9 +381,6 @@ fun ProfileScreen(
                 activeDetailCategory = activeDetailCategory,
                 onSelectDetailCategory = { activeDetailCategory = it },
                 onEditProfileClick = { setEditingMode(true) },
-                onOpenConnections = onOpenConnections,
-                onOpenPeerMember = { member -> onOpenChat?.invoke(member) },
-                onOpenTeachingPrefs = onOpenTeachingPrefs,
             )
         }
     }
@@ -420,7 +403,6 @@ fun ProfileScreen(
 
 /**
  * Facebook-inspired strictly read-only profile layout.
- * Shared between own profile (`ProfileScreen`) and peer profile (`FriendsScreen`).
  */
 @Composable
 internal fun FacebookProfileContent(
@@ -430,11 +412,7 @@ internal fun FacebookProfileContent(
     fallbackName: String,
     cleanEmail: String,
     role: UserRole,
-    isOwnProfile: Boolean,
-    relationStatus: ConnectionRelationStatus,
-    isRelationBusy: Boolean = false,
-    connections: List<ConnectionRecord> = emptyList(),
-    directoryMembers: List<DirectoryMember> = emptyList(),
+    isOwnProfile: Boolean = true,
     isLoading: Boolean = false,
     isDark: Boolean,
     hindSiliguri: FontFamily,
@@ -442,12 +420,6 @@ internal fun FacebookProfileContent(
     activeDetailCategory: String? = null,
     onSelectDetailCategory: (String?) -> Unit = {},
     onEditProfileClick: (() -> Unit)? = null,
-    onOpenConnections: (() -> Unit)? = null,
-    onFriendAction: (() -> Unit)? = null,
-    onDeclineFriendRequest: (() -> Unit)? = null,
-    onMessageClick: (() -> Unit)? = null,
-    onOpenPeerMember: ((DirectoryMember) -> Unit)? = null,
-    onOpenTeachingPrefs: (() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val isBengali = LocalAppLanguage.current == AppLanguage.BENGALI
@@ -457,18 +429,7 @@ internal fun FacebookProfileContent(
 
     val fbBlue = Color(0xFF0866FF)
     val sheetBg = if (isDark) Color(0xFF0F172A) else Color.White
-    val tonalBtnBg = if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFFE4E6EB)
     val profileAccent = KlassFeaturePalette.profile(isDark)
-    val bloodAccent = KlassFeaturePalette.blood(isDark)
-    val teachingAccent = KlassFeaturePalette.teaching(isDark)
-
-    val acceptedConnections = remember(connections, cleanEmail) {
-        val target = cleanEmail.trim().lowercase()
-        connections.filter {
-            it.status.equals("ACCEPTED", ignoreCase = true) &&
-                (target.isBlank() || it.requesterEmail.equals(target, true) || it.receiverEmail.equals(target, true))
-        }
-    }
 
     val currentLang = LocalAppLanguage.current
     val roleCategoryLine = remember(role, profile, isBengali, currentLang) {
@@ -495,24 +456,24 @@ internal fun FacebookProfileContent(
     val academicFields = buildList {
         if (role != UserRole.ADMIN) {
             val deptValue = if (profile.department == "নন টেক") "নন টেক".localized() else profile.department
-            if (deptValue.isNotBlank() && canViewerSeeProfileField("department", profile, role, isOwnProfile, relationStatus)) {
+            if (deptValue.isNotBlank() && canViewerSeeProfileField("department", profile, role, isOwnProfile)) {
                 add(GoogleContactField("department", "Department".localized(), deptValue, false, GraduationCapIcon, privacy = privacyOf("department")))
             }
-            if (role == UserRole.STUDENT && canViewerSeeProfileField("semester", profile, role, isOwnProfile, relationStatus)) {
+            if (role == UserRole.STUDENT && canViewerSeeProfileField("semester", profile, role, isOwnProfile)) {
                 val isValidSem = profile.semester.isNotBlank() && !profile.semester.contains("৮ম") && !profile.semester.startsWith("8")
                 if (isValidSem) add(GoogleContactField("semester", "সেমিস্টার".localized(), profile.semester.localized(), false, LayerGroupIcon, privacy = privacyOf("semester")))
             }
-            if (profile.shift.isNotBlank() && canViewerSeeProfileField("shift", profile, role, isOwnProfile, relationStatus)) {
+            if (profile.shift.isNotBlank() && canViewerSeeProfileField("shift", profile, role, isOwnProfile)) {
                 add(GoogleContactField("shift", "শিফট".localized(), profile.shift.localized(), false, ClockIcon, privacy = privacyOf("shift")))
             }
             if (role == UserRole.STUDENT) {
-                if (profile.section.isNotBlank() && canViewerSeeProfileField("section", profile, role, isOwnProfile, relationStatus)) {
+                if (profile.section.isNotBlank() && canViewerSeeProfileField("section", profile, role, isOwnProfile)) {
                     add(GoogleContactField("section", "সেকশন (Section)".localized(), profile.section, false, UsersRectangleIcon, privacy = privacyOf("section")))
                 }
-                if (profile.rollNumber.isNotBlank() && canViewerSeeProfileField("roll", profile, role, isOwnProfile, relationStatus)) {
+                if (profile.rollNumber.isNotBlank() && canViewerSeeProfileField("roll", profile, role, isOwnProfile)) {
                     add(GoogleContactField("roll", "বোর্ড রোল নম্বর (Roll)".localized(), profile.rollNumber, false, IdCardIcon, privacy = privacyOf("roll")))
                 }
-                if (profile.registrationNumber.isNotBlank() && canViewerSeeProfileField("registration", profile, role, isOwnProfile, relationStatus)) {
+                if (profile.registrationNumber.isNotBlank() && canViewerSeeProfileField("registration", profile, role, isOwnProfile)) {
                     add(GoogleContactField("registration", "রেজিস্ট্রেশন নম্বর (Registration)".localized(), profile.registrationNumber, false, FileLinesIcon, privacy = privacyOf("registration")))
                 }
             }
@@ -520,40 +481,40 @@ internal fun FacebookProfileContent(
     }
 
     val contactFields = buildList {
-        if (profile.phone.isNotBlank() && canViewerSeeProfileField("phone", profile, role, isOwnProfile, relationStatus)) {
+        if (profile.phone.isNotBlank() && canViewerSeeProfileField("phone", profile, role, isOwnProfile)) {
             add(GoogleContactField("phone", "মোবাইল নম্বর".localized(), profile.phone, false, PhoneSolidIcon, actionType = ProfileFieldActionType.PHONE, privacy = privacyOf("phone")))
         }
-        if (emailDisplay.isNotBlank() && canViewerSeeProfileField("contact_email", profile, role, isOwnProfile, relationStatus)) {
+        if (emailDisplay.isNotBlank() && canViewerSeeProfileField("contact_email", profile, role, isOwnProfile)) {
             add(GoogleContactField("contact_email", "ইমেল ঠিকানা".localized(), emailDisplay, false, EnvelopeSolidIcon, actionType = ProfileFieldActionType.EMAIL, privacy = privacyOf("contact_email")))
         }
-        if (profile.address.isNotBlank() && canViewerSeeProfileField("address", profile, role, isOwnProfile, relationStatus)) {
+        if (profile.address.isNotBlank() && canViewerSeeProfileField("address", profile, role, isOwnProfile)) {
             add(GoogleContactField("address", "বর্তমান ঠিকানা".localized(), profile.address, false, LocationDotIcon, privacy = privacyOf("address")))
         }
-        if (profile.permanentAddress.isNotBlank() && canViewerSeeProfileField("permanent_address", profile, role, isOwnProfile, relationStatus)) {
+        if (profile.permanentAddress.isNotBlank() && canViewerSeeProfileField("permanent_address", profile, role, isOwnProfile)) {
             add(GoogleContactField("permanent_address", "স্থায়ী ঠিকানা".localized(), profile.permanentAddress, false, LocationDotIcon, privacy = privacyOf("permanent_address")))
         }
     }
 
     val personalFields = buildList {
-        if (profile.bloodGroup.isNotBlank() && canViewerSeeProfileField("blood_group", profile, role, isOwnProfile, relationStatus)) {
+        if (profile.bloodGroup.isNotBlank() && canViewerSeeProfileField("blood_group", profile, role, isOwnProfile)) {
             add(GoogleContactField("blood_group", "রক্তের গ্রুপ".localized(), profile.bloodGroup, false, DropletIcon, isHighlight = true, privacy = privacyOf("blood_group")))
         }
-        if (dobDisplay.isNotBlank() && canViewerSeeProfileField("dob", profile, role, isOwnProfile, relationStatus)) {
+        if (dobDisplay.isNotBlank() && canViewerSeeProfileField("dob", profile, role, isOwnProfile)) {
             add(GoogleContactField("dob", "জন্ম তারিখ".localized(), dobDisplay, false, CalendarDaysIcon, privacy = privacyOf("dob")))
         }
-        if (profile.gender.isNotBlank() && canViewerSeeProfileField("gender", profile, role, isOwnProfile, relationStatus)) {
+        if (profile.gender.isNotBlank() && canViewerSeeProfileField("gender", profile, role, isOwnProfile)) {
             add(GoogleContactField("gender", "লিঙ্গ".localized(), profile.gender.localized(), false, VenusMarsIcon, privacy = privacyOf("gender")))
         }
-        if (role != UserRole.ADMIN && profile.religion.isNotBlank() && canViewerSeeProfileField("religion", profile, role, isOwnProfile, relationStatus)) {
+        if (role != UserRole.ADMIN && profile.religion.isNotBlank() && canViewerSeeProfileField("religion", profile, role, isOwnProfile)) {
             add(GoogleContactField("religion", "ধর্ম".localized(), profile.religion.localized(), false, PrayingHandsIcon, privacy = privacyOf("religion")))
         }
-        if (role != UserRole.ADMIN && profile.maritalStatus.isNotBlank() && canViewerSeeProfileField("marital_status", profile, role, isOwnProfile, relationStatus)) {
+        if (role != UserRole.ADMIN && profile.maritalStatus.isNotBlank() && canViewerSeeProfileField("marital_status", profile, role, isOwnProfile)) {
             add(GoogleContactField("marital_status", "বৈবাহিক অবস্থা".localized(), profile.maritalStatus.localized(), false, RingIcon, privacy = privacyOf("marital_status")))
         }
-        if (role == UserRole.STUDENT && profile.fatherName.isNotBlank() && canViewerSeeProfileField("father_name", profile, role, isOwnProfile, relationStatus)) {
+        if (role == UserRole.STUDENT && profile.fatherName.isNotBlank() && canViewerSeeProfileField("father_name", profile, role, isOwnProfile)) {
             add(GoogleContactField("father_name", "পিতার নাম".localized(), profile.fatherName, false, UserTieIcon, privacy = privacyOf("father_name")))
         }
-        if (role == UserRole.STUDENT && profile.motherName.isNotBlank() && canViewerSeeProfileField("mother_name", profile, role, isOwnProfile, relationStatus)) {
+        if (role == UserRole.STUDENT && profile.motherName.isNotBlank() && canViewerSeeProfileField("mother_name", profile, role, isOwnProfile)) {
             add(GoogleContactField("mother_name", "মাতার নাম".localized(), profile.motherName, false, UserNurseIcon, privacy = privacyOf("mother_name")))
         }
     }
@@ -755,32 +716,9 @@ internal fun FacebookProfileContent(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Live connections count
-                    Text(
-                        text = if (isBengali) {
-                            "${acceptedConnections.size} কানেকশন"
-                        } else {
-                            "${acceptedConnections.size} connections"
-                        },
-                        color = cs.onSurface,
-                        fontSize = 14.5.sp,
-                        fontFamily = hindSiliguri,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .then(
-                                if (onOpenConnections != null) {
-                                    Modifier.clickable(onClick = onOpenConnections)
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                    )
-
                     // Centered Bio
-                    if (profile.bio.isNotBlank() && canViewerSeeProfileField("bio", profile, role, isOwnProfile, relationStatus)) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                    if (profile.bio.isNotBlank() && canViewerSeeProfileField("bio", profile, role, isOwnProfile)) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = profile.bio,
                             color = cs.onSurface,
@@ -792,86 +730,39 @@ internal fun FacebookProfileContent(
                         )
                     }
 
-                    // Mutual / accepted connection avatar cluster strip
-                    if (acceptedConnections.isNotEmpty() || isOwnProfile) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Primary Edit Profile Rounded Pill CTA
+                    if (isOwnProfile && onEditProfileClick != null) {
+                        Surface(
+                            onClick = onEditProfileClick,
+                            shape = RoundedCornerShape(22.dp),
+                            color = fbBlue,
+                            shadowElevation = 0.dp,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .then(
-                                    if (onOpenConnections != null) {
-                                        Modifier.clickable(onClick = onOpenConnections)
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .testTag("profile_cta_edit_button"),
                         ) {
-                            if (acceptedConnections.isNotEmpty()) {
-                                val previewList = acceptedConnections.take(3)
-                                Box(
-                                    modifier = Modifier.width((24 * (previewList.size - 1) + 34).dp),
-                                    contentAlignment = Alignment.CenterStart,
-                                ) {
-                                    previewList.forEachIndexed { idx, rec ->
-                                        val pEmail = rec.peerEmailFor(cleanEmail)
-                                        val pPhoto = rec.peerPhotoFor(cleanEmail)
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = cs.surfaceContainerHigh,
-                                            border = BorderStroke(2.dp, sheetBg),
-                                            modifier = Modifier
-                                                .offset(x = (idx * 22).dp)
-                                                .size(34.dp),
-                                        ) {
-                                            val model = resolveProfileImageModel(pPhoto)
-                                            if (model != null) {
-                                                AsyncImage(
-                                                    model = model,
-                                                    contentDescription = rec.peerNameFor(cleanEmail),
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                )
-                                            } else {
-                                                DynamicAvatar(
-                                                    seed = pEmail.ifBlank { rec.peerNameFor(cleanEmail) },
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (isBengali) "কানেকশন" else "Connected peers",
-                                    color = cs.onSurfaceVariant,
-                                    fontSize = 13.5.sp,
-                                    fontFamily = hindSiliguri,
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                            ) {
+                                Icon(
+                                    imageVector = EditIcon,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp),
                                 )
-                            } else if (isOwnProfile && onOpenConnections != null) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = fbBlue.copy(alpha = if (isDark) 0.20f else 0.10f),
-                                    modifier = Modifier.size(30.dp),
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = UsersGroupIcon,
-                                            contentDescription = null,
-                                            tint = fbBlue,
-                                            modifier = Modifier.size(15.dp),
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(7.dp))
                                 Text(
-                                    text = "কানেকশন তৈরি করুন".localized(),
-                                    color = cs.onSurfaceVariant,
-                                    fontSize = 13.5.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    text = "প্রোফাইল এডিট".localized(),
+                                    color = Color.White,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.Bold,
                                     fontFamily = hindSiliguri,
+                                    maxLines = 1,
                                 )
                             }
                         }
@@ -879,242 +770,10 @@ internal fun FacebookProfileContent(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Side-by-side 2 Facebook Rounded Pill CTAs
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        if (isOwnProfile) {
-                            Surface(
-                                onClick = { onEditProfileClick?.invoke() },
-                                shape = RoundedCornerShape(22.dp),
-                                color = fbBlue,
-                                shadowElevation = 0.dp,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                                    .testTag("profile_cta_edit_button"),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = EditIcon,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(7.dp))
-                                    Text(
-                                        text = "প্রোফাইল এডিট".localized(),
-                                        color = Color.White,
-                                        fontSize = 14.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-
-                            Surface(
-                                onClick = { onOpenConnections?.invoke() },
-                                shape = RoundedCornerShape(22.dp),
-                                color = tonalBtnBg,
-                                shadowElevation = 0.dp,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                                    .testTag("profile_cta_connections_button"),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                ) {
-                                    Icon(
-                                        imageVector = UsersGroupIcon,
-                                        contentDescription = null,
-                                        tint = cs.onSurface,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(7.dp))
-                                    Text(
-                                        text = "কানেকশন".localized(),
-                                        color = cs.onSurface,
-                                        fontSize = 14.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        } else {
-                            val friendBtnLabel = when (relationStatus) {
-                                ConnectionRelationStatus.NONE -> "বন্ধু যোগ করুন".localized()
-                                ConnectionRelationStatus.OUTGOING_PENDING -> "অনুরোধ বাতিল".localized()
-                                ConnectionRelationStatus.INCOMING_PENDING -> "গ্রহণ করুন".localized()
-                                ConnectionRelationStatus.CONNECTED -> "সংযুক্ত".localized()
-                            }
-                            val friendBtnIcon = when (relationStatus) {
-                                ConnectionRelationStatus.NONE -> UserPlusIcon
-                                ConnectionRelationStatus.OUTGOING_PENDING -> CloseIcon
-                                ConnectionRelationStatus.INCOMING_PENDING -> CheckIcon
-                                ConnectionRelationStatus.CONNECTED -> CheckIcon
-                            }
-                            val friendPrimary = relationStatus == ConnectionRelationStatus.NONE ||
-                                relationStatus == ConnectionRelationStatus.INCOMING_PENDING
-                            val showDeclineButton = relationStatus == ConnectionRelationStatus.INCOMING_PENDING &&
-                                onDeclineFriendRequest != null
-
-                            Surface(
-                                onClick = { if (!isRelationBusy) onFriendAction?.invoke() },
-                                enabled = !isRelationBusy && onFriendAction != null,
-                                shape = RoundedCornerShape(22.dp),
-                                color = if (friendPrimary) fbBlue else tonalBtnBg,
-                                shadowElevation = 0.dp,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                                    .testTag("peer_profile_friend_cta"),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                ) {
-                                    if (isRelationBusy) {
-                                        CircularProgressIndicator(
-                                            strokeWidth = 2.dp,
-                                            color = if (friendPrimary) Color.White else cs.onSurface,
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = friendBtnIcon,
-                                            contentDescription = null,
-                                            tint = if (friendPrimary) Color.White else cs.onSurface,
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                        Spacer(modifier = Modifier.width(7.dp))
-                                        Text(
-                                            text = friendBtnLabel,
-                                            color = if (friendPrimary) Color.White else cs.onSurface,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (showDeclineButton) {
-                                val errAccent = KlassFeaturePalette.error(isDark)
-                                Surface(
-                                    onClick = { if (!isRelationBusy) onDeclineFriendRequest?.invoke() },
-                                    enabled = !isRelationBusy,
-                                    shape = RoundedCornerShape(22.dp),
-                                    color = errAccent.softTint,
-                                    border = BorderStroke(0.75.dp, errAccent.borderTint),
-                                    shadowElevation = 0.dp,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp)
-                                        .testTag("peer_profile_decline_cta"),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
-                                    ) {
-                                        Icon(
-                                            imageVector = CloseIcon,
-                                            contentDescription = null,
-                                            tint = errAccent.primary,
-                                            modifier = Modifier.size(15.dp),
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "প্রত্যাখ্যান".localized(),
-                                            color = errAccent.primary,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (onMessageClick != null) {
-                                if (showDeclineButton) {
-                                    Surface(
-                                        onClick = onMessageClick,
-                                        shape = CircleShape,
-                                        color = tonalBtnBg,
-                                        shadowElevation = 0.dp,
-                                        modifier = Modifier
-                                            .size(42.dp)
-                                            .testTag("peer_profile_message_cta"),
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                            Icon(
-                                                imageVector = MessageBubbleIcon,
-                                                contentDescription = "মেসেজ".localized(),
-                                                tint = cs.onSurface,
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Surface(
-                                        onClick = onMessageClick,
-                                        shape = RoundedCornerShape(22.dp),
-                                        color = if (friendPrimary) tonalBtnBg else fbBlue,
-                                        shadowElevation = 0.dp,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(42.dp)
-                                            .testTag("peer_profile_message_cta"),
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxSize(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center,
-                                        ) {
-                                            Icon(
-                                                imageVector = MessageBubbleIcon,
-                                                contentDescription = null,
-                                                tint = if (friendPrimary) cs.onSurface else Color.White,
-                                                modifier = Modifier.size(16.dp),
-                                            )
-                                            Spacer(modifier = Modifier.width(7.dp))
-                                            Text(
-                                                text = "মেসেজ".localized(),
-                                                color = if (friendPrimary) cs.onSurface else Color.White,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                maxLines = 1,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Filter Chips Row (All / About / Connections)
+                    // Filter Chips Row (All / About)
                     val tabs = listOf(
                         0 to "All",
                         1 to "সম্পর্কে".localized(),
-                        2 to "কানেকশন".localized(),
                     )
                     Row(
                         modifier = Modifier
@@ -1163,267 +822,26 @@ internal fun FacebookProfileContent(
                 // ── TAB CONTENT (STRICTLY READ-ONLY) ──
                 val hasAnyVisible = academicFields.isNotEmpty() || contactFields.isNotEmpty() || personalFields.isNotEmpty()
 
-                when (selectedProfileTab) {
-                    0 -> {
-                        if (isOwnProfile && role == UserRole.TEACHER && onOpenTeachingPrefs != null) {
-                            SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                                KlassNavigationRow(
-                                    title = "Teaching Subjects",
-                                    subtitle = "Assigned courses & class schedule",
-                                    icon = GraduationCapIcon,
-                                    accent = teachingAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    testTag = "profile_teaching_prefs_button",
-                                    onClick = onOpenTeachingPrefs,
-                                )
-                            }
-                        }
-
-                        if (hasAnyVisible) {
-                            ProfileAllDetailsSections(
-                                academicFields = academicFields,
-                                contactFields = contactFields,
-                                personalFields = personalFields,
-                                isOwnProfile = isOwnProfile,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                            )
-                        }
-
-                        if (acceptedConnections.isNotEmpty()) {
-                            SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                            GoogleSectionHeader(
-                                title = "কানেকশন".localized(),
-                                accent = fbBlue,
-                                hindSiliguri = hindSiliguri,
-                            )
-                            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                                acceptedConnections.take(5).forEachIndexed { idx, rec ->
-                                    val pEmail = rec.peerEmailFor(cleanEmail)
-                                    val matchedMember = directoryMembers.firstOrNull { it.email.equals(pEmail, true) }
-                                    val pName = matchedMember?.name?.ifBlank { rec.peerNameFor(cleanEmail) } ?: rec.peerNameFor(cleanEmail)
-                                    val pPhoto = matchedMember?.photoUrl ?: rec.peerPhotoFor(cleanEmail)
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable(enabled = onOpenConnections != null || (matchedMember != null && onOpenPeerMember != null)) {
-                                                if (matchedMember != null && onOpenPeerMember != null) {
-                                                    onOpenPeerMember(matchedMember)
-                                                } else {
-                                                    onOpenConnections?.invoke()
-                                                }
-                                            }
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = cs.surfaceContainerHigh,
-                                            modifier = Modifier.size(42.dp),
-                                        ) {
-                                            val model = resolveProfileImageModel(pPhoto)
-                                            if (model != null) {
-                                                AsyncImage(
-                                                    model = model,
-                                                    contentDescription = pName,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                )
-                                            } else {
-                                                DynamicAvatar(
-                                                    seed = pEmail.ifBlank { pName },
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                )
-                                            }
-                                        }
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = pName,
-                                                color = cs.onSurface,
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            Text(
-                                                text = "সংযুক্ত".localized(),
-                                                color = fbBlue,
-                                                fontSize = 12.5.sp,
-                                                fontFamily = hindSiliguri,
-                                            )
-                                        }
-                                    }
-                                    if (idx < minOf(4, acceptedConnections.lastIndex)) {
-                                        SocialInsetDivider(startIndent = 70.dp)
-                                    }
-                                }
-                                if (acceptedConnections.size > 5) {
-                                    SocialInsetDivider(startIndent = 16.dp)
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { selectedProfileTab = 2 }
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.Center,
-                                    ) {
-                                        Text(
-                                            text = "সব দেখুন".localized(),
-                                            color = fbBlue,
-                                            fontSize = 14.5.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontFamily = hindSiliguri,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!hasAnyVisible && acceptedConnections.isEmpty() && !(isOwnProfile && role == UserRole.TEACHER && onOpenTeachingPrefs != null)) {
-                            SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                KlassEmptyState(
-                                    icon = LockIcon,
-                                    title = "তথ্য সম্পূর্ণ নয়".localized(),
-                                    subtitle = if (isOwnProfile) "Tap Edit Profile above to add information." else "No visible profile details for your privacy level.",
-                                    accent = profileAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                )
-                            }
-                        }
-                    }
-
-                    1 -> {
-                        if (hasAnyVisible) {
-                            ProfileAllDetailsSections(
-                                academicFields = academicFields,
-                                contactFields = contactFields,
-                                personalFields = personalFields,
-                                isOwnProfile = isOwnProfile,
-                                isDark = isDark,
-                                hindSiliguri = hindSiliguri,
-                            )
-                        } else {
-                            SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                KlassEmptyState(
-                                    icon = LockIcon,
-                                    title = "তথ্য সম্পূর্ণ নয়".localized(),
-                                    subtitle = if (isOwnProfile) "Tap Edit Profile above to add information." else "No visible profile details for your privacy level.",
-                                    accent = profileAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                        GoogleSectionHeader(
-                            title = "কানেকশন".localized(),
-                            accent = fbBlue,
+                if (hasAnyVisible) {
+                    ProfileAllDetailsSections(
+                        academicFields = academicFields,
+                        contactFields = contactFields,
+                        personalFields = personalFields,
+                        isOwnProfile = isOwnProfile,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                } else {
+                    SocialSectionDividerBand(isDark = isDark, height = 8.dp)
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        KlassEmptyState(
+                            icon = LockIcon,
+                            title = "তথ্য সম্পূর্ণ নয়".localized(),
+                            subtitle = if (isOwnProfile) "Tap Edit Profile above to add information." else "No visible profile details for your privacy level.",
+                            accent = profileAccent.primary,
+                            isDark = isDark,
                             hindSiliguri = hindSiliguri,
                         )
-                        if (acceptedConnections.isEmpty()) {
-                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                KlassEmptyState(
-                                    icon = UsersGroupIcon,
-                                    title = "কোনো কানেকশন নেই",
-                                    subtitle = "Connect with campus students and teachers to chat and share.",
-                                    accent = fbBlue,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    actionLabel = if (onOpenConnections != null) "সবাইকে খুঁজুন".localized() else null,
-                                    onActionClick = onOpenConnections,
-                                )
-                            }
-                        } else {
-                            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                                acceptedConnections.forEachIndexed { idx, rec ->
-                                    val pEmail = rec.peerEmailFor(cleanEmail)
-                                    val matchedMember = directoryMembers.firstOrNull { it.email.equals(pEmail, true) }
-                                    val pName = matchedMember?.name?.ifBlank { rec.peerNameFor(cleanEmail) } ?: rec.peerNameFor(cleanEmail)
-                                    val pPhoto = matchedMember?.photoUrl ?: rec.peerPhotoFor(cleanEmail)
-                                    val pRole = matchedMember?.role ?: UserRole.STUDENT
-
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable(enabled = onOpenConnections != null || (matchedMember != null && onOpenPeerMember != null)) {
-                                                if (matchedMember != null && onOpenPeerMember != null) {
-                                                    onOpenPeerMember(matchedMember)
-                                                } else {
-                                                    onOpenConnections?.invoke()
-                                                }
-                                            }
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = cs.surfaceContainerHigh,
-                                            modifier = Modifier.size(46.dp),
-                                        ) {
-                                            val model = resolveProfileImageModel(pPhoto)
-                                            if (model != null) {
-                                                AsyncImage(
-                                                    model = model,
-                                                    contentDescription = pName,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                )
-                                            } else {
-                                                DynamicAvatar(
-                                                    seed = pEmail.ifBlank { pName },
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                                )
-                                            }
-                                        }
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = pName,
-                                                color = cs.onSurface,
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            Text(
-                                                text = when (pRole) {
-                                                    UserRole.STUDENT -> "Student"
-                                                    UserRole.TEACHER -> "Teacher"
-                                                    UserRole.ADMIN -> "Admin"
-                                                },
-                                                color = cs.onSurfaceVariant,
-                                                fontSize = 13.sp,
-                                                fontFamily = hindSiliguri,
-                                            )
-                                        }
-                                        if (matchedMember != null && onOpenPeerMember != null) {
-                                            KlassTonalButton(
-                                                text = "মেসেজ".localized(),
-                                                icon = MessageBubbleIcon,
-                                                accent = fbBlue,
-                                                isDark = isDark,
-                                                hindSiliguri = hindSiliguri,
-                                                height = 36.dp,
-                                                onClick = { onOpenPeerMember(matchedMember) },
-                                            )
-                                        }
-                                    }
-                                    if (idx < acceptedConnections.lastIndex) {
-                                        SocialInsetDivider(startIndent = 72.dp)
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -1593,7 +1011,6 @@ private fun ProfileFieldPrivacyTinyIcon(
     Icon(
         imageVector = when (privacy) {
             ProfilePrivacy.PUBLIC -> LanguageGlobeIcon
-            ProfilePrivacy.CONNECTIONS -> UsersGroupIcon
             ProfilePrivacy.PRIVATE -> LockIcon
         },
         contentDescription = privacy.labelBn.localized(),

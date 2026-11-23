@@ -561,27 +561,3 @@ private fun cancelAllClassPushNotificationsInternal(context: Context) {
     prefs.edit().remove(KEY_ACTIVE_ALARMS).apply()
 }
 
-fun postIncomingMessageNotification(context: Context, senderName: String, text: String, senderEmail: String) {
-    val title = "New message from $senderName"
-    val body = text.take(160)
-    postSystemNotification(
-        context = context,
-        notificationId = (senderEmail.hashCode() and 0x0FFFFFFF) + 30_000,
-        channelId = CHANNEL_WELCOME,
-        title = title,
-        body = body,
-    )
-}
-
-fun postConnectionRequestNotification(context: Context, requesterName: String, requesterEmail: String) {
-    val title = "New friend connection request"
-    val body = "$requesterName sent you a connection request. Tap to view and accept."
-    postSystemNotification(
-        context = context,
-        notificationId = (requesterEmail.hashCode() and 0x0FFFFFFF) + 40_000,
-        channelId = CHANNEL_WELCOME,
-        title = title,
-        body = body,
-    )
-}
-

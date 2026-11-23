@@ -65,6 +65,7 @@ import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.LightModeIcon
+import com.mpi.klass.theme.LocationDotIcon
 import com.mpi.klass.theme.LoginIcon
 import com.mpi.klass.theme.LogoutIcon
 import com.mpi.klass.theme.MessageBubbleIcon
@@ -109,10 +110,7 @@ fun MenuScreen(
     onAppearanceClick: () -> Unit = {},
     onSignInControlClick: () -> Unit = {},
     onAdminApprovalsClick: () -> Unit = {},
-    unreadMessagesCount: Int = 0,
-    incomingRequestsCount: Int = 0,
-    onMessagesClick: () -> Unit = {},
-    onConnectionsClick: () -> Unit = {},
+    onCampusMapClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
     onDeleteAccountClick: () -> Unit = {},
     onSignInClick: () -> Unit = {},
@@ -181,32 +179,8 @@ fun MenuScreen(
     }
 
     val currentLang = LocalAppLanguage.current
-    val campusServicesTiles = remember(isDark, role, unreadMessagesCount, incomingRequestsCount, currentLang) {
+    val campusServicesTiles = remember(isDark, role, currentLang) {
         buildList {
-            if (role != null) {
-                add(
-                    MenuTileSpec(
-                        id = "messages",
-                        title = "মেসেজ".localized(currentLang),
-                        subtitle = "1-on-1 messenger & Zed AI chat",
-                        icon = MessageBubbleIcon,
-                        accent = KlassFeaturePalette.routine(isDark),
-                        badgeText = if (unreadMessagesCount > 0) "$unreadMessagesCount" else null,
-                        onClick = onMessagesClick,
-                    )
-                )
-                add(
-                    MenuTileSpec(
-                        id = "friends",
-                        title = "বন্ধু ও কানেকশন".localized(currentLang),
-                        subtitle = "Friend requests & campus directory",
-                        icon = UsersGroupIcon,
-                        accent = KlassFeaturePalette.profile(isDark),
-                        badgeText = if (incomingRequestsCount > 0) "$incomingRequestsCount" else null,
-                        onClick = onConnectionsClick,
-                    )
-                )
-            }
             add(
                 MenuTileSpec(
                     id = "notices",
@@ -272,6 +246,15 @@ fun MenuScreen(
                     icon = CrownIcon,
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onAdminApprovalsClick,
+                ),
+                MenuTileSpec(
+                    id = "admin_campus_map",
+                    title = "Campus Map & Proximity",
+                    subtitle = "Pin department locations & shortest-room routing",
+                    icon = LocationDotIcon,
+                    accent = KlassFeaturePalette.classrooms(isDark),
+                    badgeText = "Map",
+                    onClick = onCampusMapClick,
                 ),
             )
         }

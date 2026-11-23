@@ -108,6 +108,7 @@ fun RoutineGeneratorScreen(
     var books by remember { mutableStateOf<List<LibraryBook>>(emptyList()) }
     var teachers by remember { mutableStateOf<List<TeacherSchedulingPref>>(emptyList()) }
     var classrooms by remember { mutableStateOf<List<ClassroomItem>>(emptyList()) }
+    var campusMap by remember { mutableStateOf(CampusMapConfig()) }
     var currentPlan by remember { mutableStateOf<RoutinePlan?>(null) }
     var editRequests by remember { mutableStateOf<List<RoutineEditRequest>>(emptyList()) }
 
@@ -153,6 +154,7 @@ fun RoutineGeneratorScreen(
                 books = RoleConfig.fetchLibraryBooks().ifEmpty { BtebBooksCatalog.books }
                 teachers = fetchAllTeacherSchedulingPrefsFromFirestore()
                 classrooms = fetchClassroomsFromFirestore()
+                campusMap = fetchCampusMapConfigFromFirestore()
                 val draft = fetchRoutinePlanFromFirestore("master_6m")
                 val pub = fetchRoutinePlanFromFirestore("master_6m_published")
                 val loadedPlan = listOfNotNull(draft, pub).maxByOrNull {
@@ -418,6 +420,7 @@ fun RoutineGeneratorScreen(
                                                             classrooms = classrooms,
                                                             generatedBy = adminEmail,
                                                             nowMillis = getCurrentTimeMillis(),
+                                                            campusMap = campusMap,
                                                         )
                                                         currentPlan = draft
                                                         saveRoutinePlanInFirestore(draft)
@@ -1651,7 +1654,9 @@ private fun ManualSlotEditorOverlay(
                             it.periodIndex == selectedPeriod &&
                             it.roomNumber.equals(room.roomNumber, true)
                     }
-                    if (busy) "Occupied at P${selectedPeriod + 1} (${room.department})" else "Available • ${room.department}"
+                    val zoneTag = room.nearestDepartment.takeIf { it.isNotBlank() && !it.equals("ALL", true) }
+                        ?.let { "Near $it" } ?: "All Depts"
+                    if (busy) "Occupied at P${selectedPeriod + 1} ($zoneTag)" else "Available • $zoneTag"
                 },
                 onSelect = { selectedRoomNumber = it.roomNumber },
                 onDismiss = { showRoomPicker = false },

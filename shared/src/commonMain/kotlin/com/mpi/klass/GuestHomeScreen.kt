@@ -303,7 +303,7 @@ fun GuestHomeScreen(
                                         },
                                         onAiClick = {
                                             isRoutineFilterExpanded = false
-                                            navigateTo("messenger")
+                                            navigateTo("ai")
                                         },
                                         onNotificationClick = {
                                             isRoutineFilterExpanded = false
@@ -357,7 +357,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messenger") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -379,7 +379,6 @@ fun GuestHomeScreen(
                                         onClassroomClick = { navigateTo("classrooms") },
                                         onBloodFinderClick = { navigateTo("blood_finder") },
                                         onAppearanceClick = { navigateTo("appearance") },
-                                        onMessagesClick = { navigateTo("messenger") },
                                         onSignInClick = onSwitchToLogin,
                                         topContentPadding = 0.dp,
                                     )
@@ -423,7 +422,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messenger") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -474,7 +473,7 @@ fun GuestHomeScreen(
                                             isDark = isDark,
                                             showAi = true,
                                             showNotification = false,
-                                            onAiClick = { navigateTo("messenger") },
+                                            onAiClick = { navigateTo("ai") },
                                         )
                                     },
                                 )
@@ -508,7 +507,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messenger") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -539,7 +538,7 @@ fun GuestHomeScreen(
                                     actions = {
                                         HeaderAiNotificationActions(
                                             isDark = isDark,
-                                            onAiClick = { navigateTo("messenger") },
+                                            onAiClick = { navigateTo("ai") },
                                             onNotificationClick = { navigateTo("notification") },
                                         )
                                     },
@@ -565,119 +564,6 @@ fun GuestHomeScreen(
                             onThemeModeChange = onThemeModeChange,
                             onBack = { goBack() },
                         )
-                    }
-                    "messenger" -> {
-                        val cs = MaterialTheme.colorScheme
-                        val aiAccent = KlassFeaturePalette.ai(isDark)
-                        val fbBlue = Color(0xFF0866FF)
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .rainbowScreenBackground(isDark)
-                                .navigationBarsPadding(),
-                        ) {
-                            GoogleTopAppBar(
-                                title = "মেসেজ".localized(),
-                                hindSiliguri = hindSiliguri,
-                                onNavigationClick = { goBack() },
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(14.dp),
-                            ) {
-                                GoogleSectionHeader(
-                                    title = "AI Assistant",
-                                    accent = aiAccent.primary,
-                                    hindSiliguri = hindSiliguri,
-                                )
-                                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { navigateTo("ai") }
-                                            .padding(horizontal = 16.dp, vertical = 14.dp)
-                                            .testTag("guest_messenger_zed_ai_row"),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = aiAccent.softTint,
-                                            border = BorderStroke(1.dp, aiAccent.borderTint),
-                                            modifier = Modifier.size(48.dp),
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Icon(
-                                                    imageVector = SparkleIcon,
-                                                    contentDescription = "Zed AI",
-                                                    tint = aiAccent.primary,
-                                                    modifier = Modifier.size(22.dp),
-                                                )
-                                            }
-                                        }
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            ) {
-                                                Text(
-                                                    text = "Zed AI",
-                                                    color = cs.onSurface,
-                                                    fontSize = 15.5.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontFamily = hindSiliguri,
-                                                )
-                                                Surface(
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    color = aiAccent.softTint,
-                                                    border = BorderStroke(0.5.dp, aiAccent.borderTint),
-                                                ) {
-                                                    Text(
-                                                        text = "AI",
-                                                        color = aiAccent.primary,
-                                                        fontSize = 10.5.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontFamily = hindSiliguri,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                                                    )
-                                                }
-                                            }
-                                            Text(
-                                                text = "Ask Zed AI 1-to-1 about routines, books & MPI campus",
-                                                color = cs.onSurfaceVariant,
-                                                fontSize = 13.sp,
-                                                fontFamily = hindSiliguri,
-                                                maxLines = 1,
-                                            )
-                                        }
-                                        Icon(
-                                            imageVector = ChevronRightIcon,
-                                            contentDescription = null,
-                                            tint = cs.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                ) {
-                                    KlassEmptyState(
-                                        icon = UsersGroupIcon,
-                                        title = "সবাইকে খুঁজুন".localized(),
-                                        subtitle = "Sign in to chat 1-to-1 with MPI students & teachers.",
-                                        accent = fbBlue,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                        actionLabel = "সাইন ইন করুন".localized(),
-                                        onActionClick = onSwitchToLogin,
-                                    )
-                                }
-                            }
-                        }
                     }
                     "ai" -> {
                         Box(

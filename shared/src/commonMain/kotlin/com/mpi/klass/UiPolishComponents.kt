@@ -416,12 +416,11 @@ internal fun HeaderAiNotificationActions(
     showAi: Boolean = true,
     showNotification: Boolean = true,
     hasUnreadNotifications: Boolean = NotificationSeenStore.hasUnread(),
-    unreadMessagesCount: Int = SocialChatState.totalUnreadMessages,
     onAiClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val msgAccent = KlassFeaturePalette.routine(isDark)
+    val aiAccent = KlassFeaturePalette.ai(isDark)
     val notiAccent = KlassFeaturePalette.notifications(isDark)
     val baseBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
     val dotHaloColor = if (isDark) Color(0xFF0F172A) else Color.White
@@ -440,55 +439,39 @@ internal fun HeaderAiNotificationActions(
                 animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
                 label = "header_ai_scale",
             )
-            Box {
-                Surface(
-                    onClick = {
-                        aiTrigger++
-                        onAiClick()
-                    },
-                    interactionSource = aiInteraction,
-                    shape = CircleShape,
-                    color = baseBg,
-                    border = BorderStroke(1.dp, msgAccent.borderTint),
-                    shadowElevation = 0.dp,
-                    modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .size(42.dp)
-                        .graphicsLayer {
-                            scaleX = aiScale
-                            scaleY = aiScale
-                        }
-                        .testTag("top_bar_messages_button"),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(msgAccent.softTint),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        TelegramAnimatedIcon(
-                            icon = MessageBubbleIcon,
-                            contentDescription = "Messages",
-                            tint = msgAccent.primary,
-                            size = 19.dp,
-                            interactionSource = aiInteraction,
-                            triggerKey = aiTrigger,
-                            hasActivity = unreadMessagesCount > 0,
-                        )
+            Surface(
+                onClick = {
+                    aiTrigger++
+                    onAiClick()
+                },
+                interactionSource = aiInteraction,
+                shape = CircleShape,
+                color = baseBg,
+                border = BorderStroke(1.dp, aiAccent.borderTint),
+                shadowElevation = 0.dp,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .size(42.dp)
+                    .graphicsLayer {
+                        scaleX = aiScale
+                        scaleY = aiScale
                     }
-                }
-                if (unreadMessagesCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-1).dp, y = 1.dp)
-                            .size(11.dp)
-                            .clip(CircleShape)
-                            .background(dotHaloColor)
-                            .padding(1.5.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFEF4444))
-                            .testTag("top_bar_messages_unread_dot"),
+                    .testTag("top_bar_ai_button"),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(aiAccent.softTint),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    TelegramAnimatedIcon(
+                        icon = SparkleIcon,
+                        contentDescription = "Zed AI",
+                        tint = aiAccent.primary,
+                        size = 19.dp,
+                        interactionSource = aiInteraction,
+                        triggerKey = aiTrigger,
+                        hasActivity = false,
                     )
                 }
             }

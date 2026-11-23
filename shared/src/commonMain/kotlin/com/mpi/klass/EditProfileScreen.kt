@@ -229,7 +229,7 @@ private data class EditTextFieldRequest(
 
 internal fun defaultProfileFieldPrivacy(fieldKey: String, role: UserRole): ProfilePrivacy = when (fieldKey) {
     "bio", "name", "department", "semester", "shift", "section", "blood_group" -> ProfilePrivacy.PUBLIC
-    "phone", "address", "contact_email" -> if (role == UserRole.TEACHER) ProfilePrivacy.PUBLIC else ProfilePrivacy.CONNECTIONS
+    "phone", "address", "contact_email" -> if (role == UserRole.TEACHER) ProfilePrivacy.PUBLIC else ProfilePrivacy.PRIVATE
     else -> ProfilePrivacy.PRIVATE
 }
 
@@ -1399,14 +1399,12 @@ fun EditProfileContent(
                 optionLabel = { p ->
                     when (p) {
                         ProfilePrivacy.PUBLIC -> "পাবলিক".localized(currentAppLanguage)
-                        ProfilePrivacy.CONNECTIONS -> "শুধু কানেকশন".localized(currentAppLanguage)
                         ProfilePrivacy.PRIVATE -> "প্রাইভেট".localized(currentAppLanguage)
                     }
                 },
                 optionSubtitle = { p ->
                     when (p) {
                         ProfilePrivacy.PUBLIC -> "Anyone on MPI Klass can see this"
-                        ProfilePrivacy.CONNECTIONS -> "Visible to your accepted connections only"
                         ProfilePrivacy.PRIVATE -> "Only you can see this"
                     }
                 },
@@ -1534,12 +1532,10 @@ private fun FbEditDetailRow(
             if (privacy != null) {
                 val scopeIcon = when (privacy) {
                     ProfilePrivacy.PUBLIC -> LanguageGlobeIcon
-                    ProfilePrivacy.CONNECTIONS -> UsersGroupIcon
                     ProfilePrivacy.PRIVATE -> LockIcon
                 }
                 val scopeLabel = when (privacy) {
                     ProfilePrivacy.PUBLIC -> "পাবলিক".localized()
-                    ProfilePrivacy.CONNECTIONS -> "শুধু কানেকশন".localized()
                     ProfilePrivacy.PRIVATE -> "প্রাইভেট".localized()
                 }
                 Surface(
@@ -1761,12 +1757,10 @@ private fun FbSingleFieldEditorSubScreen(
                             ProfilePrivacy.entries.forEach { option ->
                                 val icon = when (option) {
                                     ProfilePrivacy.PUBLIC -> LanguageGlobeIcon
-                                    ProfilePrivacy.CONNECTIONS -> UsersGroupIcon
                                     ProfilePrivacy.PRIVATE -> LockIcon
                                 }
                                 val label = when (option) {
                                     ProfilePrivacy.PUBLIC -> "পাবলিক".localized()
-                                    ProfilePrivacy.CONNECTIONS -> "শুধু কানেকশন".localized()
                                     ProfilePrivacy.PRIVATE -> "প্রাইভেট".localized()
                                 }
                                 MinimalIconChip(

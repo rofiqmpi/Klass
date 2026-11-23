@@ -140,6 +140,7 @@ fun ClassroomManagementScreen(
             val queryOk = q.isBlank() ||
                 r.roomNumber.lowercase().contains(q) ||
                 r.buildingOrFloor.lowercase().contains(q) ||
+                r.nearestDepartment.lowercase().contains(q) ||
                 r.department.lowercase().contains(q)
             typeOk && queryOk
         }
@@ -325,10 +326,13 @@ fun ClassroomManagementScreen(
                                                 }
                                                 val isLab = room.roomType == ClassroomType.LAB
                                                 val roomAccent = if (isLab) classroomAccent else theoryAccent
-                                                val deptAccent = if (room.department.equals("ALL", true)) {
+                                                val zoneDept = room.nearestDepartment.takeIf { it.isNotBlank() && !it.equals("ALL", true) }
+                                                    ?: room.department.takeIf { it.isNotBlank() && !it.equals("ALL", true) }
+                                                    ?: ""
+                                                val deptAccent = if (zoneDept.isBlank()) {
                                                     roomAccent
                                                 } else {
-                                                    departmentAccent(room.department, isDark)
+                                                    departmentAccent(zoneDept, isDark)
                                                 }
 
                                                 Box(modifier = Modifier.weight(1f)) {
@@ -400,7 +404,7 @@ fun ClassroomManagementScreen(
                                                                     }
 
                                                                     val subtitle = listOfNotNull(
-                                                                        room.department.takeIf { it.isNotBlank() },
+                                                                        zoneDept.takeIf { it.isNotBlank() }?.let { "Near $it" } ?: "All Depts",
                                                                         "$occupiedCount slots",
                                                                         room.buildingOrFloor.takeIf { it.isNotBlank() },
                                                                     ).joinToString(" • ")
@@ -645,15 +649,20 @@ private fun RoomEditorFullScreen(
     var roomNumber by remember(initialRoom) { mutableStateOf(initialRoom?.roomNumber ?: "") }
     var buildingOrFloor by remember(initialRoom) { mutableStateOf(initialRoom?.buildingOrFloor ?: "") }
     var roomType by remember(initialRoom) { mutableStateOf(initialRoom?.roomType ?: ClassroomType.THEORY) }
-    var department by remember(initialRoom) { mutableStateOf(initialRoom?.department ?: "ALL") }
-    var capacityStr by remember(initialRoom) { mutableStateOf((initialRoom?.capacity ?: 40).toString()) }
+    var nearestDepartment by remember(initialRoom) {
+        mutableStateOf(
+            initialRoom?.nearestDepartment?.takeIf { it.isNotBlank() }
+                ?: initialRoom?.department?.takeIf { it.isNotBlank() && !it.equals("ALL", true) }
+                ?: ""
+        )
+    }
     var shift1Enabled by remember(initialRoom) {
         mutableStateOf(initialRoom == null || RoutineRules.SHIFT_1 in initialRoom.shifts)
     }
     var shift2Enabled by remember(initialRoom) {
         mutableStateOf(initialRoom == null || RoutineRules.SHIFT_2 in initialRoom.shifts)
     }
-    var showDeptPicker by remember { mutableStateOf(false) }
+    var showZonePicker by remember { mutableStateOf(false) }
 
     fun submitRoom() {
         val cleanRoom = roomNumber.trim()
@@ -677,16 +686,16 @@ private fun RoomEditorFullScreen(
                 roomNumber = cleanRoom,
                 buildingOrFloor = buildingOrFloor.trim(),
                 roomType = roomType,
-                department = department,
+                department = "ALL",
+                nearestDepartment = nearestDepartment.trim(),
                 shifts = shifts,
-                capacity = capacityStr.toIntOrNull()?.coerceIn(5, 300) ?: 40,
                 updatedAt = getCurrentTimeMillis(),
             )
         )
     }
 
     val activeTypeAccent = if (roomType == ClassroomType.LAB) classroomAccent else theoryAccent
-    val deptAccent = if (department.equals("ALL", true)) classroomAccent else departmentAccent(department, isDark)
+    val deptAccent = if (nearestDepartment.isBlank()) classroomAccent else departmentAccent(nearestDepartment, isDark)
 
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
@@ -806,34 +815,28 @@ private fun RoomEditorFullScreen(
                                 }
                             }
                         }
-
-                        ClassroomTextInput(
-                            label = "Seating Capacity",
-                            value = capacityStr,
-                            placeholder = "40",
-                            accent = activeTypeAccent.primary,
-                            keyboardType = KeyboardType.Number,
-                            onValueChange = { capacityStr = it.filter { c -> c.isDigit() } },
-                            hindSiliguri = hindSiliguri,
-                        )
                     }
                 }
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Assignment & Shifts",
+                        title = "Location & Shifts",
                         hindSiliguri = hindSiliguri,
                         accent = deptAccent.primary,
                     )
                     KlassNavigationRow(
-                        title = "Assigned Department",
-                        subtitle = if (department.equals("ALL", true)) "ALL (Shared across departments)" else "$department Department",
+                        title = "Nearest Department Zone",
+                        subtitle = if (nearestDepartment.isBlank()) {
+                            "Shared across all departments (Campus Center)"
+                        } else {
+                            "Closest to $nearestDepartment — open for all departments"
+                        },
                         icon = GraduationCapIcon,
                         accent = deptAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
-                        badgeText = department,
-                        onClick = { showDeptPicker = true },
+                        badgeText = nearestDepartment.ifBlank { "Center" },
+                        onClick = { showZonePicker = true },
                     )
                     SocialInsetDivider(startIndent = 16.dp)
                     Row(
@@ -865,22 +868,25 @@ private fun RoomEditorFullScreen(
             }
         }
 
-        // Level 2 Sub-Sub-Screen: Department Picker
-        KlassSubScreenHost(visible = showDeptPicker, zIndex = 90f) {
+        // Level 2 Sub-Sub-Screen: Optional Nearest Zone Picker
+        KlassSubScreenHost(visible = showZonePicker, zIndex = 90f) {
             KlassSelectionPickerSubScreen(
-                title = "Assigned Department",
-                subtitle = "Choose primary department or Shared",
+                title = "Nearest Department Zone",
+                subtitle = "Used for shortest-distance routine scheduling",
                 levelLabel = "Room Editor • Level 2",
                 icon = GraduationCapIcon,
                 accent = deptAccent.primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
-                options = listOf("ALL") + RoutineRules.TECH_DEPARTMENTS,
-                selectedOption = department,
-                optionLabel = { if (it == "ALL") "ALL (Shared)" else it },
-                optionSubtitle = { if (it == "ALL") "Available for all departments" else "$it dedicated room" },
-                onSelect = { department = it },
-                onDismiss = { showDeptPicker = false },
+                options = listOf("") + RoutineRules.TECH_DEPARTMENTS,
+                selectedOption = nearestDepartment,
+                optionLabel = { if (it.isBlank()) "Campus Center (Neutral)" else "Near $it" },
+                optionSubtitle = {
+                    if (it.isBlank()) "Available equally to all departments"
+                    else "Available to all departments; closest to $it"
+                },
+                onSelect = { nearestDepartment = it },
+                onDismiss = { showZonePicker = false },
             )
         }
     }
@@ -916,9 +922,12 @@ private fun RoomScheduleViewerFullScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        val zoneLabel = room.nearestDepartment.takeIf { it.isNotBlank() && !it.equals("ALL", true) }
+            ?.let { "Near $it" }
+            ?: "All Departments"
         MinimalFullScreenSheet(
             title = "Room ${room.roomNumber} Schedule",
-            subtitle = "${room.roomType.label} • ${room.department}",
+            subtitle = "${room.roomType.label} • $zoneLabel",
             levelLabel = "Classroom Schedule • Level 1",
             icon = DoorOpenIcon,
             accent = roomAccent.primary,

@@ -37,7 +37,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.coil.network.okhttp)
             implementation(project.dependencies.platform(libs.firebase.bom.get()))
-            // implementation(libs.firebase.ai) // Removed: Zed AI uses local app data only
+            implementation(libs.firebase.ai)
             implementation(libs.firebase.firestore)
             implementation(libs.firebase.auth)
             implementation(libs.firebase.messaging)

@@ -593,13 +593,16 @@ actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: St
             }
         }
 
-    // Resolve saved role, admin status, and profile details
+    // Resolve saved role, admin status, and profile details (strict 1-Email = 1-Role)
     val localProf = fetchLocalProfile(cleanEmail)
+    val remoteRegisteredRole = if (isNetworkAvailable()) resolveRegisteredRoleFromFirestore(cleanEmail) else null
     val remoteProf = if (firebaseAuthSucceeded && isNetworkAvailable()) RoleConfig.fetchUserProfile(cleanEmail) else null
     val mergedProf = remoteProf ?: localProf
     val studentProf = RoleConfig.fetchStudentProfile(cleanEmail)
 
-    var resolvedRole = UserRole.fromRaw(mergedProf?.category) ?: UserRole.STUDENT
+    var resolvedRole = remoteRegisteredRole
+        ?: UserRole.fromRaw(mergedProf?.category)
+        ?: UserRole.STUDENT
     if (firebaseAuthSucceeded && isNetworkAvailable()) {
         val adminStatus = getAdminStatusFromFirestore(cleanEmail)
         if (adminStatus == AdminStatus.DECLINED) {
@@ -609,6 +612,9 @@ actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: St
             return EmailPasswordLoginResult.Error(ErrorImageType.ADMIN_REQUEST_PENDING)
         }
         if (adminStatus == AdminStatus.APPROVED) {
+            if (resolvedRole != UserRole.ADMIN && remoteRegisteredRole != null && remoteRegisteredRole != UserRole.ADMIN) {
+                return EmailPasswordLoginResult.Error(ErrorImageType.ROLE_MISMATCH)
+            }
             resolvedRole = UserRole.ADMIN
         } else if (resolvedRole == UserRole.ADMIN) {
             return EmailPasswordLoginResult.Error(ErrorImageType.ADMIN_NOT_AUTHORIZED)
@@ -892,7 +898,7 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
     }
     editor?.apply()
 
-    // 2. Save in Firestore collections ('students', 'users', and role collection if TEACHER/ADMIN)
+    // 2. Save in Firestore strictly in role-isolated collection + users directory
     val privacyFirestoreMap = profile.fieldPrivacy.entries.associate { it.key to it.value.key }
     val data = mutableMapOf<String, Any>(
         "email" to cleanEmail,
@@ -931,6 +937,7 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         "email" to cleanEmail,
         "name" to profile.name,
         "bio" to profile.bio,
+        "category" to category,
         "phone" to profile.phone,
         "department" to profile.department,
         "address" to profile.address,
@@ -944,18 +951,6 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         userPatch["cover_photo_url"] = profile.coverPhotoUrl
     }
 
-    val teacherPatch = userPatch.toMutableMap().apply {
-        put("role", "TEACHER")
-        put("shift", profile.shift)
-        put("blood_group", profile.bloodGroup)
-        put("dob", profile.dob)
-        put("gender", profile.gender)
-        put("religion", profile.religion)
-        put("marital_status", profile.maritalStatus)
-        put("contact_email", profile.contactEmail)
-        put("permanent_address", profile.permanentAddress)
-    }
-
     val instances = getFirestoreInstances()
     if (instances.isEmpty()) {
         return Result.failure(Exception("Firestore not initialized"))
@@ -964,15 +959,17 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
     var firestoreSaved = false
     var lastError: Exception? = null
 
+    val roleCollection = when (category) {
+        "TEACHER" -> "teachers"
+        "ADMIN" -> "admins"
+        else -> "students"
+    }
+
     withTimeoutOrNull(10.seconds) {
         for ((db, dbLabel) in instances) {
             try {
-                db.collection("students").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+                db.collection(roleCollection).document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
                 db.collection("users").document(cleanEmail).set(userPatch, SetOptions.merge()).awaitTask()
-                when (category) {
-                    "TEACHER" -> db.collection("teachers").document(cleanEmail).set(teacherPatch, SetOptions.merge()).awaitTask()
-                    "ADMIN" -> db.collection("admins").document(cleanEmail).set(userPatch, SetOptions.merge()).awaitTask()
-                }
                 firestoreSaved = true
             } catch (e: Exception) {
                 lastError = e
@@ -1011,15 +1008,16 @@ actual suspend fun updateStudentAddressInFirestore(email: String, address: Strin
         "address" to cleanAddress,
         "updated_at" to now,
     )
+    val roleCollection = when (category) {
+        "TEACHER" -> "teachers"
+        "ADMIN" -> "admins"
+        else -> "students"
+    }
     withTimeoutOrNull(6.seconds) {
         for ((db, dbLabel) in getFirestoreInstances()) {
             try {
-                db.collection("students").document(cleanEmail).set(patch, SetOptions.merge()).awaitTask()
+                db.collection(roleCollection).document(cleanEmail).set(patch, SetOptions.merge()).awaitTask()
                 db.collection("users").document(cleanEmail).set(patch, SetOptions.merge()).awaitTask()
-                when (category) {
-                    "TEACHER" -> db.collection("teachers").document(cleanEmail).set(patch, SetOptions.merge()).awaitTask()
-                    "ADMIN" -> db.collection("admins").document(cleanEmail).set(patch, SetOptions.merge()).awaitTask()
-                }
             } catch (e: Exception) {
                 Log.w("StudentProfile", "[$dbLabel] Address sync failed: ${e.message}")
             }
@@ -1068,12 +1066,28 @@ actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentP
         fieldPrivacy = decodeFieldPrivacyJson(prefs?.getString("${cleanEmail}_student_field_privacy", null)),
     )
 
-    // 2. Always attempt to fetch latest document from Firestore 'students' collection and merge cleanly
+    val localCategory = prefs?.getString("${cleanEmail}_category", "")?.trim()?.uppercase()
+    val resolvedCategory = localCategory?.takeIf { it.isNotBlank() }
+        ?: resolveRegisteredRoleFromFirestore(cleanEmail)?.name
+        ?: "STUDENT"
+    val primaryCol = when (resolvedCategory) {
+        "TEACHER" -> "teachers"
+        "ADMIN" -> "admins"
+        else -> "students"
+    }
+
+    // 2. Always attempt to fetch latest document from role-isolated Firestore collection (+ legacy fallback)
     val remoteProfile = withTimeoutOrNull(6.seconds) {
         val instances = getFirestoreInstances()
         for ((db, _) in instances) {
             try {
-                val doc = db.collection("students").document(cleanEmail).get().awaitTask()
+                var doc = db.collection(primaryCol).document(cleanEmail).get().awaitTask()
+                if (!doc.exists() && primaryCol != "students") {
+                    val legacy = db.collection("students").document(cleanEmail).get().awaitTask()
+                    if (legacy.exists()) {
+                        doc = legacy
+                    }
+                }
                 if (doc.exists()) {
                     val d = doc.data ?: continue
                     val remoteUpdatedAt = (d["updated_at"] as? Number)?.toLong() ?: 0L
@@ -2037,5 +2051,57 @@ actual suspend fun deleteLibraryBookFromFirestore(bookId: String): Result<Unit> 
         Result.success(Unit)
     } else {
         Result.failure(lastError ?: Exception("Failed to delete book from Firestore"))
+    }
+}
+
+actual suspend fun resolveRegisteredRoleFromFirestore(email: String): UserRole? {
+    val cleanEmail = email.trim().lowercase()
+    if (cleanEmail.isBlank()) return null
+
+    return withTimeoutOrNull(6.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            // 1. Check admins collection (excluding declined)
+            try {
+                val adminDoc = db.collection("admins").document(cleanEmail).get().awaitTask()
+                if (adminDoc.exists() && isDocMatchingEmail(adminDoc, cleanEmail)) {
+                    val status = adminDoc.getString("status")?.uppercase()
+                    if (status != "DECLINED") {
+                        return@withTimeoutOrNull UserRole.ADMIN
+                    }
+                }
+            } catch (_: Exception) {}
+
+            // 2. Check authoritative users document category field
+            try {
+                val userDoc = db.collection("users").document(cleanEmail).get().awaitTask()
+                if (userDoc.exists()) {
+                    val cat = UserRole.fromRaw(userDoc.getString("category"))
+                    if (cat != null) {
+                        return@withTimeoutOrNull cat
+                    }
+                }
+            } catch (_: Exception) {}
+
+            // 3. Check teachers collection
+            try {
+                val teacherDoc = db.collection("teachers").document(cleanEmail).get().awaitTask()
+                if (teacherDoc.exists()) {
+                    return@withTimeoutOrNull UserRole.TEACHER
+                }
+            } catch (_: Exception) {}
+
+            // 4. Check students collection (strictly STUDENT)
+            try {
+                val studentDoc = db.collection("students").document(cleanEmail).get().awaitTask()
+                if (studentDoc.exists()) {
+                    val docRole = (studentDoc.getString("role") ?: "").trim().uppercase()
+                    if (docRole.isBlank() || docRole == "STUDENT") {
+                        return@withTimeoutOrNull UserRole.STUDENT
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        null
     }
 }

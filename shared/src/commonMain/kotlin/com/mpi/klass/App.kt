@@ -110,6 +110,7 @@ enum class ErrorImageType {
     ADMIN_NOT_AUTHORIZED,
     ADMIN_REQUEST_PENDING,
     ADMIN_REQUEST_DECLINED,
+    ROLE_MISMATCH,
 }
 
 private fun errorTypeFor(exceptionMessage: String?): ErrorImageType = when (exceptionMessage) {
@@ -229,6 +230,23 @@ fun App(
                         val cleanEmail = email.trim().lowercase()
                         val control = RoleConfig.fetchSignInControl()
 
+                        // Strict 1-Email = 1-Role category lock
+                        val existingRegisteredRole = RoleConfig.resolveRegisteredRole(cleanEmail)
+                        if (existingRegisteredRole != null && existingRegisteredRole != targetRole) {
+                            val existingLabel = when (existingRegisteredRole) {
+                                UserRole.ADMIN -> "এডমিন (Admin)"
+                                UserRole.TEACHER -> "শিক্ষক (Teacher)"
+                                UserRole.STUDENT -> "শিক্ষার্থী (Student)"
+                            }
+                            isLoadingOverlay = false
+                            onSignOutGoogle()
+                            showError(
+                                ErrorImageType.ROLE_MISMATCH,
+                                "এই ইমেইলটি ($cleanEmail) ইতোমধ্যেই $existingLabel হিসেবে নিবন্ধিত। প্রতিটি ইমেইল দিয়ে শুধুমাত্র একটি ক্যাটাগরিতেই সাইন-ইন করা যাবে।",
+                            )
+                            return@launch
+                        }
+
                         if (targetRole == UserRole.ADMIN) {
                             if (!control.adminSignInEnabled) {
                                 val isExisting = RoleConfig.isUserRegisteredForRole(cleanEmail, UserRole.ADMIN)
@@ -290,19 +308,9 @@ fun App(
                             return@launch
                         }
 
-                        // For TEACHER / STUDENT sign in: check existing profile
+                        // For TEACHER / STUDENT sign in: preserve strict role lock (actualRole == targetRole)
                         val existingProfile = RoleConfig.fetchUserProfile(cleanEmail)
-                        val isAdminApproved = RoleConfig.isAuthorizedAdminEmail(cleanEmail)
-
-                        var actualRole = targetRole
-                        if (isAdminApproved) {
-                            actualRole = UserRole.ADMIN
-                        } else if (existingProfile != null && existingProfile.category.isNotBlank()) {
-                            val savedRole = UserRole.fromRaw(existingProfile.category)
-                            if (savedRole != null) {
-                                actualRole = savedRole
-                            }
-                        }
+                        val actualRole = targetRole
 
                         val isEnabled = when (actualRole) {
                             UserRole.ADMIN -> control.adminSignInEnabled
@@ -694,6 +702,7 @@ fun ErrorImagePopup(
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> Res.drawable.timeouterror
         ErrorImageType.ADMIN_REQUEST_PENDING -> Res.drawable.timeouterror
         ErrorImageType.ADMIN_REQUEST_DECLINED -> Res.drawable.timeouterror
+        ErrorImageType.ROLE_MISMATCH -> Res.drawable.timeouterror
     }
 
     val title = when (errorType) {
@@ -704,6 +713,7 @@ fun ErrorImagePopup(
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> "এই Google অ্যাকাউন্ট অনুমোদিত নয়"
         ErrorImageType.ADMIN_REQUEST_PENDING -> "এডমিন রিকোয়েস্ট পেন্ডিং রয়েছে"
         ErrorImageType.ADMIN_REQUEST_DECLINED -> "এডমিন রিকোয়েস্ট প্রত্যাখ্যাত হয়েছে"
+        ErrorImageType.ROLE_MISMATCH -> "ভুল ক্যাটাগরি নির্বাচন"
     }
 
     val description = when (errorType) {
@@ -718,6 +728,8 @@ fun ErrorImagePopup(
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> "শুধু Firebase Firestore-এর admins কালেকশনে থাকা অনুমোদিত email দিয়ে এডমিন হিসেবে প্রবেশ করা যাবে।"
         ErrorImageType.ADMIN_REQUEST_PENDING -> "আপনার এডমিন অ্যাক্সেস রিকোয়েস্টটি পেন্ডিং রয়েছে। পূর্বে অনুমোদিত কোনো এডমিন আপনার ইমেইলটি অনুমোদন (Approve) করলে আপনি এডমিন হিসেবে প্রবেশ করতে পারবেন।"
         ErrorImageType.ADMIN_REQUEST_DECLINED -> "আপনার এডমিন অ্যাক্সেস রিকোয়েস্টটি এডমিন কর্তৃক বাতিল বা প্রত্যাখ্যান (Decline) করা হয়েছে।"
+        ErrorImageType.ROLE_MISMATCH -> errorDetail?.takeIf { it.isNotBlank() }
+            ?: "এই ইমেইলটি ইতোমধ্যেই অন্য একটি ক্যাটাগরিতে নিবন্ধিত রয়েছে। এক ইমেইল দিয়ে একাধিক ক্যাটাগরিতে সাইন-ইন করা সম্ভব নয়।"
     }
 
     val steps = when (errorType) {
@@ -735,7 +747,7 @@ fun ErrorImagePopup(
             "পরিবর্তনের পর ওয়েব অ্যাপটি আবার build ও deploy করুন।",
         )
         ErrorImageType.SIGN_IN_DISABLED -> listOf(
-            "এডমিন এই রোルの সাইন ইন অনুমতি বন্ধ রেখেছেন।",
+            "এডমিন এই রোলের সাইন ইন অনুমতি বন্ধ রেখেছেন।",
             "এডমিনের সাথে যোগাযোগ করুন এবং সাইন ইন চালু করতে অনুরোধ করুন।",
         )
         ErrorImageType.ADMIN_NOT_AUTHORIZED -> listOf(
@@ -749,12 +761,16 @@ fun ErrorImagePopup(
         ErrorImageType.ADMIN_REQUEST_DECLINED -> listOf(
             "প্রয়োজনে বিদ্যমান অনুমোদিত এডমিনের সাথে কথা বলুন।",
         )
+        ErrorImageType.ROLE_MISMATCH -> listOf(
+            "যে ক্যাটাগরিতে আপনার অ্যাকাউন্ট খোলা আছে, ঠিক সেই ক্যাটাগরি দিয়ে সাইন-ইন করুন।",
+            "অথবা নতুন ক্যাটাগরির জন্য ভিন্ন একটি ইমেইল ব্যবহার করুন।",
+        )
     }
 
     val titleColor = when (errorType) {
         ErrorImageType.NO_INTERNET, ErrorImageType.GENERAL_ERROR ->
             if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
-        ErrorImageType.SIGN_IN_DISABLED, ErrorImageType.ADMIN_REQUEST_PENDING, ErrorImageType.ADMIN_REQUEST_DECLINED, ErrorImageType.ADMIN_NOT_AUTHORIZED ->
+        ErrorImageType.SIGN_IN_DISABLED, ErrorImageType.ADMIN_REQUEST_PENDING, ErrorImageType.ADMIN_REQUEST_DECLINED, ErrorImageType.ADMIN_NOT_AUTHORIZED, ErrorImageType.ROLE_MISMATCH ->
             if (isDark) Color(0xFFF87171) else Color(0xFFDC2626)
         else ->
             if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7)

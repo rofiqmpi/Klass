@@ -39,13 +39,11 @@ enum class ProfilePrivacy(
     val labelBn: String,
 ) {
     PUBLIC("PUBLIC", "পাবলিক"),
-    CONNECTIONS("CONNECTIONS", "শুধু কানেকশন"),
     PRIVATE("PRIVATE", "প্রাইভেট");
 
     companion object {
         fun fromKey(raw: String?): ProfilePrivacy = when (raw?.trim()?.uppercase()) {
-            "CONNECTIONS", "FRIENDS" -> CONNECTIONS
-            "PRIVATE", "ONLY_ME" -> PRIVATE
+            "CONNECTIONS", "FRIENDS", "PRIVATE", "ONLY_ME" -> PRIVATE
             else -> PUBLIC
         }
     }
@@ -306,6 +304,7 @@ expect suspend fun fetchLibraryBooksFromFirestore(): List<LibraryBook>
 expect suspend fun saveLibraryBookInFirestore(book: LibraryBook): Result<Unit>
 expect suspend fun deleteLibraryBookFromFirestore(bookId: String): Result<Unit>
 expect suspend fun seedBtebLibraryBooksInFirestore(forceReseed: Boolean = false): Result<Int>
+expect suspend fun resolveRegisteredRoleFromFirestore(email: String): UserRole?
 
 object RoleConfig {
     private const val USERS_COLLECTION = "users"
@@ -445,6 +444,15 @@ object RoleConfig {
         return Result.success(Unit)
     }
 
+    suspend fun resolveRegisteredRole(email: String): UserRole? {
+        if (email.isBlank()) return null
+        val cleanEmail = email.trim().lowercase()
+        val remoteRole = resolveRegisteredRoleFromFirestore(cleanEmail)
+        if (remoteRole != null) return remoteRole
+        val localProf = fetchLocalProfile(cleanEmail)
+        return UserRole.fromRaw(localProf?.category)
+    }
+
     suspend fun isUserRegisteredForRole(email: String, role: UserRole): Boolean {
         if (email.isBlank()) return false
         val cleanEmail = email.trim().lowercase()
@@ -456,7 +464,7 @@ object RoleConfig {
             }
             UserRole.STUDENT -> {
                 val profile = fetchUserProfile(cleanEmail)
-                profile != null
+                profile != null && profile.category.trim().uppercase() == UserRole.STUDENT.name
             }
         }
     }

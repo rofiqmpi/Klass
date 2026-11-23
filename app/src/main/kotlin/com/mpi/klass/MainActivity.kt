@@ -1,6 +1,7 @@
 package com.mpi.klass
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -23,6 +24,10 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.recaptcha.RecaptchaAppCheckProviderFactory
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import com.mpi.klass.theme.initThemeContext
@@ -51,6 +56,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
+        configureAppCheck(this, intent)
         ensurePushNotificationChannels(this)
 
         credentialManager = CredentialManager.create(this)
@@ -180,6 +186,57 @@ class MainActivity : ComponentActivity() {
         val config = context.resources.configuration
         config.setLocale(locale)
         context.resources.updateConfiguration(config, context.resources.displayMetrics)
+    }
+}
+
+private const val APPCHECK_TAG = "AppCheckInit"
+private const val DEBUG_TOKEN_EXTRA = "FIREBASE_APPCHECK_DEBUG_TOKEN"
+private const val DEBUG_STORE_PREFIX = "com.google.firebase.appcheck.debug.store."
+private const val DEBUG_SECRET_KEY = "com.google.firebase.appcheck.debug.DEBUG_SECRET"
+private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
+
+fun configureAppCheck(context: Context, intent: Intent?) {
+    try {
+        if (FirebaseApp.getApps(context).isEmpty()) {
+            FirebaseApp.initializeApp(context)
+        }
+        if (BuildConfig.DEBUG) {
+            val debugToken = intent?.getStringExtra(DEBUG_TOKEN_EXTRA)
+            if (!debugToken.isNullOrEmpty()) {
+                val persistenceKey = FirebaseApp.getInstance().persistenceKey
+                val prefs = context.getSharedPreferences(
+                    "$DEBUG_STORE_PREFIX$persistenceKey",
+                    Context.MODE_PRIVATE,
+                )
+                prefs.edit()
+                    .putString(DEBUG_SECRET_KEY, debugToken)
+                    .commit()
+                Log.d(APPCHECK_TAG, "App Check debug secret configured.")
+            } else {
+                Log.w(APPCHECK_TAG, "No debug token found in Intent extra.")
+            }
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                DebugAppCheckProviderFactory.getInstance(),
+            )
+            Log.d(APPCHECK_TAG, "DebugAppCheckProviderFactory installed.")
+        } else {
+            val resId = context.resources.getIdentifier(RECAPTCHA_SITE_KEY_RES, "string", context.packageName)
+            if (resId != 0) {
+                val siteKey = context.getString(resId)
+                if (siteKey.isNotBlank()) {
+                    FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                        RecaptchaAppCheckProviderFactory.getInstance(siteKey),
+                    )
+                    Log.d(APPCHECK_TAG, "RecaptchaAppCheckProviderFactory installed.")
+                } else {
+                    Log.e(APPCHECK_TAG, "recaptcha_site_key resource string is blank.")
+                }
+            } else {
+                Log.e(APPCHECK_TAG, "recaptcha_site_key string resource not found in package.")
+            }
+        }
+    } catch (e: Exception) {
+        Log.e(APPCHECK_TAG, "Failed to initialize Firebase App Check", e)
     }
 }
 

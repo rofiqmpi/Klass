@@ -28,25 +28,6 @@ service cloud.firestore {
       return id is string && id.size() >= 1 && id.size() <= 160;
     }
 
-    function isValidConnection(data) {
-      return data.keys().hasAll(['id', 'participants', 'requester_email', 'receiver_email', 'status', 'updated_at']) &&
-             data.id is string && data.id.size() > 0 && data.id.size() <= 160 &&
-             data.participants is list && data.participants.size() == 2 &&
-             data.requester_email is string && data.requester_email.size() > 0 && data.requester_email.size() <= 160 &&
-             data.receiver_email is string && data.receiver_email.size() > 0 && data.receiver_email.size() <= 160 &&
-             data.status in ['PENDING', 'ACCEPTED'] &&
-             data.updated_at is int;
-    }
-
-    function isValidChatRelay(data) {
-      return data.keys().hasAll(['id', 'sender_email', 'receiver_email', 'text', 'sent_at']) &&
-             data.id is string && data.id.size() > 0 && data.id.size() <= 160 &&
-             data.sender_email is string && data.sender_email.size() > 0 && data.sender_email.size() <= 160 &&
-             data.receiver_email is string && data.receiver_email.size() > 0 && data.receiver_email.size() <= 160 &&
-             data.text is string && data.text.size() > 0 && data.text.size() <= 2000 &&
-             data.sent_at is int;
-    }
-
     // Default deny safety net
     match /{document=**} {
       allow read, write: if false;
@@ -130,50 +111,6 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isApprovedAdmin();
-    }
-
-    // Friend connections collection (participant-only isolation + receiver-only accept)
-    match /connections/{connectionId} {
-      allow get: if isAuthenticated() && isValidId(connectionId) &&
-        (resource == null || authEmail() in resource.data.participants);
-      allow list: if isAuthenticated() && authEmail() in resource.data.participants;
-      allow create: if isAuthenticated() && isValidId(connectionId) &&
-        isValidConnection(request.resource.data) &&
-        request.resource.data.id == connectionId &&
-        request.resource.data.requester_email == authEmail() &&
-        authEmail() in request.resource.data.participants &&
-        request.resource.data.receiver_email != authEmail() &&
-        request.resource.data.receiver_email in request.resource.data.participants &&
-        request.resource.data.status == 'PENDING';
-      allow update: if isAuthenticated() && isValidId(connectionId) &&
-        isValidConnection(request.resource.data) &&
-        authEmail() in resource.data.participants &&
-        authEmail() == resource.data.receiver_email.lower() &&
-        resource.data.status == 'PENDING' &&
-        request.resource.data.status == 'ACCEPTED' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at']);
-      allow delete: if isAuthenticated() && isValidId(connectionId) &&
-        (authEmail() in resource.data.participants || isApprovedAdmin());
-    }
-
-    // Zero-retention ephemeral direct message relay (sender/receiver only; recipient reads then deletes)
-    match /chat_relay/{messageId} {
-      allow get: if isAuthenticated() && isValidId(messageId) &&
-        (resource == null ||
-         resource.data.receiver_email == authEmail() ||
-         resource.data.sender_email == authEmail());
-      allow list: if isAuthenticated() &&
-        (resource.data.receiver_email == authEmail() ||
-         resource.data.sender_email == authEmail());
-      allow create: if isAuthenticated() && isValidId(messageId) &&
-        isValidChatRelay(request.resource.data) &&
-        request.resource.data.id == messageId &&
-        request.resource.data.sender_email == authEmail() &&
-        request.resource.data.receiver_email != authEmail();
-      allow update: if false;
-      allow delete: if isAuthenticated() && isValidId(messageId) &&
-        (resource.data.receiver_email == authEmail() ||
-         resource.data.sender_email == authEmail());
     }
   }
 }

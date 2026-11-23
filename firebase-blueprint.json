@@ -49,39 +49,6 @@
         "updated_at": { "type": "number" }
       },
       "required": ["email"]
-    },
-    "Connection": {
-      "title": "Connection",
-      "description": "Bidirectional social friend/connection request and link between two MPI users",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "participants": { "type": "array" },
-        "requester_email": { "type": "string" },
-        "receiver_email": { "type": "string" },
-        "requester_name": { "type": "string" },
-        "receiver_name": { "type": "string" },
-        "requester_photo_url": { "type": "string" },
-        "receiver_photo_url": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "ACCEPTED"] },
-        "updated_at": { "type": "number" }
-      },
-      "required": ["id", "participants", "requester_email", "receiver_email", "status", "updated_at"]
-    },
-    "ChatRelayMessage": {
-      "title": "ChatRelayMessage",
-      "description": "Transient delivery message in chat_relay deleted immediately after recipient saves locally",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "sender_email": { "type": "string" },
-        "sender_name": { "type": "string" },
-        "sender_photo_url": { "type": "string" },
-        "receiver_email": { "type": "string" },
-        "text": { "type": "string" },
-        "sent_at": { "type": "number" }
-      },
-      "required": ["id", "sender_email", "receiver_email", "text", "sent_at"]
     }
   },
   "firestore": {
@@ -94,8 +61,6 @@
     "/classrooms/{roomId}": { "schema": "User", "description": "Classrooms and labs" },
     "/routines/{routineId}": { "schema": "User", "description": "Published and draft weekly routines" },
     "/routine_edit_requests/{requestId}": { "schema": "User", "description": "Teacher routine swap requests" },
-    "/notifications/{notificationId}": { "schema": "User", "description": "System announcements" },
-    "/connections/{connectionId}": { "schema": "Connection", "description": "Social friend requests and accepted connections" },
-    "/chat_relay/{messageId}": { "schema": "ChatRelayMessage", "description": "Zero-retention transient message relay" }
+    "/notifications/{notificationId}": { "schema": "User", "description": "System announcements" }
   }
 }

@@ -15,9 +15,9 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.ai) // Removed: Zed AI uses local app data only
-    // implementation(libs.firebase.appcheck.recaptcha)
-    // implementation(libs.firebase.appcheck.debug)
+    implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.recaptcha)
+    implementation(libs.firebase.appcheck.debug)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.androidx.activity.compose)

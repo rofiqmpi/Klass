@@ -137,7 +137,6 @@ fun HomeRoutineHeader(
     onDownloadClick: (() -> Unit)? = null,
     isDownloading: Boolean = false,
     hasUnreadNotifications: Boolean = NotificationSeenStore.hasUnread(),
-    unreadMessagesCount: Int = SocialChatState.totalUnreadMessages,
     activeTempFilter: RoutineQuickFilter? = null,
     defaultFilter: RoutineQuickFilter = RoutineQuickFilter(),
     onTempFilterChange: (RoutineQuickFilter?) -> Unit = {},
@@ -612,7 +611,7 @@ fun HomeRoutineHeader(
             }
         }
 
-        // 3. Messages Button (replaces standalone AI button -> opens Messenger hub with Zed AI + peers)
+        // 3. Zed AI Assistant Button
         AnimatedVisibility(
             visible = !isExpanded,
             enter = fadeIn(tween(120, delayMillis = 20)) +
@@ -634,13 +633,13 @@ fun HomeRoutineHeader(
                     shrinkTowards = Alignment.End,
                 ),
         ) {
-            val msgInteraction = remember { MutableInteractionSource() }
-            val msgPressed by msgInteraction.collectIsPressedAsState()
-            var msgTrigger by remember { mutableIntStateOf(0) }
-            val msgScale by animateFloatAsState(
-                targetValue = if (msgPressed) 0.90f else 1f,
+            val aiInteraction = remember { MutableInteractionSource() }
+            val aiPressed by aiInteraction.collectIsPressedAsState()
+            var aiTrigger by remember { mutableIntStateOf(0) }
+            val aiScale by animateFloatAsState(
+                targetValue = if (aiPressed) 0.90f else 1f,
                 animationSpec = spring(dampingRatio = 0.65f, stiffness = 750f),
-                label = "home_msg_scale",
+                label = "home_ai_scale",
             )
             Box(modifier = Modifier.size(48.dp)) {
                 Box(
@@ -648,60 +647,46 @@ fun HomeRoutineHeader(
                         .fillMaxSize()
                         .clip(CircleShape)
                         .clickable(
-                            interactionSource = msgInteraction,
+                            interactionSource = aiInteraction,
                             indication = androidx.compose.material3.ripple(bounded = false, radius = 24.dp),
                             onClick = {
-                                msgTrigger++
+                                aiTrigger++
                                 onAiClick()
                             },
                         )
-                        .testTag("home_messages_button"),
+                        .testTag("home_ai_button"),
                     contentAlignment = Alignment.Center,
                 ) {
                     Surface(
                         shape = CircleShape,
                         color = glassBg,
-                        border = BorderStroke(1.dp, routineAccent.borderTint),
+                        border = BorderStroke(1.dp, aiAccent.borderTint),
                         shadowElevation = 0.dp,
                         tonalElevation = 0.dp,
                         modifier = Modifier
                             .size(42.dp)
                             .graphicsLayer {
-                                scaleX = msgScale
-                                scaleY = msgScale
+                                scaleX = aiScale
+                                scaleY = aiScale
                             },
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(routineAccent.softTint),
+                                .background(aiAccent.softTint),
                             contentAlignment = Alignment.Center,
                         ) {
                             TelegramAnimatedIcon(
-                                icon = MessageBubbleIcon,
-                                contentDescription = "Messages",
-                                tint = routineAccent.primary,
+                                icon = SparkleIcon,
+                                contentDescription = "Zed AI",
+                                tint = aiAccent.primary,
                                 size = 19.dp,
-                                interactionSource = msgInteraction,
-                                triggerKey = msgTrigger,
-                                hasActivity = unreadMessagesCount > 0,
+                                interactionSource = aiInteraction,
+                                triggerKey = aiTrigger,
+                                hasActivity = false,
                             )
                         }
                     }
-                }
-                if (unreadMessagesCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-3).dp, y = 3.dp)
-                            .size(11.dp)
-                            .clip(CircleShape)
-                            .background(dotHaloColor)
-                            .padding(1.5.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFEF4444))
-                            .testTag("home_messages_unread_dot"),
-                    )
                 }
             }
         }

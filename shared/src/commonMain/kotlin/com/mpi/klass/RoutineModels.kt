@@ -49,6 +49,7 @@ data class ClassroomItem(
     val buildingOrFloor: String = "",
     val roomType: ClassroomType = ClassroomType.THEORY,
     val department: String = "ALL",
+    val nearestDepartment: String = "",
     val shifts: List<String> = listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2),
     val capacity: Int = 40,
     val updatedAt: Long = 0L,

@@ -78,6 +78,7 @@ object RoutineGeneratorEngine {
         classrooms: List<ClassroomItem>,
         generatedBy: String,
         nowMillis: Long,
+        campusMap: CampusMapConfig = CampusMapConfig(),
     ): RoutinePlan {
         val periodsPerDay = config.periodsPerDay.coerceIn(4, 10)
         val activeSemesters = config.activeSemesters
@@ -214,18 +215,24 @@ object RoutineGeneratorEngine {
             }
         }
 
-        // Helper to match compatible classrooms
+        // Helper to match all free compatible classrooms ranked by shortest walking distance from CampusMapConfig
         fun matchingRooms(dept: String, shift: String, isLab: Boolean): List<ClassroomItem> {
             val targetType = if (isLab) ClassroomType.LAB else ClassroomType.THEORY
             val matching = classrooms.filter { room ->
                 room.roomType == targetType &&
                     (room.shifts.isEmpty() || room.shifts.any { RoutineRules.normalizeShift(it) == shift })
             }
-            // Prefer department-dedicated rooms first, then shared "ALL" rooms
-            val deptSpecific = matching.filter { RoutineRules.normalizeDepartmentShort(it.department) == dept }
-            val shared = matching.filter { RoutineRules.normalizeDepartmentShort(it.department) == "ALL" }
-            val others = matching.filter { it !in deptSpecific && it !in shared }
-            return deptSpecific + shared + others
+            return matching.sortedWith(
+                compareBy<ClassroomItem> { room ->
+                    val roomZone = room.nearestDepartment.ifBlank { room.department }
+                    campusMap.distanceBetween(dept, roomZone)
+                }.thenBy { room ->
+                    val roomZone = RoutineRules.normalizeDepartmentShort(
+                        room.nearestDepartment.ifBlank { room.department }
+                    )
+                    if (roomZone == RoutineRules.normalizeDepartmentShort(dept)) 0 else 1
+                }.thenBy { it.roomNumber.lowercase() }
+            )
         }
 
         // Phase A: Place Practical Lab blocks (contiguous 2 or 3 period blocks)
