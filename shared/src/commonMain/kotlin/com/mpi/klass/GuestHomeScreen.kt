@@ -88,6 +88,7 @@ fun GuestHomeScreen(
     var isDownloadingRoutine by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     var isClassroomSubOverlayOpen by remember { mutableStateOf(false) }
+    var isBooksSubOverlayOpen by remember { mutableStateOf(false) }
     var isNotificationsSubOverlayOpen by remember { mutableStateOf(false) }
     var isBloodFinderSubOverlayOpen by remember { mutableStateOf(false) }
     var isProfileSubOverlayOpen by remember { mutableStateOf(false) }
@@ -376,6 +377,7 @@ fun GuestHomeScreen(
                                         onProfileClick = { navigateTo("profile") },
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
+                                        onBooksClick = { navigateTo("books") },
                                         onClassroomClick = { navigateTo("classrooms") },
                                         onBloodFinderClick = { navigateTo("blood_finder") },
                                         onAppearanceClick = { navigateTo("appearance") },
@@ -489,6 +491,37 @@ fun GuestHomeScreen(
                                         if (dest == "sign_in") onSwitchToLogin() else navigateTo(dest)
                                     },
                                     onFullScreenOverlayChange = { isNotificationsSubOverlayOpen = it },
+                                )
+                            }
+                        }
+                    }
+                    "books" -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .rainbowScreenBackground(isDark),
+                        ) {
+                            AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
+                                GoogleTopAppBar(
+                                    title = "Books Library",
+                                    hindSiliguri = hindSiliguri,
+                                    onNavigationClick = { goBack() },
+                                    actions = {
+                                        HeaderAiNotificationActions(
+                                            isDark = isDark,
+                                            onAiClick = { navigateTo("ai") },
+                                            onNotificationClick = { navigateTo("notification") },
+                                        )
+                                    },
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                BooksLibraryScreen(
+                                    isDark = isDark,
+                                    hindSiliguri = hindSiliguri,
+                                    canEdit = false,
+                                    topContentPadding = 0.dp,
+                                    onFullScreenOverlayChange = { isBooksSubOverlayOpen = it },
                                 )
                             }
                         }

@@ -56,8 +56,8 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
-        ZedAiKeyProvider.setApiKey(BuildConfig.GEMINI_API_KEY)
         configureAppCheck(this, intent)
+        registerAppCheckDiagnostics()
         ensurePushNotificationChannels(this)
 
         credentialManager = CredentialManager.create(this)
@@ -73,6 +73,12 @@ class MainActivity : ComponentActivity() {
                 onCloseApp = { finish() },
             )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        configureAppCheck(this, intent)
     }
 
     private fun launchGoogleSignIn(
@@ -193,8 +199,23 @@ class MainActivity : ComponentActivity() {
 private const val APPCHECK_TAG = "AppCheckInit"
 private const val DEBUG_TOKEN_EXTRA = "FIREBASE_APPCHECK_DEBUG_TOKEN"
 private const val DEBUG_STORE_PREFIX = "com.google.firebase.appcheck.debug.store."
+private const val TOKEN_STORE_PREFIX = "com.google.firebase.appcheck.store."
 private const val DEBUG_SECRET_KEY = "com.google.firebase.appcheck.debug.DEBUG_SECRET"
+private const val LEGACY_POISONED_DEBUG_SECRET = "b81a2f64-9d18-4e5c-a352-78d91f42e316"
 private const val RECAPTCHA_SITE_KEY_RES = "recaptcha_site_key"
+
+private fun registerAppCheckDiagnostics() {
+    ZedAppCheckDiagnostics.register {
+        try {
+            val tokenResult = FirebaseAppCheck.getInstance().getAppCheckToken(false).await()
+            if (tokenResult.token.isBlank()) "Empty App Check token returned." else null
+        } catch (e: Exception) {
+            e.localizedMessage?.takeIf { it.isNotBlank() }
+                ?: e::class.simpleName
+                ?: "App Check token retrieval failed."
+        }
+    }
+}
 
 fun configureAppCheck(context: Context, intent: Intent?) {
     try {
@@ -207,12 +228,31 @@ fun configureAppCheck(context: Context, intent: Intent?) {
                 "$DEBUG_STORE_PREFIX$persistenceKey",
                 Context.MODE_PRIVATE,
             )
-            val intentToken = intent?.getStringExtra(DEBUG_TOKEN_EXTRA)
-            val tokenToUse = if (!intentToken.isNullOrBlank()) intentToken else APP_CHECK_DEBUG_TOKEN
-            prefs.edit()
-                .putString(DEBUG_SECRET_KEY, tokenToUse)
-                .commit()
-            Log.d(APPCHECK_TAG, "App Check debug secret configured: $tokenToUse")
+            val tokenStorePrefs = context.getSharedPreferences(
+                "$TOKEN_STORE_PREFIX$persistenceKey",
+                Context.MODE_PRIVATE,
+            )
+            val debugToken = intent?.getStringExtra(DEBUG_TOKEN_EXTRA)?.trim()
+            val existing = prefs.getString(DEBUG_SECRET_KEY, null)
+            if (!debugToken.isNullOrEmpty()) {
+                if (existing != debugToken) {
+                    prefs.edit()
+                        .putString(DEBUG_SECRET_KEY, debugToken)
+                        .commit()
+                    tokenStorePrefs.edit().clear().commit()
+                    Log.d(APPCHECK_TAG, "App Check debug secret updated cleanly.")
+                } else {
+                    Log.d(APPCHECK_TAG, "App Check debug secret already configured.")
+                }
+            } else {
+                if (existing == LEGACY_POISONED_DEBUG_SECRET) {
+                    prefs.edit().remove(DEBUG_SECRET_KEY).commit()
+                    tokenStorePrefs.edit().clear().commit()
+                    Log.w(APPCHECK_TAG, "Cleared legacy hardcoded App Check debug secret.")
+                } else {
+                    Log.w(APPCHECK_TAG, "No debug token found in Intent extra.")
+                }
+            }
 
             FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
                 DebugAppCheckProviderFactory.getInstance(),

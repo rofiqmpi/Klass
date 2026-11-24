@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <resources>
-    <string name="firestore_database_id" translatable="false">signinklass</string>
-    <string name="recaptcha_site_key" translatable="false">6LfIsBcuAAAAANic_r9Kg-pFiv2FAxFQgG8f9I1W</string>
+    <string name="firestore_database_id" translatable="false">ai-studio-android-klass-8e28a555-75a6-4902-af9c-0b216450601b</string>
+    <string name="recaptcha_site_key" translatable="false">6LcP0y8uAAAAAHqjivp93fqF9qwsZYYy29wVh-T-</string>
 </resources>

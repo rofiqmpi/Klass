@@ -130,4 +130,75 @@ class SharedLogicAndroidHostTest {
     fun legacyConnectionsPrivacyMapsToPrivate() {
         assertEquals(ProfilePrivacy.PRIVATE, ProfilePrivacy.fromKey("CONNECTIONS"))
     }
+
+    @Test
+    fun primaryAdminEmailAndFullBtebCatalogConfigured() {
+        assertEquals("mdrofiqmpi@gmail.com", PRIMARY_ADMIN_EMAIL)
+        assertEquals(179, BtebBooksCatalog.books.size)
+        assertTrue(BtebBooksCatalog.books.all { it.id.startsWith("bteb_") })
+    }
+
+    @Test
+    fun zedSchemaAndBackendHelpersOperateCleanly() {
+        assertEquals("OBJECT", zedResponseSchema.type)
+        assertTrue(zedResponseSchema.properties?.containsKey("answerText") == true)
+        assertTrue(zedResponseSchema.properties?.containsKey("blocks") == true)
+
+        val history = buildSanitizedChatHistory(
+            listOf(
+                AiChatMessage(id = "m0", text = "Welcome", isFromUser = false),
+                AiChatMessage(id = "u1", text = "Hi", isFromUser = true),
+                AiChatMessage(id = "m1", text = "Hello!", isFromUser = false),
+                AiChatMessage(id = "u2", text = "Trailing user", isFromUser = true),
+            )
+        )
+        assertEquals(2, history.size)
+        assertEquals("user", history[0].role)
+        assertEquals("model", history[1].role)
+
+        val fenced = """
+            ```json
+            {"answerText":"Computer Application is 66611.","sourceBadge":"Books Library","isSupportedDomain":true,"blocks":[{"blockType":"CALLOUT","domain":"BOOKS","message":"Available in 1st Sem","isWarning":false}]}
+            ```
+        """.trimIndent()
+        val unwrapped = extractJsonObjectIfWrapped(fenced)!!
+        val parsed = parseZedA2UiResponse(unwrapped)
+        assertEquals("Computer Application is 66611.", parsed.answerText)
+        assertEquals("Books Library", parsed.sourceBadge)
+        assertEquals(1, parsed.blocks.size)
+
+        val campusJson = buildFullAppContextJson(
+            query = "CST 1st semester books",
+            snapshot = ZedContextSnapshot(books = BtebBooksCatalog.books, userDisplayName = "Rofiq"),
+            todayEnglishDay = "Sunday",
+        )
+        assertTrue(campusJson.contains("Mymensingh Polytechnic Institute"))
+        assertTrue(campusJson.contains("books"))
+        assertTrue(campusJson.length < 8_000, "Expected focused campus context payload, was ${campusJson.length}")
+
+        val generalJson = buildFullAppContextJson(
+            query = "Explain Newton second law of motion",
+            snapshot = ZedContextSnapshot(books = BtebBooksCatalog.books, userDisplayName = "Rofiq"),
+            todayEnglishDay = "Sunday",
+        )
+        assertTrue(generalJson.contains("Mymensingh Polytechnic Institute"))
+        assertTrue(!generalJson.contains("\"books\":["), "General query should not include full books dump")
+        assertTrue(generalJson.length < 1_000, "Expected tiny general context payload, was ${generalJson.length}")
+    }
+
+    @Test
+    fun zedQueryClassifierAndDiagnosticsWorkCleanly() = runBlocking {
+        assertTrue(!isCampusOrAppQuery("hi"))
+        assertTrue(!isCampusOrAppQuery("Explain recursion in Kotlin"))
+        assertTrue(isCampusOrAppQuery("CST 1st semester books"))
+        assertTrue(isCampusOrAppQuery("আজকের ক্লাস রুটিন দেখাও"))
+        assertTrue(isCampusOrAppQuery("O+ blood donor"))
+        assertTrue(isCampusOrAppQuery("66611"))
+
+        ZedAppCheckDiagnostics.register { "Simulated App Check diagnostic error" }
+        assertEquals("Simulated App Check diagnostic error", ZedAppCheckDiagnostics.checkError())
+
+        ZedAppCheckDiagnostics.register { throw IllegalStateException("unexpected") }
+        assertEquals(null, ZedAppCheckDiagnostics.checkError())
+    }
 }

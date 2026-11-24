@@ -1,7 +1,7 @@
 {
   "firestore": [
     {
-      "database": "signinklass",
+      "database": "ai-studio-android-klass-8e28a555-75a6-4902-af9c-0b216450601b",
       "rules": "firestore.rules"
     }
   ],

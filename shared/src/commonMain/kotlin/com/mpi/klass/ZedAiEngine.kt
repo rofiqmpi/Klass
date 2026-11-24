@@ -22,13 +22,6 @@ object ZedAiEngine {
 
         val q = raw.lowercase()
 
-        val asksDebugToken = q.contains("debug token") || q.contains("app check") ||
-            q.contains("debug secret") || q.contains("ডিবাগ টোকেন") ||
-            (q.contains("টোকেন") && (q.contains("ডিবাগ") || q.contains("চেক")))
-        if (asksDebugToken) {
-            return formatDebugTokenReply(isBn)
-        }
-
         // 1. Blood Donor
         val matchedBloodGroup = RoutineRules.BLOOD_GROUPS.firstOrNull { bg ->
             Regex("(?i)(?:^|\\s)${Regex.escape(bg)}(?:\\s|\$|[?,!।])").containsMatchIn(raw)
@@ -643,43 +636,6 @@ object ZedAiEngine {
             answerText = summary,
             sourceBadge = "Routine",
             blocks = blocks,
-        )
-    }
-
-    private fun formatDebugTokenReply(isBn: Boolean): ZedReply {
-        val summary = if (isBn) {
-            "আপনার Firebase App Check ডিবাগ টোকেন: $APP_CHECK_DEBUG_TOKEN"
-        } else {
-            "Your Firebase App Check debug token: $APP_CHECK_DEBUG_TOKEN"
-        }
-        return ZedReply(
-            answerText = summary,
-            sourceBadge = "Firebase App Check",
-            isSupportedDomain = true,
-            blocks = listOf(
-                ZedA2UiBlock.HeaderBanner(
-                    title = "App Check Debug Token",
-                    subtitle = "Firebase Console Allow-list Configuration",
-                    domain = "GENERAL",
-                ),
-                ZedA2UiBlock.KeyValueCard(
-                    title = "Firebase Credentials",
-                    items = listOf(
-                        ZedKeyValue("Debug Token", APP_CHECK_DEBUG_TOKEN),
-                        ZedKeyValue("Package Name", "com.klass.mpi"),
-                        ZedKeyValue("Project ID", "klassmpi"),
-                        ZedKeyValue("SHA-1", "CC:B0:44:70:6B:4D:01:C4:9A:5B:ED:12:A6:03:6A:76:A3:1E:58:FF"),
-                    ),
-                ),
-                ZedA2UiBlock.CalloutCard(
-                    message = if (isBn) {
-                        "Firebase Console -> App Check -> Apps -> com.klass.mpi -> ৩ ডট মেনু -> 'Manage debug tokens' -> 'Add debug token'-এ গিয়ে এই টোকেনটি পেস্ট করুন।"
-                    } else {
-                        "Paste this token in Firebase Console -> App Check -> Apps -> com.klass.mpi -> 3-dots menu -> 'Manage debug tokens' -> 'Add debug token'."
-                    },
-                    isWarning = false,
-                ),
-            ),
         )
     }
 }

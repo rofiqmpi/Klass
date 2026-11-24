@@ -44,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -198,6 +205,7 @@ fun AiAssistantScreen(
 
         val priorHistory = messages.filter { !it.id.startsWith("zed_welcome") && !it.id.startsWith("zed_reset_") }
         val baseId = "${messages.size}_${getCurrentTimeMillis()}"
+        val replyId = "z_${baseId}_res"
         messages.add(
             AiChatMessage(
                 id = "u_${baseId}_req",
@@ -208,29 +216,70 @@ fun AiAssistantScreen(
 
         isAiTyping = true
         scope.launch {
-            val startedAt = getCurrentTimeMillis()
+            var hasStreamBubble = false
             try {
                 val reply = askZedWithGemini(
                     prompt = trimmed,
                     snapshot = contextSnapshot,
                     todayEnglishDay = currentDayNameEnglish(),
                     history = priorHistory,
+                    onPartialText = { partial ->
+                        val clean = partial.trimStart()
+                        if (clean.isNotBlank()) {
+                            val idx = messages.indexOfFirst { it.id == replyId }
+                            val streamMsg = AiChatMessage(
+                                id = replyId,
+                                text = clean,
+                                isFromUser = false,
+                                sourceBadge = "Zed AI",
+                                blocks = emptyList(),
+                            )
+                            if (idx >= 0) {
+                                messages[idx] = streamMsg
+                            } else {
+                                messages.add(streamMsg)
+                                hasStreamBubble = true
+                                isAiTyping = false
+                            }
+                        }
+                    },
                 )
-                val elapsed = getCurrentTimeMillis() - startedAt
-                if (elapsed < 450L) {
-                    delay(450L - elapsed)
+                val finalMsg = AiChatMessage(
+                    id = replyId,
+                    text = reply.answerText,
+                    isFromUser = false,
+                    sourceBadge = reply.sourceBadge,
+                    blocks = reply.blocks,
+                )
+                val existingIdx = messages.indexOfFirst { it.id == replyId }
+                if (existingIdx >= 0) {
+                    messages[existingIdx] = finalMsg
+                } else {
+                    messages.add(finalMsg)
                 }
-                messages.add(
-                    AiChatMessage(
-                        id = "z_${baseId}_res",
-                        text = reply.answerText,
-                        isFromUser = false,
-                        sourceBadge = reply.sourceBadge,
-                        blocks = reply.blocks,
-                    )
-                )
             } catch (e: CancellationException) {
                 throw e
+            } catch (t: Throwable) {
+                val detail = t.localizedMessage?.takeIf { it.isNotBlank() } ?: t::class.simpleName ?: "Unknown error"
+                val isBn = ZedAiEngine.prefersBengali(trimmed)
+                val errMsg = if (isBn) {
+                    "Zed AI রেসপন্স করতে পারেনি: $detail"
+                } else {
+                    "Zed AI could not respond: $detail"
+                }
+                val errBubble = AiChatMessage(
+                    id = if (hasStreamBubble) replyId else "z_${baseId}_err",
+                    text = errMsg,
+                    isFromUser = false,
+                    sourceBadge = "AI Error",
+                    blocks = listOf(ZedA2UiBlock.CalloutCard(message = errMsg, isWarning = true)),
+                )
+                val existingIdx = messages.indexOfFirst { it.id == replyId }
+                if (existingIdx >= 0) {
+                    messages[existingIdx] = errBubble
+                } else {
+                    messages.add(errBubble)
+                }
             } finally {
                 isAiTyping = false
             }
@@ -390,6 +439,19 @@ fun AiAssistantScreen(
                                     keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .onPreviewKeyEvent { event ->
+                                            if (event.type == KeyEventType.KeyDown &&
+                                                (event.key == Key.Enter || event.key == Key.NumPadEnter) &&
+                                                !event.isShiftPressed
+                                            ) {
+                                                if (inputText.isNotBlank() && !isAiTyping) {
+                                                    sendMessage(inputText)
+                                                }
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        }
                                         .testTag("ai_prompt_input"),
                                 )
                             }
@@ -445,6 +507,14 @@ private fun ZedTypingIndicatorBubble(
         label = "TypingDotPhase",
     )
 
+    var elapsedSeconds by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000L)
+            elapsedSeconds++
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -478,7 +548,7 @@ private fun ZedTypingIndicatorBubble(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = "Zed is thinking",
+                    text = if (elapsedSeconds >= 3) "Zed is thinking (${elapsedSeconds}s)" else "Zed is thinking",
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = hindSiliguri,

@@ -77,9 +77,9 @@ service cloud.firestore {
       allow create, update, delete: if isOwner(userId) || isApprovedAdmin();
     }
 
-    // Books library collection
+    // Books library collection (readable by Guest & signed-in users)
     match /books/{bookId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isApprovedAdmin() || (isAuthenticated() && bookId.matches('^bteb_.*'));
       allow update, delete: if isApprovedAdmin();
     }

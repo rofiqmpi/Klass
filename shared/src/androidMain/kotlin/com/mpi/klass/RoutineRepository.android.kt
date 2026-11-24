@@ -440,7 +440,6 @@ private fun writeLocalClassroomsCache(items: List<ClassroomItem>) {
 }
 
 actual suspend fun fetchClassroomsFromFirestore(): List<ClassroomItem> {
-    if (!isFirebaseSignedIn()) return readLocalClassroomsCache()
     val map = linkedMapOf<String, ClassroomItem>()
     var anyFetched = false
 
@@ -640,7 +639,7 @@ actual suspend fun fetchRoutinePlanFromFirestore(docId: String): RoutinePlan? {
     val cached = readCacheString("routine_plan_$docId")?.let { raw ->
         try { routinePlanFromJson(JSONObject(raw)) } catch (_: Exception) { null }
     }
-    if (!isFirebaseSignedIn()) return cached
+    if (!isFirebaseSignedIn() && docId != "master_6m_published") return cached
 
     var bestRemote: RoutinePlan? = null
     withTimeoutOrNull(9.seconds) {

@@ -18,9 +18,28 @@ object ZedAiKeyProvider {
     fun getApiKey(): String = geminiApiKey
 }
 
+object ZedAppCheckDiagnostics {
+    @Volatile
+    private var provider: (suspend () -> String?)? = null
+
+    fun register(diagnosticProvider: suspend () -> String?) {
+        provider = diagnosticProvider
+    }
+
+    suspend fun checkError(): String? {
+        val fn = provider ?: return null
+        return try {
+            fn()
+        } catch (_: Throwable) {
+            null
+        }
+    }
+}
+
 expect suspend fun askZedWithGemini(
     prompt: String,
     snapshot: ZedContextSnapshot,
     todayEnglishDay: String,
     history: List<AiChatMessage> = emptyList(),
+    onPartialText: (String) -> Unit = {},
 ): ZedReply

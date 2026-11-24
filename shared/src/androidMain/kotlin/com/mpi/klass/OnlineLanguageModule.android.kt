@@ -71,9 +71,18 @@ actual fun saveCachedTranslations(entries: Map<String, String>) {
 
 actual suspend fun fetchOnlineDictionaryFromCloud(): Map<String, String> = withContext(Dispatchers.IO) {
     try {
+        val db = run {
+            val ctx = getAppContext()
+            val resId = ctx?.resources?.getIdentifier("firestore_database_id", "string", ctx.packageName) ?: 0
+            val customDbId = if (resId != 0) ctx?.getString(resId)?.trim().orEmpty() else ""
+            if (customDbId.isNotEmpty() && customDbId != "(default)") {
+                FirebaseFirestore.getInstance(customDbId)
+            } else {
+                FirebaseFirestore.getInstance()
+            }
+        }
         val snapshot = withTimeoutOrNull(4.seconds) {
-            FirebaseFirestore.getInstance()
-                .collection("config")
+            db.collection("config")
                 .document("language_dictionary")
                 .get()
                 .awaitTask()

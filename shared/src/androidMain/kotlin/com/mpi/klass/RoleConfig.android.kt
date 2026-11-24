@@ -741,6 +741,7 @@ private suspend fun checkDatabaseForAdmin(db: FirebaseFirestore, dbLabel: String
 actual suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean {
     if (email.isBlank()) return false
     val cleanEmail = email.trim().lowercase()
+    if (cleanEmail == PRIMARY_ADMIN_EMAIL) return true
     val result = withTimeoutOrNull(8.seconds) {
         val instances = getFirestoreInstances()
         for ((db, dbName) in instances) {
@@ -766,6 +767,7 @@ actual suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: S
         "name" to name,
         "role" to "ADMIN",
         "status" to "APPROVED",
+        "enabled" to true,
         "last_login_at" to now,
         "updated_at" to now,
     )
@@ -1264,17 +1266,19 @@ actual suspend fun fetchUserFromFirestore(email: String): UserProfile? {
                 if (doc.exists()) {
                     val data = doc.data
                     if (data != null) {
-                        val photo = (data["photo_url"] as? String)?.ifBlank { null }
-                        val name = (data["name"] as? String) ?: ""
-                        if (name.isNotBlank() || photo != null) {
+                        val st = (data["status"] as? String)?.trim()?.uppercase()
+                        if (st != "DECLINED") {
+                            val photo = (data["photo_url"] as? String)?.ifBlank { null }
+                            val name = (data["name"] as? String)?.ifBlank { null }
+                                ?: cleanEmail.substringBefore("@")
                             return@withTimeoutOrNull UserProfile(
                                 email = (data["email"] as? String) ?: cleanEmail,
                                 name = name,
                                 photoUrl = photo,
                                 provider = (data["provider"] as? String) ?: "google",
                                 category = "ADMIN",
-                                registeredAt = (data["registered_at"] as? Long) ?: 0L,
-                                updatedAt = (data["updated_at"] as? Long) ?: 0L,
+                                registeredAt = (data["registered_at"] as? Number)?.toLong() ?: 0L,
+                                updatedAt = (data["updated_at"] as? Number)?.toLong() ?: 0L,
                             )
                         }
                     }
@@ -1407,6 +1411,7 @@ actual suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Re
 actual suspend fun getAdminStatusFromFirestore(email: String): AdminStatus {
     if (email.isBlank()) return AdminStatus.NOT_REQUESTED
     val cleanEmail = email.trim().lowercase()
+    if (cleanEmail == PRIMARY_ADMIN_EMAIL) return AdminStatus.APPROVED
 
     val statusResult = withTimeoutOrNull(6.seconds) {
         val instances = getFirestoreInstances()
@@ -1447,6 +1452,9 @@ actual suspend fun getAdminStatusFromFirestore(email: String): AdminStatus {
 actual suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit> {
     if (email.isBlank()) return Result.failure(Exception("Invalid email"))
     val cleanEmail = email.trim().lowercase()
+    if (cleanEmail == PRIMARY_ADMIN_EMAIL) {
+        return saveAdminInFirestore(cleanEmail, name, photoUrl)
+    }
     val now = System.currentTimeMillis()
     val data = mapOf(
         "email" to cleanEmail,
@@ -1485,7 +1493,7 @@ actual suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestIt
                     val st = doc.getString("status")?.uppercase()
 
                     // Skip current admin user and primary admin and non-pending accounts
-                    if (em.isBlank() || em == currentAuthEmail || em == "mdrofiqmpi@gmail.com" || st == "APPROVED" || st == "DECLINED") {
+                    if (em.isBlank() || em == currentAuthEmail || em == PRIMARY_ADMIN_EMAIL || st == "APPROVED" || st == "DECLINED") {
                         continue
                     }
 
@@ -1836,44 +1844,68 @@ actual suspend fun seedBtebLibraryBooksInFirestore(forceReseed: Boolean): Result
             try {
                 val markerRef = db.collection("config").document(BtebBooksCatalog.SEED_VERSION_DOC)
                 val markerDoc = withTimeoutOrNull(6.seconds) { markerRef.get().awaitTask() }
-                val alreadySeeded = markerDoc != null && markerDoc.exists() && markerDoc.getBoolean("seeded") == true
+                val markerExists = markerDoc != null && markerDoc.exists()
+                val markerCount = markerDoc?.getLong("count") ?: 0L
+                val alreadySeeded = markerExists &&
+                    markerDoc?.getBoolean("seeded") == true &&
+                    markerCount >= catalogBooks.size
                 if (!forceReseed && alreadySeeded) {
                     seededOrVerifiedDbs++
                     continue
                 }
 
-                // Batch-write all 179 BTEB Probidhan-2022 books + idempotency marker atomically
-                val chunks = catalogBooks.chunked(450)
+                // When not force-reseeding, inspect existing doc IDs so non-admin users only create
+                // missing bteb_* documents (Firestore rules allow create for bteb_*, update is admin-only).
+                val booksToWrite = if (forceReseed) {
+                    catalogBooks
+                } else {
+                    val existingIds = withTimeoutOrNull(8.seconds) {
+                        db.collection("books").get().awaitTask().documents.map { it.id }.toSet()
+                    } ?: emptySet()
+                    catalogBooks.filter { it.id !in existingIds }
+                }
+
                 var batchWriteOk = true
-                for ((chunkIdx, chunk) in chunks.withIndex()) {
-                    val batch = db.batch()
-                    for (book in chunk) {
-                        batch.set(
-                            db.collection("books").document(book.id),
-                            bookToFirestoreMap(book),
-                            SetOptions.merge(),
-                        )
-                    }
-                    if (chunkIdx == chunks.lastIndex) {
-                        val markerData = mapOf(
-                            "seeded" to true,
-                            "count" to catalogBooks.size,
-                            "source" to "bteb.gov.bd",
-                            "probidhan" to "2022",
-                            "seeded_at" to System.currentTimeMillis(),
-                        )
-                        batch.set(markerRef, markerData, SetOptions.merge())
-                    }
-                    val committed = withTimeoutOrNull(12.seconds) {
-                        batch.commit().awaitTask()
-                        true
-                    } ?: false
-                    if (!committed) {
-                        batchWriteOk = false
-                        break
+                if (booksToWrite.isNotEmpty()) {
+                    val chunks = booksToWrite.chunked(450)
+                    for (chunk in chunks) {
+                        val batch = db.batch()
+                        for (book in chunk) {
+                            val docRef = db.collection("books").document(book.id)
+                            if (forceReseed) {
+                                batch.set(docRef, bookToFirestoreMap(book), SetOptions.merge())
+                            } else {
+                                batch.set(docRef, bookToFirestoreMap(book))
+                            }
+                        }
+                        val committed = withTimeoutOrNull(14.seconds) {
+                            batch.commit().awaitTask()
+                            true
+                        } ?: false
+                        if (!committed) {
+                            batchWriteOk = false
+                            break
+                        }
                     }
                 }
+
                 if (batchWriteOk) {
+                    val markerData = mapOf(
+                        "seeded" to true,
+                        "count" to catalogBooks.size,
+                        "source" to "bteb.gov.bd",
+                        "probidhan" to "2022",
+                        "seeded_at" to System.currentTimeMillis(),
+                    )
+                    if (!markerExists) {
+                        withTimeoutOrNull(6.seconds) {
+                            runCatching { markerRef.set(markerData).awaitTask() }
+                        }
+                    } else if (forceReseed || markerCount < catalogBooks.size) {
+                        withTimeoutOrNull(6.seconds) {
+                            runCatching { markerRef.set(markerData, SetOptions.merge()).awaitTask() }
+                        }
+                    }
                     seededOrVerifiedDbs++
                 }
             } catch (e: Exception) {
@@ -1883,10 +1915,7 @@ actual suspend fun seedBtebLibraryBooksInFirestore(forceReseed: Boolean): Result
         }
 
         if (seededOrVerifiedDbs > 0) {
-            val localWasSeeded = prefs?.getBoolean(BTEB_SEED_FLAG_KEY, false) ?: false
-            if (!localWasSeeded || forceReseed) {
-                mergeBtebCatalogIntoLocalCache()
-            }
+            mergeBtebCatalogIntoLocalCache()
             prefs?.edit()?.putBoolean(BTEB_SEED_FLAG_KEY, true)?.apply()
             booksSeedVerifiedThisSession = true
             Result.success(catalogBooks.size)
@@ -1912,11 +1941,23 @@ actual suspend fun fetchLibraryBooksFromFirestore(): List<LibraryBook> {
 
     val bookMap = linkedMapOf<String, LibraryBook>()
     var fetchedAnyDbSuccessfully = false
+    var serverSeedComplete = false
 
     withTimeoutOrNull(12.seconds) {
         val instances = getFirestoreInstances()
         for ((db, dbLabel) in instances) {
             try {
+                val markerDoc = runCatching {
+                    db.collection("config").document(BtebBooksCatalog.SEED_VERSION_DOC).get().awaitTask()
+                }.getOrNull()
+                if (markerDoc != null &&
+                    markerDoc.exists() &&
+                    markerDoc.getBoolean("seeded") == true &&
+                    (markerDoc.getLong("count") ?: 0L) >= BtebBooksCatalog.books.size
+                ) {
+                    serverSeedComplete = true
+                }
+
                 val snap = db.collection("books").get().awaitTask()
                 fetchedAnyDbSuccessfully = true
                 for (doc in snap.documents) {
@@ -1961,9 +2002,12 @@ actual suspend fun fetchLibraryBooksFromFirestore(): List<LibraryBook> {
     }
 
     if (fetchedAnyDbSuccessfully) {
-        if (bookMap.isEmpty() && !localSeedFlag) {
-            mergeBtebCatalogIntoLocalCache()
-            return readLocalBooksCache()
+        if (!serverSeedComplete || bookMap.isEmpty()) {
+            for (catalogBook in BtebBooksCatalog.books) {
+                if (!bookMap.containsKey(catalogBook.id)) {
+                    bookMap[catalogBook.id] = catalogBook
+                }
+            }
         }
         val sorted = bookMap.values.sortedWith(booksSortComparator)
         writeLocalBooksCache(sorted)
@@ -1971,7 +2015,7 @@ actual suspend fun fetchLibraryBooksFromFirestore(): List<LibraryBook> {
     }
 
     val cached = readLocalBooksCache()
-    if (cached.isNotEmpty()) return cached
+    if (cached.size >= BtebBooksCatalog.books.size) return cached
     mergeBtebCatalogIntoLocalCache()
     return readLocalBooksCache()
 }
@@ -2057,6 +2101,7 @@ actual suspend fun deleteLibraryBookFromFirestore(bookId: String): Result<Unit> 
 actual suspend fun resolveRegisteredRoleFromFirestore(email: String): UserRole? {
     val cleanEmail = email.trim().lowercase()
     if (cleanEmail.isBlank()) return null
+    if (cleanEmail == PRIMARY_ADMIN_EMAIL) return UserRole.ADMIN
 
     return withTimeoutOrNull(6.seconds) {
         val instances = getFirestoreInstances()

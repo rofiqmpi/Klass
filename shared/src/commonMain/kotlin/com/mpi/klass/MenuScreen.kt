@@ -43,9 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -144,17 +142,17 @@ fun MenuScreen(
                     )
                 )
             }
-            if (role != null) {
-                add(
-                    MenuTileSpec(
-                        id = "books",
-                        title = "Books Library",
-                        subtitle = "Subject syllabus, codes & credits",
-                        icon = BookIcon,
-                        accent = KlassFeaturePalette.books(isDark),
-                        onClick = onBooksClick,
-                    )
+            add(
+                MenuTileSpec(
+                    id = "books",
+                    title = "Books Library",
+                    subtitle = "Subject syllabus, codes & credits",
+                    icon = BookIcon,
+                    accent = KlassFeaturePalette.books(isDark),
+                    onClick = onBooksClick,
                 )
+            )
+            if (role != null) {
                 add(
                     MenuTileSpec(
                         id = "teachers",
@@ -338,24 +336,6 @@ fun MenuScreen(
                             accent = KlassFeaturePalette.appearance(isDark),
                             badgeText = themeLabel,
                             onClick = onAppearanceClick,
-                        ),
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                    )
-                    SocialInsetDivider(startIndent = 72.dp)
-                    val clipboard = LocalClipboardManager.current
-                    SocialMenuRow(
-                        tile = MenuTileSpec(
-                            id = "debug_token",
-                            title = "App Check Debug Token",
-                            subtitle = "Tap to copy: $APP_CHECK_DEBUG_TOKEN",
-                            icon = ShieldIcon,
-                            accent = KlassFeaturePalette.ai(isDark),
-                            badgeText = "Copy",
-                            onClick = {
-                                clipboard.setText(AnnotatedString(APP_CHECK_DEBUG_TOKEN))
-                                showToast("App Check Debug Token copied!")
-                            },
                         ),
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
