@@ -29,53 +29,75 @@ private const val PRIMARY_STEP_TIMEOUT_MS = 30_000L
 private const val FALLBACK_STEP_TIMEOUT_MS = 20_000L
 
 private val ZED_STRUCTURED_SYSTEM_PROMPT = """
-    You are Zed, the intelligent AI assistant inside the MPI Klass Android app (Mymensingh Polytechnic Institute).
+    You are Zed, the intelligent, privacy-first AI assistant inside the MPI Klass Android app (Mymensingh Polytechnic Institute).
 
-    Capabilities:
-    1) Complete App & Campus Intelligence:
-       You receive CAMPUS_DATA JSON with the user's profile, MPI rules, BTEB Books Library, Teachers Directory, Classrooms, Published Class Routine, and Blood Donors.
-       - Ground EVERY specific person name, phone number, email, room number, subject code, and routine slot strictly in CAMPUS_DATA. Never invent missing contacts, rooms, or timetable slots.
-    2) General Intelligence:
-       Answer any general question clearly and helpfully using your full knowledge.
+    STRICT SECURITY & PRIVACY RULES:
+    - NEVER reveal, ask for, or invent personal phone numbers, personal emails, passwords, OTPs, tokens, or private identity numbers.
+    - If a user asks for anyone's password, email, or phone number, politely explain that Zed AI protects user security/privacy and guide them with an ACTION_ROW button to open Teachers or Blood Finder inside the app.
 
-    Response & A2UI Formatting Rules:
-    - Reply in Bengali when the user writes in Bengali or Banglish; otherwise reply in crisp English.
+    STRICT MODERATION & VERIFIED LEARNING:
+    - NEVER respond playfully to profanity, slurs, vulgarity, or abusive messages. Firmly decline and NEVER include or learn any inappropriate word.
+    - NEVER accept or store false claims, rumors, or fabricated campus rules as facts.
+    - If (and ONLY if) the user shares a genuinely true, helpful, non-sensitive campus or study fact (with zero PII and zero profanity), set `learnedFact` with `isVerifiedFactual=true` so Zed can remember it accurately for future chats. Otherwise omit `learnedFact`.
+
+    CAMPUS DATABASE QUERYING & GOOGLE A2UI OUTPUT:
+    - You receive CAMPUS_DATA JSON containing filtered Books Library results, Blood Finder group summaries & safe donor metadata, Teachers directory (no contacts), Classrooms (with `labSpecialty` for practical labs), Published Class Routine, and Learned Knowledge.
+    - STRICT LAB ROUTING KNOWLEDGE: Physics practicals (25912, 25922) MUST be routed to Physics Lab; Chemistry practicals (25913) to Chemistry Lab; Engineering Drawing/CAD (21011, CAD subjects) to Drawing/CAD Lab; Programming/Networking to Computer Lab; Electrical to Electrical Lab; Electronics to Electronics Lab; Civil/Survey/Hydraulics to Civil Lab; Workshop/Welding/Foundry to Mechanical Workshop; Power/Auto/IC Engine to Power & Automobile Lab; Electro-Medical to Electro-Medical Lab.
     - Output valid JSON matching the schema:
-      * answerText: Clear, direct answer.
-      * sourceBadge: Short topic label e.g. "Zed AI", "Books Library", "Teachers", "Class Routine", "Blood Donor", "Classrooms".
+      * answerText: Clear, concise answer grounded strictly in CAMPUS_DATA (reply in Bengali if user writes in Bengali/Banglish, else English).
+      * sourceBadge: Short topic label e.g. "Books Library", "Blood Finder", "Teachers", "Classrooms", "Class Routine", "Zed AI".
       * isSupportedDomain: true.
-      * blocks: Optional ordered Material 3 A2UI cards:
+      * blocks: Ordered Google A2UI cards:
         - HEADER_BANNER (title, subtitle, domain)
         - STAT_ROW (2-3 metrics in items)
         - KEY_VALUE_CARD (title + key-value pairs in items)
-        - ENTITY_LIST (books, donors, teachers, classrooms in items — include `phone` verbatim when present in CAMPUS_DATA)
-        - SCHEDULE_LIST (timetable slots in items — `badge` = day/period e.g. "Sun P1", `primary` = subject, `secondary` = time/teacher/room)
+        - ENTITY_LIST (books, safe donor summary, teachers, classrooms — with optional `actionType` + filter args like `COPY_TEXT`, `OPEN_BOOKS`, `OPEN_BLOOD`, `OPEN_TEACHERS`, `OPEN_CLASSROOMS`, `OPEN_ROUTINE`)
+        - SCHEDULE_LIST (timetable slots — `badge` = day/period, `primary` = subject, `secondary` = time/teacher/room)
         - CALLOUT (important note in `message`)
+        - ACTION_ROW (actionable pill buttons in `items`: `primary` = button label, `actionType` = one of OPEN_BOOKS/OPEN_BLOOD/OPEN_TEACHERS/OPEN_CLASSROOMS/OPEN_ROUTINE/COPY_TEXT, plus optional `dept`, `semester`, `bloodGroup`, `query`). Include ACTION_ROW whenever Books, Blood Finder, Teachers, Classrooms, or Routine are discussed!
     - Never include preset follow-up question lists.
 """.trimIndent()
 
 private val ZED_PLAIN_SYSTEM_PROMPT = """
-    You are Zed, the friendly, intelligent AI assistant inside the MPI Klass Android app (Mymensingh Polytechnic Institute).
+    You are Zed, the friendly, privacy-safe AI assistant inside the MPI Klass Android app (Mymensingh Polytechnic Institute).
 
-    You can help with BOTH:
-    1) MPI Klass & Campus Queries using the CAMPUS_DATA JSON provided with the user's message (user profile, books/subjects, teachers & phone numbers, classrooms, published class routine, and blood donors). Always state names, phone numbers, rooms, subject codes, and schedule slots strictly from CAMPUS_DATA when answering campus questions—never invent missing contacts or routine slots.
-    2) Any General Question (science, math, programming, polytechnic studies, translations, writing, history, everyday chat). Answer thoroughly, clearly, and directly.
+    STRICT SECURITY & MODERATION RULES:
+    - NEVER reveal, ask for, or invent user passwords, personal phone numbers, personal emails, or security credentials. Direct contact lookups to the authorized Blood Finder or Teachers screen inside the app.
+    - NEVER reply casually to profanity, obscene, or abusive prompts; decline respectfully and never echo or learn vulgar words.
+    - NEVER confirm false claims or rumors.
 
-    Formatting Rules:
-    - Reply in Bengali when the user writes in Bengali or Banglish; otherwise reply in crisp English.
-    - Respond directly in clean, readable natural prose (or concise bullet points). Do NOT wrap your reply in raw JSON or markdown code fences unless the user explicitly asked for code.
-    - Never include preset follow-up question lists.
+    CAPABILITIES:
+    1) MPI Klass Campus Queries grounded strictly in CAMPUS_DATA JSON (Books Library with dept/sem/credit/theory-practical filtering, Blood Finder summaries, Teachers, Classrooms & specialized Labs — Physics Lab for Physics practicals, Chemistry Lab for Chemistry practicals, Drawing/CAD Lab, Computer/Electrical/Electronics/Civil/Mechanical/Power/Electro-Medical Labs — Published Routine, and Verified Learned Knowledge).
+    2) General Knowledge & Polytechnic Study Help across coding, science, math, and assignments.
+    - Reply in Bengali when the user writes in Bengali or Banglish; otherwise English.
+    - Respond directly in clear natural prose without raw JSON fences unless code was requested.
 """.trimIndent()
 
 private val zedItemSchema = Schema.obj(
     properties = mapOf(
-        "primary" to Schema.string(description = "Primary title, label, or subject"),
+        "primary" to Schema.string(description = "Primary title, metric label, key, or button label"),
         "secondary" to Schema.string(description = "Secondary value, details, or time/room"),
         "badge" to Schema.string(description = "Optional short badge like subject code, day/period, or blood group"),
-        "phone" to Schema.string(description = "Optional phone number verbatim from CAMPUS_DATA"),
         "isPractical" to Schema.boolean(description = "True if the schedule slot is a practical lab"),
+        "actionType" to Schema.enumeration(
+            values = listOf(
+                "OPEN_BOOKS",
+                "OPEN_BLOOD",
+                "OPEN_TEACHERS",
+                "OPEN_CLASSROOMS",
+                "OPEN_ROUTINE",
+                "OPEN_NOTIFICATIONS",
+                "COPY_TEXT",
+                "ASK_FOLLOWUP",
+            ),
+            description = "Optional A2UI actionable command type",
+        ),
+        "dept" to Schema.string(description = "Optional department filter e.g. CST, CT, ET"),
+        "semester" to Schema.string(description = "Optional semester filter e.g. 1st, 4th"),
+        "bloodGroup" to Schema.string(description = "Optional blood group filter e.g. O+, A+"),
+        "query" to Schema.string(description = "Optional search text or text to copy"),
     ),
-    optionalProperties = listOf("badge", "phone", "isPractical"),
+    optionalProperties = listOf("secondary", "badge", "isPractical", "actionType", "dept", "semester", "bloodGroup", "query"),
 )
 
 private val zedBlockSchema = Schema.obj(
@@ -88,23 +110,38 @@ private val zedBlockSchema = Schema.obj(
                 "ENTITY_LIST",
                 "SCHEDULE_LIST",
                 "CALLOUT",
+                "ACTION_ROW",
             ),
             description = "A2UI card block type",
         ),
-        "title" to Schema.string(description = "Card or banner title"),
+        "title" to Schema.string(description = "Card, banner, or action row title"),
         "subtitle" to Schema.string(description = "Banner subtitle or list context"),
         "domain" to Schema.enumeration(
-            values = listOf("BOOKS", "BLOOD", "TEACHERS", "ROUTINE", "GENERAL"),
+            values = listOf("BOOKS", "BLOOD", "TEACHERS", "CLASSROOMS", "ROUTINE", "GENERAL"),
             description = "Campus or general domain",
         ),
         "message" to Schema.string(description = "Callout card message"),
         "isWarning" to Schema.boolean(description = "Whether the callout is a warning"),
         "items" to Schema.array(
             items = zedItemSchema,
-            description = "Ordered list of items for STAT_ROW, KEY_VALUE_CARD, ENTITY_LIST, or SCHEDULE_LIST",
+            description = "Ordered list of items for STAT_ROW, KEY_VALUE_CARD, ENTITY_LIST, SCHEDULE_LIST, or ACTION_ROW buttons",
         ),
     ),
     optionalProperties = listOf("title", "subtitle", "message", "isWarning", "items"),
+)
+
+private val zedLearnedFactSchema = Schema.obj(
+    properties = mapOf(
+        "topic" to Schema.string(description = "Short topic heading (2-6 words)"),
+        "fact" to Schema.string(description = "Verified non-PII factual statement to remember"),
+        "domain" to Schema.enumeration(
+            values = listOf("BOOKS", "BLOOD", "TEACHERS", "CLASSROOMS", "ROUTINE", "GENERAL"),
+            description = "Domain category",
+        ),
+        "isVerifiedFactual" to Schema.boolean(
+            description = "Set true ONLY if the statement is accurate, truthful, non-profane, and contains zero personal PII",
+        ),
+    ),
 )
 
 internal val zedResponseSchema: Schema = Schema.obj(
@@ -114,10 +151,11 @@ internal val zedResponseSchema: Schema = Schema.obj(
         "isSupportedDomain" to Schema.boolean(description = "True for supported campus or general queries"),
         "blocks" to Schema.array(
             items = zedBlockSchema,
-            description = "A2UI display blocks",
+            description = "A2UI display & action blocks",
         ),
+        "learnedFact" to zedLearnedFactSchema,
     ),
-    optionalProperties = listOf("sourceBadge", "isSupportedDomain", "blocks"),
+    optionalProperties = listOf("sourceBadge", "isSupportedDomain", "blocks", "learnedFact"),
 )
 
 private object ZedFirebaseAiProvider {
@@ -125,7 +163,7 @@ private object ZedFirebaseAiProvider {
         Firebase.ai.generativeModel(
             modelName = GEMINI_PRIMARY_MODEL,
             generationConfig = generationConfig {
-                temperature = 0.45f
+                temperature = 0.40f
                 responseMimeType = "application/json"
                 responseSchema = zedResponseSchema
             },
@@ -137,7 +175,7 @@ private object ZedFirebaseAiProvider {
         Firebase.ai.generativeModel(
             modelName = GEMINI_PRIMARY_MODEL,
             generationConfig = generationConfig {
-                temperature = 0.55f
+                temperature = 0.50f
             },
             systemInstruction = content { text(ZED_PLAIN_SYSTEM_PROMPT) },
         )
@@ -147,7 +185,7 @@ private object ZedFirebaseAiProvider {
         Firebase.ai.generativeModel(
             modelName = GEMINI_LITE_MODEL,
             generationConfig = generationConfig {
-                temperature = 0.55f
+                temperature = 0.50f
             },
             systemInstruction = content { text(ZED_PLAIN_SYSTEM_PROMPT) },
         )
@@ -172,18 +210,15 @@ actual suspend fun askZedWithGemini(
         )
     }
 
+    // Hard pre-flight safety gates: profanity/obscenity refusal & restricted PII guard
+    if (ZedModeration.containsProfanityOrAbuse(trimmed) || ZedModeration.asksForRestrictedPersonalData(trimmed)) {
+        return ZedAiEngine.evaluate(trimmed, snapshot, todayEnglishDay)
+    }
+
+    // Immediate offline / deterministic fallback for explicit local self-learning or offline mode
     if (!isNetworkAvailable()) {
-        val offlineMsg = if (isBn) {
-            "ইন্টারনেট সংযোগ পাওয়া যায়নি। দয়া করে Wi-Fi বা মোবাইল ডাটা চালু করে আবার চেষ্টা করুন।"
-        } else {
-            "No active internet connection detected. Please check your Wi-Fi or mobile data and try again."
-        }
-        return ZedReply(
-            answerText = offlineMsg,
-            sourceBadge = "Offline",
-            isSupportedDomain = true,
-            blocks = listOf(ZedA2UiBlock.CalloutCard(message = offlineMsg, isWarning = true)),
-        )
+        val local = ZedAiEngine.evaluate(trimmed, snapshot, todayEnglishDay)
+        return local.copy(sourceBadge = "${local.sourceBadge} • Offline")
     }
 
     return try {
@@ -193,15 +228,17 @@ actual suspend fun askZedWithGemini(
             }
         }
 
-        val campusQuery = isCampusOrAppQuery(trimmed)
+        val campusQuery = isCampusOrAppQuery(trimmed) ||
+            ZedModeration.extractUserTaughtFactCandidate(trimmed, snapshot) != null
+        val enrichedSnapshot = if (snapshot.books.size < BtebBooksCatalog.books.size) {
+            val merged = (snapshot.books + BtebBooksCatalog.books)
+                .distinctBy { it.id.ifBlank { it.subjectCode } }
+            snapshot.copy(books = merged)
+        } else {
+            snapshot
+        }
+
         val (currentTurnText, chatHistory) = withContext(Dispatchers.Default) {
-            val enrichedSnapshot = if (snapshot.books.size < BtebBooksCatalog.books.size) {
-                val merged = (snapshot.books + BtebBooksCatalog.books)
-                    .distinctBy { it.id.ifBlank { it.subjectCode } }
-                snapshot.copy(books = merged)
-            } else {
-                snapshot
-            }
             val contextJson = buildFullAppContextJson(trimmed, enrichedSnapshot, todayEnglishDay)
             val builtHistory = buildSanitizedChatHistory(history)
             "USER_QUERY: $trimmed\n\nCAMPUS_DATA:\n$contextJson" to builtHistory
@@ -231,9 +268,9 @@ actual suspend fun askZedWithGemini(
         }
 
         val jsonCandidate = if (campusQuery) extractJsonObjectIfWrapped(responseText) else null
-        if (jsonCandidate != null) {
+        val parsedReply = if (jsonCandidate != null) {
             runCatching {
-                parseZedA2UiResponse(jsonCandidate)
+                parseZedA2UiResponse(jsonCandidate, enrichedSnapshot.userRole?.name ?: "USER")
             }.getOrElse {
                 ZedReply(
                     answerText = responseText,
@@ -250,20 +287,35 @@ actual suspend fun askZedWithGemini(
                 blocks = emptyList(),
             )
         }
+
+        // Safety audit on output & attach actionable A2UI buttons if helpful
+        val cleanAnswer = if (ZedModeration.containsSensitivePii(parsedReply.answerText)) {
+            if (isBn) {
+                "অ্যাপের নিরাপত্তার স্বার্থে ব্যক্তিগত ফোন নম্বর বা ইমেইল প্রদর্শন করা হয়নি। নিচের বাটন থেকে অনুমোদিত স্ক্রিনে দেখুন।"
+            } else {
+                "Personal emails and phone numbers are protected and omitted for security. Use the action buttons below to browse authorized screens."
+            }
+        } else {
+            parsedReply.answerText
+        }
+
+        val finalLearnedFact = parsedReply.learnedFact ?: ZedModeration.extractUserTaughtFactCandidate(trimmed, enrichedSnapshot)
+        val updatedBlocks = enrichWithDefaultActionsIfNeeded(
+            query = trimmed,
+            blocks = parsedReply.blocks,
+            snapshot = enrichedSnapshot,
+            isBn = isBn,
+        )
+
+        parsedReply.copy(
+            answerText = cleanAnswer,
+            blocks = updatedBlocks,
+            learnedFact = finalLearnedFact,
+        )
     } catch (e: TimeoutCancellationException) {
         currentCoroutineContext().ensureActive()
         Log.e(ZED_AI_TAG, "Firebase AI request timed out", e)
-        val msg = if (isBn) {
-            "Zed AI রিকোয়েস্ট টাইমআউট হয়েছে। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।"
-        } else {
-            "Zed AI request timed out. Please check your internet connection and try again."
-        }
-        ZedReply(
-            answerText = msg,
-            sourceBadge = "Timeout",
-            isSupportedDomain = true,
-            blocks = listOf(ZedA2UiBlock.CalloutCard(message = msg, isWarning = true)),
-        )
+        ZedAiEngine.evaluate(trimmed, snapshot, todayEnglishDay)
     } catch (e: CancellationException) {
         throw e
     } catch (t: Throwable) {
@@ -273,17 +325,97 @@ actual suspend fun askZedWithGemini(
             null
         }
         val detail = formatThrowableDetail(t, appCheckDiag)
-        Log.e(ZED_AI_TAG, "Firebase AI call failed: $detail", t)
-        val msg = if (isBn) {
-            "Zed AI সংযোগ ব্যর্থ হয়েছে: $detail"
+        Log.e(ZED_AI_TAG, "Firebase AI call failed ($detail); falling back to ZedAiEngine", t)
+        val local = ZedAiEngine.evaluate(trimmed, snapshot, todayEnglishDay)
+        if (local.isSupportedDomain) {
+            local
         } else {
-            "Zed AI request failed: $detail"
+            val msg = if (isBn) "Zed AI সংযোগ ব্যর্থ হয়েছে: $detail" else "Zed AI request failed: $detail"
+            ZedReply(
+                answerText = msg,
+                sourceBadge = "AI Error",
+                isSupportedDomain = true,
+                blocks = listOf(ZedA2UiBlock.CalloutCard(message = msg, isWarning = true)),
+            )
         }
-        ZedReply(
-            answerText = msg,
-            sourceBadge = "AI Error",
-            isSupportedDomain = true,
-            blocks = listOf(ZedA2UiBlock.CalloutCard(message = msg, isWarning = true)),
+    }
+}
+
+private fun enrichWithDefaultActionsIfNeeded(
+    query: String,
+    blocks: List<ZedA2UiBlock>,
+    snapshot: ZedContextSnapshot,
+    isBn: Boolean,
+): List<ZedA2UiBlock> {
+    if (blocks.any { it is ZedA2UiBlock.ActionRow }) return blocks
+    val q = query.lowercase()
+    val bannerDomain = blocks.filterIsInstance<ZedA2UiBlock.HeaderBanner>().firstOrNull()?.domain?.uppercase()
+    val actions = mutableListOf<ZedA2UiAction>()
+
+    val bookFilter = ZedAiEngine.parseBookFilter(
+        rawQuery = query,
+        userDept = snapshot.userProfile?.department,
+        userSem = snapshot.userProfile?.semester,
+    )
+    if (bannerDomain == "BOOKS" || q.contains("book") || q.contains("library") || q.contains("বই") || Regex("\\b\\d{5}\\b").containsMatchIn(q)) {
+        actions.add(
+            ZedA2UiAction(
+                label = if (isBn) "Books Library খুলুন" else "Open Books Library",
+                actionType = ZedActionType.OPEN_BOOKS,
+                dept = bookFilter.dept.orEmpty(),
+                semester = bookFilter.semesterKey.orEmpty(),
+                query = bookFilter.subjectCode ?: bookFilter.searchKeywords.firstOrNull().orEmpty(),
+            )
+        )
+    }
+
+    val bloodGroup = RoutineRules.BLOOD_GROUPS.firstOrNull { bg ->
+        Regex("(?i)(?:^|\\s)${Regex.escape(bg)}(?:\\s|\$|[?,!।])").containsMatchIn(query)
+    }
+    if (bannerDomain == "BLOOD" || bloodGroup != null || q.contains("blood") || q.contains("donor") || q.contains("রক্ত")) {
+        actions.add(
+            ZedA2UiAction(
+                label = if (bloodGroup != null) "Open Blood Finder ($bloodGroup)" else "Open Blood Finder",
+                actionType = ZedActionType.OPEN_BLOOD,
+                bloodGroup = bloodGroup.orEmpty(),
+                query = ZedAiEngine.detectRequestedDept(q).orEmpty(),
+            )
+        )
+    }
+
+    if (bannerDomain == "TEACHERS" || q.contains("teacher") || q.contains("শিক্ষক")) {
+        actions.add(
+            ZedA2UiAction(
+                label = if (isBn) "Teachers খুলুন" else "Open Teachers",
+                actionType = ZedActionType.OPEN_TEACHERS,
+            )
+        )
+    }
+
+    if (bannerDomain == "CLASSROOMS" || q.contains("classroom") || q.contains("room") || q.contains("lab") || q.contains("রুম")) {
+        actions.add(
+            ZedA2UiAction(
+                label = if (isBn) "Classrooms খুলুন" else "Open Classrooms",
+                actionType = ZedActionType.OPEN_CLASSROOMS,
+            )
+        )
+    }
+
+    if (bannerDomain == "ROUTINE" || q.contains("routine") || q.contains("রুটিন") || q.contains("class")) {
+        actions.add(
+            ZedA2UiAction(
+                label = if (isBn) "রুটিন দেখুন" else "Open Routine",
+                actionType = ZedActionType.OPEN_ROUTINE,
+            )
+        )
+    }
+
+    return if (actions.isEmpty()) {
+        blocks
+    } else {
+        blocks + ZedA2UiBlock.ActionRow(
+            title = if (isBn) "সরাসরি অ্যাকশন" else "Quick Actions",
+            actions = actions.distinctBy { it.actionType },
         )
     }
 }
@@ -341,7 +473,6 @@ private suspend fun executePlainAndLiteChain(
 ): String {
     var lastError: Throwable? = priorFailure
 
-    // 1. Live streaming on primary model (fastest time-to-first-token)
     try {
         val streamed = withTimeout(PRIMARY_STEP_TIMEOUT_MS) {
             streamChat(
@@ -363,7 +494,6 @@ private suspend fun executePlainAndLiteChain(
         lastError = t
     }
 
-    // 2. Unary fallback on primary model (bypasses SSE channel/buffering issues)
     try {
         val unary = withTimeout(FALLBACK_STEP_TIMEOUT_MS) {
             generateUnary(
@@ -384,7 +514,6 @@ private suspend fun executePlainAndLiteChain(
         lastError = t
     }
 
-    // 3. Final fallback on lite model (stream -> unary)
     return try {
         withTimeout(FALLBACK_STEP_TIMEOUT_MS) {
             val liteStreamed = runCatching {
@@ -495,6 +624,7 @@ internal fun buildSanitizedChatHistory(history: List<AiChatMessage>): List<Conte
     for (msg in history.takeLast(8)) {
         val txt = msg.text.trim()
         if (txt.isBlank()) continue
+        if (ZedModeration.containsProfanityOrAbuse(txt) || ZedModeration.containsSensitivePii(txt)) continue
         val role = if (msg.isFromUser) "user" else "model"
         if (turns.isEmpty() && role == "model") {
             continue
@@ -520,7 +650,23 @@ private fun JSONObject.safeString(key: String, default: String = ""): String {
     return if (v.equals("null", ignoreCase = true)) default else v
 }
 
-internal fun parseZedA2UiResponse(jsonString: String): ZedReply {
+private fun parseActionFromJsonItem(obj: JSONObject, fallbackLabel: String = ""): ZedA2UiAction? {
+    val type = ZedActionType.fromRaw(obj.safeString("actionType")) ?: return null
+    val label = obj.safeString("primary")
+        .ifBlank { obj.safeString("label") }
+        .ifBlank { fallbackLabel }
+        .ifBlank { "Open" }
+    return ZedA2UiAction(
+        label = label,
+        actionType = type,
+        dept = obj.safeString("dept"),
+        semester = obj.safeString("semester"),
+        bloodGroup = obj.safeString("bloodGroup"),
+        query = obj.safeString("query"),
+    )
+}
+
+internal fun parseZedA2UiResponse(jsonString: String, authorRole: String = "USER"): ZedReply {
     val root = JSONObject(jsonString)
     val answerText = root.safeString("answerText")
     val sourceBadge = root.safeString("sourceBadge", "Zed AI").ifBlank { "Zed AI" }
@@ -536,7 +682,7 @@ internal fun parseZedA2UiResponse(jsonString: String): ZedReply {
         val domain = obj.safeString("domain", "GENERAL").uppercase().ifBlank { "GENERAL" }
         val message = obj.safeString("message")
         val isWarning = obj.optBoolean("isWarning", false)
-        val itemsArr = obj.optJSONArray("items") ?: JSONArray()
+        val itemsArr = obj.optJSONArray("items") ?: obj.optJSONArray("actions") ?: JSONArray()
 
         when (type) {
             "HEADER_BANNER" -> if (title.isNotBlank()) {
@@ -560,7 +706,7 @@ internal fun parseZedA2UiResponse(jsonString: String): ZedReply {
                     val it = itemsArr.optJSONObject(j) ?: continue
                     val k = it.safeString("primary")
                     val v = it.safeString("secondary")
-                    if (k.isNotBlank() && v.isNotBlank()) {
+                    if (k.isNotBlank() && v.isNotBlank() && !ZedModeration.containsSensitivePii(v)) {
                         kvList.add(ZedKeyValue(label = k, value = v))
                     }
                 }
@@ -575,9 +721,9 @@ internal fun parseZedA2UiResponse(jsonString: String): ZedReply {
                     val prim = it.safeString("primary")
                     val sec = it.safeString("secondary")
                     val badge = it.safeString("badge")
-                    val phone = it.safeString("phone").takeIf { p -> p.isNotBlank() }
-                    if (prim.isNotBlank()) {
-                        entities.add(ZedEntityItem(primary = prim, secondary = sec, badge = badge, phone = phone))
+                    val action = parseActionFromJsonItem(it, fallbackLabel = if (badge.isNotBlank()) "View" else "Open")
+                    if (prim.isNotBlank() && !ZedModeration.containsSensitivePii(prim) && !ZedModeration.containsSensitivePii(sec)) {
+                        entities.add(ZedEntityItem(primary = prim, secondary = sec, badge = badge, action = action))
                     }
                 }
                 if (entities.isNotEmpty()) {
@@ -611,7 +757,29 @@ internal fun parseZedA2UiResponse(jsonString: String): ZedReply {
             "CALLOUT" -> if (message.isNotBlank()) {
                 blocks.add(ZedA2UiBlock.CalloutCard(message = message, isWarning = isWarning))
             }
+            "ACTION_ROW" -> {
+                val actions = mutableListOf<ZedA2UiAction>()
+                for (j in 0 until itemsArr.length()) {
+                    val it = itemsArr.optJSONObject(j) ?: continue
+                    parseActionFromJsonItem(it)?.let { act -> actions.add(act) }
+                }
+                if (actions.isNotEmpty()) {
+                    blocks.add(ZedA2UiBlock.ActionRow(title = title.ifBlank { "Quick Actions" }, actions = actions))
+                }
+            }
         }
+    }
+
+    val learnedFactObj = root.optJSONObject("learnedFact")
+    val learnedEntry = if (learnedFactObj != null && learnedFactObj.optBoolean("isVerifiedFactual", false)) {
+        ZedModeration.sanitizeLearnedEntry(
+            topic = learnedFactObj.safeString("topic"),
+            fact = learnedFactObj.safeString("fact"),
+            domain = learnedFactObj.safeString("domain", "GENERAL"),
+            authorRole = authorRole,
+        )
+    } else {
+        null
     }
 
     return ZedReply(
@@ -619,6 +787,7 @@ internal fun parseZedA2UiResponse(jsonString: String): ZedReply {
         sourceBadge = sourceBadge,
         isSupportedDomain = isSupported,
         blocks = blocks,
+        learnedFact = learnedEntry,
     )
 }
 
@@ -627,23 +796,24 @@ private val SUBJECT_CODE_REGEX = Regex("\\b\\d{5}\\b")
 
 private val CAMPUS_EXACT_TOKENS = setOf(
     "book", "books", "syllabus", "subject", "subjects", "code", "codes", "credit", "credits", "bteb", "probidhan",
-    "teacher", "teachers", "sir", "madam", "faculty", "phone", "number", "numbers", "contact", "contacts",
+    "practical", "theory", "lab", "labs",
+    "teacher", "teachers", "sir", "madam", "faculty",
     "routine", "schedule", "schedules", "class", "classes", "period", "periods", "today", "tomorrow", "timetable",
-    "room", "rooms", "classroom", "classrooms", "lab", "labs", "building", "floor",
+    "room", "rooms", "classroom", "classrooms", "building", "floor",
     "blood", "donor", "donors", "a+", "a-", "b+", "b-", "o+", "o-", "ab+", "ab-",
     "mpi", "klass", "polytechnic", "mymensingh",
     "semester", "semesters", "sem", "shift", "shifts", "section", "department", "departments", "dept", "depts",
-    "cst", "mt", "et", "ent", "ct", "rac", "ec",
-    "profile", "roll", "account", "admin", "guest", "app",
+    "cst", "mt", "et", "ent", "ct", "rac", "ec", "pt", "emt",
+    "profile", "account", "admin", "guest", "app", "zed",
 )
 
 private val CAMPUS_BN_STEMS = listOf(
-    "বই", "সিলেবাস", "বিষয়", "কোড", "ক্রেডিট",
-    "শিক্ষক", "স্যার", "ম্যাম", "ফোন", "নম্বর", "যোগাযোগ",
+    "বই", "সিলেবাস", "বিষয়", "কোড", "ক্রেডিট", "ব্যবহারিক", "থিউরি",
+    "শিক্ষক", "স্যার", "ম্যাম",
     "রুটিন", "ক্লাস", "পিরিয়ড", "সময়", "আজ", "আগামীকাল",
     "রুম", "ল্যাব", "কক্ষ", "ভবন", "ফ্লোর",
     "রক্ত", "ডোনার", "দাতা",
-    "সেমিস্টার", "শিফট", "ডিপার্টমেন্ট", "প্রোফাইল", "রোল", "ক্যাম্পাস", "অ্যাপ",
+    "সেমিস্টার", "শিফট", "ডিপার্টমেন্ট", "প্রোফাইল", "ক্যাম্পাস", "অ্যাপ",
 )
 
 private fun extractQueryTokens(query: String): List<String> =
@@ -675,12 +845,12 @@ internal fun buildFullAppContextJson(
     val campusQuery = isCampusOrAppQuery(query)
 
     val wantBooks = wordTokens.matchesCampusKeywords(
-        setOf("book", "books", "syllabus", "subject", "subjects", "code", "codes", "credit", "credits", "bteb", "probidhan", "semester", "semesters", "sem"),
-        listOf("বই", "সিলেবাস", "বিষয়", "কোড", "ক্রেডিট", "সেমিস্টার"),
+        setOf("book", "books", "syllabus", "subject", "subjects", "code", "codes", "credit", "credits", "bteb", "probidhan", "semester", "semesters", "sem", "practical", "theory"),
+        listOf("বই", "সিলেবাস", "বিষয়", "কোড", "ক্রেডিট", "সেমিস্টার", "ব্যবহারিক", "থিউরি"),
     ) || SUBJECT_CODE_REGEX.containsMatchIn(q)
     val wantTeachers = wordTokens.matchesCampusKeywords(
-        setOf("teacher", "teachers", "sir", "madam", "faculty", "phone", "number", "numbers", "contact", "contacts"),
-        listOf("শিক্ষক", "স্যার", "ম্যাম", "ফোন", "নম্বর", "যোগাযোগ"),
+        setOf("teacher", "teachers", "sir", "madam", "faculty"),
+        listOf("শিক্ষক", "স্যার", "ম্যাম"),
     )
     val wantRooms = wordTokens.matchesCampusKeywords(
         setOf("room", "rooms", "classroom", "classrooms", "lab", "labs", "building", "floor"),
@@ -709,16 +879,14 @@ internal fun buildFullAppContextJson(
                 put("2nd", "01:30 PM - 06:45 PM (7 periods)")
             })
         })
+        // STRICT PII SCRUBBING: Zero email, phone, password, roll, or registration exposed to AI
         put("currentUser", JSONObject().apply {
             put("name", snapshot.userDisplayName)
             put("role", snapshot.userRole?.name ?: "GUEST")
-            val userEmail = snapshot.userFullProfile?.email ?: snapshot.userProfile?.email ?: ""
-            if (userEmail.isNotBlank()) put("email", userEmail)
             if (userDept.isNotBlank()) put("department", userDept)
             snapshot.userProfile?.semester?.takeIf { it.isNotBlank() }?.let { put("semester", it) }
             snapshot.userProfile?.shift?.takeIf { it.isNotBlank() }?.let { put("shift", it) }
             snapshot.userProfile?.section?.takeIf { it.isNotBlank() }?.let { put("section", it) }
-            snapshot.userProfile?.rollNumber?.takeIf { it.isNotBlank() }?.let { put("roll", it) }
             snapshot.userProfile?.bloodGroup?.takeIf { it.isNotBlank() }?.let { put("blood", it) }
         })
         put("totals", JSONObject().apply {
@@ -727,7 +895,30 @@ internal fun buildFullAppContextJson(
             put("classrooms", snapshot.classrooms.size)
             put("donors", snapshot.donors.size)
             put("routineSlots", snapshot.routinePlan?.entries?.size ?: 0)
+            put("learnedFacts", snapshot.learnedKnowledge.size)
         })
+    }
+
+    // Always include relevant verified learned facts (PII-free)
+    if (snapshot.learnedKnowledge.isNotEmpty()) {
+        val relevantKnowledge = snapshot.learnedKnowledge
+            .filter { !ZedModeration.containsSensitivePii(it.fact) && !ZedModeration.containsProfanityOrAbuse(it.fact) }
+            .sortedByDescending { k ->
+                val text = "${k.topic} ${k.fact}".lowercase()
+                tokens.count { tok -> text.contains(tok) }
+            }
+            .take(8)
+        if (relevantKnowledge.isNotEmpty()) {
+            json.put("learnedKnowledge", JSONArray().apply {
+                relevantKnowledge.forEach { k ->
+                    put(JSONObject().apply {
+                        put("topic", k.topic)
+                        put("fact", k.fact)
+                        put("domain", k.domain)
+                    })
+                }
+            })
+        }
     }
 
     if (!campusQuery) {
@@ -737,18 +928,16 @@ internal fun buildFullAppContextJson(
     val includeAllFallback = !specificDomainMatched
 
     if (wantBooks || includeAllFallback) {
-        val books = snapshot.books
-            .sortedByDescending { b ->
-                var score = tokens.count { tok ->
-                    b.title.lowercase().contains(tok) ||
-                        b.subjectCode.lowercase().contains(tok) ||
-                        b.departmentSemesters.keys.any { it.lowercase() == tok }
-                } * 3
-                if (userDept.isNotBlank() && b.departmentSemesters.containsKey(userDept)) score += 1
-                score
-            }
-            .take(if (wantBooks) 18 else 8)
+        val filter = ZedAiEngine.parseBookFilter(
+            rawQuery = query,
+            userDept = snapshot.userProfile?.department,
+            userSem = snapshot.userProfile?.semester,
+        )
+        val matched = ZedAiEngine.filterBooks(snapshot.books, filter)
+        val books = (if (matched.isNotEmpty()) matched else snapshot.books)
+            .take(if (wantBooks) 24 else 8)
 
+        json.put("booksMatchCount", matched.size)
         if (books.isNotEmpty()) {
             json.put("books", JSONArray().apply {
                 books.forEach { b ->
@@ -790,7 +979,7 @@ internal fun buildFullAppContextJson(
                         if (t.department.isNotBlank()) put("dept", t.department)
                         val shift = pref?.shift?.ifBlank { t.shift } ?: t.shift
                         if (shift.isNotBlank()) put("shift", shift)
-                        if (t.phone.isNotBlank()) put("phone", t.phone)
+                        // NO phone or email included for privacy protection
                         if (pref != null && pref.semesterSubjects.isNotEmpty()) {
                             put("subjects", pref.semesterSubjects.entries.joinToString("; ") { (sem, codes) ->
                                 "${RoutineRules.semesterShortLabel(sem)}:[${codes.joinToString(",")}]"
@@ -802,22 +991,44 @@ internal fun buildFullAppContextJson(
         }
     }
 
-    if ((wantRooms || includeAllFallback) && snapshot.classrooms.isNotEmpty()) {
+    val detectedLab = ZedAiEngine.detectRequestedLabSpecialty(query, snapshot.books)
+    if (detectedLab != null) {
+        val (spec, book) = detectedLab
+        json.put("requestedLabRouting", JSONObject().apply {
+            put("requiredLabSpecialty", spec.label)
+            if (book != null) {
+                put("subjectCode", book.subjectCode)
+                put("subjectTitle", book.title)
+            }
+        })
+    }
+
+    if ((wantRooms || detectedLab != null || includeAllFallback) && snapshot.classrooms.isNotEmpty()) {
+        val requestedSpec = detectedLab?.first
         val rooms = snapshot.classrooms
             .sortedByDescending { r ->
-                tokens.count { tok ->
+                var score = 0
+                if (requestedSpec != null && r.roomType == ClassroomType.LAB && r.effectiveLabSpecialty() == requestedSpec) {
+                    score += 100
+                }
+                score += tokens.count { tok ->
                     r.roomNumber.lowercase().contains(tok) ||
                         r.buildingOrFloor.lowercase().contains(tok) ||
+                        r.effectiveLabSpecialty().label.lowercase().contains(tok) ||
                         r.effectiveNearestDepartments().any { it.lowercase() == tok }
                 } * 3
+                score
             }
-            .take(if (wantRooms) 18 else 8)
+            .take(if (wantRooms || detectedLab != null) 18 else 8)
 
         json.put("classrooms", JSONArray().apply {
             rooms.forEach { r ->
                 put(JSONObject().apply {
                     put("room", r.roomNumber)
                     put("type", r.roomType.name)
+                    if (r.roomType == ClassroomType.LAB) {
+                        put("labSpecialty", r.effectiveLabSpecialty().label)
+                    }
                     if (r.buildingOrFloor.isNotBlank()) put("floor", r.buildingOrFloor)
                     val nearest = r.effectiveNearestDepartments().joinToString(", ")
                     if (nearest.isNotBlank()) put("near", nearest)
@@ -827,7 +1038,23 @@ internal fun buildFullAppContextJson(
     }
 
     if ((wantDonors || includeAllFallback) && snapshot.donors.isNotEmpty()) {
+        // Aggregated blood group counts across entire DB (safe stats, zero PII)
+        val groupCounts = JSONObject()
+        snapshot.donors.groupingBy { it.bloodGroup.uppercase() }.eachCount().forEach { (bg, count) ->
+            if (bg.isNotBlank()) groupCounts.put(bg, count)
+        }
+        json.put("bloodGroupSummary", groupCounts)
+
+        val reqBg = RoutineRules.BLOOD_GROUPS.firstOrNull { bg ->
+            Regex("(?i)(?:^|\\s)${Regex.escape(bg)}(?:\\s|\$|[?,!।])").containsMatchIn(query)
+        }
+        val reqDept = ZedAiEngine.detectRequestedDept(q)
+
         val donors = snapshot.donors
+            .filter { d ->
+                (reqBg == null || d.bloodGroup.equals(reqBg, true)) &&
+                    (reqDept == null || d.department.equals(reqDept, true))
+            }
             .sortedByDescending { d ->
                 tokens.count { tok ->
                     d.bloodGroup.lowercase() == tok ||
@@ -843,7 +1070,8 @@ internal fun buildFullAppContextJson(
                     put("name", d.name)
                     put("blood", d.bloodGroup)
                     if (d.department.isNotBlank()) put("dept", d.department)
-                    if (d.phone.isNotBlank()) put("phone", d.phone)
+                    if (d.roleLabel.isNotBlank()) put("role", d.roleLabel)
+                    // NO phone, email, or home address PII included
                 })
             }
         })

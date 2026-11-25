@@ -112,6 +112,33 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update, delete: if isApprovedAdmin();
     }
+
+    function isValidZedKnowledge(data) {
+      return data.keys().hasAll(['id', 'topic', 'fact', 'domain', 'author_uid', 'verified', 'created_at']) &&
+        data.keys().hasOnly(['id', 'topic', 'fact', 'domain', 'author_uid', 'author_role', 'verified', 'created_at']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 160 &&
+        data.topic is string && data.topic.size() >= 2 && data.topic.size() <= 120 &&
+        data.fact is string && data.fact.size() >= 6 && data.fact.size() <= 500 &&
+        !data.fact.matches('.*@.*') &&
+        !data.topic.matches('.*@.*') &&
+        data.domain is string && data.domain in ['BOOKS', 'ROUTINE', 'TEACHERS', 'CLASSROOMS', 'BLOOD', 'GENERAL'] &&
+        data.author_uid is string && data.author_uid == request.auth.uid &&
+        data.get('author_role', 'USER') is string && data.get('author_role', 'USER').size() <= 32 &&
+        data.verified is bool && data.verified == true &&
+        data.created_at is int && data.created_at > 0;
+    }
+
+    // Verified non-PII knowledge base learned by Zed AI
+    match /zed_knowledge/{factId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        isValidId(factId) &&
+        request.resource.data.id == factId &&
+        isValidZedKnowledge(request.resource.data);
+      allow update: if false;
+      allow delete: if isApprovedAdmin() ||
+        (isAuthenticated() && resource.data.author_uid == request.auth.uid);
+    }
   }
 }
 

@@ -135,6 +135,9 @@ fun BooksLibraryScreen(
     hindSiliguri: FontFamily,
     canEdit: Boolean = true,
     topContentPadding: Dp = 72.dp,
+    initialDept: String? = null,
+    initialSem: String? = null,
+    initialQuery: String = "",
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -142,9 +145,19 @@ fun BooksLibraryScreen(
 
     var books by remember { mutableStateOf<List<LibraryBook>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedDept by remember { mutableStateOf<String?>(null) }
-    var selectedSem by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember(initialQuery) { mutableStateOf(initialQuery) }
+    var selectedDept by remember(initialDept) {
+        mutableStateOf(
+            initialDept?.trim()?.takeIf { it.isNotBlank() }?.let { RoutineRules.normalizeDepartmentShort(it) }
+        )
+    }
+    var selectedSem by remember(initialSem) {
+        mutableStateOf(
+            initialSem?.trim()?.takeIf { it.isNotBlank() }?.let {
+                RoutineRules.canonicalSemesterKey(it).ifBlank { it }
+            }
+        )
+    }
     var showFilterSheet by remember { mutableStateOf(false) }
     var detailBook by remember { mutableStateOf<LibraryBook?>(null) }
     var showFormScreen by remember { mutableStateOf(false) }

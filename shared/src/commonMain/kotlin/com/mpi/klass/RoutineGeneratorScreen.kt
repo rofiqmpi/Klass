@@ -89,6 +89,9 @@ fun RoutineGeneratorScreen(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     topContentPadding: Dp = 72.dp,
+    openExplorerTrigger: Int = 0,
+    openRequestsTrigger: Int = 0,
+    onPendingRequestsCountChange: (Int) -> Unit = {},
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
     onPlanPublished: (RoutinePlan) -> Unit = {},
 ) {
@@ -101,9 +104,11 @@ fun RoutineGeneratorScreen(
     val adminAccent = KlassFeaturePalette.admin(isDark)
     val conflictAccent = KlassFeaturePalette.error(isDark)
 
-    var activeTab by remember { mutableIntStateOf(0) }
+    var showExplorerScreen by remember { mutableStateOf(false) }
+    var showRequestsScreen by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var isProcessing by remember { mutableStateOf(false) }
+    var isSeedingDemo by remember { mutableStateOf(false) }
 
     var books by remember { mutableStateOf<List<LibraryBook>>(emptyList()) }
     var teachers by remember { mutableStateOf<List<TeacherSchedulingPref>>(emptyList()) }
@@ -115,7 +120,16 @@ fun RoutineGeneratorScreen(
     var shift2Start by remember { mutableStateOf("13:30") }
     var periodDuration by remember { mutableIntStateOf(45) }
     var periodsPerDay by remember { mutableIntStateOf(7) }
+    var practicalBlockMode by remember { mutableStateOf("AUTO_2_3") }
     var activeSemesters by remember { mutableStateOf(RoutineRules.ALL_SEMESTER_KEYS.toSet()) }
+
+    var wizardStep by remember { mutableIntStateOf(0) }
+    var activeBookIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var activeTeacherEmails by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var activeClassroomIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var knownBookIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var knownTeacherEmails by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var knownClassroomIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     var explorerMode by remember { mutableIntStateOf(0) }
     var filterDept by remember { mutableStateOf("CST") }
@@ -132,7 +146,9 @@ fun RoutineGeneratorScreen(
     var showConflictsScreen by remember { mutableStateOf(false) }
     var reviewingRequest by remember { mutableStateOf<RoutineEditRequest?>(null) }
 
-    val hasAnySubScreen = editingSlot != null ||
+    val hasAnySubScreen = showExplorerScreen ||
+        showRequestsScreen ||
+        editingSlot != null ||
         resolvingConflict != null ||
         showScheduleSettings ||
         showConflictsScreen ||
@@ -146,6 +162,19 @@ fun RoutineGeneratorScreen(
         onDispose { onFullScreenOverlayChange(false) }
     }
 
+    LaunchedEffect(openExplorerTrigger) {
+        if (openExplorerTrigger > 0) {
+            showRequestsScreen = false
+            showExplorerScreen = true
+        }
+    }
+    LaunchedEffect(openRequestsTrigger) {
+        if (openRequestsTrigger > 0) {
+            showExplorerScreen = false
+            showRequestsScreen = true
+        }
+    }
+
     fun refreshAll() {
         scope.launch {
             isLoading = true
@@ -153,6 +182,28 @@ fun RoutineGeneratorScreen(
                 books = RoleConfig.fetchLibraryBooks().ifEmpty { BtebBooksCatalog.books }
                 teachers = fetchAllTeacherSchedulingPrefsFromFirestore()
                 classrooms = fetchClassroomsFromFirestore()
+
+                val allBookKeys = books.map { it.id }.toSet()
+                val newBooks = allBookKeys - knownBookIds
+                if (newBooks.isNotEmpty()) {
+                    activeBookIds = activeBookIds + newBooks
+                    knownBookIds = knownBookIds + allBookKeys
+                }
+
+                val allTeacherKeys = teachers.map { it.email.trim().lowercase() }.toSet()
+                val newTeachers = allTeacherKeys - knownTeacherEmails
+                if (newTeachers.isNotEmpty()) {
+                    activeTeacherEmails = activeTeacherEmails + newTeachers
+                    knownTeacherEmails = knownTeacherEmails + allTeacherKeys
+                }
+
+                val allRoomKeys = classrooms.map { it.id }.toSet()
+                val newRooms = allRoomKeys - knownClassroomIds
+                if (newRooms.isNotEmpty()) {
+                    activeClassroomIds = activeClassroomIds + newRooms
+                    knownClassroomIds = knownClassroomIds + allRoomKeys
+                }
+
                 val draft = fetchRoutinePlanFromFirestore("master_6m")
                 val pub = fetchRoutinePlanFromFirestore("master_6m_published")
                 val loadedPlan = listOfNotNull(draft, pub).maxByOrNull {
@@ -164,6 +215,7 @@ fun RoutineGeneratorScreen(
                     shift2Start = loadedPlan.config.shift2StartTime
                     periodDuration = loadedPlan.config.periodDurationMinutes
                     periodsPerDay = loadedPlan.config.periodsPerDay
+                    practicalBlockMode = loadedPlan.config.practicalBlockMode.ifBlank { "AUTO_2_3" }
                     activeSemesters = loadedPlan.config.activeSemesters.toSet().ifEmpty {
                         RoutineRules.ALL_SEMESTER_KEYS.toSet()
                     }
@@ -186,27 +238,26 @@ fun RoutineGeneratorScreen(
     }
 
     val pendingRequestsCount = editRequests.count { it.status == EditRequestStatus.PENDING }
+    LaunchedEffect(pendingRequestsCount) {
+        onPendingRequestsCountChange(pendingRequestsCount)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalBackdrop(
             isDark = isDark,
-            focusAccent = when (activeTab) {
-                0 -> genAccent.primary
-                1 -> teacherAccent.primary
-                else -> adminAccent.primary
-            },
+            focusAccent = genAccent.primary,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .navigationBarsPadding(),
+                    .then(if (wizardStep == 5) Modifier else Modifier.navigationBarsPadding()),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (topContentPadding > 0.dp) {
                     Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                     Spacer(modifier = Modifier.height(topContentPadding))
                 } else {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 Column(
@@ -214,547 +265,346 @@ fun RoutineGeneratorScreen(
                         .fillMaxSize()
                         .widthIn(max = 980.dp),
                 ) {
-                    val tabs: List<Triple<Int, String, Pair<ImageVector, Color>>> = listOf(
-                        Triple(0, "Generate", SparkleIcon to genAccent.primary),
-                        Triple(1, "Explorer", CalendarDaysIcon to teacherAccent.primary),
-                        Triple(
-                            2,
-                            if (pendingRequestsCount > 0) "Requests ($pendingRequestsCount)" else "Requests",
-                            SwapIcon to adminAccent.primary,
-                        ),
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                if (isDark) cs.surfaceContainerLow.copy(alpha = 0.70f)
-                                else Color.White.copy(alpha = 0.74f)
-                            ),
-                    ) {
-                        tabs.forEach { (tabIdx, title, iconAndColor) ->
-                            val (icon, tabAccent) = iconAndColor
-                            val selected = activeTab == tabIdx
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { activeTab = tabIdx }
-                                    .testTag("routine_tab_$tabIdx"),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 13.dp, horizontal = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = null,
-                                        tint = if (selected) tabAccent else cs.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    Text(
-                                        text = title,
-                                        fontSize = 15.5.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                                        fontFamily = hindSiliguri,
-                                        color = if (selected) tabAccent else cs.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(3.dp)
-                                        .background(if (selected) tabAccent else Color.Transparent),
-                                )
-                            }
-                        }
-                    }
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = cs.outlineVariant.copy(alpha = 0.5f),
-                    )
-
                     if (isLoading && currentPlan == null && books.isEmpty()) {
                         KlassRoutineEngineSkeleton(isDark = isDark)
                         return@Column
                     }
 
-                    when (activeTab) {
-                        // ─── TAB 0: CONFIGURE, GENERATE & PUBLISH ─────────────────
-                        0 -> {
-                            val readyTeachers = teachers.count { it.schedulingSetupComplete }
-                            val theoryRooms = classrooms.count { it.roomType == ClassroomType.THEORY }
-                            val labRooms = classrooms.count { it.roomType == ClassroomType.LAB }
-
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(top = 8.dp, bottom = 28.dp),
-                            ) {
-                                // Colored Readiness Badges + Refresh
-                                item {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        LazyRow(
-                                            modifier = Modifier.weight(1f),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            item {
-                                                MinimalStatBadge(
-                                                    icon = PersonIcon,
-                                                    text = "$readyTeachers Faculty",
-                                                    accent = teacherAccent.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                )
-                                            }
-                                            item {
-                                                MinimalStatBadge(
-                                                    icon = DoorOpenIcon,
-                                                    text = "${theoryRooms}T / ${labRooms}L Rooms",
-                                                    accent = publishAccent.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                )
-                                            }
-                                            item {
-                                                MinimalStatBadge(
-                                                    icon = BookIcon,
-                                                    text = "${books.size} Books",
-                                                    accent = bookAccent.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                )
-                                            }
-                                        }
-
-                                        KlassHeaderIconButton(
-                                            icon = RefreshIcon,
-                                            contentDescription = "Refresh data",
-                                            isDark = isDark,
-                                            containerColor = genAccent.softTint,
-                                            iconTint = genAccent.primary,
-                                            borderColor = genAccent.borderTint,
-                                            isLoading = isLoading,
-                                            enabled = !isLoading,
-                                            onClick = { refreshAll() },
-                                        )
-                                    }
-                                    SocialSectionDividerBand(isDark = isDark, height = 8.dp)
-                                }
-
-                                // Schedule Settings Navigation Row -> Opens Level 1
-                                item {
-                                    SocialSurfaceBlock(
-                                        isDark = isDark,
-                                        showTopHairline = true,
-                                        showBottomHairline = true,
-                                    ) {
-                                        KlassNavigationRow(
-                                            title = "Schedule Settings",
-                                            subtitle = "$shift1Start • $periodsPerDay periods • ${activeSemesters.size} semesters",
-                                            icon = ClockIcon,
-                                            accent = genAccent.primary,
-                                            isDark = isDark,
-                                            hindSiliguri = hindSiliguri,
-                                            badgeText = "${periodDuration}m",
-                                            testTag = "routine_schedule_settings_button",
-                                            onClick = { showScheduleSettings = true },
-                                        )
-                                    }
-                                    SocialSectionDividerBand(isDark = isDark)
-                                }
-
-                                // Flat Material 3 Generate & Publish Buttons
-                                item {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        KlassPrimaryButton(
-                                            text = "Generate Draft",
-                                            icon = SparkleIcon,
-                                            hindSiliguri = hindSiliguri,
-                                            isDark = isDark,
-                                            isLoading = isProcessing,
-                                            customPrimaryColor = genAccent.primary,
-                                            height = 48.dp,
-                                            cornerRadius = 16.dp,
-                                            modifier = Modifier.weight(1f),
-                                            testTag = "generate_routine_button",
-                                            onClick = {
-                                                if (classrooms.isEmpty()) {
-                                                    showToast("Please add Classrooms & Labs first.")
-                                                    return@KlassPrimaryButton
-                                                }
-                                                if (teachers.isEmpty()) {
-                                                    showToast("No teachers have configured their subjects yet.")
-                                                    return@KlassPrimaryButton
-                                                }
-                                                scope.launch {
-                                                    isProcessing = true
-                                                    try {
-                                                        val cfg = RoutineConfig(
-                                                            shift1StartTime = shift1Start.trim().ifBlank { "08:00" },
-                                                            shift2StartTime = shift2Start.trim().ifBlank { "13:30" },
-                                                            periodDurationMinutes = periodDuration,
-                                                            periodsPerDay = periodsPerDay,
-                                                            activeSemesters = activeSemesters.toList(),
-                                                            validMonths = 6,
-                                                        )
-                                                        val draft = RoutineGeneratorEngine.generateRoutine(
-                                                            config = cfg,
-                                                            books = books,
-                                                            teachers = teachers,
-                                                            classrooms = classrooms,
-                                                            generatedBy = adminEmail,
-                                                            nowMillis = getCurrentTimeMillis(),
-                                                        )
-                                                        currentPlan = draft
-                                                        saveRoutinePlanInFirestore(draft)
-                                                        showToast(
-                                                            "Draft ready: ${draft.entries.size} slots, ${draft.conflicts.size} conflict(s)."
-                                                        )
-                                                    } finally {
-                                                        isProcessing = false
-                                                    }
-                                                }
-                                            },
-                                        )
-
-                                        val planToPub = currentPlan
-                                        KlassPrimaryButton(
-                                            text = "Publish Live",
-                                            icon = CheckIcon,
-                                            hindSiliguri = hindSiliguri,
-                                            isDark = isDark,
-                                            enabled = planToPub != null && !isProcessing,
-                                            customPrimaryColor = publishAccent.primary,
-                                            height = 48.dp,
-                                            cornerRadius = 16.dp,
-                                            modifier = Modifier.weight(1f),
-                                            testTag = "publish_routine_button",
-                                            onClick = {
-                                                if (planToPub == null) return@KlassPrimaryButton
-                                                scope.launch {
-                                                    isProcessing = true
-                                                    try {
-                                                        val now = getCurrentTimeMillis()
-                                                        val published = planToPub.copy(
-                                                            id = "master_6m_published",
-                                                            status = "PUBLISHED",
-                                                            publishedAt = now,
-                                                        )
-                                                        saveRoutinePlanInFirestore(published)
-                                                        saveRoutinePlanInFirestore(
-                                                            published.copy(id = "master_6m")
-                                                        )
-                                                        currentPlan = published
-                                                        onPlanPublished(published)
-                                                        showToast("6-Month routine published live!")
-                                                    } finally {
-                                                        isProcessing = false
-                                                    }
-                                                }
-                                            },
-                                        )
-                                    }
-                                    SocialSectionDividerBand(isDark = isDark)
-                                }
-
-                                // Plan Status & Conflicts Sub-Screen Entry
-                                val plan = currentPlan
-                                if (plan != null) {
-                                    val isLive = plan.status.equals("PUBLISHED", ignoreCase = true)
-                                    val statusAccent = if (isLive) publishAccent else bookAccent
-                                    item {
-                                        SocialSurfaceBlock(
-                                            isDark = isDark,
-                                            showTopHairline = true,
-                                            showBottomHairline = true,
-                                            accentTint = statusAccent.primary,
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.weight(1f),
-                                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                                ) {
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                    ) {
-                                                        Text(
-                                                            text = "Current Plan",
-                                                            fontSize = 17.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontFamily = hindSiliguri,
-                                                            color = cs.onSurface,
-                                                        )
-                                                        Surface(
-                                                            shape = CircleShape,
-                                                            color = statusAccent.softTint,
-                                                            border = BorderStroke(0.75.dp, statusAccent.borderTint),
-                                                        ) {
-                                                            Text(
-                                                                text = plan.status,
-                                                                fontSize = 12.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                fontFamily = hindSiliguri,
-                                                                color = statusAccent.primary,
-                                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                                            )
-                                                        }
-                                                    }
-                                                    Text(
-                                                        text = "${plan.entries.size} scheduled slots across active shifts",
-                                                        fontSize = 14.sp,
-                                                        fontFamily = hindSiliguri,
-                                                        color = cs.onSurfaceVariant,
-                                                    )
-                                                }
-                                                KlassTonalButton(
-                                                    text = "Explore",
-                                                    icon = CalendarDaysIcon,
-                                                    accent = teacherAccent.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                    height = 38.dp,
-                                                    onClick = { activeTab = 1 },
-                                                )
-                                            }
-
-                                            if (plan.conflicts.isNotEmpty()) {
-                                                SocialInsetDivider(startIndent = 16.dp)
-                                                KlassNavigationRow(
-                                                    title = "Detected Conflicts",
-                                                    subtitle = "Tap to resolve unscheduled subjects manually",
-                                                    icon = WarningIcon,
-                                                    accent = conflictAccent.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                    badgeText = "${plan.conflicts.size} remaining",
-                                                    badgeColor = conflictAccent.primary,
-                                                    testTag = "routine_conflicts_button",
-                                                    onClick = { showConflictsScreen = true },
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // ─── TAB 1: EXPLORER & MANUAL OVERRIDE ────────────────────
-                        1 -> {
-                            val plan = currentPlan
-                            if (plan == null) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 24.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    KlassEmptyState(
-                                        icon = CalendarDaysIcon,
-                                        title = "No Routine Generated Yet",
-                                        subtitle = "Create your 6-month draft in the Generate tab first.",
-                                        accent = teacherAccent.primary,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                        actionLabel = "Go to Generate",
-                                        onActionClick = { activeTab = 0 },
-                                    )
-                                }
-                                return@Column
-                            }
-
-                            val filteredEntries = remember(
-                                plan.entries,
-                                explorerMode,
-                                filterDept,
-                                filterShift,
-                                filterSem,
-                                filterGroup,
-                                filterTeacherEmail,
-                                filterRoomNumber,
-                            ) {
-                                when (explorerMode) {
-                                    0 -> plan.entries.filter {
-                                        it.department == filterDept &&
-                                            RoutineRules.normalizeShift(it.shift) == filterShift &&
-                                            RoutineRules.canonicalSemesterKey(it.semester) == filterSem &&
-                                            RoutineRules.normalizeGroup(filterDept, it.group) == filterGroup
-                                    }
-                                    1 -> plan.entries.filter {
-                                        it.teacherEmail.equals(filterTeacherEmail, ignoreCase = true) &&
-                                            RoutineRules.normalizeShift(it.shift) == filterShift
-                                    }
-                                    else -> plan.entries.filter {
-                                        it.roomNumber.trim().equals(filterRoomNumber.trim(), ignoreCase = true) &&
-                                            RoutineRules.normalizeShift(it.shift) == filterShift
-                                    }
-                                }
-                            }
-
-                            val activeTeacherName = remember(teachers, filterTeacherEmail) {
-                                teachers.firstOrNull { it.email.equals(filterTeacherEmail, true) }
-                                    ?.name?.ifBlank { filterTeacherEmail.substringBefore("@") }
-                                    ?: "Select Teacher"
-                            }
-                            val explorerSummaryText = when (explorerMode) {
-                                0 -> "$filterDept • ${RoutineRules.semesterShortLabel(filterSem)} • $filterShift • $filterGroup"
-                                1 -> "$activeTeacherName • $filterShift"
-                                else -> "Room ${filterRoomNumber.ifBlank { "-" }} • $filterShift"
-                            }
-                            val explorerAccent = if (explorerMode == 0) departmentAccent(filterDept, isDark) else teacherAccent
-
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                Surface(
-                                    onClick = { showExplorerFilterSheet = true },
-                                    color = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("routine_explorer_filter_button"),
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = explorerAccent.softTint,
-                                            modifier = Modifier.size(34.dp),
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                                Icon(
-                                                    imageVector = FilterIcon,
-                                                    contentDescription = "Filter routine",
-                                                    tint = explorerAccent.primary,
-                                                    modifier = Modifier.size(16.dp),
-                                                )
-                                            }
-                                        }
-                                        Text(
-                                            text = explorerSummaryText,
-                                            fontSize = 15.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            color = cs.onSurface,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = explorerAccent.softTint,
-                                            border = BorderStroke(0.75.dp, explorerAccent.borderTint),
-                                        ) {
-                                            Text(
-                                                text = "${filteredEntries.size} slots",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = explorerAccent.primary,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                                            )
-                                        }
-                                        Icon(
-                                            imageVector = ChevronDownIcon,
-                                            contentDescription = null,
-                                            tint = cs.onSurfaceVariant,
-                                            modifier = Modifier.size(17.dp),
-                                        )
-                                    }
-                                }
-
-                                SocialSectionDividerBand(isDark = isDark, height = 6.dp)
-
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f)
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) {
-                                    ClassRoutineTable(
-                                        hindSiliguri = hindSiliguri,
-                                        isDark = isDark,
-                                        entries = filteredEntries,
-                                        periodsPerDay = plan.config.periodsPerDay,
-                                        shift = filterShift,
-                                        config = plan.config,
-                                        showGroupOrRoomHint = explorerMode != 0,
-                                        onSlotClick = { entry -> editingSlot = entry },
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                }
-                            }
-                        }
-
-                        // ─── TAB 2: TEACHER EDIT / SWAP REQUESTS ──────────────────
-                        else -> {
-                            if (editRequests.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 24.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    KlassEmptyState(
-                                        icon = SwapIcon,
-                                        title = "No Teacher Edit Requests",
-                                        subtitle = "Teacher slot swap requests appear here with live clash checking.",
-                                        accent = adminAccent.primary,
-                                        isDark = isDark,
-                                        hindSiliguri = hindSiliguri,
-                                    )
-                                }
+                    ZedEngineWizardHost(
+                        wizardStep = wizardStep,
+                        onWizardStepChange = { wizardStep = it },
+                        books = books,
+                        activeBookIds = activeBookIds,
+                        onActiveBookIdsChange = { activeBookIds = it },
+                        teachers = teachers,
+                        activeTeacherEmails = activeTeacherEmails,
+                        onActiveTeacherEmailsChange = { activeTeacherEmails = it },
+                        classrooms = classrooms,
+                        activeClassroomIds = activeClassroomIds,
+                        onActiveClassroomIdsChange = { activeClassroomIds = it },
+                        shift1Start = shift1Start,
+                        onShift1Change = { shift1Start = it },
+                        shift2Start = shift2Start,
+                        onShift2Change = { shift2Start = it },
+                        periodDuration = periodDuration,
+                        onDurationChange = { periodDuration = it },
+                        periodsPerDay = periodsPerDay,
+                        onPeriodsPerDayChange = { periodsPerDay = it },
+                        practicalBlockMode = practicalBlockMode,
+                        onPracticalBlockModeChange = { practicalBlockMode = it },
+                        activeSemesters = activeSemesters,
+                        onToggleSemester = { sem ->
+                            activeSemesters = if (sem in activeSemesters && activeSemesters.size > 1) {
+                                activeSemesters - sem
                             } else {
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(vertical = 10.dp),
+                                activeSemesters + sem
+                            }
+                        },
+                        onActivateAllSemesters = {
+                            activeSemesters = RoutineRules.ALL_SEMESTER_KEYS.toSet()
+                        },
+                        currentPlan = currentPlan,
+                        isProcessing = isProcessing,
+                        isLoading = isLoading,
+                        isSeedingDemo = isSeedingDemo,
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                        onRefreshData = { refreshAll() },
+                        onSeedDemoCampus = {
+                            if (isSeedingDemo) return@ZedEngineWizardHost
+                            scope.launch {
+                                isSeedingDemo = true
+                                try {
+                                    val res = CampusDemoCatalog.seedDemoCampusToFirestore()
+                                    res.onSuccess { (rCount, tCount) ->
+                                        showToast("Loaded $rCount rooms & $tCount teachers!")
+                                        refreshAll()
+                                    }.onFailure { err ->
+                                        showToast(err.message ?: "Failed to load demo campus data.")
+                                    }
+                                } finally {
+                                    isSeedingDemo = false
+                                }
+                            }
+                        },
+                        onHoldCompleteGenerate = {
+                            if (isProcessing) return@ZedEngineWizardHost
+                            scope.launch {
+                                isProcessing = true
+                                try {
+                                    val cfg = RoutineConfig(
+                                        shift1StartTime = shift1Start.trim().ifBlank { "08:00" },
+                                        shift2StartTime = shift2Start.trim().ifBlank { "13:30" },
+                                        periodDurationMinutes = periodDuration,
+                                        periodsPerDay = periodsPerDay,
+                                        practicalBlockMode = practicalBlockMode,
+                                        activeSemesters = activeSemesters.toList(),
+                                        validMonths = 6,
+                                    )
+                                    val draft = RoutineGeneratorEngine.generateRoutine(
+                                        config = cfg,
+                                        books = books,
+                                        teachers = teachers,
+                                        classrooms = classrooms,
+                                        generatedBy = adminEmail,
+                                        nowMillis = getCurrentTimeMillis(),
+                                        activeBookCodes = activeBookIds,
+                                        activeTeacherEmails = activeTeacherEmails,
+                                        activeClassroomIds = activeClassroomIds,
+                                    )
+                                    currentPlan = draft
+                                    saveRoutinePlanInFirestore(draft)
+                                    showToast(
+                                        "Draft ready: ${draft.entries.size} slots, ${draft.conflicts.size} conflict(s)."
+                                    )
+                                } finally {
+                                    isProcessing = false
+                                }
+                            }
+                        },
+                        onPublishPlan = { planToPub ->
+                            if (isProcessing) return@ZedEngineWizardHost
+                            scope.launch {
+                                isProcessing = true
+                                try {
+                                    val now = getCurrentTimeMillis()
+                                    val published = planToPub.copy(
+                                        id = "master_6m_published",
+                                        status = "PUBLISHED",
+                                        publishedAt = now,
+                                    )
+                                    saveRoutinePlanInFirestore(published)
+                                    saveRoutinePlanInFirestore(published.copy(id = "master_6m"))
+                                    currentPlan = published
+                                    onPlanPublished(published)
+                                    showToast("6-Month routine published live!")
+                                } finally {
+                                    isProcessing = false
+                                }
+                            }
+                        },
+                        onOpenExplorer = { showExplorerScreen = true },
+                        onOpenConflicts = { showConflictsScreen = true },
+                    )
+                }
+            }
+        }
+
+        // Level 1 Overlay: Routine Explorer & Manual Slot Override
+        KlassSubScreenHost(visible = showExplorerScreen, zIndex = 70f) {
+            val plan = currentPlan
+            MinimalFullScreenSheet(
+                title = "Routine Explorer",
+                subtitle = if (plan != null) "${plan.status} • ${plan.entries.size} class slots" else "Browse generated routine",
+                levelLabel = "Zed engine • Explorer",
+                icon = CalendarDaysIcon,
+                accent = teacherAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                onDismiss = { showExplorerScreen = false },
+                closeTestTag = "routine_explorer_back_button",
+            ) {
+                if (plan == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        KlassEmptyState(
+                            icon = CalendarDaysIcon,
+                            title = "No Routine Generated Yet",
+                            subtitle = "Complete the setup steps and hold Generate first.",
+                            accent = teacherAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            actionLabel = "Back to Setup",
+                            onActionClick = { showExplorerScreen = false },
+                        )
+                    }
+                } else {
+                    val filteredEntries = remember(
+                        plan.entries,
+                        explorerMode,
+                        filterDept,
+                        filterShift,
+                        filterSem,
+                        filterGroup,
+                        filterTeacherEmail,
+                        filterRoomNumber,
+                    ) {
+                        when (explorerMode) {
+                            0 -> plan.entries.filter {
+                                it.department == filterDept &&
+                                    RoutineRules.normalizeShift(it.shift) == filterShift &&
+                                    RoutineRules.canonicalSemesterKey(it.semester) == filterSem &&
+                                    RoutineRules.normalizeGroup(filterDept, it.group) == filterGroup
+                            }
+                            1 -> plan.entries.filter {
+                                it.teacherEmail.equals(filterTeacherEmail, ignoreCase = true) &&
+                                    RoutineRules.normalizeShift(it.shift) == filterShift
+                            }
+                            else -> plan.entries.filter {
+                                it.roomNumber.trim().equals(filterRoomNumber.trim(), ignoreCase = true) &&
+                                    RoutineRules.normalizeShift(it.shift) == filterShift
+                            }
+                        }
+                    }
+
+                    val activeTeacherName = remember(teachers, filterTeacherEmail) {
+                        teachers.firstOrNull { it.email.equals(filterTeacherEmail, true) }
+                            ?.name?.ifBlank { filterTeacherEmail.substringBefore("@") }
+                            ?: "Select Teacher"
+                    }
+                    val explorerSummaryText = when (explorerMode) {
+                        0 -> "$filterDept • ${RoutineRules.semesterShortLabel(filterSem)} • $filterShift • $filterGroup"
+                        1 -> "$activeTeacherName • $filterShift"
+                        else -> "Room ${filterRoomNumber.ifBlank { "-" }} • $filterShift"
+                    }
+                    val explorerAccent = if (explorerMode == 0) departmentAccent(filterDept, isDark) else teacherAccent
+
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Surface(
+                            onClick = { showExplorerFilterSheet = true },
+                            color = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("routine_explorer_filter_button"),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = explorerAccent.softTint,
+                                    modifier = Modifier.size(34.dp),
                                 ) {
-                                    item {
-                                        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                                            editRequests.forEachIndexed { idx, req ->
-                                                val reqAccent = when (req.status) {
-                                                    EditRequestStatus.PENDING -> bookAccent
-                                                    EditRequestStatus.APPROVED -> publishAccent
-                                                    EditRequestStatus.DECLINED -> conflictAccent
-                                                }
-                                                KlassNavigationRow(
-                                                    title = "${req.requestedByName.ifBlank { req.requestedByEmail }} • ${req.subjectTitle}",
-                                                    subtitle = "${req.originalDay} P${req.originalPeriod + 1} → ${req.requestedDay} P${req.requestedPeriod + 1} • ${req.department}",
-                                                    icon = SwapIcon,
-                                                    accent = reqAccent.primary,
-                                                    isDark = isDark,
-                                                    hindSiliguri = hindSiliguri,
-                                                    badgeText = req.status.label,
-                                                    badgeColor = reqAccent.primary,
-                                                    onClick = { reviewingRequest = req },
-                                                )
-                                                if (idx < editRequests.lastIndex) {
-                                                    SocialInsetDivider(startIndent = 72.dp)
-                                                }
-                                            }
-                                        }
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Icon(
+                                            imageVector = FilterIcon,
+                                            contentDescription = "Filter routine",
+                                            tint = explorerAccent.primary,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = explorerSummaryText,
+                                    fontSize = 15.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = hindSiliguri,
+                                    color = cs.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = explorerAccent.softTint,
+                                    border = BorderStroke(0.75.dp, explorerAccent.borderTint),
+                                ) {
+                                    Text(
+                                        text = "${filteredEntries.size} slots",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = hindSiliguri,
+                                        color = explorerAccent.primary,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                    )
+                                }
+                                Icon(
+                                    imageVector = ChevronDownIcon,
+                                    contentDescription = null,
+                                    tint = cs.onSurfaceVariant,
+                                    modifier = Modifier.size(17.dp),
+                                )
+                            }
+                        }
+
+                        SocialSectionDividerBand(isDark = isDark, height = 6.dp)
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
+                            ClassRoutineTable(
+                                hindSiliguri = hindSiliguri,
+                                isDark = isDark,
+                                entries = filteredEntries,
+                                periodsPerDay = plan.config.periodsPerDay,
+                                shift = filterShift,
+                                config = plan.config,
+                                showGroupOrRoomHint = explorerMode != 0,
+                                onSlotClick = { entry -> editingSlot = entry },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Level 1 Overlay: Teacher Edit / Swap Requests
+        KlassSubScreenHost(visible = showRequestsScreen, zIndex = 72f) {
+            MinimalFullScreenSheet(
+                title = "Edit Requests",
+                subtitle = "${editRequests.size} total • $pendingRequestsCount pending",
+                levelLabel = "Zed engine • Requests",
+                icon = SwapIcon,
+                accent = adminAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                onDismiss = { showRequestsScreen = false },
+                closeTestTag = "routine_requests_back_button",
+            ) {
+                if (editRequests.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        KlassEmptyState(
+                            icon = SwapIcon,
+                            title = "No Teacher Edit Requests",
+                            subtitle = "Teacher slot swap requests appear here with live clash checking.",
+                            accent = adminAccent.primary,
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 10.dp),
+                    ) {
+                        item {
+                            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                                editRequests.forEachIndexed { idx, req ->
+                                    val reqAccent = when (req.status) {
+                                        EditRequestStatus.PENDING -> bookAccent
+                                        EditRequestStatus.APPROVED -> publishAccent
+                                        EditRequestStatus.DECLINED -> conflictAccent
+                                    }
+                                    KlassNavigationRow(
+                                        title = "${req.requestedByName.ifBlank { req.requestedByEmail }} • ${req.subjectTitle}",
+                                        subtitle = "${req.originalDay} P${req.originalPeriod + 1} → ${req.requestedDay} P${req.requestedPeriod + 1} • ${req.department}",
+                                        icon = SwapIcon,
+                                        accent = reqAccent.primary,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        badgeText = req.status.label,
+                                        badgeColor = reqAccent.primary,
+                                        onClick = { reviewingRequest = req },
+                                    )
+                                    if (idx < editRequests.lastIndex) {
+                                        SocialInsetDivider(startIndent = 72.dp)
                                     }
                                 }
                             }
@@ -1838,7 +1688,7 @@ private fun ScheduleSettingsSubScreen(
         MinimalFullScreenSheet(
             title = "Schedule Settings",
             subtitle = "Shift timings & active semesters",
-            levelLabel = "Routine Engine • Level 1",
+            levelLabel = "Zed engine • Level 1",
             icon = ClockIcon,
             accent = genAccent.primary,
             isDark = isDark,

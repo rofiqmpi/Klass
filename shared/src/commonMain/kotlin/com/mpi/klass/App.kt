@@ -480,12 +480,22 @@ fun App(
                         }
 
                         AppScreen.GuestHome -> {
-                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                            CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
                                 GuestHomeScreen(
                                     currentThemeMode = themeMode,
                                     onThemeModeChange = { newMode ->
                                         themeMode = newMode
                                         saveThemeMode(newMode)
+                                    },
+                                    currentLanguage = appLanguage,
+                                    onLanguageChange = { newLanguage ->
+                                        appLanguage = newLanguage
+                                        saveAppLanguage(newLanguage)
+                                        if (newLanguage == AppLanguage.ENGLISH) {
+                                            coroutineScope.launch {
+                                                AppStrings.initializeOnlineDictionary()
+                                            }
+                                        }
                                     },
                                     onSwitchToLogin = { signOutAndReturnToWelcome() },
                                     onCloseApp = onCloseApp,
@@ -495,7 +505,7 @@ fun App(
                         }
 
                         is AppScreen.RoleHome -> {
-                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                            CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
                                 RoleHomeScreen(
                                     role = screen.role,
                                     userName = screen.name,
@@ -505,6 +515,16 @@ fun App(
                                     onThemeModeChange = { newMode ->
                                         themeMode = newMode
                                         saveThemeMode(newMode)
+                                    },
+                                    currentLanguage = appLanguage,
+                                    onLanguageChange = { newLanguage ->
+                                        appLanguage = newLanguage
+                                        saveAppLanguage(newLanguage)
+                                        if (newLanguage == AppLanguage.ENGLISH) {
+                                            coroutineScope.launch {
+                                                AppStrings.initializeOnlineDictionary()
+                                            }
+                                        }
                                     },
                                     onSignOut = { signOutAndReturnToWelcome() },
                                     onCloseApp = onCloseApp,
@@ -574,8 +594,7 @@ fun App(
                     ),
                     modifier = Modifier.zIndex(100f),
                 ) {
-                    val errorLang = if (currentScreen is AppScreen.Welcome) appLanguage else AppLanguage.ENGLISH
-                    CompositionLocalProvider(LocalAppLanguage provides errorLang) {
+                    CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
                         ErrorImagePopup(
                             errorType = activeErrorType ?: lastErrorType,
                             errorDetail = lastErrorDetail,

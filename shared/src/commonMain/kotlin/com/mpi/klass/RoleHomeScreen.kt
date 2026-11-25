@@ -83,6 +83,7 @@ import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.RightArrowIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.SwapIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.departmentAccent
@@ -104,6 +105,8 @@ fun RoleHomeScreen(
     email: String = "",
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
+    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+    onLanguageChange: (AppLanguage) -> Unit = {},
     onSignOut: () -> Unit = {},
     onCloseApp: () -> Unit = {},
     onBackToWelcome: () -> Unit = {},
@@ -162,6 +165,14 @@ fun RoleHomeScreen(
     var isNotificationsSubOverlayOpen by remember { mutableStateOf(false) }
     var isBloodFinderSubOverlayOpen by remember { mutableStateOf(false) }
     var isTeacherPrefsSubOverlayOpen by remember { mutableStateOf(false) }
+    var booksInitDept by remember { mutableStateOf<String?>(null) }
+    var booksInitSem by remember { mutableStateOf<String?>(null) }
+    var booksInitQuery by remember { mutableStateOf("") }
+    var bloodInitGroup by remember { mutableStateOf("All") }
+    var bloodInitQuery by remember { mutableStateOf("") }
+    var zedExplorerTrigger by remember { mutableIntStateOf(0) }
+    var zedRequestsTrigger by remember { mutableIntStateOf(0) }
+    var zedPendingRequestsCount by remember { mutableIntStateOf(0) }
     val cleanUserEmail = email.trim().lowercase()
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var isDeletingAccount by remember { mutableStateOf(false) }
@@ -622,15 +633,26 @@ fun RoleHomeScreen(
                                         role = currentRole,
                                         currentThemeMode = currentThemeMode,
                                         onThemeModeChange = onThemeModeChange,
+                                        currentLanguage = currentLanguage,
+                                        onLanguageClick = { navigateTo("language") },
                                         onProfileClick = { navigateTo("profile") },
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
                                         onClassroomClick = { navigateTo("classrooms") },
-                                        onBooksClick = { navigateTo("books") },
+                                        onBooksClick = {
+                                            booksInitDept = null
+                                            booksInitSem = null
+                                            booksInitQuery = ""
+                                            navigateTo("books")
+                                        },
                                         onTeachersClick = { navigateTo("teachers") },
                                         onRoutineManagerClick = { navigateTo("routine_manager") },
                                         onTeacherPreferencesClick = { navigateTo("teacher_prefs") },
-                                        onBloodFinderClick = { navigateTo("blood_finder") },
+                                        onBloodFinderClick = {
+                                            bloodInitGroup = "All"
+                                            bloodInitQuery = ""
+                                            navigateTo("blood_finder")
+                                        },
                                         onAppearanceClick = { navigateTo("appearance") },
                                         onSignInControlClick = { navigateTo("admin_signin_control") },
                                         onAdminApprovalsClick = { navigateTo("admin_approvals") },
@@ -909,7 +931,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isTeachersSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Teachers Directory",
+                                    title = "Teachers",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -940,7 +962,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Books Library",
+                                    title = "Books library",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -958,6 +980,9 @@ fun RoleHomeScreen(
                                     hindSiliguri = hindSiliguri,
                                     canEdit = currentRole == UserRole.ADMIN,
                                     topContentPadding = 0.dp,
+                                    initialDept = booksInitDept,
+                                    initialSem = booksInitSem,
+                                    initialQuery = booksInitQuery,
                                     onFullScreenOverlayChange = { isBooksSubOverlayOpen = it },
                                 )
                             }
@@ -971,7 +996,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Classrooms & Labs",
+                                    title = "Classrooms",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -995,6 +1020,9 @@ fun RoleHomeScreen(
                         }
                     }
                     "routine_manager" -> {
+                        val cs = MaterialTheme.colorScheme
+                        val explorerAccent = KlassFeaturePalette.teaching(isDark)
+                        val reqAccent = KlassFeaturePalette.admin(isDark)
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1002,15 +1030,59 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isRoutineSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Routine Engine",
+                                    title = "Zed engine",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
-                                        HeaderAiNotificationActions(
-                                            isDark = isDark,
-                                            onAiClick = { navigateTo("ai") },
-                                            onNotificationClick = { navigateTo("notification") },
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            KlassHeaderIconButton(
+                                                icon = CalendarDaysIcon,
+                                                contentDescription = "Routine Explorer",
+                                                isDark = isDark,
+                                                containerColor = explorerAccent.softTint,
+                                                iconTint = explorerAccent.primary,
+                                                borderColor = explorerAccent.borderTint,
+                                                visualSize = 40.dp,
+                                                iconSize = 18.dp,
+                                                testTag = "zed_engine_explorer_button",
+                                                onClick = { zedExplorerTrigger++ },
+                                            )
+                                            Box {
+                                                KlassHeaderIconButton(
+                                                    icon = SwapIcon,
+                                                    contentDescription = "Edit Requests",
+                                                    isDark = isDark,
+                                                    containerColor = reqAccent.softTint,
+                                                    iconTint = reqAccent.primary,
+                                                    borderColor = reqAccent.borderTint,
+                                                    visualSize = 40.dp,
+                                                    iconSize = 18.dp,
+                                                    testTag = "zed_engine_requests_button",
+                                                    onClick = { zedRequestsTrigger++ },
+                                                )
+                                                if (zedPendingRequestsCount > 0) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .offset(x = (-1).dp, y = 1.dp)
+                                                            .size(10.dp)
+                                                            .clip(CircleShape)
+                                                            .background(if (isDark) cs.surface else Color.White)
+                                                            .padding(1.5.dp)
+                                                            .clip(CircleShape)
+                                                            .background(Color(0xFFEF4444)),
+                                                    )
+                                                }
+                                            }
+                                            HeaderAiNotificationActions(
+                                                isDark = isDark,
+                                                onAiClick = { navigateTo("ai") },
+                                                onNotificationClick = { navigateTo("notification") },
+                                            )
+                                        }
                                     },
                                 )
                             }
@@ -1020,6 +1092,9 @@ fun RoleHomeScreen(
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     topContentPadding = 0.dp,
+                                    openExplorerTrigger = zedExplorerTrigger,
+                                    openRequestsTrigger = zedRequestsTrigger,
+                                    onPendingRequestsCountChange = { zedPendingRequestsCount = it },
                                     onFullScreenOverlayChange = { isRoutineSubOverlayOpen = it },
                                     onPlanPublished = { updated -> publishedPlan = updated },
                                 )
@@ -1080,7 +1155,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Blood Finder",
+                                    title = "Blood finder",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -1097,6 +1172,8 @@ fun RoleHomeScreen(
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
                                     topContentPadding = 0.dp,
+                                    initialBloodGroup = bloodInitGroup,
+                                    initialQuery = bloodInitQuery,
                                     onFullScreenOverlayChange = { isBloodFinderSubOverlayOpen = it },
                                 )
                             }
@@ -1108,6 +1185,15 @@ fun RoleHomeScreen(
                             hindSiliguri = hindSiliguri,
                             currentThemeMode = currentThemeMode,
                             onThemeModeChange = onThemeModeChange,
+                            onBack = { goBack() },
+                        )
+                    }
+                    "language" -> {
+                        LanguageSubScreen(
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            currentLanguage = currentLanguage,
+                            onLanguageChange = onLanguageChange,
                             onBack = { goBack() },
                         )
                     }
@@ -1136,6 +1222,29 @@ fun RoleHomeScreen(
                                 hindSiliguri = hindSiliguri,
                                 onBack = { goBack() },
                                 onNotificationClick = { navigateTo("notification") },
+                                onNavigateAction = { action ->
+                                    when (action.actionType) {
+                                        ZedActionType.OPEN_BOOKS -> {
+                                            booksInitDept = action.dept.takeIf { it.isNotBlank() }
+                                            booksInitSem = action.semester.takeIf { it.isNotBlank() }
+                                            booksInitQuery = action.query
+                                            navigateTo("books")
+                                        }
+                                        ZedActionType.OPEN_BLOOD -> {
+                                            bloodInitGroup = action.bloodGroup.ifBlank { "All" }
+                                            bloodInitQuery = action.query
+                                            navigateTo("blood_finder")
+                                        }
+                                        ZedActionType.OPEN_TEACHERS -> navigateTo("teachers")
+                                        ZedActionType.OPEN_CLASSROOMS -> navigateTo("classrooms")
+                                        ZedActionType.OPEN_ROUTINE -> {
+                                            if (currentRole == UserRole.ADMIN) navigateTo("routine_manager")
+                                            else navigateTo("home")
+                                        }
+                                        ZedActionType.OPEN_NOTIFICATIONS -> navigateTo("notification")
+                                        ZedActionType.COPY_TEXT, ZedActionType.ASK_FOLLOWUP -> Unit
+                                    }
+                                },
                                 userDisplayName = currentUserName,
                                 userRole = currentRole,
                                 userEmail = email,

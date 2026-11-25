@@ -239,8 +239,8 @@ fun NotificationScreen(
                     ActionNotificationItem(
                         id = "action_admin_publish",
                         title = "No live routine published yet",
-                        body = "Open Routine Engine to generate, review conflicts, and publish the timetable.",
-                        metaLabel = "Admin task • Tap to open Routine Engine",
+                        body = "Open Zed engine to generate, review conflicts, and publish the timetable.",
+                        metaLabel = "Admin task • Tap to open Zed engine",
                         icon = CalendarDaysIcon,
                         badgeIcon = SparkleIcon,
                         accent = adminAccent.primary,

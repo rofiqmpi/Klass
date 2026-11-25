@@ -113,6 +113,7 @@ private fun classroomToJson(room: ClassroomItem): JSONObject = JSONObject().appl
     put("nearest_department", effectiveDepts.joinToString(", "))
     put("capacity", room.capacity)
     put("updated_at", room.updatedAt)
+    if (room.labSpecialty.isNotBlank()) put("lab_specialty", room.labSpecialty)
     val ndArr = JSONArray()
     effectiveDepts.forEach { ndArr.put(it) }
     put("nearest_departments", ndArr)
@@ -156,6 +157,7 @@ private fun classroomFromJson(obj: JSONObject): ClassroomItem {
         shifts = shifts.ifEmpty { listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2) },
         capacity = obj.optInt("capacity", 40),
         updatedAt = obj.optLong("updated_at", 0L),
+        labSpecialty = obj.optString("lab_specialty", ""),
     )
 }
 
@@ -171,6 +173,7 @@ private fun routinePlanToJson(plan: RoutinePlan): JSONObject = JSONObject().appl
         put("period_duration_min", plan.config.periodDurationMinutes)
         put("periods_per_day", plan.config.periodsPerDay)
         put("valid_months", plan.config.validMonths)
+        put("practical_block_mode", plan.config.practicalBlockMode)
         val semArr = JSONArray()
         plan.config.activeSemesters.forEach { semArr.put(it) }
         put("active_semesters", semArr)
@@ -232,6 +235,7 @@ private fun routinePlanFromJson(obj: JSONObject): RoutinePlan {
         periodsPerDay = cfgObj.optInt("periods_per_day", 7),
         activeSemesters = sems.ifEmpty { RoutineRules.ALL_SEMESTER_KEYS },
         validMonths = cfgObj.optInt("valid_months", 6),
+        practicalBlockMode = cfgObj.optString("practical_block_mode", "AUTO_2_3").ifBlank { "AUTO_2_3" },
     )
 
     val entries = mutableListOf<RoutineEntry>()
@@ -480,6 +484,7 @@ actual suspend fun fetchClassroomsFromFirestore(): List<ClassroomItem> {
                         shifts = shifts,
                         capacity = (data["capacity"] as? Number)?.toInt() ?: 40,
                         updatedAt = (data["updated_at"] as? Number)?.toLong() ?: 0L,
+                        labSpecialty = (data["lab_specialty"] as? String)?.trim() ?: "",
                     )
                     val prev = map[id]
                     if (prev == null || incoming.updatedAt >= prev.updatedAt) {
@@ -532,6 +537,7 @@ actual suspend fun saveClassroomInFirestore(room: ClassroomItem): Result<Unit> {
         "shifts" to cleanRoom.shifts,
         "capacity" to cleanRoom.capacity,
         "updated_at" to cleanRoom.updatedAt,
+        "lab_specialty" to cleanRoom.labSpecialty,
     )
 
     var ok = false
@@ -892,6 +898,151 @@ actual suspend fun fetchBloodDonorsFromFirestore(): List<BloodDonorItem> {
         readLocalDonorsCache()
     }
 }
+
+// ─── 6. Zed AI Verified Knowledge Base ───────────────────────────────────────
+
+private fun readLocalZedKnowledgeCache(): List<ZedKnowledgeEntry> {
+    val raw = readCacheString("zed_knowledge_v1_json") ?: return emptyList()
+    return try {
+        val arr = JSONArray(raw)
+        (0 until arr.length()).mapNotNull { i ->
+            val o = arr.optJSONObject(i) ?: return@mapNotNull null
+            ZedKnowledgeEntry(
+                id = o.optString("id"),
+                topic = o.optString("topic"),
+                fact = o.optString("fact"),
+                domain = o.optString("domain", "GENERAL"),
+                authorRole = o.optString("author_role", "USER"),
+                verified = o.optBoolean("verified", true),
+                createdAt = o.optLong("created_at", 0L),
+            )
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+private fun writeLocalZedKnowledgeCache(items: List<ZedKnowledgeEntry>) {
+    val arr = JSONArray()
+    items.take(200).forEach { k ->
+        arr.put(JSONObject().apply {
+            put("id", k.id)
+            put("topic", k.topic)
+            put("fact", k.fact)
+            put("domain", k.domain)
+            put("author_role", k.authorRole)
+            put("verified", k.verified)
+            put("created_at", k.createdAt)
+        })
+    }
+    cacheString("zed_knowledge_v1_json", arr.toString())
+}
+
+actual suspend fun fetchZedKnowledgeFromFirestore(): List<ZedKnowledgeEntry> {
+    val cached = readLocalZedKnowledgeCache()
+    val remoteMap = linkedMapOf<String, ZedKnowledgeEntry>()
+    var fetchedAny = false
+
+    withTimeoutOrNull(8.seconds) {
+        for ((db, _) in getRepoFirestoreInstances()) {
+            try {
+                val snap = db.collection("zed_knowledge").get().awaitTask()
+                fetchedAny = true
+                for (doc in snap.documents) {
+                    val d = doc.data ?: continue
+                    val fact = (d["fact"] as? String)?.trim().orEmpty()
+                    val topic = (d["topic"] as? String)?.trim().orEmpty()
+                    if (fact.isBlank() || topic.isBlank()) continue
+                    val entry = ZedKnowledgeEntry(
+                        id = (d["id"] as? String)?.ifBlank { doc.id } ?: doc.id,
+                        topic = topic,
+                        fact = fact,
+                        domain = (d["domain"] as? String)?.trim()?.uppercase()?.ifBlank { "GENERAL" } ?: "GENERAL",
+                        authorRole = (d["author_role"] as? String)?.trim() ?: "USER",
+                        verified = (d["verified"] as? Boolean) ?: true,
+                        createdAt = (d["created_at"] as? Number)?.toLong() ?: 0L,
+                    )
+                    if (entry.verified) {
+                        remoteMap[entry.id] = entry
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(REPO_TAG, "Failed fetching zed_knowledge: ${e.message}")
+            }
+        }
+    }
+
+    return if (fetchedAny) {
+        val merged = (cached.associateBy { it.id } + remoteMap).values
+            .sortedByDescending { it.createdAt }
+        writeLocalZedKnowledgeCache(merged)
+        merged
+    } else {
+        cached
+    }
+}
+
+actual suspend fun saveZedKnowledgeInFirestore(entry: ZedKnowledgeEntry): Result<Unit> {
+    val now = if (entry.createdAt > 0L) entry.createdAt else System.currentTimeMillis()
+    val cleanId = entry.id.ifBlank {
+        "zk_${now}_${(1000..9999).random()}"
+    }.take(150)
+    val allowedDomain = when (entry.domain.trim().uppercase()) {
+        "BOOKS", "ROUTINE", "TEACHERS", "CLASSROOMS", "BLOOD", "GENERAL" -> entry.domain.trim().uppercase()
+        else -> "GENERAL"
+    }
+    val normalized = entry.copy(
+        id = cleanId,
+        topic = entry.topic.trim().take(115),
+        fact = entry.fact.trim().take(480),
+        domain = allowedDomain,
+        verified = true,
+        createdAt = now,
+    )
+
+    val local = readLocalZedKnowledgeCache().toMutableList()
+    if (local.none { it.fact.equals(normalized.fact, ignoreCase = true) }) {
+        local.add(0, normalized)
+        writeLocalZedKnowledgeCache(local)
+    }
+
+    val uid = try {
+        FirebaseAuth.getInstance().currentUser?.uid
+    } catch (_: Exception) {
+        null
+    }
+    if (uid.isNullOrBlank()) {
+        // Guest or offline: stored safely in local cache
+        return Result.success(Unit)
+    }
+
+    val payload = mapOf(
+        "id" to normalized.id,
+        "topic" to normalized.topic,
+        "fact" to normalized.fact,
+        "domain" to normalized.domain,
+        "author_uid" to uid,
+        "author_role" to normalized.authorRole.take(30),
+        "verified" to true,
+        "created_at" to now,
+    )
+
+    var ok = false
+    var err: Exception? = null
+    withTimeoutOrNull(8.seconds) {
+        for ((db, _) in getRepoFirestoreInstances()) {
+            try {
+                db.collection("zed_knowledge").document(cleanId).set(payload).awaitTask()
+                ok = true
+            } catch (e: Exception) {
+                err = e
+                Log.w(REPO_TAG, "Failed saving zed_knowledge: ${e.message}")
+            }
+        }
+    }
+    return if (ok) Result.success(Unit) else Result.failure(err ?: Exception("Saved locally; cloud sync pending"))
+}
+
 
 
 

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -63,7 +65,9 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -75,9 +79,17 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mpi.klass.theme.BookIcon
+import com.mpi.klass.theme.CalendarDaysIcon
+import com.mpi.klass.theme.CheckIcon
+import com.mpi.klass.theme.CopyIcon
+import com.mpi.klass.theme.DoorOpenIcon
+import com.mpi.klass.theme.DropletIcon
+import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
-import com.mpi.klass.theme.PhoneSolidIcon
+import com.mpi.klass.theme.NotificationIcon
+import com.mpi.klass.theme.RightArrowIcon
 import com.mpi.klass.theme.SendIcon
 import com.mpi.klass.theme.SparkleIcon
 import kotlinx.coroutines.CancellationException
@@ -92,6 +104,7 @@ data class AiChatMessage(
     val isFromUser: Boolean,
     val sourceBadge: String? = null,
     val blocks: List<ZedA2UiBlock> = emptyList(),
+    val learnedSaved: Boolean = false,
 )
 
 @Composable
@@ -100,6 +113,7 @@ fun AiAssistantScreen(
     hindSiliguri: FontFamily,
     onBack: () -> Unit,
     onNotificationClick: (() -> Unit)? = null,
+    onNavigateAction: (ZedA2UiAction) -> Unit = {},
     userDisplayName: String = "User",
     userRole: UserRole? = null,
     userEmail: String = "",
@@ -147,6 +161,7 @@ fun AiAssistantScreen(
                     }.getOrNull()
                 }
                 val donorsDef = async { runCatching { fetchBloodDonorsFromFirestore() }.getOrElse { emptyList() } }
+                val knowledgeDef = async { runCatching { fetchZedKnowledgeFromFirestore() }.getOrElse { emptyList() } }
                 val studentProfDef = async {
                     if (userEmail.isNotBlank()) {
                         runCatching { RoleConfig.fetchStudentProfile(userEmail) }.getOrNull()
@@ -167,6 +182,7 @@ fun AiAssistantScreen(
                     classrooms = classroomsDef.await(),
                     routinePlan = routineDef.await(),
                     donors = donorsDef.await(),
+                    learnedKnowledge = knowledgeDef.await(),
                     userProfile = studentProfDef.await(),
                     userFullProfile = fullProfDef.await(),
                     userRole = userRole,
@@ -244,12 +260,30 @@ fun AiAssistantScreen(
                         }
                     },
                 )
+                val learnedEntry = reply.learnedFact
+                var savedKnowledge = false
+                if (learnedEntry != null) {
+                    val savedEntry = learnedEntry.copy(
+                        id = learnedEntry.id.ifBlank { "zk_${getCurrentTimeMillis()}_${(100..999).random()}" },
+                        createdAt = getCurrentTimeMillis(),
+                    )
+                    contextSnapshot = contextSnapshot.copy(
+                        learnedKnowledge = (listOf(savedEntry) + contextSnapshot.learnedKnowledge)
+                            .distinctBy { it.fact.lowercase() }
+                            .take(150),
+                    )
+                    savedKnowledge = true
+                    launch {
+                        runCatching { saveZedKnowledgeInFirestore(savedEntry) }
+                    }
+                }
                 val finalMsg = AiChatMessage(
                     id = replyId,
                     text = reply.answerText,
                     isFromUser = false,
                     sourceBadge = reply.sourceBadge,
                     blocks = reply.blocks,
+                    learnedSaved = savedKnowledge,
                 )
                 val existingIdx = messages.indexOfFirst { it.id == replyId }
                 if (existingIdx >= 0) {
@@ -303,7 +337,7 @@ fun AiAssistantScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             GoogleTopAppBar(
-                title = "Zed AI",
+                title = "Zed ai",
                 hindSiliguri = hindSiliguri,
                 onNavigationClick = onBack,
                 navigationTestTag = "ai_back_button",
@@ -359,6 +393,7 @@ fun AiAssistantScreen(
             ) {
                 val bubbleMaxWidth: Dp = if (maxWidth >= 680.dp) 580.dp else 334.dp
 
+                val clipboardManager = LocalClipboardManager.current
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -379,6 +414,19 @@ fun AiAssistantScreen(
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
                                 maxBubbleWidth = bubbleMaxWidth,
+                                onActionClick = { action ->
+                                    when (action.actionType) {
+                                        ZedActionType.COPY_TEXT -> {
+                                            val clip = action.query.ifBlank { action.label }
+                                            clipboardManager.setText(AnnotatedString(clip))
+                                            showToast("Copied: $clip")
+                                        }
+                                        ZedActionType.ASK_FOLLOWUP -> {
+                                            if (action.query.isNotBlank()) sendMessage(action.query)
+                                        }
+                                        else -> onNavigateAction(action)
+                                    }
+                                },
                             )
                         }
                         if (isAiTyping) {
@@ -581,9 +629,11 @@ private fun ChatMessageBubble(
     isDark: Boolean,
     hindSiliguri: FontFamily,
     maxBubbleWidth: Dp,
+    onActionClick: (ZedA2UiAction) -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val aiAccent = KlassFeaturePalette.ai(isDark)
+    val learnAccent = KlassFeaturePalette.success(isDark)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -636,15 +686,49 @@ private fun ChatMessageBubble(
                 border = bubbleBorder,
             ) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    if (!message.isFromUser && !message.sourceBadge.isNullOrBlank()) {
-                        Text(
-                            text = message.sourceBadge,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                            color = aiAccent.primary,
+                    if (!message.isFromUser && (!message.sourceBadge.isNullOrBlank() || message.learnedSaved)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.padding(bottom = 3.dp),
-                        )
+                        ) {
+                            if (!message.sourceBadge.isNullOrBlank()) {
+                                Text(
+                                    text = message.sourceBadge,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = hindSiliguri,
+                                    color = aiAccent.primary,
+                                )
+                            }
+                            if (message.learnedSaved) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = learnAccent.softTint,
+                                    border = BorderStroke(0.5.dp, learnAccent.borderTint),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = CheckIcon,
+                                            contentDescription = null,
+                                            tint = learnAccent.primary,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                        Text(
+                                            text = "Learned",
+                                            fontSize = 10.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = hindSiliguri,
+                                            color = learnAccent.primary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     val bodyColor = if (message.isFromUser) Color.White else cs.onSurface
@@ -666,6 +750,7 @@ private fun ChatMessageBubble(
                     blocks = message.blocks,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
+                    onActionClick = onActionClick,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -673,11 +758,13 @@ private fun ChatMessageBubble(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ZedA2UiSurfaceView(
     blocks: List<ZedA2UiBlock>,
     isDark: Boolean,
     hindSiliguri: FontFamily,
+    onActionClick: (ZedA2UiAction) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -687,6 +774,7 @@ private fun ZedA2UiSurfaceView(
         "BOOKS" -> KlassFeaturePalette.books(isDark)
         "BLOOD" -> KlassFeaturePalette.error(isDark)
         "TEACHERS" -> KlassFeaturePalette.teachers(isDark)
+        "CLASSROOMS" -> KlassFeaturePalette.classrooms(isDark)
         "ROUTINE" -> KlassFeaturePalette.routine(isDark)
         else -> defaultAccent
     }
@@ -895,10 +983,10 @@ private fun ZedA2UiSurfaceView(
                                             )
                                         }
                                     }
-                                    val phone = entity.phone?.trim()
-                                    if (!phone.isNullOrBlank()) {
+                                    val itemAction = entity.action
+                                    if (itemAction != null) {
                                         IconButton(
-                                            onClick = { openPhoneDialer(phone) },
+                                            onClick = { onActionClick(itemAction) },
                                             modifier = Modifier.size(48.dp),
                                         ) {
                                             Surface(
@@ -908,8 +996,8 @@ private fun ZedA2UiSurfaceView(
                                             ) {
                                                 Box(contentAlignment = Alignment.Center) {
                                                     Icon(
-                                                        imageVector = PhoneSolidIcon,
-                                                        contentDescription = "Call ${entity.primary}",
+                                                        imageVector = if (itemAction.actionType == ZedActionType.COPY_TEXT) CopyIcon else RightArrowIcon,
+                                                        contentDescription = itemAction.label,
                                                         tint = domainAccent.primary,
                                                         modifier = Modifier.size(16.dp),
                                                     )
@@ -1027,6 +1115,64 @@ private fun ZedA2UiSurfaceView(
                                 color = cs.onSurface,
                                 modifier = Modifier.weight(1f),
                             )
+                        }
+                    }
+                }
+
+                is ZedA2UiBlock.ActionRow -> {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isDark) cs.surfaceContainerHigh else Color.White,
+                        border = BorderStroke(0.75.dp, domainAccent.borderTint),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = block.title,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = hindSiliguri,
+                                color = domainAccent.primary,
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                block.actions.forEach { action ->
+                                    val actionAccent = when (action.actionType) {
+                                        ZedActionType.OPEN_BOOKS -> KlassFeaturePalette.books(isDark).primary
+                                        ZedActionType.OPEN_BLOOD -> KlassFeaturePalette.blood(isDark).primary
+                                        ZedActionType.OPEN_TEACHERS -> KlassFeaturePalette.teachers(isDark).primary
+                                        ZedActionType.OPEN_CLASSROOMS -> KlassFeaturePalette.classrooms(isDark).primary
+                                        ZedActionType.OPEN_ROUTINE -> KlassFeaturePalette.routine(isDark).primary
+                                        ZedActionType.OPEN_NOTIFICATIONS -> KlassFeaturePalette.notifications(isDark).primary
+                                        else -> domainAccent.primary
+                                    }
+                                    val actionIcon = when (action.actionType) {
+                                        ZedActionType.OPEN_BOOKS -> BookIcon
+                                        ZedActionType.OPEN_BLOOD -> DropletIcon
+                                        ZedActionType.OPEN_TEACHERS -> GraduationCapIcon
+                                        ZedActionType.OPEN_CLASSROOMS -> DoorOpenIcon
+                                        ZedActionType.OPEN_ROUTINE -> CalendarDaysIcon
+                                        ZedActionType.OPEN_NOTIFICATIONS -> NotificationIcon
+                                        ZedActionType.COPY_TEXT -> CopyIcon
+                                        ZedActionType.ASK_FOLLOWUP -> SparkleIcon
+                                    }
+                                    KlassTonalButton(
+                                        text = action.label,
+                                        accent = actionAccent,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        icon = actionIcon,
+                                        height = 38.dp,
+                                        testTag = "zed_a2ui_action_${action.actionType.key.lowercase()}",
+                                        onClick = { onActionClick(action) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }

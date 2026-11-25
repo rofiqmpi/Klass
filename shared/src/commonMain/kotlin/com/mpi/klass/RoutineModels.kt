@@ -21,6 +21,25 @@ enum class ClassroomType(val key: String, val label: String) {
     }
 }
 
+enum class LabSpecialty(val key: String, val label: String) {
+    GENERAL("GENERAL", "General / Shared Lab"),
+    PHYSICS("PHYSICS", "Physics Lab"),
+    CHEMISTRY("CHEMISTRY", "Chemistry Lab"),
+    DRAWING("DRAWING", "Drawing / CAD Lab"),
+    COMPUTER("COMPUTER", "Computer / Software Lab"),
+    ELECTRICAL("ELECTRICAL", "Electrical Lab"),
+    ELECTRONICS("ELECTRONICS", "Electronics Lab"),
+    CIVIL("CIVIL", "Civil / Survey Lab"),
+    MECHANICAL_WORKSHOP("MECHANICAL_WORKSHOP", "Mechanical Workshop"),
+    POWER_AUTO("POWER_AUTO", "Power / Auto Lab"),
+    BIOMEDICAL("BIOMEDICAL", "Electro-Medical Lab");
+
+    companion object {
+        fun fromRaw(raw: String?): LabSpecialty? =
+            entries.firstOrNull { it.key.equals(raw?.trim(), ignoreCase = true) }
+    }
+}
+
 enum class EditRequestStatus(val key: String, val label: String) {
     PENDING("PENDING", "Pending"),
     APPROVED("APPROVED", "Approved"),
@@ -54,6 +73,7 @@ data class ClassroomItem(
     val shifts: List<String> = listOf(RoutineRules.SHIFT_1, RoutineRules.SHIFT_2),
     val capacity: Int = 40,
     val updatedAt: Long = 0L,
+    val labSpecialty: String = "",
 ) {
     fun effectiveNearestDepartments(): List<String> {
         val raw = nearestDepartments.ifEmpty {
@@ -64,6 +84,24 @@ data class ClassroomItem(
             .filter { it.isNotBlank() && it != "ALL" }
             .distinct()
     }
+
+    fun effectiveLabSpecialty(): LabSpecialty {
+        LabSpecialty.fromRaw(labSpecialty)?.let { return it }
+        val text = "$roomNumber $buildingOrFloor $department ${effectiveNearestDepartments().joinToString(" ")}".lowercase()
+        return when {
+            text.contains("physics") || text.contains("ফিজিক্স") || text.contains("পদার্থ") -> LabSpecialty.PHYSICS
+            text.contains("chemistry") || text.contains("chem") || text.contains("কেমিস্ট্রি") || text.contains("রসায়ন") || text.contains("রসায়ন") -> LabSpecialty.CHEMISTRY
+            text.contains("drawing") || text.contains("drafting") || text.contains("cad") || text.contains("ড্রইং") -> LabSpecialty.DRAWING
+            text.contains("biomedical") || text.contains("electro-medical") || text.contains("medical") || text.contains("emt") -> LabSpecialty.BIOMEDICAL
+            text.contains("computer") || text.contains("software") || text.contains("network") || text.contains("programming") || text.contains("it lab") || text.contains("cyber") || text.contains("cst") -> LabSpecialty.COMPUTER
+            text.contains("electronics") || text.contains("electronic") || text.contains("digital lab") || text.contains("ent") -> LabSpecialty.ELECTRONICS
+            text.contains("electrical") || text.contains("switchgear") || text.contains("machine lab") || text.contains("wiring") || Regex("\\bet\\b").containsMatchIn(text) -> LabSpecialty.ELECTRICAL
+            text.contains("survey") || text.contains("hydraulics") || text.contains("material") || text.contains("soil") || text.contains("concrete") || text.contains("civil") || Regex("\\bct\\b").containsMatchIn(text) -> LabSpecialty.CIVIL
+            text.contains("automobile") || text.contains("auto") || text.contains("engine") || text.contains("rac") || text.contains("thermo") || text.contains("power") || Regex("\\bpt\\b").containsMatchIn(text) -> LabSpecialty.POWER_AUTO
+            text.contains("workshop") || text.contains("machine shop") || text.contains("welding") || text.contains("foundry") || text.contains("mechanical") || Regex("\\bmt\\b").containsMatchIn(text) -> LabSpecialty.MECHANICAL_WORKSHOP
+            else -> LabSpecialty.GENERAL
+        }
+    }
 }
 
 data class RoutineConfig(
@@ -73,6 +111,7 @@ data class RoutineConfig(
     val periodsPerDay: Int = 7,
     val activeSemesters: List<String> = RoutineRules.ALL_SEMESTER_KEYS,
     val validMonths: Int = 6,
+    val practicalBlockMode: String = "AUTO_2_3", // TWO_PERIODS, AUTO_2_3, THREE_PERIODS
 )
 
 data class RoutineEntry(

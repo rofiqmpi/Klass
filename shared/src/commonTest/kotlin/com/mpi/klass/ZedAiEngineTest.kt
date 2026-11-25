@@ -113,21 +113,22 @@ class ZedAiEngineTest {
     }
 
     @Test
-    fun strictlyRejectsQuestionsOutsideTheFourDomains() {
+    fun rejectsOutOfScopeQuestionsWhileSupportingCampusModules() {
         val snap = buildSampleSnapshot()
 
         val generalRes = ZedAiEngine.evaluate("What is the distance from Earth to Mars?", snap)
         assertFalse(generalRes.isSupportedDomain)
         assertTrue(generalRes.answerText.contains("Books Library"))
-        assertTrue(generalRes.answerText.contains("Blood Donor"))
+        assertTrue(generalRes.answerText.contains("Blood Finder"))
         assertTrue(generalRes.answerText.contains("Teachers"))
+        assertTrue(generalRes.answerText.contains("Classrooms"))
         assertTrue(generalRes.answerText.contains("Class Routine"))
 
         val mpiPortalRes = ZedAiEngine.evaluate("mpi.politech.gov.bd er principal ke?", snap)
         assertFalse(mpiPortalRes.isSupportedDomain)
 
         val roomRes = ZedAiEngine.evaluate("Room 204 kothay?", snap)
-        assertFalse(roomRes.isSupportedDomain)
+        assertTrue(roomRes.isSupportedDomain)
     }
 
     @Test

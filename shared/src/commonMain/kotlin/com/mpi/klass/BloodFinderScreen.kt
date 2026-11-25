@@ -67,6 +67,8 @@ fun BloodFinderScreen(
     hindSiliguri: FontFamily,
     topContentPadding: Dp = 72.dp,
     isGuest: Boolean = false,
+    initialBloodGroup: String = "All",
+    initialQuery: String = "",
     onSignInClick: (() -> Unit)? = null,
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
@@ -75,8 +77,12 @@ fun BloodFinderScreen(
 
     var donors by remember { mutableStateOf<List<BloodDonorItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var selectedBloodGroup by remember { mutableStateOf("All") }
-    var searchQuery by remember { mutableStateOf("") }
+    var selectedBloodGroup by remember(initialBloodGroup) {
+        mutableStateOf(
+            initialBloodGroup.trim().uppercase().takeIf { it in RoutineRules.BLOOD_GROUPS } ?: "All"
+        )
+    }
+    var searchQuery by remember(initialQuery) { mutableStateOf(initialQuery) }
     var selectedDonor by remember { mutableStateOf<BloodDonorItem?>(null) }
 
     LaunchedEffect(selectedDonor != null) {

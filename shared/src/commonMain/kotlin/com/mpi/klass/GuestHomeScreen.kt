@@ -62,6 +62,8 @@ import kotlinx.coroutines.launch
 fun GuestHomeScreen(
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
+    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+    onLanguageChange: (AppLanguage) -> Unit = {},
     onSwitchToLogin: () -> Unit = {},
     onCloseApp: () -> Unit = {},
     onBackToWelcome: () -> Unit = {},
@@ -92,6 +94,11 @@ fun GuestHomeScreen(
     var isNotificationsSubOverlayOpen by remember { mutableStateOf(false) }
     var isBloodFinderSubOverlayOpen by remember { mutableStateOf(false) }
     var isProfileSubOverlayOpen by remember { mutableStateOf(false) }
+    var booksInitDept by remember { mutableStateOf<String?>(null) }
+    var booksInitSem by remember { mutableStateOf<String?>(null) }
+    var booksInitQuery by remember { mutableStateOf("") }
+    var bloodInitGroup by remember { mutableStateOf("All") }
+    var bloodInitQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         isRoutineLoading = true
@@ -374,12 +381,23 @@ fun GuestHomeScreen(
                                         role = null,
                                         currentThemeMode = currentThemeMode,
                                         onThemeModeChange = onThemeModeChange,
+                                        currentLanguage = currentLanguage,
+                                        onLanguageClick = { navigateTo("language") },
                                         onProfileClick = { navigateTo("profile") },
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
-                                        onBooksClick = { navigateTo("books") },
+                                        onBooksClick = {
+                                            booksInitDept = null
+                                            booksInitSem = null
+                                            booksInitQuery = ""
+                                            navigateTo("books")
+                                        },
                                         onClassroomClick = { navigateTo("classrooms") },
-                                        onBloodFinderClick = { navigateTo("blood_finder") },
+                                        onBloodFinderClick = {
+                                            bloodInitGroup = "All"
+                                            bloodInitQuery = ""
+                                            navigateTo("blood_finder")
+                                        },
                                         onAppearanceClick = { navigateTo("appearance") },
                                         onSignInClick = onSwitchToLogin,
                                         topContentPadding = 0.dp,
@@ -503,7 +521,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Books Library",
+                                    title = "Books library",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -521,6 +539,9 @@ fun GuestHomeScreen(
                                     hindSiliguri = hindSiliguri,
                                     canEdit = false,
                                     topContentPadding = 0.dp,
+                                    initialDept = booksInitDept,
+                                    initialSem = booksInitSem,
+                                    initialQuery = booksInitQuery,
                                     onFullScreenOverlayChange = { isBooksSubOverlayOpen = it },
                                 )
                             }
@@ -534,7 +555,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Classrooms & Labs",
+                                    title = "Classrooms",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -565,7 +586,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Blood Finder",
+                                    title = "Blood finder",
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -583,6 +604,8 @@ fun GuestHomeScreen(
                                     hindSiliguri = hindSiliguri,
                                     topContentPadding = 0.dp,
                                     isGuest = true,
+                                    initialBloodGroup = bloodInitGroup,
+                                    initialQuery = bloodInitQuery,
                                     onSignInClick = onSwitchToLogin,
                                     onFullScreenOverlayChange = { isBloodFinderSubOverlayOpen = it },
                                 )
@@ -598,6 +621,15 @@ fun GuestHomeScreen(
                             onBack = { goBack() },
                         )
                     }
+                    "language" -> {
+                        LanguageSubScreen(
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                            currentLanguage = currentLanguage,
+                            onLanguageChange = onLanguageChange,
+                            onBack = { goBack() },
+                        )
+                    }
                     "ai" -> {
                         Box(
                             modifier = Modifier
@@ -609,6 +641,26 @@ fun GuestHomeScreen(
                                 hindSiliguri = hindSiliguri,
                                 onBack = { goBack() },
                                 onNotificationClick = { navigateTo("notification") },
+                                onNavigateAction = { action ->
+                                    when (action.actionType) {
+                                        ZedActionType.OPEN_BOOKS -> {
+                                            booksInitDept = action.dept.takeIf { it.isNotBlank() }
+                                            booksInitSem = action.semester.takeIf { it.isNotBlank() }
+                                            booksInitQuery = action.query
+                                            navigateTo("books")
+                                        }
+                                        ZedActionType.OPEN_BLOOD -> {
+                                            bloodInitGroup = action.bloodGroup.ifBlank { "All" }
+                                            bloodInitQuery = action.query
+                                            navigateTo("blood_finder")
+                                        }
+                                        ZedActionType.OPEN_CLASSROOMS -> navigateTo("classrooms")
+                                        ZedActionType.OPEN_ROUTINE -> navigateTo("home")
+                                        ZedActionType.OPEN_NOTIFICATIONS -> navigateTo("notification")
+                                        ZedActionType.OPEN_TEACHERS -> showToast("Sign in to browse the Teachers directory.")
+                                        ZedActionType.COPY_TEXT, ZedActionType.ASK_FOLLOWUP -> Unit
+                                    }
+                                },
                                 userDisplayName = currentUserName,
                             )
                         }

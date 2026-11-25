@@ -142,6 +142,7 @@ fun ClassroomManagementScreen(
                 r.buildingOrFloor.lowercase().contains(q) ||
                 r.nearestDepartment.lowercase().contains(q) ||
                 r.effectiveNearestDepartments().any { it.lowercase().contains(q) } ||
+                r.effectiveLabSpecialty().label.lowercase().contains(q) ||
                 r.department.lowercase().contains(q)
             typeOk && queryOk
         }
@@ -265,27 +266,58 @@ fun ClassroomManagementScreen(
                                     .padding(horizontal = 24.dp, vertical = 32.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                KlassEmptyState(
-                                    icon = DoorOpenIcon,
-                                    title = "No Classrooms Found",
-                                    subtitle = if (canEdit) {
-                                        "Tap Add Room to configure theory rooms and labs."
-                                    } else {
-                                        "No classroom schedule data is available yet."
-                                    },
-                                    accent = classroomAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    actionLabel = if (canEdit) "Add Room" else null,
-                                    onActionClick = if (canEdit) {
-                                        {
-                                            editingRoom = null
-                                            isAddEditorOpen = true
-                                        }
-                                    } else {
-                                        null
-                                    },
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    KlassEmptyState(
+                                        icon = DoorOpenIcon,
+                                        title = "No Classrooms Found",
+                                        subtitle = if (canEdit) {
+                                            "Tap Add Room to configure theory rooms and labs, or load realistic MPI demo campus rooms & teachers."
+                                        } else {
+                                            "No classroom schedule data is available yet."
+                                        },
+                                        accent = classroomAccent.primary,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        actionLabel = if (canEdit) "Add Room" else null,
+                                        onActionClick = if (canEdit) {
+                                            {
+                                                editingRoom = null
+                                                isAddEditorOpen = true
+                                            }
+                                        } else {
+                                            null
+                                        },
+                                    )
+                                    if (canEdit && rooms.isEmpty()) {
+                                        KlassTonalButton(
+                                            text = if (isBusy) "Loading Demo Campus..." else "Load Demo Campus (Rooms & Teachers)",
+                                            icon = SparkleIcon,
+                                            accent = theoryAccent.primary,
+                                            isDark = isDark,
+                                            hindSiliguri = hindSiliguri,
+                                            enabled = !isBusy,
+                                            onClick = {
+                                                scope.launch {
+                                                    isBusy = true
+                                                    try {
+                                                        val res = CampusDemoCatalog.seedDemoCampusToFirestore()
+                                                        res.onSuccess { (rCount, tCount) ->
+                                                            showToast("Loaded $rCount rooms & $tCount teachers!")
+                                                            refreshAll()
+                                                        }.onFailure { err ->
+                                                            showToast(err.message ?: "Failed to load demo campus data.")
+                                                        }
+                                                    } finally {
+                                                        isBusy = false
+                                                    }
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -392,11 +424,13 @@ fun ClassroomManagementScreen(
                                                                             border = BorderStroke(0.75.dp, roomAccent.borderTint),
                                                                         ) {
                                                                             Text(
-                                                                                text = if (isLab) "Lab" else "Theory",
+                                                                                text = if (isLab) room.effectiveLabSpecialty().label else "Theory",
                                                                                 fontSize = 12.sp,
                                                                                 fontWeight = FontWeight.Bold,
                                                                                 fontFamily = hindSiliguri,
                                                                                 color = roomAccent.primary,
+                                                                                maxLines = 1,
+                                                                                overflow = TextOverflow.Ellipsis,
                                                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                                                             )
                                                                         }
@@ -648,6 +682,9 @@ private fun RoomEditorFullScreen(
     var roomNumber by remember(initialRoom) { mutableStateOf(initialRoom?.roomNumber ?: "") }
     var buildingOrFloor by remember(initialRoom) { mutableStateOf(initialRoom?.buildingOrFloor ?: "") }
     var roomType by remember(initialRoom) { mutableStateOf(initialRoom?.roomType ?: ClassroomType.THEORY) }
+    var selectedLabSpecialty by remember(initialRoom) {
+        mutableStateOf(LabSpecialty.fromRaw(initialRoom?.labSpecialty))
+    }
     var selectedNearDepts by remember(initialRoom) {
         mutableStateOf(initialRoom?.effectiveNearestDepartments()?.toSet() ?: emptySet())
     }
@@ -685,6 +722,7 @@ private fun RoomEditorFullScreen(
                 nearestDepartment = sortedNear.joinToString(", "),
                 nearestDepartments = sortedNear,
                 shifts = shifts,
+                labSpecialty = if (roomType == ClassroomType.LAB) (selectedLabSpecialty?.key ?: "") else "",
                 updatedAt = getCurrentTimeMillis(),
             )
         )
@@ -809,6 +847,48 @@ private fun RoomEditorFullScreen(
                                         modifier = Modifier.weight(1f),
                                         onClick = { roomType = t },
                                     )
+                                }
+                            }
+                        }
+
+                        if (roomType == ClassroomType.LAB) {
+                            val autoDetected = ClassroomItem(
+                                roomNumber = roomNumber,
+                                buildingOrFloor = buildingOrFloor,
+                                roomType = ClassroomType.LAB,
+                                nearestDepartments = selectedNearDepts.toList(),
+                            ).effectiveLabSpecialty()
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Lab Specialty (for Physics / Chemistry / Subject Routing)",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = hindSiliguri,
+                                    color = cs.onSurfaceVariant,
+                                )
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    MinimalIconChip(
+                                        label = "Auto (${autoDetected.label})",
+                                        selected = selectedLabSpecialty == null,
+                                        accent = classroomAccent.primary,
+                                        isDark = isDark,
+                                        hindSiliguri = hindSiliguri,
+                                        onClick = { selectedLabSpecialty = null },
+                                    )
+                                    LabSpecialty.entries.forEach { spec ->
+                                        MinimalIconChip(
+                                            label = spec.label,
+                                            selected = selectedLabSpecialty == spec,
+                                            accent = classroomAccent.primary,
+                                            isDark = isDark,
+                                            hindSiliguri = hindSiliguri,
+                                            onClick = { selectedLabSpecialty = spec },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -965,9 +1045,10 @@ private fun RoomScheduleViewerFullScreen(
             .takeIf { it.isNotEmpty() }
             ?.let { "Near ${it.joinToString(", ")}" }
             ?: "All Departments"
+        val typeLabel = if (isLab) room.effectiveLabSpecialty().label else room.roomType.label
         MinimalFullScreenSheet(
             title = "Room ${room.roomNumber} Schedule",
-            subtitle = "${room.roomType.label} • $zoneLabel",
+            subtitle = "$typeLabel • $zoneLabel",
             levelLabel = "Classroom Schedule • Level 1",
             icon = DoorOpenIcon,
             accent = roomAccent.primary,

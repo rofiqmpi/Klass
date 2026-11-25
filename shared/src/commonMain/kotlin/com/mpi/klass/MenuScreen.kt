@@ -64,6 +64,7 @@ import com.mpi.klass.theme.FeatureAccent
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.LanguageGlobeIcon
 import com.mpi.klass.theme.LightModeIcon
 import com.mpi.klass.theme.LocationDotIcon
 import com.mpi.klass.theme.LoginIcon
@@ -98,6 +99,8 @@ fun MenuScreen(
     role: UserRole? = null,
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
+    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+    onLanguageClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onAiClick: () -> Unit = {},
     onNoticeClick: () -> Unit = {},
@@ -121,7 +124,7 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "routine_manager",
-                        title = "Routine Engine",
+                        title = "Zed engine",
                         subtitle = "Generate, edit & publish schedules",
                         icon = CalendarDaysIcon,
                         accent = KlassFeaturePalette.routine(isDark),
@@ -145,7 +148,7 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "books",
-                    title = "Books Library",
+                    title = "Books library",
                     subtitle = "Subject syllabus, codes & credits",
                     icon = BookIcon,
                     accent = KlassFeaturePalette.books(isDark),
@@ -156,8 +159,8 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "teachers",
-                        title = "Teachers Directory",
-                        subtitle = "Faculty members & contact info",
+                        title = "Teachers",
+                        subtitle = "Faculty members & teaching subjects",
                         icon = GraduationCapIcon,
                         accent = KlassFeaturePalette.teachers(isDark),
                         onClick = onTeachersClick,
@@ -167,7 +170,7 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "classrooms",
-                    title = "Classrooms & Labs",
+                    title = "Classrooms",
                     subtitle = "Room schedule & live availability",
                     icon = DoorOpenIcon,
                     accent = KlassFeaturePalette.classrooms(isDark),
@@ -183,8 +186,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "notices",
-                    title = "Class Push Alerts",
-                    subtitle = "Automatic pre-class reminders",
+                    title = "Notifications",
+                    subtitle = "Class reminders & campus updates",
                     icon = NotificationIcon,
                     accent = KlassFeaturePalette.notifications(isDark),
                     onClick = onNoticeClick,
@@ -193,7 +196,7 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "blood_finder",
-                    title = "Blood Finder",
+                    title = "Blood finder",
                     subtitle = "Verified campus donor directory",
                     icon = DropletIcon,
                     accent = KlassFeaturePalette.blood(isDark),
@@ -204,8 +207,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "ai_assistant",
-                    title = "Zed AI",
-                    subtitle = "App knowledge & any general question",
+                    title = "Zed ai",
+                    subtitle = "Smart campus knowledge & A2UI actions",
                     icon = SparkleIcon,
                     accent = KlassFeaturePalette.ai(isDark),
                     badgeText = "ZED",
@@ -336,6 +339,20 @@ fun MenuScreen(
                             accent = KlassFeaturePalette.appearance(isDark),
                             badgeText = themeLabel,
                             onClick = onAppearanceClick,
+                        ),
+                        isDark = isDark,
+                        hindSiliguri = hindSiliguri,
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    SocialMenuRow(
+                        tile = MenuTileSpec(
+                            id = "language",
+                            title = "Language",
+                            subtitle = "Switch between Bengali & English",
+                            icon = LanguageGlobeIcon,
+                            accent = KlassFeaturePalette.teaching(isDark),
+                            badgeText = currentLanguage.displayName,
+                            onClick = onLanguageClick,
                         ),
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -484,6 +501,120 @@ fun AppearanceSubScreen(
                                 Box(contentAlignment = Alignment.Center) {
                                     TelegramAnimatedIcon(
                                         icon = icon,
+                                        contentDescription = label,
+                                        tint = optionAccent.primary,
+                                        size = 20.dp,
+                                        triggerKey = if (isSelected) 1 else 0,
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = label,
+                                    fontSize = 16.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                    fontFamily = hindSiliguri,
+                                    color = if (isSelected) optionAccent.primary else cs.onSurface,
+                                )
+                                Text(
+                                    text = desc,
+                                    fontSize = 13.sp,
+                                    fontFamily = hindSiliguri,
+                                    color = cs.onSurfaceVariant,
+                                )
+                            }
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(selectedColor = optionAccent.primary),
+                            )
+                        }
+                    }
+                    if (idx < options.lastIndex) {
+                        SocialInsetDivider(startIndent = 72.dp)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun LanguageSubScreen(
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    currentLanguage: AppLanguage,
+    onLanguageChange: (AppLanguage) -> Unit,
+    onBack: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val langAccent = KlassFeaturePalette.teaching(isDark)
+
+    val options = remember(isDark) {
+        listOf(
+            Triple(
+                AppLanguage.BENGALI,
+                "বাংলা (Bengali)" to "সহজ বাংলায় পুরো অ্যাপ ব্যবহার করুন",
+                KlassFeaturePalette.books(isDark),
+            ),
+            Triple(
+                AppLanguage.ENGLISH,
+                "English (EN)" to "Use the app interface in English",
+                KlassFeaturePalette.routine(isDark),
+            ),
+        )
+    }
+
+    MinimalFullScreenSheet(
+        title = "Language",
+        subtitle = "Active: ${currentLanguage.displayName}",
+        levelLabel = "Menu › Preferences",
+        icon = LanguageGlobeIcon,
+        accent = langAccent.primary,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onBack,
+        closeTestTag = "language_back_button",
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Spacer(modifier = Modifier.height(10.dp))
+            GoogleSectionHeader(
+                title = "Select App Language",
+                accent = langAccent.primary,
+                hindSiliguri = hindSiliguri,
+            )
+            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                options.forEachIndexed { idx, (lang, texts, optionAccent) ->
+                    val (label, desc) = texts
+                    val isSelected = currentLanguage == lang
+                    Surface(
+                        onClick = { onLanguageChange(lang) },
+                        color = if (isSelected) optionAccent.softTint else Color.Transparent,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("language_mode_${lang.name.lowercase()}"),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = optionAccent.softTint,
+                                border = BorderStroke(0.75.dp, optionAccent.borderTint),
+                                modifier = Modifier.size(42.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    TelegramAnimatedIcon(
+                                        icon = LanguageGlobeIcon,
                                         contentDescription = label,
                                         tint = optionAccent.primary,
                                         size = 20.dp,
@@ -878,7 +1009,7 @@ fun AdminApprovalsSubScreen(
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
                                 label = "Permissions Granted on Approval",
-                                value = "Routine Engine, Books, Teachers Directory & Sign-in Controls",
+                                value = "Zed engine, Books library, Teachers & Sign-in Controls",
                                 icon = InfoCircleIcon,
                                 accent = successAccent.primary,
                                 isDark = isDark,
