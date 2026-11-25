@@ -13,7 +13,7 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
   - Google Sign-In (`CredentialManager`) and email/password flows for Student, Teacher, Admin, and Guest Mode.
   - Enforces a strict **one-email-per-role lock**: once an email is registered under `ADMIN`, `TEACHER`, or `STUDENT`, attempting to sign in under a different category displays a clear `ROLE_MISMATCH` popup and prevents cross-role account creation or overwrites. User profile records are isolated by role collection (`admins`, `teachers`, `students`, plus `users` metadata index).
 - **Mandatory Non-Skippable Sequential Teacher Subjects Setup (Edit Profile & Onboarding)**:
-  - Teachers complete a **mandatory sequential flow** (`All Departments` → `Semester 1st–7th` → `Books`) unfiltered across **all 8 departments** (`CST`, `CT`, `ET`, `MT`, `PT`, `ENT`, `EMT`, `Non-Tech`) and **all 7 semesters**, accumulating selected teaching subjects cleanly across multiple departments and semesters.
+  - Teachers complete a **mandatory sequential flow** (`All Departments` → `Semester 1st–7th` → `Books`) across the seven BTEB departments (`CST`, `CT`, `ET`, `MT`, `PT`, `ENT`, `EMT`) and all seven semesters, accumulating selected teaching subjects across multiple departments and semesters.
   - Accessible exclusively from **Edit Profile** (`edit_teaching_prefs_row`) and automatic Teacher login onboarding (never shown as an inline edit button on read-only Profile View), with no Skip option—teachers cannot exit onboarding until setup is saved.
 - **Shared Classroom & Lab Management + Sensor-Based Admin Campus Map**:
   - Manage Theory Classrooms and Labs (`Add`, `Edit`, `Single Delete`, and `Delete All & Fresh Entry`) with room number, building/floor, type (`Theory` / `Lab`), **optional Nearest Department zone** (for proximity ranking, without locking rooms to a single department), and shift availability (`1st Shift`, `2nd Shift`)—with no seating capacity inputs or display clutter.
@@ -40,6 +40,8 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
 - **Read-Only Facebook-Style Profile View & Edit Profile**:
   - **Profile Screen (Strictly Read-Only)**: Status-bar-inclusive cover photo beneath a transparent fading header (`Back` on left; `Edit profile`, **Zed AI**, and `Notification` with unread dot on right), rounded `22.dp` shoulder, centered shadow-free circular avatar (`140.dp`), centered Name + verified badge, role/department subtitle, Bio, `Edit profile` CTA pill, filter pills (`All`, `About`), and read-only `Academic`, `Contact`, and `Personal` sections with per-field visibility badges (`Public` / `Private`).
   - **Edit Profile Screen**: Facebook-style editor (without `Pinned details`) featuring per-field privacy (`Public` / `Private`), photo & cover pickers, password management, and Teacher **Teaching Subjects** entry.
+- **Sequential Signup & Teacher Onboarding**: New Student and Teacher accounts complete a minimal one-question-per-screen profile wizard before entering the app. Teacher sign-up continues into the existing department → semester → subject flow and cannot reach Home until at least one teaching subject is saved.
+- **Android APK Releases & Update Checks**: GitHub Actions builds debug and signed release APKs for version tags (`vMAJOR.MINOR.PATCH`) and publishes the release APK. Release builds check GitHub Releases for newer versions and open Android's package installer after download; Android still requires the user to confirm installation.
 - **Admin Teachers Directory & Books Library (179 Official BTEB Probidhan-2022 Books)**: Complete CRUD backed by Firebase Firestore and SharedPreferences cache.
 - **Cloud Persistence**: Firebase Auth & Firestore synchronization (`students`, `teachers`, `admins`, `users`, `books`, `classrooms`, `routines`, `routine_edit_requests`, `notifications`, `config/campus_map`) with SharedPreferences offline cache.
 
@@ -50,4 +52,14 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
 - `shared/src/androidMain/kotlin/com/mpi/klass/`: Android platform implementations (`ZedAiBackend.android.kt` with `Firebase.ai` + `gemini-3.8-flash` `responseSchema`, `CampusMapSensor.android.kt` with `SensorManager` heading + step dead reckoning, Firestore repositories, `config/campus_map` sync, `ACTION_DIAL` phone dialer, photo/date pickers, GPS location, toast helpers).
 - `firestore.rules`: Authenticated zero-trust security rules covering all app collections (`admins`, `teachers`, `students`, `users`, `books`, `classrooms`, `routines`, `routine_edit_requests`, `notifications`, `config`).
 - `firebase-blueprint.json`: Structured schema blueprint for all Firestore entities and collections.
+
+## Android releases and updates
+
+The `Android APKs and GitHub Release` workflow runs on `v*` tags or manually. Configure these repository Actions secrets before running it:
+
+- `GOOGLE_SERVICES_JSON`: the complete Firebase `google-services.json`.
+- `ANDROID_KEYSTORE_BASE64`: base64-encoded, persistent release keystore.
+- `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+
+Keep the same release keystore for every version so Android can install updates over existing releases. Never use a debug key for release signing. The in-app checker reads the latest release through the GitHub Releases API and expects an asset named `Klass-release.apk`. This repository is currently private, so that API and its APK are not anonymously accessible to app users; in-app update downloads require a publicly reachable release feed/asset or a separately authenticated update backend. Do not embed a GitHub access token in the APK.
 

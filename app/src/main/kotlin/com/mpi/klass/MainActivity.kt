@@ -1,13 +1,19 @@
 package com.mpi.klass
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.FileProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -32,17 +38,25 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import com.mpi.klass.theme.initThemeContext
 import java.util.Locale
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 private const val AUTH_TAG = "KlassAuth"
+private const val UPDATE_TAG = "KlassUpdate"
+private const val LATEST_RELEASE_URL = "https://api.github.com/repos/rofiqmpi/Klass/releases/latest"
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var credentialManager: CredentialManager
+    private var pendingUpdateUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initThemeContext(this)
@@ -72,6 +86,23 @@ class MainActivity : ComponentActivity() {
                 },
                 onCloseApp = { finish() },
             )
+        }
+        if (!BuildConfig.DEBUG) checkForReleaseUpdate()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val url = pendingUpdateUrl
+        if (url != null) {
+            pendingUpdateUrl = null
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()) {
+                downloadAndInstallUpdate(url)
+            } else {
+                getSharedPreferences("klass_update", Context.MODE_PRIVATE)
+                    .edit()
+                    .remove("last_prompted_tag")
+                    .apply()
+            }
         }
     }
 
@@ -193,6 +224,135 @@ class MainActivity : ComponentActivity() {
         val config = context.resources.configuration
         config.setLocale(locale)
         context.resources.updateConfiguration(config, context.resources.displayMetrics)
+    }
+
+    private fun checkForReleaseUpdate() {
+        lifecycleScope.launch {
+            val release = withContext(Dispatchers.IO) {
+                try {
+                    val connection = (URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 8_000
+                        readTimeout = 8_000
+                        requestMethod = "GET"
+                        setRequestProperty("Accept", "application/vnd.github+json")
+                        setRequestProperty("User-Agent", "Klass-Android")
+                    }
+                    try {
+                        if (connection.responseCode !in 200..299) return@withContext null
+                        val payload = connection.inputStream.bufferedReader().use { it.readText() }
+                        val json = org.json.JSONObject(payload)
+                        val tag = json.optString("tag_name")
+                        val assets = json.optJSONArray("assets") ?: return@withContext null
+                        val apkUrl = (0 until assets.length())
+                            .mapNotNull { assets.optJSONObject(it) }
+                            .firstOrNull { it.optString("name") == "Klass-release.apk" }
+                            ?.optString("browser_download_url")
+                        if (tag.isBlank() || apkUrl.isNullOrBlank()) null else tag to apkUrl
+                    } finally {
+                        connection.disconnect()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(UPDATE_TAG, "Could not check the latest release: ${e.message}")
+                    null
+                }
+            } ?: return@launch
+
+            val installedPackageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0)
+            }
+            val installedVersion = installedPackageInfo.versionName.orEmpty()
+            if (compareVersions(release.first, installedVersion) <= 0) return@launch
+
+            val preferences = getSharedPreferences("klass_update", Context.MODE_PRIVATE)
+            if (preferences.getString("last_prompted_tag", null) == release.first) return@launch
+            preferences.edit().putString("last_prompted_tag", release.first).apply()
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Klass update available")
+                .setMessage("Version ${release.first} is ready. Download and install it now?")
+                .setNegativeButton("Later", null)
+                .setPositiveButton("Update") { _, _ -> beginUpdateInstall(release.second) }
+                .show()
+        }
+    }
+
+    private fun beginUpdateInstall(downloadUrl: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            pendingUpdateUrl = downloadUrl
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+            return
+        }
+        downloadAndInstallUpdate(downloadUrl)
+    }
+
+    private fun downloadAndInstallUpdate(downloadUrl: String) {
+        lifecycleScope.launch {
+            try {
+                val apk = withContext(Dispatchers.IO) {
+                    val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 15_000
+                        readTimeout = 30_000
+                        requestMethod = "GET"
+                        setRequestProperty("User-Agent", "Klass-Android")
+                    }
+                    try {
+                        if (connection.responseCode !in 200..299) {
+                            error("APK download returned HTTP ${connection.responseCode}")
+                        }
+                        val directory = File(cacheDir, "updates")
+                        if (!directory.exists() && !directory.mkdirs()) {
+                            error("Could not create update cache")
+                        }
+                        val outputFile = File(directory, "Klass-release.apk")
+                        connection.inputStream.use { input ->
+                            FileOutputStream(outputFile).use { output -> input.copyTo(output) }
+                        }
+                        outputFile
+                    } finally {
+                        connection.disconnect()
+                    }
+                }
+                val apkUri = FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "$packageName.fileprovider",
+                    apk,
+                )
+                val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(apkUri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(installIntent)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(UPDATE_TAG, "Failed to download or open the update APK", e)
+                getSharedPreferences("klass_update", Context.MODE_PRIVATE)
+                    .edit()
+                    .remove("last_prompted_tag")
+                    .apply()
+                Toast.makeText(this@MainActivity, "Update download failed. Please try again later.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun compareVersions(remoteTag: String, installedVersion: String): Int {
+        fun numbers(value: String) = Regex("\\d+").findAll(value).map { it.value.toLongOrNull() ?: 0L }.toList()
+        val remote = numbers(remoteTag)
+        val installed = numbers(installedVersion)
+        for (index in 0 until maxOf(remote.size, installed.size)) {
+            val comparison = (remote.getOrElse(index) { 0L }).compareTo(installed.getOrElse(index) { 0L })
+            if (comparison != 0) return comparison
+        }
+        return 0
     }
 }
 

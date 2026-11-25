@@ -100,6 +100,14 @@ sealed interface AppScreen {
         val initialTab: String = "home",
         val showPasswordSetupOnEntry: Boolean = false,
     ) : AppScreen
+    data class ProfileSetup(
+        val role: UserRole,
+        val email: String,
+        val name: String,
+        val photoUrl: String?,
+        val profile: StudentProfile,
+        val showPasswordSetupOnEntry: Boolean = false,
+    ) : AppScreen
 }
 
 enum class ErrorImageType {
@@ -190,6 +198,60 @@ fun App(
         activeErrorType = type
     }
 
+    fun openAuthenticatedScreen(
+        role: UserRole,
+        email: String,
+        name: String,
+        photoUrl: String?,
+        showPasswordSetup: Boolean,
+    ) {
+        coroutineScope.launch {
+            if (role != UserRole.ADMIN) {
+                val profile = RoleConfig.fetchStudentProfile(email)
+                if (profile?.profileSetupComplete != true) {
+                    val setupProfile = profile ?: StudentProfile(
+                        email = email.trim().lowercase(),
+                        name = name,
+                        photoUrl = photoUrl,
+                        profileSetupComplete = false,
+                    )
+                    if (profile == null) {
+                        val result = RoleConfig.saveStudentProfile(setupProfile)
+                        if (result.isFailure) {
+                            isLoadingOverlay = false
+                            showError(
+                                ErrorImageType.GENERAL_ERROR,
+                                result.exceptionOrNull()?.localizedMessage
+                                    ?: "প্রোফাইল সেটআপ শুরু করা যায়নি। আবার চেষ্টা করুন।",
+                            )
+                            return@launch
+                        }
+                    }
+                    currentScreen = AppScreen.ProfileSetup(
+                        role = role,
+                        email = email,
+                        name = setupProfile.name.ifBlank { name },
+                        photoUrl = setupProfile.photoUrl ?: photoUrl,
+                        profile = setupProfile,
+                        showPasswordSetupOnEntry = showPasswordSetup,
+                    )
+                    isLoadingOverlay = false
+                    return@launch
+                }
+            }
+
+            currentScreen = AppScreen.RoleHome(
+                role = role,
+                email = email,
+                name = name,
+                photoUrl = photoUrl,
+                initialTab = "home",
+                showPasswordSetupOnEntry = showPasswordSetup,
+            )
+            isLoadingOverlay = false
+        }
+    }
+
     // Verify saved session & initialize online dynamic language dictionary on startup
     LaunchedEffect(Unit) {
         AppStrings.preloadCacheSync()
@@ -199,6 +261,28 @@ fun App(
         val session = loadUserSession()
         if (session == null || session.role.trim().uppercase() == "GUEST") {
             return@LaunchedEffect
+        }
+        val sessionRole = UserRole.fromRaw(session.role) ?: UserRole.STUDENT
+        if (sessionRole != UserRole.ADMIN) {
+            val profile = RoleConfig.fetchStudentProfile(session.email)
+            if (profile?.profileSetupComplete != true) {
+                val setupProfile = profile ?: StudentProfile(
+                    email = session.email.trim().lowercase(),
+                    name = session.name,
+                    photoUrl = session.photoUrl,
+                    profileSetupComplete = false,
+                )
+                if (profile == null) {
+                    RoleConfig.saveStudentProfile(setupProfile)
+                }
+                currentScreen = AppScreen.ProfileSetup(
+                    role = sessionRole,
+                    email = session.email,
+                    name = setupProfile.name.ifBlank { session.name },
+                    photoUrl = setupProfile.photoUrl ?: session.photoUrl,
+                    profile = setupProfile,
+                )
+            }
         }
         if (!hasNotificationPermission()) {
             requestNotificationPermission()
@@ -330,7 +414,7 @@ fun App(
 
                         val localProfile = RoleConfig.fetchLocalProfile(cleanEmail)
                         val remoteProfile = RoleConfig.fetchRemoteUserProfile(cleanEmail)
-                        val studentProf = if (actualRole == UserRole.STUDENT) RoleConfig.fetchStudentProfile(cleanEmail) else null
+                        val studentProf = RoleConfig.fetchStudentProfile(cleanEmail)
 
                         val savedName = localProfile?.name?.ifBlank { null }
                             ?: studentProf?.name?.ifBlank { null }
@@ -358,14 +442,13 @@ fun App(
                             UserRole.STUDENT -> "Student"
                         }
                         triggerWelcomePush(finalName, roleTitle)
-                        currentScreen = AppScreen.RoleHome(
+                        openAuthenticatedScreen(
                             role = actualRole,
                             email = cleanEmail,
                             name = finalName,
                             photoUrl = finalPhoto,
-                            showPasswordSetupOnEntry = !hasPassword,
+                            showPasswordSetup = !hasPassword,
                         )
-                        isLoadingOverlay = false
                     }
                 }
 
@@ -395,14 +478,13 @@ fun App(
                         UserRole.STUDENT -> "Student"
                     }
                     triggerWelcomePush(res.name, roleTitle)
-                    currentScreen = AppScreen.RoleHome(
+                    openAuthenticatedScreen(
                         role = res.role,
                         email = res.email,
                         name = res.name,
                         photoUrl = res.photoUrl,
-                        showPasswordSetupOnEntry = false,
+                        showPasswordSetup = false,
                     )
-                    isLoadingOverlay = false
                 }
                 is EmailPasswordLoginResult.Error -> {
                     isLoadingOverlay = false
@@ -476,6 +558,48 @@ fun App(
                                     launchEmailPasswordLogin(emailInput, passwordInput)
                                 },
                                 onCloseApp = onCloseApp,
+                            )
+                        }
+
+                        is AppScreen.ProfileSetup -> {
+                            ProfileSetupScreen(
+                                role = screen.role,
+                                initialProfile = screen.profile,
+                                hindSiliguri = hindSiliguri,
+                                onSave = { updatedProfile ->
+                                    val provider = RoleConfig.fetchUserProfile(screen.email)
+                                        ?.provider?.ifBlank { "google" } ?: "google"
+                                    val userResult = RoleConfig.saveUserProfile(
+                                        email = screen.email,
+                                        name = updatedProfile.name,
+                                        photoUrl = updatedProfile.photoUrl,
+                                        provider = provider,
+                                        category = screen.role.name,
+                                    )
+                                    if (userResult.isFailure) {
+                                        userResult
+                                    } else {
+                                        RoleConfig.saveStudentProfile(updatedProfile)
+                                    }
+                                },
+                                onComplete = { completedProfile ->
+                                    saveUserSession(
+                                        UserSession(
+                                            role = screen.role.name,
+                                            email = screen.email,
+                                            name = completedProfile.name,
+                                            photoUrl = completedProfile.photoUrl,
+                                        )
+                                    )
+                                    currentScreen = AppScreen.RoleHome(
+                                        role = screen.role,
+                                        email = screen.email,
+                                        name = completedProfile.name,
+                                        photoUrl = completedProfile.photoUrl,
+                                        initialTab = if (screen.role == UserRole.TEACHER) "teacher_prefs" else "home",
+                                        showPasswordSetupOnEntry = screen.showPasswordSetupOnEntry,
+                                    )
+                                },
                             )
                         }
 

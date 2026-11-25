@@ -481,7 +481,7 @@ fun TeacherPreferencesScreen(
                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
                                     Text(
-                                        text = "Pick subjects sequentially by Department → Semester → Subject across CST, CT, ET, MT, PT, ENT, EMT, and Non-Tech.",
+                                        text = "Pick subjects sequentially by Department → Semester → Subject across CST, CT, ET, MT, PT, ENT, and EMT.",
                                         fontSize = 13.5.sp,
                                         fontFamily = hindSiliguri,
                                         color = cs.onSurfaceVariant,
@@ -539,7 +539,7 @@ fun TeacherPreferencesScreen(
             }
         }
 
-        // Sequential Step 1: Choose Any Department (All 8 Departments, Unfiltered)
+        // Sequential Step 1: Choose Any of the seven BTEB departments
         KlassSubScreenHost(visible = wizardStep == SubjectPickerStep.DEPT, zIndex = 84f) {
             DepartmentPickerStepScreen(
                 allBooks = allBooks,
@@ -645,14 +645,14 @@ private fun DepartmentPickerStepScreen(
                         accent = teachingAccent.primary,
                     )
 
-                    RoutineRules.ALL_TEACHER_DEPARTMENTS.forEachIndexed { idx, dept ->
+                    RoutineRules.TECH_DEPARTMENTS.forEachIndexed { idx, dept ->
                         val dAccent = departmentAccent(dept, isDark)
                         val deptBooks = remember(allBooks, dept) { booksForDeptAnySem(allBooks, dept) }
                         val deptSelectedCount = remember(deptBooks, allSelectedCodes) {
                             deptBooks.count { it.subjectCode.trim() in allSelectedCodes }
                         }
                         KlassNavigationRow(
-                            title = if (dept == "Non-Tech") "Non-Tech Subjects" else "$dept Department",
+                            title = "$dept Department",
                             subtitle = "${deptBooks.size} subjects across semesters • $deptSelectedCount selected",
                             icon = GraduationCapIcon,
                             accent = dAccent.primary,
@@ -663,7 +663,7 @@ private fun DepartmentPickerStepScreen(
                             testTag = "wizard_dept_$dept",
                             onClick = { onSelectDepartment(dept) },
                         )
-                        if (idx < RoutineRules.ALL_TEACHER_DEPARTMENTS.lastIndex) {
+                        if (idx < RoutineRules.TECH_DEPARTMENTS.lastIndex) {
                             SocialInsetDivider(startIndent = 72.dp)
                         }
                     }
