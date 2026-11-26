@@ -418,7 +418,21 @@ fun App(
                         val finalName = savedName ?: name ?: cleanEmail.substringBefore("@")
                         val finalPhoto = savedPhoto ?: photoUrl
 
-                        RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
+                        val saveResult = RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
+                        if (saveResult.isFailure && isNetworkAvailable()) {
+                            val errMsg = saveResult.exceptionOrNull()?.localizedMessage.orEmpty()
+                            if (errMsg.contains("PERMISSION_DENIED", ignoreCase = true) ||
+                                errMsg.contains("NOT_FOUND", ignoreCase = true)
+                            ) {
+                                isLoadingOverlay = false
+                                onSignOutGoogle()
+                                showError(
+                                    ErrorImageType.GENERAL_ERROR,
+                                    "Firestore ডাটাবেসে সংরক্ষণ ব্যর্থ হয়েছে ($errMsg)। Firebase Console-এ Firestore Database তৈরি ও firestore.rules ডিপ্লয় করা আছে কিনা যাচাই করুন।",
+                                )
+                                return@launch
+                            }
+                        }
                         saveUserSession(UserSession(role = actualRole.name, email = cleanEmail, name = finalName, photoUrl = finalPhoto))
                         val hasPassword = RoleConfig.hasPasswordSet(cleanEmail)
                         val roleTitle = when (actualRole) {

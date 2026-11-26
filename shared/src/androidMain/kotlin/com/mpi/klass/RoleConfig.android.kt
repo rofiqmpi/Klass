@@ -6,6 +6,7 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -507,6 +508,7 @@ actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: St
 
         var firebaseAuthSucceeded = false
         var networkFailed = false
+        var emailProviderDisabled = false
         try {
             if (isNetworkAvailable()) {
                 val authResult = withTimeoutOrNull(10.seconds) {
@@ -523,6 +525,11 @@ actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: St
         } catch (e: FirebaseNetworkException) {
             networkFailed = true
             Log.w(TAG, "Email login network exception: ${e.message}")
+        } catch (e: FirebaseAuthException) {
+            if (e.errorCode == "ERROR_OPERATION_NOT_ALLOWED") {
+                emailProviderDisabled = true
+            }
+            Log.w(TAG, "Firebase signInWithEmailAndPassword auth exception [${e.errorCode}]: ${e.message}")
         } catch (e: Exception) {
             Log.w(TAG, "Firebase signInWithEmailAndPassword fallback check: ${e.message}")
         }
@@ -555,15 +562,20 @@ actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: St
                     } catch (_: Exception) {}
                 }
             } else {
-                if (!networkFailed && isNetworkAvailable()) {
+                if (!networkFailed && isNetworkAvailable() && !emailProviderDisabled) {
                     recordFailedPasswordAttempt(cleanEmail)
                 }
                 return if (networkFailed || !isNetworkAvailable()) {
                     EmailPasswordLoginResult.Error(ErrorImageType.NO_INTERNET)
+                } else if (emailProviderDisabled) {
+                    EmailPasswordLoginResult.Error(
+                        ErrorImageType.GENERAL_ERROR,
+                        "Firebase Console > Authentication > Sign-in method থেকে Email/Password চালু (Enable) করা নেই। প্রথমে Google দিয়ে সাইন-ইন করুন অথবা Firebase Console-এ Email/Password চালু করুন।",
+                    )
                 } else {
                     EmailPasswordLoginResult.Error(
                         ErrorImageType.GENERAL_ERROR,
-                        "ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। নতুন ব্যবহারকারী হলে 'শুরু করুন' থেকে সাইন-ইন করে প্রোফাইলে পাসওয়ার্ড সেট করুন।",
+                        "ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। নতুন ব্যবহারকারী হলে 'শুরু করুন' থেকে Google দিয়ে সাইন-ইন করে প্রোফাইলে পাসওয়ার্ড সেট করুন।",
                     )
                 }
             }

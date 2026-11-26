@@ -35,6 +35,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.recaptcha.RecaptchaAppCheckProviderFactory
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import com.mpi.klass.theme.initThemeContext
@@ -215,18 +216,36 @@ class MainActivity : ComponentActivity() {
                 callback(null, null, null, null)
             } catch (e: NoCredentialException) {
                 Log.w(AUTH_TAG, "No Google credentials available: ${e.message}", e)
-                callback(
-                    null,
-                    null,
-                    null,
-                    "ডিভাইসে সক্রিয় Google অ্যাকাউন্ট পাওয়া যায়নি। সেটিংস থেকে Google অ্যাকাউন্ট যোগ করে আবার চেষ্টা করুন।",
-                )
+                val detail = e.localizedMessage?.trim()?.takeIf { it.isNotBlank() }
+                val msg = if (detail != null) {
+                    "Google সাইন-ইন পাওয়া যায়নি ($detail)। ফোনে Google অ্যাকাউন্ট লগইন আছে কিনা এবং Firebase Console-এ APK-এর SHA-1 ও Google Sign-In যুক্ত আছে কিনা যাচাই করুন।"
+                } else {
+                    "ডিভাইসে সক্রিয় Google অ্যাকাউন্ট পাওয়া যায়নি অথবা Firebase-এ এই APK-এর SHA-1 যুক্ত নেই।"
+                }
+                callback(null, null, null, msg)
             } catch (e: GoogleIdTokenParsingException) {
                 Log.e(AUTH_TAG, "Failed to parse Google ID token", e)
                 callback(null, null, null, e.localizedMessage ?: "Invalid Google ID token")
             } catch (e: GetCredentialException) {
                 Log.e(AUTH_TAG, "Google Sign-In credential error: ${e.type} - ${e.message}", e)
-                callback(null, null, null, e.localizedMessage ?: e.type)
+                val detail = e.localizedMessage?.trim()?.takeIf { it.isNotBlank() } ?: e.type
+                callback(
+                    null,
+                    null,
+                    null,
+                    "Google Credential ত্রুটি ($detail)। Firebase Project Settings-এ package 'com.klass.mpi'-এর SHA-1 এবং Google provider যাচাই করুন।",
+                )
+            } catch (e: FirebaseAuthException) {
+                Log.e(AUTH_TAG, "FirebaseAuth error [${e.errorCode}]: ${e.message}", e)
+                val msg = when (e.errorCode) {
+                    "ERROR_OPERATION_NOT_ALLOWED" ->
+                        "Firebase Console > Authentication > Sign-in method থেকে Google Sign-In চালু (Enable) করা নেই।"
+                    "ERROR_INVALID_CREDENTIAL", "ERROR_INVALID_CUSTOM_TOKEN" ->
+                        "Google ID টোকেন বা Web Client ID মিলছে না। Firebase Console থেকে নতুন google-services.json আপডেট করুন।"
+                    else -> e.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: "Firebase Auth ত্রুটি (${e.errorCode})"
+                }
+                callback(null, null, null, msg)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
