@@ -41,7 +41,7 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
   - **Profile Screen (Strictly Read-Only)**: Status-bar-inclusive cover photo beneath a transparent fading header (`Back` on left; `Edit profile`, **Zed AI**, and `Notification` with unread dot on right), rounded `22.dp` shoulder, centered shadow-free circular avatar (`140.dp`), centered Name + verified badge, role/department subtitle, Bio, `Edit profile` CTA pill, filter pills (`All`, `About`), and read-only `Academic`, `Contact`, and `Personal` sections with per-field visibility badges (`Public` / `Private`).
   - **Edit Profile Screen**: Facebook-style editor (without `Pinned details`) featuring per-field privacy (`Public` / `Private`), photo & cover pickers, password management, and Teacher **Teaching Subjects** entry.
 - **Sequential Signup & Teacher Onboarding**: New Student and Teacher accounts complete a minimal one-question-per-screen profile wizard before entering the app. Teacher sign-up continues into the existing department → semester → subject flow and cannot reach Home until at least one teaching subject is saved.
-- **Android APK Releases & Update Checks**: GitHub Actions builds debug and signed release APKs for version tags (`vMAJOR.MINOR.PATCH`) and publishes the release APK. Release builds check GitHub Releases for newer versions and open Android's package installer after download; Android still requires the user to confirm installation.
+- **Android APK Releases & Update Checks**: Each push to `master` automatically builds signed release and debug APKs and uploads them as the `klass-android-apks` Actions artifact. Pushing a `vMAJOR.MINOR.PATCH` tag publishes a GitHub Release; the release workflow can also be started manually. Release builds check GitHub Releases for newer versions and open Android's package installer after download; Android still requires the user to confirm installation.
 - **Admin Teachers Directory & Books Library (179 Official BTEB Probidhan-2022 Books)**: Complete CRUD backed by Firebase Firestore and SharedPreferences cache.
 - **Cloud Persistence**: Firebase Auth & Firestore synchronization (`students`, `teachers`, `admins`, `users`, `books`, `classrooms`, `routines`, `routine_edit_requests`, `notifications`, `config/campus_map`) with SharedPreferences offline cache.
 
@@ -55,11 +55,15 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
 
 ## Android releases and updates
 
-The `Android APKs and GitHub Release` workflow runs on `v*` tags or manually. Configure these repository Actions secrets before running it:
+The `Android APKs and GitHub Release` workflow automatically builds APKs on every push to `master` and uploads them to the run as the `klass-android-apks` artifact. It publishes a GitHub Release for `vMAJOR.MINOR.PATCH` tags or a manually started workflow. Configure these repository Actions secrets:
 
 - `GOOGLE_SERVICES_JSON`: the complete Firebase `google-services.json`.
 - `ANDROID_KEYSTORE_BASE64`: base64-encoded, persistent release keystore.
 - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
 
-Keep the same release keystore for every version so Android can install updates over existing releases. Never use a debug key for release signing. The in-app checker reads the latest release through the GitHub Releases API and expects an asset named `Klass-release.apk`. This repository is currently private, so that API and its APK are not anonymously accessible to app users; in-app update downloads require a publicly reachable release feed/asset or a separately authenticated update backend. Do not embed a GitHub access token in the APK.
+Keep the same release keystore in `ANDROID_KEYSTORE_BASE64` for every build. The current signed `Klass-release.apk` certificate fingerprints are:
 
+- SHA-1: `A0:CF:B3:13:F4:C0:5F:9D:22:B5:F6:D7:9F:84:9F:B5:3E:BC:F4:16`
+- SHA-256: `B1:F9:5D:B3:D5:74:9F:50:3B:BC:08:BB:43:1F:6D:1C:42:6C:3C:51:97:49:9D:4A:5F:4E:1B:EC:5D:4D:E0:C2`
+
+Add both fingerprints to the Android app in Firebase Console under Project settings → Your apps → SHA certificate fingerprints. The in-app checker reads the latest release through the GitHub Releases API and expects an asset named `Klass-release.apk`. This repository is currently private, so that API and its APK are not anonymously accessible to app users; in-app update downloads require a publicly reachable release feed/asset or a separately authenticated update backend. Do not embed a GitHub access token in the APK.
