@@ -1810,7 +1810,7 @@ internal fun KlassProfileSkeleton(
     } else {
         0.dp
     }
-    val coverHeight = statusBarTop + 188.dp
+    val coverHeight = statusBarTop + 138.dp
     val avatarSize = 140.dp
     val headerContainerHeight = coverHeight + 76.dp
 

@@ -460,10 +460,10 @@ fun EditProfileContent(
                         Spacer(modifier = Modifier.height(topContentPadding))
                     }
 
-                    val coverHeight = 208.dp
+                    val coverHeight = 150.dp
                     val shoulderOverlap = 24.dp
                     val avatarSize = 140.dp
-                    val heroTotalHeight = 268.dp
+                    val heroTotalHeight = 210.dp
                     val camBtnBg = if (isDark) cs.surfaceContainerHigh else Color.White
                     val camBtnBorder = if (isDark) profileAccent.borderTint else Color(0xFFD1D5DB)
                     val camIconTint = if (isDark) profileAccent.primary else Color(0xFF111827)

@@ -513,7 +513,7 @@ internal fun FacebookProfileContent(
     } else {
         0.dp
     }
-    val coverHeight = statusBarTop + 188.dp
+    val coverHeight = statusBarTop + 138.dp
     val avatarSize = 140.dp
     val headerContainerHeight = coverHeight + 76.dp
     val shoulderOverlap = 22.dp
@@ -724,8 +724,9 @@ internal fun FacebookProfileContent(
                             color = Color.Transparent,
                             shadowElevation = 0.dp,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp)
+                                .widthIn(max = 260.dp)
+                                .fillMaxWidth(0.72f)
+                                .height(42.dp)
                                 .testTag("profile_cta_edit_button"),
                         ) {
                             Row(
