@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.mpi.klass.theme.BackArrowIcon
 import com.mpi.klass.theme.CalendarDaysIcon
@@ -88,9 +89,6 @@ import com.mpi.klass.theme.SolidUserIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.UsersRectangleIcon
 import com.mpi.klass.theme.VenusMarsIcon
-import klass.shared.generated.resources.Res
-import klass.shared.generated.resources.bg_menu_profile
-import org.jetbrains.compose.resources.painterResource
 
 internal fun formatProfileDob(rawDob: String, isBengali: Boolean): String {
     val clean = rawDob.trim()
@@ -253,7 +251,7 @@ fun EditProfileContent(
     val personalAccent = KlassFeaturePalette.appearance(isDark)
     val securityAccent = KlassFeaturePalette.notifications(isDark)
 
-    val heroGlassBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f)
+    val heroGlassBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.96f)
     val topBarFadeBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.90f)
 
     var activeFieldEditor by remember { mutableStateOf<ProfileField?>(null) }
@@ -475,12 +473,14 @@ fun EditProfileContent(
                             .fillMaxWidth()
                             .height(heroTotalHeight),
                     ) {
-                        // Cover Photo
+                        // Cover Photo layer strictly underneath shoulder and avatar
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(coverHeight)
                                 .align(Alignment.TopCenter)
+                                .zIndex(0f)
+                                .clipToBounds()
                                 .clickable { onCoverPhotoClick() },
                         ) {
                             val resolvedCover = resolveProfileImageModel(coverPhotoUrl)
@@ -492,12 +492,39 @@ fun EditProfileContent(
                                     modifier = Modifier.fillMaxSize(),
                                 )
                             } else {
-                                Image(
-                                    painter = painterResource(Res.drawable.bg_menu_profile),
-                                    contentDescription = "কভার ফটো".localized(),
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    profileAccent.softTint.copy(alpha = if (isDark) 0.36f else 0.55f),
+                                                    cs.surfaceContainerLow.copy(alpha = if (isDark) 0.50f else 0.68f),
+                                                )
+                                            )
+                                        )
+                                        .padding(bottom = shoulderOverlap + 24.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = CameraIcon,
+                                            contentDescription = null,
+                                            tint = cs.onSurfaceVariant.copy(alpha = 0.72f),
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = "কভার ফটো যোগ করুন".localized(),
+                                            color = cs.onSurfaceVariant.copy(alpha = 0.80f),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            fontFamily = hindSiliguri,
+                                        )
+                                    }
+                                }
                             }
 
                             Surface(
@@ -523,7 +550,7 @@ fun EditProfileContent(
                             }
                         }
 
-                        // Translucent Glass Shoulder overlapping cover bottom
+                        // Rounded Glass Shoulder overlapping cover bottom (sits cleanly above cover layer)
                         Surface(
                             shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
                             color = heroGlassBg,
@@ -531,15 +558,17 @@ fun EditProfileContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(heroTotalHeight - (coverHeight - shoulderOverlap))
-                                .align(Alignment.BottomCenter),
+                                .align(Alignment.BottomCenter)
+                                .zIndex(1f),
                         ) {}
 
-                        // Centered Circular Avatar straddling the curved Cover/Sheet seam
+                        // Centered Circular Avatar straddling the curved Cover/Sheet seam (topmost layer)
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(bottom = 12.dp)
-                                .size(avatarSize),
+                                .size(avatarSize)
+                                .zIndex(2f),
                             contentAlignment = Alignment.Center,
                         ) {
                             Surface(

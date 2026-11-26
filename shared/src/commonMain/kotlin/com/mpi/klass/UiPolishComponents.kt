@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -90,6 +91,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.mpi.klass.theme.BackArrowIcon
 import com.mpi.klass.theme.CheckIcon
 import com.mpi.klass.theme.CloseIcon
@@ -1819,6 +1821,10 @@ internal fun KlassProfileSkeleton(
             .navigationBarsPadding()
             .padding(bottom = 28.dp),
     ) {
+        if (topContentPadding > 0.dp) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(topContentPadding))
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1828,6 +1834,8 @@ internal fun KlassProfileSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(coverHeight)
+                    .align(Alignment.TopCenter)
+                    .zIndex(0f)
                     .background(shimmerBrush),
             )
             Surface(
@@ -1837,7 +1845,8 @@ internal fun KlassProfileSkeleton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(98.dp)
-                    .align(Alignment.BottomCenter),
+                    .align(Alignment.BottomCenter)
+                    .zIndex(1f),
             ) {}
             Surface(
                 shape = CircleShape,
@@ -1847,7 +1856,8 @@ internal fun KlassProfileSkeleton(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 8.dp)
-                    .size(avatarSize),
+                    .size(avatarSize)
+                    .zIndex(2f),
             ) {
                 Box(
                     modifier = Modifier

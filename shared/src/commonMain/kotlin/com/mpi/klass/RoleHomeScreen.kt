@@ -711,7 +711,7 @@ fun RoleHomeScreen(
                                 hindSiliguri = hindSiliguri,
                                 email = email,
                                 photoUrl = currentPhotoUrl,
-                                topContentPadding = 0.dp,
+                                topContentPadding = 56.dp,
                                 isEditingMode = isProfileEditing,
                                 onEditingModeChange = { isProfileEditing = it },
                                 onFullScreenOverlayChange = { isProfileSubOverlayOpen = it },
@@ -752,16 +752,19 @@ fun RoleHomeScreen(
                                     .align(Alignment.TopCenter)
                                     .zIndex(5f),
                             ) {
-                                val overlayCircleBg = Color.Black.copy(alpha = 0.36f)
-                                val overlayCircleBorder = Color.White.copy(alpha = 0.28f)
+                                val profileAccent = KlassFeaturePalette.profile(isDark)
+                                val topBarFadeBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.92f)
+                                val barIconBg = if (isDark) cs.surfaceContainerHigh else Color.White
+                                val barIconBorder = if (isDark) profileAccent.borderTint else Color(0xFFE2E8F0)
+                                val barIconTint = cs.onSurface
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .background(
                                             Brush.verticalGradient(
                                                 colors = listOf(
-                                                    Color.Black.copy(alpha = 0.48f),
-                                                    Color.Black.copy(alpha = 0.16f),
+                                                    topBarFadeBg,
+                                                    topBarFadeBg.copy(alpha = 0.45f),
                                                     Color.Transparent,
                                                 )
                                             )
@@ -778,8 +781,8 @@ fun RoleHomeScreen(
                                         Surface(
                                             onClick = { goBack() },
                                             shape = CircleShape,
-                                            color = overlayCircleBg,
-                                            border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                            color = barIconBg,
+                                            border = BorderStroke(0.75.dp, barIconBorder),
                                             shadowElevation = 0.dp,
                                             modifier = Modifier
                                                 .minimumInteractiveComponentSize()
@@ -790,7 +793,7 @@ fun RoleHomeScreen(
                                                 Icon(
                                                     imageVector = BackArrowIcon,
                                                     contentDescription = "Back",
-                                                    tint = Color.White,
+                                                    tint = barIconTint,
                                                     modifier = Modifier.size(20.dp),
                                                 )
                                             }
@@ -805,8 +808,8 @@ fun RoleHomeScreen(
                                             Surface(
                                                 onClick = { isProfileEditing = true },
                                                 shape = CircleShape,
-                                                color = overlayCircleBg,
-                                                border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                                color = barIconBg,
+                                                border = BorderStroke(0.75.dp, barIconBorder),
                                                 shadowElevation = 0.dp,
                                                 modifier = Modifier
                                                     .minimumInteractiveComponentSize()
@@ -817,7 +820,7 @@ fun RoleHomeScreen(
                                                     Icon(
                                                         imageVector = EditIcon,
                                                         contentDescription = "এডিট করুন".localized(),
-                                                        tint = Color.White,
+                                                        tint = barIconTint,
                                                         modifier = Modifier.size(18.dp),
                                                     )
                                                 }
@@ -826,8 +829,8 @@ fun RoleHomeScreen(
                                             Surface(
                                                 onClick = { navigateTo("ai") },
                                                 shape = CircleShape,
-                                                color = overlayCircleBg,
-                                                border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                                color = barIconBg,
+                                                border = BorderStroke(0.75.dp, barIconBorder),
                                                 shadowElevation = 0.dp,
                                                 modifier = Modifier
                                                     .minimumInteractiveComponentSize()
@@ -838,7 +841,7 @@ fun RoleHomeScreen(
                                                     Icon(
                                                         imageVector = SparkleIcon,
                                                         contentDescription = "Zed AI",
-                                                        tint = Color.White,
+                                                        tint = barIconTint,
                                                         modifier = Modifier.size(18.dp),
                                                     )
                                                 }
@@ -848,8 +851,8 @@ fun RoleHomeScreen(
                                                 Surface(
                                                     onClick = { navigateTo("notification") },
                                                     shape = CircleShape,
-                                                    color = overlayCircleBg,
-                                                    border = BorderStroke(0.75.dp, overlayCircleBorder),
+                                                    color = barIconBg,
+                                                    border = BorderStroke(0.75.dp, barIconBorder),
                                                     shadowElevation = 0.dp,
                                                     modifier = Modifier
                                                         .minimumInteractiveComponentSize()
@@ -860,7 +863,7 @@ fun RoleHomeScreen(
                                                         Icon(
                                                             painter = painterResource(Res.drawable.notification),
                                                             contentDescription = "Notifications",
-                                                            tint = Color.White,
+                                                            tint = barIconTint,
                                                             modifier = Modifier.size(18.dp),
                                                         )
                                                     }
@@ -872,7 +875,7 @@ fun RoleHomeScreen(
                                                             .offset(x = (-1).dp, y = 1.dp)
                                                             .size(10.dp)
                                                             .clip(CircleShape)
-                                                            .background(Color.White)
+                                                            .background(barIconBg)
                                                             .padding(1.5.dp)
                                                             .clip(CircleShape)
                                                             .background(Color(0xFFEF4444))

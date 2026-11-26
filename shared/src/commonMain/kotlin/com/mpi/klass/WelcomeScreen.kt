@@ -428,18 +428,29 @@ fun WelcomeScreen(
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .padding(horizontal = 6.dp),
+                                                .padding(horizontal = 8.dp),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            Text(
-                                                text = AppStrings.supportBtn(currentLanguage),
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                maxLines = 1,
-                                                softWrap = false,
-                                            )
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Icon(
+                                                    imageVector = HelpCircleIcon,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                    modifier = Modifier.size(16.dp),
+                                                )
+                                                Text(
+                                                    text = AppStrings.supportBtn(currentLanguage),
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontFamily = hindSiliguri,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -487,20 +498,31 @@ fun WelcomeScreen(
                                             bottomEnd = 12.dp,
                                         ),
                                         border = BorderStroke(0.5.dp, Color(0xFF8E7864)),
-                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(0xFF8CB9D9),
                                             contentColor = Color(0xFF1E293B),
                                         ),
                                     ) {
-                                        Text(
-                                            text = AppStrings.registrationBtn(currentLanguage),
-                                            fontSize = if (currentLanguage == AppLanguage.ENGLISH) 13.5.sp else 14.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = hindSiliguri,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                        )
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                text = AppStrings.registrationBtn(currentLanguage),
+                                                fontSize = if (currentLanguage == AppLanguage.ENGLISH) 13.5.sp else 14.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = hindSiliguri,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                            )
+                                            Icon(
+                                                imageVector = RightArrowIcon,
+                                                contentDescription = null,
+                                                tint = Color(0xFF1E293B),
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                        }
                                     }
                                 }
                             }

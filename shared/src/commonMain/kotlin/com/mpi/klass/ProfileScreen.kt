@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -58,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -109,10 +109,7 @@ import com.mpi.klass.theme.UsersGroupIcon
 import com.mpi.klass.theme.UsersRectangleIcon
 import com.mpi.klass.theme.VenusMarsIcon
 import com.mpi.klass.theme.WarningIcon
-import klass.shared.generated.resources.Res
-import klass.shared.generated.resources.bg_menu_profile
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 
 internal enum class ProfileFieldActionType {
     NONE,
@@ -327,7 +324,7 @@ fun ProfileScreen(
                 fallbackEmail = cleanEmail,
                 role = role,
                 hindSiliguri = hindSiliguri,
-                topContentPadding = topContentPadding,
+                topContentPadding = 0.dp,
                 isSaving = isSavingProfile,
                 isDark = isDark,
                 hasLoginPassword = hasLoginPassword,
@@ -427,7 +424,7 @@ internal fun FacebookProfileContent(
     val profileAccent = KlassFeaturePalette.profile(isDark)
     val routineAccent = KlassFeaturePalette.routine(isDark)
     val primaryAccent = profileAccent.primary
-    val sheetGlassBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f)
+    val sheetGlassBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.94f) else Color.White.copy(alpha = 0.96f)
 
     val currentLang = LocalAppLanguage.current
     val roleCategoryLine = remember(role, profile, isBengali, currentLang) {
@@ -559,11 +556,14 @@ internal fun FacebookProfileContent(
                         .fillMaxWidth()
                         .height(headerContainerHeight),
                 ) {
-                    // Status-bar-inclusive read-only Cover Photo
+                    // Cover Photo layer strictly underneath rounded shoulder and avatar
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(coverHeight),
+                            .height(coverHeight)
+                            .align(Alignment.TopCenter)
+                            .zIndex(0f)
+                            .clipToBounds(),
                     ) {
                         val resolvedCover = resolveProfileImageModel(coverPhotoUrl)
                         if (resolvedCover != null) {
@@ -574,33 +574,22 @@ internal fun FacebookProfileContent(
                                 modifier = Modifier.fillMaxSize(),
                             )
                         } else {
-                            Image(
-                                painter = painterResource(Res.drawable.bg_menu_profile),
-                                contentDescription = "কভার ফটো".localized(),
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                profileAccent.softTint.copy(alpha = if (isDark) 0.36f else 0.55f),
+                                                cs.surfaceContainerLow.copy(alpha = if (isDark) 0.50f else 0.68f),
+                                            )
+                                        )
+                                    ),
                             )
                         }
-
-                        // Subtle top fade scrim so status bar & header icons stay legible
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(statusBarTop + 68.dp)
-                                .align(Alignment.TopCenter)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Black.copy(alpha = 0.45f),
-                                            Color.Black.copy(alpha = 0.14f),
-                                            Color.Transparent,
-                                        )
-                                    )
-                                ),
-                        )
                     }
 
-                    // Rounded top shoulder overlapping cover bottom with translucent glass letting aurora show through
+                    // Rounded top shoulder overlapping cover bottom (sits cleanly above cover layer)
                     Surface(
                         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
                         color = sheetGlassBg,
@@ -608,15 +597,17 @@ internal fun FacebookProfileContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(76.dp + shoulderOverlap)
-                            .align(Alignment.BottomCenter),
+                            .align(Alignment.BottomCenter)
+                            .zIndex(1f),
                     ) {}
 
-                    // Centered large circular shadow-free Profile Picture (strictly read-only)
+                    // Centered large circular shadow-free Profile Picture (strictly read-only, topmost in hero)
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 8.dp)
-                            .size(avatarSize),
+                            .size(avatarSize)
+                            .zIndex(2f),
                         contentAlignment = Alignment.Center,
                     ) {
                         Surface(
