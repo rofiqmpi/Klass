@@ -26,6 +26,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
@@ -59,6 +61,7 @@ import com.mpi.klass.theme.CloseIcon
 import com.mpi.klass.theme.CrownIcon
 import com.mpi.klass.theme.DarkModeIcon
 import com.mpi.klass.theme.DoorOpenIcon
+import com.mpi.klass.theme.DownloadIcon
 import com.mpi.klass.theme.DropletIcon
 import com.mpi.klass.theme.FeatureAccent
 import com.mpi.klass.theme.GraduationCapIcon
@@ -113,6 +116,7 @@ fun MenuScreen(
     onAppearanceClick: () -> Unit = {},
     onSignInControlClick: () -> Unit = {},
     onAdminApprovalsClick: () -> Unit = {},
+    onAppUpdateManagerClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
     onDeleteAccountClick: () -> Unit = {},
     onSignInClick: () -> Unit = {},
@@ -249,6 +253,14 @@ fun MenuScreen(
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onAdminApprovalsClick,
                 ),
+                MenuTileSpec(
+                    id = "admin_app_update",
+                    title = "App Updates",
+                    subtitle = "Publish APK link & auto-update notice",
+                    icon = DownloadIcon,
+                    accent = KlassFeaturePalette.success(isDark),
+                    onClick = onAppUpdateManagerClick,
+                ),
             )
         }
     }
@@ -357,6 +369,22 @@ fun MenuScreen(
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                     )
+                    if (KlassRuntimeConfig.onManualCheckForUpdate != null) {
+                        SocialInsetDivider(startIndent = 72.dp)
+                        SocialMenuRow(
+                            tile = MenuTileSpec(
+                                id = "check_app_update",
+                                title = "অ্যাপ আপডেট চেক".localized(),
+                                subtitle = "সর্বশেষ ভার্সন যাচাই ও ইন-অ্যাপ ডাউনলোড".localized(),
+                                icon = RefreshIcon,
+                                accent = KlassFeaturePalette.success(isDark),
+                                badgeText = KlassRuntimeConfig.installedVersionName.ifBlank { null }?.let { "v$it" },
+                                onClick = { KlassRuntimeConfig.onManualCheckForUpdate?.invoke() },
+                            ),
+                            isDark = isDark,
+                            hindSiliguri = hindSiliguri,
+                        )
+                    }
                 }
 
                 SocialSectionDividerBand(isDark = isDark, height = 6.dp)
@@ -1014,6 +1042,232 @@ fun AdminApprovalsSubScreen(
                                 accent = successAccent.primary,
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppUpdateManagerSubScreen(
+    isDark: Boolean,
+    hindSiliguri: FontFamily,
+    onBack: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val currentLang = LocalAppLanguage.current
+    val updateAccent = KlassFeaturePalette.success(isDark)
+    val coroutineScope = rememberCoroutineScope()
+
+    var isLoading by remember { mutableStateOf(true) }
+    var isSaving by remember { mutableStateOf(false) }
+    var enabled by remember { mutableStateOf(true) }
+    var forceUpdate by remember { mutableStateOf(false) }
+    var latestVersion by remember { mutableStateOf("") }
+    var apkUrl by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        try {
+            val loaded = RoleConfig.fetchAppUpdateConfig()
+            enabled = loaded.enabled
+            forceUpdate = loaded.force
+            latestVersion = loaded.latestVersion
+            apkUrl = loaded.apkUrl
+            notes = loaded.notes
+        } finally {
+            isLoading = false
+        }
+    }
+
+    fun saveConfig() {
+        val cleanVersion = latestVersion.trim().removePrefix("v").removePrefix("V").trim()
+        val normalizedUrl = KlassUpdateUtils.normalizeApkDownloadUrl(apkUrl)
+        if (enabled && (cleanVersion.isBlank() || normalizedUrl.isBlank())) {
+            showToast("ভার্সন এবং APK ডাউনলোড লিংক উভয়ই দিন।".localized(currentLang))
+            return
+        }
+        if (normalizedUrl.isNotBlank() && !normalizedUrl.startsWith("https://", ignoreCase = true)) {
+            showToast("সঠিক https:// APK ডাউনলোড লিংক দিন।".localized(currentLang))
+            return
+        }
+        isSaving = true
+        coroutineScope.launch {
+            try {
+                val res = RoleConfig.saveAppUpdateConfig(
+                    AppUpdateConfig(
+                        enabled = enabled,
+                        latestVersion = cleanVersion,
+                        apkUrl = normalizedUrl,
+                        notes = notes.trim(),
+                        force = forceUpdate,
+                    ),
+                )
+                if (res.isSuccess) {
+                    apkUrl = normalizedUrl
+                    latestVersion = cleanVersion
+                    showToast("অ্যাপ আপডেট কনফিগ সফলভাবে সেভ হয়েছে!".localized(currentLang))
+                } else {
+                    showToast(
+                        res.exceptionOrNull()?.localizedMessage
+                            ?: "Firestore-এ সেভ করা যায়নি।".localized(currentLang),
+                    )
+                }
+            } finally {
+                isSaving = false
+            }
+        }
+    }
+
+    MinimalFullScreenSheet(
+        title = "App Updates",
+        subtitle = KlassRuntimeConfig.installedVersionName.ifBlank { null }?.let { "Installed: v$it" }
+            ?: "Firebase remote update feed",
+        levelLabel = "Menu › Admin",
+        icon = DownloadIcon,
+        accent = updateAccent.primary,
+        isDark = isDark,
+        hindSiliguri = hindSiliguri,
+        onDismiss = onBack,
+        closeTestTag = "app_update_manager_back_button",
+        headerActions = {
+            HeaderSavePillButton(
+                text = "Publish",
+                accent = updateAccent.primary,
+                isDark = isDark,
+                hindSiliguri = hindSiliguri,
+                isLoading = isSaving,
+                enabled = !isLoading && !isSaving,
+                onClick = { saveConfig() },
+            )
+        },
+    ) {
+        if (isLoading) {
+            KlassHeroAndToggleListSkeleton(
+                isDark = isDark,
+                rowCount = 3,
+                showSwitchPills = true,
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 28.dp),
+            ) {
+                Spacer(modifier = Modifier.height(10.dp))
+                GoogleSectionHeader(
+                    title = "Private Repo Safe Update Channel",
+                    accent = updateAccent.primary,
+                    hindSiliguri = hindSiliguri,
+                )
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    SignInToggleRow(
+                        title = "Enable In-App Update",
+                        subtitle = "Prompt users automatically when a newer version is set",
+                        icon = DownloadIcon,
+                        accent = updateAccent.primary,
+                        isDark = isDark,
+                        checked = enabled,
+                        enabled = !isSaving,
+                        hindSiliguri = hindSiliguri,
+                        onToggle = { enabled = it },
+                    )
+                    SocialInsetDivider(startIndent = 72.dp)
+                    SignInToggleRow(
+                        title = "Force Mandatory Update",
+                        subtitle = "Hide 'Later' button until user updates",
+                        icon = ShieldIcon,
+                        accent = KlassFeaturePalette.admin(isDark).primary,
+                        isDark = isDark,
+                        checked = forceUpdate,
+                        enabled = !isSaving,
+                        hindSiliguri = hindSiliguri,
+                        onToggle = { forceUpdate = it },
+                    )
+                }
+
+                SocialSectionDividerBand(isDark = isDark, height = 6.dp)
+                GoogleSectionHeader(
+                    title = "Release Details (Firestore)",
+                    accent = updateAccent.primary,
+                    hindSiliguri = hindSiliguri,
+                )
+                SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = latestVersion,
+                            onValueChange = { latestVersion = it },
+                            label = { Text("Latest Version (e.g. 1.0.12)", fontFamily = hindSiliguri) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = updateAccent.primary,
+                                focusedLabelColor = updateAccent.primary,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_update_version_input"),
+                        )
+
+                        OutlinedTextField(
+                            value = apkUrl,
+                            onValueChange = { apkUrl = it },
+                            label = { Text("Public APK URL (Public Releases Repo / Drive)", fontFamily = hindSiliguri) },
+                            placeholder = { Text("https://github.com/user/Klass-Releases/releases/download/v1.0.12/Klass-release.apk", fontSize = 12.sp) },
+                            maxLines = 3,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = updateAccent.primary,
+                                focusedLabelColor = updateAccent.primary,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_update_url_input"),
+                        )
+
+                        Text(
+                            text = "নোট: প্রাইভেট GitHub রিপোর লিংক ইউজারদের ফোনে কাজ করে না। কোড প্রাইভেট রেখেই একটি পাবলিক শুধু-রিলিজ রিপো (যেমন Klass-Releases) অথবা Google Drive ('Anyone with link')-এ APK দিয়ে লিংকটি এখানে দিন।",
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            fontFamily = hindSiliguri,
+                            color = cs.onSurfaceVariant,
+                        )
+
+                        OutlinedTextField(
+                            value = notes,
+                            onValueChange = { notes = it },
+                            label = { Text("What's New (Optional)", fontFamily = hindSiliguri) },
+                            maxLines = 4,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = updateAccent.primary,
+                                focusedLabelColor = updateAccent.primary,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_update_notes_input"),
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            KlassTonalButton(
+                                text = "Test Update Check",
+                                accent = KlassFeaturePalette.routine(isDark).primary,
+                                isDark = isDark,
+                                hindSiliguri = hindSiliguri,
+                                modifier = Modifier.weight(1f),
+                                onClick = { KlassRuntimeConfig.onManualCheckForUpdate?.invoke() },
                             )
                         }
                     }

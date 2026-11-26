@@ -63,12 +63,16 @@ class MainActivity : ComponentActivity() {
     private var pendingUpdateRelease: RemoteReleaseInfo? = null
     private var updateUiState by mutableStateOf<InAppUpdateUiState>(InAppUpdateUiState.Hidden)
     private var updateDownloadJob: Job? = null
+    private var lastAutoUpdateCheckAtMillis: Long = 0L
+    private var isCheckingUpdate: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         KlassRuntimeConfig.geminiApiKey = BuildConfig.GEMINI_API_KEY.trim().trim('"').trim()
         KlassRuntimeConfig.recaptchaSiteKey = BuildConfig.RECAPTCHA_SITE_KEY.trim().trim('"').trim()
         KlassRuntimeConfig.firestoreDatabaseId = BuildConfig.FIRESTORE_DATABASE_ID.trim().trim('"').trim()
         KlassRuntimeConfig.appUpdateUrl = BuildConfig.APP_UPDATE_URL.trim().trim('"').trim()
+        KlassRuntimeConfig.installedVersionName = currentInstalledVersionName()
+        KlassRuntimeConfig.onManualCheckForUpdate = { checkForReleaseUpdate(manual = true) }
 
         initThemeContext(this)
         AppStrings.preloadCacheSync()
@@ -134,7 +138,21 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
-        if (!BuildConfig.DEBUG) checkForReleaseUpdate()
+        if (!BuildConfig.DEBUG || BuildConfig.VERSION_NAME != "1.0") {
+            checkForReleaseUpdate(manual = false)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val shouldAutoCheck = !BuildConfig.DEBUG || BuildConfig.VERSION_NAME != "1.0"
+        val now = System.currentTimeMillis()
+        if (shouldAutoCheck &&
+            updateUiState is InAppUpdateUiState.Hidden &&
+            now - lastAutoUpdateCheckAtMillis > 30L * 60L * 1000L
+        ) {
+            checkForReleaseUpdate(manual = false)
+        }
     }
 
     override fun onResume() {
@@ -347,14 +365,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun fetchReleaseFromFirestoreConfig(): RemoteReleaseInfo? {
+    private data class FirestoreReleaseFetchResult(
+        val release: RemoteReleaseInfo?,
+        val explicitlyDisabled: Boolean = false,
+    )
+
+    private suspend fun fetchReleaseFromFirestoreConfig(): FirestoreReleaseFetchResult {
         for ((db, label) in FirestoreResolver.getFirestoreInstances()) {
-            val info = kotlinx.coroutines.withTimeoutOrNull(4_500L) {
+            val result = kotlinx.coroutines.withTimeoutOrNull(4_500L) {
                 try {
                     val doc = db.collection("config").document("app_update").get().await()
                     if (!doc.exists()) return@withTimeoutOrNull null
                     val enabled = doc.getBoolean("enabled") ?: true
-                    if (!enabled) return@withTimeoutOrNull null
+                    if (!enabled) {
+                        FirestoreResolver.markWorkingDatabase(label)
+                        return@withTimeoutOrNull FirestoreReleaseFetchResult(null, explicitlyDisabled = true)
+                    }
                     val version = (doc.getString("latest_version")
                         ?: doc.getString("version")
                         ?: doc.getString("versionName")
@@ -369,7 +395,7 @@ class MainActivity : ComponentActivity() {
                     val force = doc.getBoolean("force") ?: false
                     if (version.isNotBlank() && apkUrl.isNotBlank()) {
                         FirestoreResolver.markWorkingDatabase(label)
-                        RemoteReleaseInfo(version, apkUrl, notes, force)
+                        FirestoreReleaseFetchResult(RemoteReleaseInfo(version, apkUrl, notes, force), false)
                     } else {
                         null
                     }
@@ -378,9 +404,9 @@ class MainActivity : ComponentActivity() {
                     null
                 }
             }
-            if (info != null) return info
+            if (result != null) return result
         }
-        return null
+        return FirestoreReleaseFetchResult(null, explicitlyDisabled = false)
     }
 
     private fun currentInstalledVersionName(): String {
@@ -409,32 +435,88 @@ class MainActivity : ComponentActivity() {
             .apply()
     }
 
-    private fun checkForReleaseUpdate() {
+    private fun checkForReleaseUpdate(manual: Boolean = false) {
+        if (isCheckingUpdate) return
+        isCheckingUpdate = true
+        lastAutoUpdateCheckAtMillis = System.currentTimeMillis()
+        val isBn = loadAppLanguage() == AppLanguage.BENGALI
+        if (manual) {
+            showToast(if (isBn) "আপডেট যাচাই করা হচ্ছে..." else "Checking for updates...")
+        }
         lifecycleScope.launch {
-            val release = withContext(Dispatchers.IO) {
-                val customUrl = KlassRuntimeConfig.appUpdateUrl.trim()
-                if (customUrl.isNotBlank()) {
-                    fetchReleaseFromHttp(customUrl)?.let { return@withContext it }
+            try {
+                val (firestoreResult, httpRelease) = withContext(Dispatchers.IO) {
+                    val fsResult = fetchReleaseFromFirestoreConfig()
+                    val customUrl = KlassRuntimeConfig.appUpdateUrl.trim()
+                    val feedCandidate = if (customUrl.isNotBlank()) {
+                        fetchReleaseFromHttp(customUrl)
+                    } else {
+                        fetchReleaseFromHttp(LATEST_RELEASE_URL)
+                    }
+                    fsResult to feedCandidate
                 }
-                fetchReleaseFromFirestoreConfig()?.let { return@withContext it }
-                fetchReleaseFromHttp(LATEST_RELEASE_URL)
-            } ?: return@launch
 
-            val installedVersion = currentInstalledVersionName()
-            if (KlassUpdateUtils.compareSemanticVersions(release.version, installedVersion) <= 0) return@launch
+                if (!manual && firestoreResult.explicitlyDisabled) return@launch
 
-            val preferences = getSharedPreferences("klass_update", Context.MODE_PRIVATE)
-            val dismissedTag = preferences.getString("dismissed_tag", null)
-            val dismissedAt = preferences.getLong("dismissed_at", 0L)
-            val withinCooldown = dismissedTag == release.version &&
-                (System.currentTimeMillis() - dismissedAt) < 24L * 60L * 60L * 1000L
-            if (!release.force && withinCooldown) return@launch
+                val fsRelease = firestoreResult.release
+                val release = when {
+                    fsRelease != null && httpRelease != null -> {
+                        if (KlassUpdateUtils.compareSemanticVersions(fsRelease.version, httpRelease.version) >= 0) {
+                            fsRelease
+                        } else {
+                            httpRelease
+                        }
+                    }
+                    fsRelease != null -> fsRelease
+                    else -> httpRelease
+                }
 
-            if (updateUiState is InAppUpdateUiState.Hidden) {
-                updateUiState = InAppUpdateUiState.Available(
-                    release = release,
-                    installedVersion = installedVersion,
-                )
+                val installedVersion = currentInstalledVersionName()
+                if (release == null) {
+                    if (manual) {
+                        showToast(
+                            if (isBn) {
+                                "পাবলিক আপডেট ফিড পাওয়া যায়নি। Admin Panel > App Updates থেকে পাবলিক লিংক দিন।"
+                            } else {
+                                "No public update feed reachable. Configure a public release URL in Admin > App Updates."
+                            },
+                        )
+                    }
+                    return@launch
+                }
+
+                if (KlassUpdateUtils.compareSemanticVersions(release.version, installedVersion) <= 0) {
+                    if (manual) {
+                        showToast(
+                            if (isBn) {
+                                "আপনার অ্যাপটি সর্বশেষ ভার্সনে (v$installedVersion) আছে।"
+                            } else {
+                                "You are already on the latest version (v$installedVersion)."
+                            },
+                        )
+                    }
+                    return@launch
+                }
+
+                if (manual) {
+                    clearReleasePromptCooldown()
+                } else {
+                    val preferences = getSharedPreferences("klass_update", Context.MODE_PRIVATE)
+                    val dismissedTag = preferences.getString("dismissed_tag", null)
+                    val dismissedAt = preferences.getLong("dismissed_at", 0L)
+                    val withinCooldown = dismissedTag == release.version &&
+                        (System.currentTimeMillis() - dismissedAt) < 24L * 60L * 60L * 1000L
+                    if (!release.force && withinCooldown) return@launch
+                }
+
+                if (manual || updateUiState is InAppUpdateUiState.Hidden) {
+                    updateUiState = InAppUpdateUiState.Available(
+                        release = release,
+                        installedVersion = installedVersion,
+                    )
+                }
+            } finally {
+                isCheckingUpdate = false
             }
         }
     }
@@ -497,6 +579,7 @@ class MainActivity : ComponentActivity() {
                             readTimeout = 45_000
                             instanceFollowRedirects = false
                             requestMethod = "GET"
+                            setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream, */*")
                             setRequestProperty("User-Agent", "Klass-Android")
                         }
                         val code = conn.responseCode
@@ -514,8 +597,18 @@ class MainActivity : ComponentActivity() {
 
                     val connection = activeConnection ?: error("Too many redirects while downloading update")
                     try {
-                        if (connection.responseCode !in 200..299) {
-                            error("HTTP ${connection.responseCode}")
+                        val responseCode = connection.responseCode
+                        if (responseCode !in 200..299) {
+                            if (responseCode == 401 || responseCode == 403 || responseCode == 404) {
+                                error(
+                                    if (isBn) {
+                                        "ডাউনলোড লিংক অ্যাক্সেস করা যাচ্ছে না (HTTP $responseCode)। প্রাইভেট GitHub রিপোজিটরির লিংক কাজ করে না—পাবলিক রিলিজ লিংক ব্যবহার করুন।"
+                                    } else {
+                                        "Update APK unreachable (HTTP $responseCode). Private GitHub repo links require a public release URL."
+                                    },
+                                )
+                            }
+                            error("HTTP $responseCode")
                         }
                         val totalBytes = connection.contentLengthLong
                         val directory = cachedApk.parentFile ?: File(cacheDir, "updates")

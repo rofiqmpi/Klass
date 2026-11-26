@@ -49,6 +49,7 @@ jobs:
           RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
           FIRESTORE_DATABASE_ID: ${{ secrets.FIRESTORE_DATABASE_ID }}
           APP_UPDATE_URL: ${{ secrets.APP_UPDATE_URL }}
+          PUBLIC_RELEASE_REPO: ${{ secrets.PUBLIC_RELEASE_REPO }}
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
@@ -75,13 +76,17 @@ jobs:
             echo "::error::Version must use the MAJOR.MINOR.PATCH format."
             exit 1
           fi
+          resolved_update_url="${APP_UPDATE_URL:-}"
+          if [ -z "$resolved_update_url" ] && [ -n "${PUBLIC_RELEASE_REPO:-}" ]; then
+            resolved_update_url="https://api.github.com/repos/${PUBLIC_RELEASE_REPO}/releases/latest"
+          fi
           printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/klass-release.jks"
           : > .env
           [ -n "${GEMINI_API_KEY:-}" ] && printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" >> .env
           [ -n "${RECAPTCHA_SITE_KEY:-}" ] && printf 'RECAPTCHA_SITE_KEY=%s\n' "$RECAPTCHA_SITE_KEY" >> .env
           [ -n "${FIRESTORE_DATABASE_ID:-}" ] && printf 'FIRESTORE_DATABASE_ID=%s\n' "$FIRESTORE_DATABASE_ID" >> .env
-          [ -n "${APP_UPDATE_URL:-}" ] && printf 'APP_UPDATE_URL=%s\n' "$APP_UPDATE_URL" >> .env
+          [ -n "$resolved_update_url" ] && printf 'APP_UPDATE_URL=%s\n' "$resolved_update_url" >> .env
           echo "name=$version" >> "$GITHUB_OUTPUT"
           echo "code=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
 
@@ -116,19 +121,110 @@ jobs:
             app/build/outputs/apk/release/Klass-release.apk
           if-no-files-found: error
 
-      - name: Publish GitHub Release
+      - name: Publish Release APK (Public Release Channel)
+        id: release
         if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PUBLIC_RELEASE_REPO: ${{ secrets.PUBLIC_RELEASE_REPO }}
+          PUBLIC_RELEASE_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
         run: |
+          set -euo pipefail
           version="${{ steps.version.outputs.name }}"
           tag="v${version}"
-          apk_url="https://github.com/${{ github.repository }}/releases/download/${tag}/Klass-release.apk"
+          target_repo="${PUBLIC_RELEASE_REPO:-$GITHUB_REPOSITORY}"
+          if [ -n "${PUBLIC_RELEASE_REPO:-}" ] && [ -n "${PUBLIC_RELEASE_TOKEN:-}" ]; then
+            export GH_TOKEN="$PUBLIC_RELEASE_TOKEN"
+          else
+            export GH_TOKEN="$GITHUB_TOKEN"
+          fi
+          apk_url="https://github.com/${target_repo}/releases/download/${tag}/Klass-release.apk"
           printf '{\n  "version": "%s",\n  "tag_name": "%s",\n  "apk_url": "%s",\n  "notes": "Klass %s release update"\n}\n' \
             "$version" "$tag" "$apk_url" "$tag" > update.json
-          gh release create "${tag}" \
-            app/build/outputs/apk/release/Klass-release.apk \
-            update.json \
-            --target "$GITHUB_SHA" \
-            --title "Klass ${tag}" \
-            --generate-notes
+          if gh release view "${tag}" --repo "${target_repo}" >/dev/null 2>&1; then
+            gh release upload "${tag}" \
+              app/build/outputs/apk/release/Klass-release.apk \
+              update.json \
+              --repo "${target_repo}" \
+              --clobber
+          else
+            create_args=(
+              "${tag}"
+              app/build/outputs/apk/release/Klass-release.apk
+              update.json
+              --repo "${target_repo}"
+              --title "Klass ${tag}"
+              --notes "Klass ${tag} release update"
+            )
+            if [ "${target_repo}" = "${GITHUB_REPOSITORY}" ]; then
+              create_args+=(--target "$GITHUB_SHA" --generate-notes)
+            fi
+            gh release create "${create_args[@]}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "apk_url=$apk_url" >> "$GITHUB_OUTPUT"
+
+      - name: Sync Firestore app_update config
+        if: (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) && secrets.FIREBASE_SERVICE_ACCOUNT != ''
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIRESTORE_DATABASE_ID: ${{ secrets.FIRESTORE_DATABASE_ID }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_APK_URL: ${{ steps.release.outputs.apk_url }}
+        run: |
+          node << 'EOF'
+          const crypto = require('crypto');
+          const fs = require('fs');
+          async function main() {
+            const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            const googleServices = JSON.parse(fs.readFileSync('app/google-services.json', 'utf8'));
+            const projectId = sa.project_id || googleServices.project_info.project_id;
+            const dbId = (process.env.FIRESTORE_DATABASE_ID || '').trim() || 'ai-studio-android-klass-8e28a555-75a6-4902-af9c-0b216450601b';
+            const nowSec = Math.floor(Date.now() / 1000);
+            const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+            const claim = Buffer.from(JSON.stringify({
+              iss: sa.client_email,
+              scope: 'https://www.googleapis.com/auth/datastore',
+              aud: 'https://oauth2.googleapis.com/token',
+              iat: nowSec,
+              exp: nowSec + 3600,
+            })).toString('base64url');
+            const signer = crypto.createSign('RSA-SHA256');
+            signer.update(`${header}.${claim}`);
+            const signature = signer.sign(sa.private_key).toString('base64url');
+            const jwt = `${header}.${claim}.${signature}`;
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                assertion: jwt,
+              }),
+            });
+            if (!tokenRes.ok) throw new Error(`OAuth token error: ${tokenRes.status} ${await tokenRes.text()}`);
+            const { access_token } = await tokenRes.json();
+            const docUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${encodeURIComponent(dbId)}/documents/config/app_update`;
+            const body = {
+              fields: {
+                enabled: { booleanValue: true },
+                latest_version: { stringValue: process.env.RELEASE_VERSION },
+                version: { stringValue: process.env.RELEASE_VERSION },
+                apk_url: { stringValue: process.env.RELEASE_APK_URL },
+                notes: { stringValue: `Klass v${process.env.RELEASE_VERSION} release update` },
+                force: { booleanValue: false },
+                updated_at: { integerValue: String(Date.now()) },
+              },
+            };
+            const patchRes = await fetch(docUrl, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(body),
+            });
+            if (!patchRes.ok) throw new Error(`Firestore PATCH failed: ${patchRes.status} ${await patchRes.text()}`);
+            console.log(`Synced config/app_update to v${process.env.RELEASE_VERSION} -> ${process.env.RELEASE_APK_URL}`);
+          }
+          main().catch((e) => { console.error(e); process.exit(1); });
+          EOF

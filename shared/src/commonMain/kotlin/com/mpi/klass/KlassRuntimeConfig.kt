@@ -10,6 +10,8 @@ object KlassRuntimeConfig {
     var recaptchaSiteKey: String = ""
     var firestoreDatabaseId: String = ""
     var appUpdateUrl: String = ""
+    var installedVersionName: String = ""
+    var onManualCheckForUpdate: (() -> Unit)? = null
 }
 
 object KlassUpdateUtils {

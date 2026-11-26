@@ -89,6 +89,15 @@ data class SignInControlConfig(
     val studentSignInEnabled: Boolean = true,
 )
 
+data class AppUpdateConfig(
+    val enabled: Boolean = true,
+    val latestVersion: String = "",
+    val apkUrl: String = "",
+    val notes: String = "",
+    val force: Boolean = false,
+    val updatedAt: Long = 0L,
+)
+
 enum class AdminStatus {
     APPROVED,
     PENDING,
@@ -296,6 +305,8 @@ expect suspend fun fetchUserFromFirestore(email: String): UserProfile?
 expect suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit>
 expect suspend fun fetchSignInControlFromFirestore(): SignInControlConfig
 expect suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Result<Unit>
+expect suspend fun fetchAppUpdateConfigFromFirestore(): AppUpdateConfig
+expect suspend fun saveAppUpdateConfigInFirestore(config: AppUpdateConfig): Result<Unit>
 expect suspend fun getAdminStatusFromFirestore(email: String): AdminStatus
 expect suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit>
 expect suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem>
@@ -489,6 +500,8 @@ object RoleConfig {
     suspend fun deleteStudentSignInData(email: String): Result<Unit> = deleteUserAccount(email, UserRole.STUDENT)
     suspend fun fetchSignInControl(): SignInControlConfig = fetchSignInControlFromFirestore()
     suspend fun saveSignInControl(config: SignInControlConfig): Result<Unit> = saveSignInControlInFirestore(config)
+    suspend fun fetchAppUpdateConfig(): AppUpdateConfig = fetchAppUpdateConfigFromFirestore()
+    suspend fun saveAppUpdateConfig(config: AppUpdateConfig): Result<Unit> = saveAppUpdateConfigInFirestore(config)
     suspend fun deleteAccountFromFirebase(email: String, role: UserRole): Result<Unit> = deleteUserAccount(email, role)
     suspend fun getAdminStatusFromFirestore(email: String): AdminStatus = com.mpi.klass.getAdminStatusFromFirestore(email)
     suspend fun submitAdminRequestToFirestore(email: String, name: String, photoUrl: String?): Result<Unit> = com.mpi.klass.submitAdminRequestToFirestore(email, name, photoUrl)

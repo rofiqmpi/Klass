@@ -1461,6 +1461,72 @@ actual suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Re
     return Result.success(Unit)
 }
 
+actual suspend fun fetchAppUpdateConfigFromFirestore(): AppUpdateConfig {
+    return withTimeoutOrNull(5.seconds) {
+        val instances = getFirestoreInstances()
+        for ((db, _) in instances) {
+            try {
+                val doc = db.collection("config").document("app_update").get().awaitTask()
+                if (doc.exists()) {
+                    val data = doc.data ?: continue
+                    val version = (data["latest_version"] as? String
+                        ?: data["version"] as? String
+                        ?: data["versionName"] as? String
+                        ?: data["tag"] as? String
+                        ?: data["tag_name"] as? String).orEmpty().trim()
+                    val apkUrl = (data["apk_url"] as? String
+                        ?: data["download_url"] as? String
+                        ?: data["apkUrl"] as? String
+                        ?: data["downloadUrl"] as? String).orEmpty().trim()
+                    return@withTimeoutOrNull AppUpdateConfig(
+                        enabled = data["enabled"] as? Boolean ?: true,
+                        latestVersion = version,
+                        apkUrl = apkUrl,
+                        notes = (data["notes"] as? String).orEmpty().trim(),
+                        force = data["force"] as? Boolean ?: false,
+                        updatedAt = (data["updated_at"] as? Number)?.toLong() ?: 0L,
+                    )
+                }
+            } catch (_: Exception) {}
+        }
+        AppUpdateConfig()
+    } ?: AppUpdateConfig()
+}
+
+actual suspend fun saveAppUpdateConfigInFirestore(config: AppUpdateConfig): Result<Unit> {
+    val instances = getFirestoreInstances()
+    val normalizedVersion = config.latestVersion.trim().removePrefix("v").removePrefix("V").trim()
+    val normalizedApkUrl = KlassUpdateUtils.normalizeApkDownloadUrl(config.apkUrl)
+    val now = System.currentTimeMillis()
+    val data = mapOf(
+        "enabled" to config.enabled,
+        "latest_version" to normalizedVersion,
+        "version" to normalizedVersion,
+        "apk_url" to normalizedApkUrl,
+        "notes" to config.notes.trim(),
+        "force" to config.force,
+        "updated_at" to now,
+    )
+    var savedAny = false
+    var lastError: Throwable? = null
+    withTimeoutOrNull(8.seconds) {
+        for ((db, label) in instances) {
+            try {
+                db.collection("config").document("app_update").set(data, SetOptions.merge()).awaitTask()
+                FirestoreResolver.markWorkingDatabase(label)
+                savedAny = true
+            } catch (e: Exception) {
+                lastError = e
+            }
+        }
+    }
+    return if (savedAny) {
+        Result.success(Unit)
+    } else {
+        Result.failure(lastError ?: Exception("Could not save app_update config to Firestore"))
+    }
+}
+
 actual suspend fun getAdminStatusFromFirestore(email: String): AdminStatus {
     if (email.isBlank()) return AdminStatus.NOT_REQUESTED
     val cleanEmail = email.trim().lowercase()
