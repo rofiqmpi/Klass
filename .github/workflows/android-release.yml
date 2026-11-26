@@ -120,8 +120,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ steps.version.outputs.name }}" \
+          version="${{ steps.version.outputs.name }}"
+          tag="v${version}"
+          apk_url="https://github.com/${{ github.repository }}/releases/download/${tag}/Klass-release.apk"
+          printf '{\n  "version": "%s",\n  "tag_name": "%s",\n  "apk_url": "%s",\n  "notes": "Klass %s release update"\n}\n' \
+            "$version" "$tag" "$apk_url" "$tag" > update.json
+          gh release create "${tag}" \
             app/build/outputs/apk/release/Klass-release.apk \
+            update.json \
             --target "$GITHUB_SHA" \
-            --title "Klass v${{ steps.version.outputs.name }}" \
+            --title "Klass ${tag}" \
             --generate-notes

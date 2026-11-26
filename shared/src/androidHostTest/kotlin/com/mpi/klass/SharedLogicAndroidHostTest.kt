@@ -621,4 +621,31 @@ class SharedLogicAndroidHostTest {
             KlassRuntimeConfig.appUpdateUrl = prevUpdate
         }
     }
+
+    @Test
+    fun klassUpdateUtilsNormalizesUrlsAndVersionsCleanly() {
+        assertEquals(
+            "https://api.github.com/repos/rofiqmpi/Klass/releases/latest",
+            KlassUpdateUtils.normalizeUpdateFeedUrl("https://github.com/rofiqmpi/Klass/releases/latest"),
+        )
+        assertEquals(
+            "https://api.github.com/repos/rofiqmpi/Klass/releases/latest",
+            KlassUpdateUtils.normalizeUpdateFeedUrl("https://github.com/rofiqmpi/Klass"),
+        )
+        assertEquals(
+            "https://raw.githubusercontent.com/rofiqmpi/Klass/master/update.json",
+            KlassUpdateUtils.normalizeUpdateFeedUrl("https://github.com/rofiqmpi/Klass/blob/master/update.json"),
+        )
+        assertEquals(
+            "https://drive.usercontent.google.com/download?id=1AbCdEfGhI&export=download&confirm=t",
+            KlassUpdateUtils.normalizeApkDownloadUrl("https://drive.google.com/file/d/1AbCdEfGhI/view?usp=sharing"),
+        )
+        assertEquals(
+            "https://www.dropbox.com/s/xyz/Klass-release.apk?dl=1",
+            KlassUpdateUtils.normalizeApkDownloadUrl("https://www.dropbox.com/s/xyz/Klass-release.apk?dl=0"),
+        )
+        assertTrue(KlassUpdateUtils.compareSemanticVersions("v1.0.2", "1.0.1") > 0)
+        assertEquals(0, KlassUpdateUtils.compareSemanticVersions("v1.0.2", "1.0.2"))
+        assertTrue(KlassUpdateUtils.compareSemanticVersions("1.0.1", "1.0.2") < 0)
+    }
 }

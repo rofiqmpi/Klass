@@ -1,6 +1,5 @@
 package com.mpi.klass
 
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -9,13 +8,15 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.core.content.FileProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.FileProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.credentials.ClearCredentialStateRequest
@@ -37,13 +38,15 @@ import com.google.firebase.appcheck.recaptcha.RecaptchaAppCheckProviderFactory
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import com.mpi.klass.theme.initThemeContext
-import java.util.Locale
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -56,7 +59,9 @@ private const val LATEST_RELEASE_URL = "https://api.github.com/repos/rofiqmpi/Kl
 class MainActivity : ComponentActivity() {
 
     private lateinit var credentialManager: CredentialManager
-    private var pendingUpdateUrl: String? = null
+    private var pendingUpdateRelease: RemoteReleaseInfo? = null
+    private var updateUiState by mutableStateOf<InAppUpdateUiState>(InAppUpdateUiState.Hidden)
+    private var updateDownloadJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         KlassRuntimeConfig.geminiApiKey = BuildConfig.GEMINI_API_KEY.trim().trim('"').trim()
@@ -91,24 +96,54 @@ class MainActivity : ComponentActivity() {
                 },
                 onCloseApp = { finish() },
             )
+            InAppUpdateOverlay(
+                state = updateUiState,
+                onLater = { release ->
+                    dismissReleasePromptForCooldown(release)
+                    updateUiState = InAppUpdateUiState.Hidden
+                },
+                onStartDownload = { release ->
+                    clearReleasePromptCooldown()
+                    beginUpdateInstall(release)
+                },
+                onOpenInstallSettings = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:$packageName"),
+                            ),
+                        )
+                    }
+                },
+                onCancelDownload = { release ->
+                    updateDownloadJob?.cancel()
+                    updateDownloadJob = null
+                    if (release.force) {
+                        updateUiState = InAppUpdateUiState.Available(release, currentInstalledVersionName())
+                    } else {
+                        updateUiState = InAppUpdateUiState.Hidden
+                    }
+                },
+                onInstallNow = { release ->
+                    launchCachedApkInstaller(release)
+                },
+                onDismiss = {
+                    updateUiState = InAppUpdateUiState.Hidden
+                },
+            )
         }
         if (!BuildConfig.DEBUG) checkForReleaseUpdate()
     }
 
     override fun onResume() {
         super.onResume()
-        val url = pendingUpdateUrl
-        if (url != null) {
-            pendingUpdateUrl = null
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()) {
-                downloadAndInstallUpdate(url)
-            } else {
-                getSharedPreferences("klass_update", Context.MODE_PRIVATE)
-                    .edit()
-                    .remove("dismissed_tag")
-                    .remove("dismissed_at")
-                    .apply()
-            }
+        val release = pendingUpdateRelease
+        if (release != null &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls())
+        ) {
+            pendingUpdateRelease = null
+            downloadAndInstallUpdate(release)
         }
     }
 
@@ -232,18 +267,13 @@ class MainActivity : ComponentActivity() {
         context.resources.updateConfiguration(config, context.resources.displayMetrics)
     }
 
-    private data class RemoteReleaseInfo(
-        val version: String,
-        val apkUrl: String,
-        val notes: String = "",
-        val force: Boolean = false,
-    )
-
     private fun parseReleaseJsonPayload(payload: String): RemoteReleaseInfo? {
         val json = org.json.JSONObject(payload)
         val tag = json.optString("tag_name")
             .ifBlank { json.optString("version") }
+            .ifBlank { json.optString("versionName") }
             .ifBlank { json.optString("latest_version") }
+            .ifBlank { json.optString("tag") }
             .trim()
         val notes = json.optString("notes")
             .ifBlank { json.optString("body") }
@@ -251,6 +281,8 @@ class MainActivity : ComponentActivity() {
         val force = json.optBoolean("force", false)
         val directApkUrl = json.optString("apk_url")
             .ifBlank { json.optString("download_url") }
+            .ifBlank { json.optString("apkUrl") }
+            .ifBlank { json.optString("downloadUrl") }
             .trim()
         val assetApkUrl = json.optJSONArray("assets")?.let { assets ->
             (0 until assets.length())
@@ -262,11 +294,13 @@ class MainActivity : ComponentActivity() {
                 ?.optString("browser_download_url")
                 ?.trim()
         }.orEmpty()
-        val finalUrl = directApkUrl.ifBlank { assetApkUrl }
+        val finalUrl = KlassUpdateUtils.normalizeApkDownloadUrl(directApkUrl.ifBlank { assetApkUrl })
         return if (tag.isBlank() || finalUrl.isBlank()) null else RemoteReleaseInfo(tag, finalUrl, notes, force)
     }
 
-    private fun fetchReleaseFromHttp(feedUrl: String): RemoteReleaseInfo? {
+    private fun fetchReleaseFromHttp(rawFeedUrl: String): RemoteReleaseInfo? {
+        val feedUrl = KlassUpdateUtils.normalizeUpdateFeedUrl(rawFeedUrl)
+        if (feedUrl.isBlank()) return null
         return try {
             val connection = (URL(feedUrl).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 8_000
@@ -307,10 +341,11 @@ class MainActivity : ComponentActivity() {
                         ?: doc.getString("versionName")
                         ?: doc.getString("tag")
                         ?: doc.getString("tag_name")).orEmpty().trim()
-                    val apkUrl = (doc.getString("apk_url")
+                    val rawApkUrl = (doc.getString("apk_url")
                         ?: doc.getString("download_url")
                         ?: doc.getString("apkUrl")
                         ?: doc.getString("downloadUrl")).orEmpty().trim()
+                    val apkUrl = KlassUpdateUtils.normalizeApkDownloadUrl(rawApkUrl)
                     val notes = doc.getString("notes").orEmpty().trim()
                     val force = doc.getBoolean("force") ?: false
                     if (version.isNotBlank() && apkUrl.isNotBlank()) {
@@ -329,6 +364,32 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
+    private fun currentInstalledVersionName(): String {
+        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0)
+        }
+        return info.versionName.orEmpty()
+    }
+
+    private fun dismissReleasePromptForCooldown(release: RemoteReleaseInfo) {
+        getSharedPreferences("klass_update", Context.MODE_PRIVATE)
+            .edit()
+            .putString("dismissed_tag", release.version)
+            .putLong("dismissed_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    private fun clearReleasePromptCooldown() {
+        getSharedPreferences("klass_update", Context.MODE_PRIVATE)
+            .edit()
+            .remove("dismissed_tag")
+            .remove("dismissed_at")
+            .apply()
+    }
+
     private fun checkForReleaseUpdate() {
         lifecycleScope.launch {
             val release = withContext(Dispatchers.IO) {
@@ -340,14 +401,8 @@ class MainActivity : ComponentActivity() {
                 fetchReleaseFromHttp(LATEST_RELEASE_URL)
             } ?: return@launch
 
-            val installedPackageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                packageManager.getPackageInfo(packageName, 0)
-            }
-            val installedVersion = installedPackageInfo.versionName.orEmpty()
-            if (compareVersions(release.version, installedVersion) <= 0) return@launch
+            val installedVersion = currentInstalledVersionName()
+            if (KlassUpdateUtils.compareSemanticVersions(release.version, installedVersion) <= 0) return@launch
 
             val preferences = getSharedPreferences("klass_update", Context.MODE_PRIVATE)
             val dismissedTag = preferences.getString("dismissed_tag", null)
@@ -356,76 +411,65 @@ class MainActivity : ComponentActivity() {
                 (System.currentTimeMillis() - dismissedAt) < 24L * 60L * 60L * 1000L
             if (!release.force && withinCooldown) return@launch
 
-            val isBn = loadAppLanguage() == AppLanguage.BENGALI
-            val title = if (isBn) "নতুন আপডেট পাওয়া গেছে" else "Klass update available"
-            val baseMessage = if (isBn) {
-                "নতুন ভার্সন ${release.version} প্রস্তুত। এখনই ডাউনলোড ও ইনস্টল করতে চান?"
-            } else {
-                "Version ${release.version} is ready. Download and install it now?"
+            if (updateUiState is InAppUpdateUiState.Hidden) {
+                updateUiState = InAppUpdateUiState.Available(
+                    release = release,
+                    installedVersion = installedVersion,
+                )
             }
-            val message = if (release.notes.isNotBlank()) {
-                "$baseMessage\n\n${release.notes.take(260)}"
-            } else {
-                baseMessage
-            }
-
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle(title)
-                .setMessage(message)
-                .setCancelable(!release.force)
-                .apply {
-                    if (!release.force) {
-                        setNegativeButton(if (isBn) "পরে" else "Later") { _, _ ->
-                            preferences.edit()
-                                .putString("dismissed_tag", release.version)
-                                .putLong("dismissed_at", System.currentTimeMillis())
-                                .apply()
-                        }
-                        setOnCancelListener {
-                            preferences.edit()
-                                .putString("dismissed_tag", release.version)
-                                .putLong("dismissed_at", System.currentTimeMillis())
-                                .apply()
-                        }
-                    }
-                }
-                .setPositiveButton(if (isBn) "আপডেট করুন" else "Update") { _, _ ->
-                    preferences.edit()
-                        .remove("dismissed_tag")
-                        .remove("dismissed_at")
-                        .apply()
-                    beginUpdateInstall(release.apkUrl)
-                }
-                .show()
         }
     }
 
-    private fun beginUpdateInstall(downloadUrl: String) {
+    private fun beginUpdateInstall(release: RemoteReleaseInfo) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
-            pendingUpdateUrl = downloadUrl
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:$packageName"),
-                ),
-            )
+            pendingUpdateRelease = release
+            updateUiState = InAppUpdateUiState.PermissionRequired(release)
             return
         }
-        downloadAndInstallUpdate(downloadUrl)
+        downloadAndInstallUpdate(release)
     }
 
-    private fun downloadAndInstallUpdate(downloadUrl: String) {
-        val isBn = loadAppLanguage() == AppLanguage.BENGALI
-        Toast.makeText(
-            this@MainActivity,
-            if (isBn) "আপডেট ডাউনলোড হচ্ছে…" else "Downloading update…",
-            Toast.LENGTH_SHORT,
-        ).show()
+    private fun cachedApkFileFor(release: RemoteReleaseInfo): File {
+        val directory = File(cacheDir, "updates")
+        if (!directory.exists()) directory.mkdirs()
+        val safeVersion = release.version.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        return File(directory, "Klass-release-$safeVersion.apk")
+    }
 
-        lifecycleScope.launch {
+    private fun isValidApkFile(file: File): Boolean {
+        if (!file.exists() || file.length() < 64_000L) return false
+        return try {
+            FileInputStream(file).use { fis ->
+                val b0 = fis.read()
+                val b1 = fis.read()
+                b0 == 0x50 && b1 == 0x4B // 'P', 'K' ZIP/APK signature
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun downloadAndInstallUpdate(release: RemoteReleaseInfo) {
+        val cachedApk = cachedApkFileFor(release)
+        if (isValidApkFile(cachedApk)) {
+            updateUiState = InAppUpdateUiState.ReadyToInstall(release)
+            launchApkFileInstaller(cachedApk)
+            return
+        }
+
+        val isBn = loadAppLanguage() == AppLanguage.BENGALI
+        updateDownloadJob?.cancel()
+        updateUiState = InAppUpdateUiState.Downloading(
+            release = release,
+            downloadedBytes = 0L,
+            totalBytes = -1L,
+        )
+
+        updateDownloadJob = lifecycleScope.launch {
+            val tmpFile = File(cachedApk.parentFile, "${cachedApk.name}.tmp")
             try {
                 val apk = withContext(Dispatchers.IO) {
-                    var currentUrl = downloadUrl
+                    var currentUrl = KlassUpdateUtils.normalizeApkDownloadUrl(release.apkUrl)
                     var redirects = 0
                     var activeConnection: HttpURLConnection? = null
                     while (redirects < 6) {
@@ -452,61 +496,104 @@ class MainActivity : ComponentActivity() {
                     val connection = activeConnection ?: error("Too many redirects while downloading update")
                     try {
                         if (connection.responseCode !in 200..299) {
-                            error("APK download returned HTTP ${connection.responseCode}")
+                            error("HTTP ${connection.responseCode}")
                         }
-                        val directory = File(cacheDir, "updates")
+                        val totalBytes = connection.contentLengthLong
+                        val directory = cachedApk.parentFile ?: File(cacheDir, "updates")
                         if (!directory.exists() && !directory.mkdirs()) {
-                            error("Could not create update cache")
+                            error("Could not create update cache directory")
                         }
-                        val outputFile = File(directory, "Klass-release.apk")
+                        // Remove older cached APKs so cache stays compact
+                        directory.listFiles()?.forEach { oldFile ->
+                            if (oldFile.name != cachedApk.name && oldFile.name != tmpFile.name) {
+                                oldFile.delete()
+                            }
+                        }
+
+                        if (tmpFile.exists()) tmpFile.delete()
                         connection.inputStream.use { input ->
-                            FileOutputStream(outputFile).use { output -> input.copyTo(output) }
+                            FileOutputStream(tmpFile).use { output ->
+                                val buffer = ByteArray(16 * 1024)
+                                var downloaded = 0L
+                                var lastUiEmitAt = 0L
+                                while (true) {
+                                    val read = input.read(buffer)
+                                    if (read == -1) break
+                                    output.write(buffer, 0, read)
+                                    downloaded += read
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastUiEmitAt >= 80L) {
+                                        lastUiEmitAt = now
+                                        withContext(Dispatchers.Main) {
+                                            updateUiState = InAppUpdateUiState.Downloading(
+                                                release = release,
+                                                downloadedBytes = downloaded,
+                                                totalBytes = totalBytes,
+                                            )
+                                        }
+                                    }
+                                }
+                                output.flush()
+                            }
                         }
-                        if (!outputFile.exists() || outputFile.length() == 0L) {
-                            error("Downloaded APK file is empty")
+                        if (!isValidApkFile(tmpFile)) {
+                            tmpFile.delete()
+                            error(
+                                if (isBn) {
+                                    "সঠিক APK ফাইল পাওয়া যায়নি (লিংকটি সরাসরি APK ডাউনলোড করছে না)।"
+                                } else {
+                                    "Invalid APK payload (the link did not return a direct APK binary)."
+                                },
+                            )
                         }
-                        outputFile
+                        if (cachedApk.exists()) cachedApk.delete()
+                        if (!tmpFile.renameTo(cachedApk)) {
+                            tmpFile.copyTo(cachedApk, overwrite = true)
+                            tmpFile.delete()
+                        }
+                        cachedApk
                     } finally {
                         connection.disconnect()
                     }
                 }
-                val apkUri = FileProvider.getUriForFile(
-                    this@MainActivity,
-                    "$packageName.fileprovider",
-                    apk,
-                )
-                val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(apkUri, "application/vnd.android.package-archive")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                startActivity(installIntent)
+                updateUiState = InAppUpdateUiState.ReadyToInstall(release)
+                launchApkFileInstaller(apk)
             } catch (e: CancellationException) {
+                tmpFile.delete()
                 throw e
             } catch (e: Exception) {
+                tmpFile.delete()
                 Log.e(UPDATE_TAG, "Failed to download or open the update APK", e)
-                getSharedPreferences("klass_update", Context.MODE_PRIVATE)
-                    .edit()
-                    .remove("dismissed_tag")
-                    .remove("dismissed_at")
-                    .apply()
-                Toast.makeText(
-                    this@MainActivity,
-                    if (isBn) "আপডেট ডাউনলোড ব্যর্থ হয়েছে। পরে আবার চেষ্টা করুন।" else "Update download failed. Please try again later.",
-                    Toast.LENGTH_LONG,
-                ).show()
+                clearReleasePromptCooldown()
+                updateUiState = InAppUpdateUiState.Error(
+                    release = release,
+                    message = e.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: if (isBn) "ইন্টারনেট বা ডাউনলোড লিংক পরীক্ষা করে আবার চেষ্টা করুন।" else "Check your internet or download URL and try again.",
+                )
             }
         }
     }
 
-    private fun compareVersions(remoteTag: String, installedVersion: String): Int {
-        fun numbers(value: String) = Regex("\\d+").findAll(value).map { it.value.toLongOrNull() ?: 0L }.toList()
-        val remote = numbers(remoteTag)
-        val installed = numbers(installedVersion)
-        for (index in 0 until maxOf(remote.size, installed.size)) {
-            val comparison = (remote.getOrElse(index) { 0L }).compareTo(installed.getOrElse(index) { 0L })
-            if (comparison != 0) return comparison
+    private fun launchCachedApkInstaller(release: RemoteReleaseInfo) {
+        val file = cachedApkFileFor(release)
+        if (isValidApkFile(file)) {
+            launchApkFileInstaller(file)
+        } else {
+            downloadAndInstallUpdate(release)
         }
-        return 0
+    }
+
+    private fun launchApkFileInstaller(apk: File) {
+        val apkUri = FileProvider.getUriForFile(
+            this@MainActivity,
+            "$packageName.fileprovider",
+            apk,
+        )
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(installIntent)
     }
 }
 
