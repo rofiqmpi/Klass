@@ -92,6 +92,7 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          chmod +x gradlew
           ./gradlew --no-daemon clean :app:assembleDebug :app:assembleRelease \
             -PVERSION_NAME="${{ steps.version.outputs.name }}" \
             -PVERSION_CODE="${{ steps.version.outputs.code }}"
