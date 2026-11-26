@@ -71,25 +71,25 @@ actual fun saveCachedTranslations(entries: Map<String, String>) {
 
 actual suspend fun fetchOnlineDictionaryFromCloud(): Map<String, String> = withContext(Dispatchers.IO) {
     try {
-        val db = run {
-            val ctx = getAppContext()
-            val resId = ctx?.resources?.getIdentifier("firestore_database_id", "string", ctx.packageName) ?: 0
-            val customDbId = if (resId != 0) ctx?.getString(resId)?.trim().orEmpty() else ""
-            if (customDbId.isNotEmpty() && customDbId != "(default)") {
-                FirebaseFirestore.getInstance(customDbId)
-            } else {
-                FirebaseFirestore.getInstance()
+        var snapshot: com.google.firebase.firestore.DocumentSnapshot? = null
+        for ((db, dbLabel) in FirestoreResolver.getFirestoreInstances()) {
+            val candidate = withTimeoutOrNull(4.seconds) {
+                runCatching {
+                    db.collection("config")
+                        .document("language_dictionary")
+                        .get()
+                        .awaitTask()
+                }.getOrNull()
+            }
+            if (candidate != null) {
+                FirestoreResolver.markWorkingDatabase(dbLabel)
+                snapshot = candidate
+                if (candidate.exists()) break
             }
         }
-        val snapshot = withTimeoutOrNull(4.seconds) {
-            db.collection("config")
-                .document("language_dictionary")
-                .get()
-                .awaitTask()
-        } ?: return@withContext emptyMap()
-
-        if (!snapshot.exists()) return@withContext emptyMap()
-        val data = snapshot.data ?: return@withContext emptyMap()
+        val doc = snapshot ?: return@withContext emptyMap()
+        if (!doc.exists()) return@withContext emptyMap()
+        val data = doc.data ?: return@withContext emptyMap()
         val result = HashMap<String, String>()
 
         val nestedEn = data["en"] as? Map<*, *>

@@ -364,15 +364,15 @@ object RoleConfig {
         saveLocalProfile(cleanEmail, name, photoUrl, provider, category)
 
         // 2. Specialized collection saving
-        when (category.uppercase()) {
+        val roleResult = when (category.uppercase()) {
             UserRole.TEACHER.name -> saveTeacherProfile(cleanEmail, name, photoUrl, provider)
             UserRole.STUDENT.name -> saveStudentProfile(cleanEmail, name, photoUrl, provider)
+            else -> Result.success(Unit)
         }
+        if (roleResult.isFailure) return roleResult
 
         // 3. Save to live Firebase Firestore 'users' collection across active databases
-        saveUserInFirestore(cleanEmail, name, photoUrl, provider, category)
-
-        return Result.success(Unit)
+        return saveUserInFirestore(cleanEmail, name, photoUrl, provider, category)
     }
 
     suspend fun isAuthorizedAdminEmail(email: String): Boolean {

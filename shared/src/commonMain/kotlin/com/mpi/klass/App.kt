@@ -215,18 +215,6 @@ fun App(
                         photoUrl = photoUrl,
                         profileSetupComplete = false,
                     )
-                    if (profile == null) {
-                        val result = RoleConfig.saveStudentProfile(setupProfile)
-                        if (result.isFailure) {
-                            isLoadingOverlay = false
-                            showError(
-                                ErrorImageType.GENERAL_ERROR,
-                                result.exceptionOrNull()?.localizedMessage
-                                    ?: "প্রোফাইল সেটআপ শুরু করা যায়নি। আবার চেষ্টা করুন।",
-                            )
-                            return@launch
-                        }
-                    }
                     currentScreen = AppScreen.ProfileSetup(
                         role = role,
                         email = email,
@@ -272,9 +260,6 @@ fun App(
                     photoUrl = session.photoUrl,
                     profileSetupComplete = false,
                 )
-                if (profile == null) {
-                    RoleConfig.saveStudentProfile(setupProfile)
-                }
                 currentScreen = AppScreen.ProfileSetup(
                     role = sessionRole,
                     email = session.email,
@@ -566,6 +551,7 @@ fun App(
                                 role = screen.role,
                                 initialProfile = screen.profile,
                                 hindSiliguri = hindSiliguri,
+                                isDark = isDark,
                                 onSave = { updatedProfile ->
                                     val provider = RoleConfig.fetchUserProfile(screen.email)
                                         ?.provider?.ifBlank { "google" } ?: "google"

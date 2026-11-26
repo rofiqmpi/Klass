@@ -122,6 +122,8 @@ data class ZedReply(
 
 expect fun currentDayNameEnglish(): String
 
+expect fun currentYearMonthDay(): Triple<Int, Int, Int>
+
 expect suspend fun fetchZedKnowledgeFromFirestore(): List<ZedKnowledgeEntry>
 
 expect suspend fun saveZedKnowledgeInFirestore(entry: ZedKnowledgeEntry): Result<Unit>

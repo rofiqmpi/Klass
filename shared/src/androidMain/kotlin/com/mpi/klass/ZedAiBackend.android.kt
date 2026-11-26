@@ -25,8 +25,10 @@ import org.json.JSONObject
 private const val ZED_AI_TAG = "ZedAiBackend"
 private const val GEMINI_PRIMARY_MODEL = "gemini-3.8-flash"
 private const val GEMINI_LITE_MODEL = "gemini-3.5-flash-lite"
-private const val PRIMARY_STEP_TIMEOUT_MS = 30_000L
-private const val FALLBACK_STEP_TIMEOUT_MS = 20_000L
+private const val GEMINI_GA_FLASH_MODEL = "gemini-2.5-flash"
+private const val GEMINI_GA_LITE_MODEL = "gemini-2.5-flash-lite"
+private const val PRIMARY_STEP_TIMEOUT_MS = 22_000L
+private const val FALLBACK_STEP_TIMEOUT_MS = 16_000L
 
 private val ZED_STRUCTURED_SYSTEM_PROMPT = """
     You are Zed, the intelligent, privacy-first AI assistant inside the MPI Klass Android app (Mymensingh Polytechnic Institute).
@@ -171,6 +173,18 @@ private object ZedFirebaseAiProvider {
         )
     }
 
+    val gaStructuredModel: GenerativeModel by lazy {
+        Firebase.ai.generativeModel(
+            modelName = GEMINI_GA_FLASH_MODEL,
+            generationConfig = generationConfig {
+                temperature = 0.40f
+                responseMimeType = "application/json"
+                responseSchema = zedResponseSchema
+            },
+            systemInstruction = content { text(ZED_STRUCTURED_SYSTEM_PROMPT) },
+        )
+    }
+
     val plainModel: GenerativeModel by lazy {
         Firebase.ai.generativeModel(
             modelName = GEMINI_PRIMARY_MODEL,
@@ -181,9 +195,29 @@ private object ZedFirebaseAiProvider {
         )
     }
 
+    val gaPlainModel: GenerativeModel by lazy {
+        Firebase.ai.generativeModel(
+            modelName = GEMINI_GA_FLASH_MODEL,
+            generationConfig = generationConfig {
+                temperature = 0.50f
+            },
+            systemInstruction = content { text(ZED_PLAIN_SYSTEM_PROMPT) },
+        )
+    }
+
     val litePlainModel: GenerativeModel by lazy {
         Firebase.ai.generativeModel(
             modelName = GEMINI_LITE_MODEL,
+            generationConfig = generationConfig {
+                temperature = 0.50f
+            },
+            systemInstruction = content { text(ZED_PLAIN_SYSTEM_PROMPT) },
+        )
+    }
+
+    val gaLitePlainModel: GenerativeModel by lazy {
+        Firebase.ai.generativeModel(
+            modelName = GEMINI_GA_LITE_MODEL,
             generationConfig = generationConfig {
                 temperature = 0.50f
             },
@@ -249,18 +283,35 @@ actual suspend fun askZedWithGemini(
             "Sending query to Firebase AI (campus=$campusQuery, payload=${currentTurnText.length} chars, history=${chatHistory.size} turns)",
         )
 
-        val responseText = if (campusQuery) {
-            executeCampusInferenceWithFallbacks(
-                message = currentTurnText,
-                history = chatHistory,
-                onPartialText = onPartialText,
-            )
-        } else {
-            executeGeneralInferenceWithFallbacks(
-                message = currentTurnText,
-                history = chatHistory,
-                onPartialText = onPartialText,
-            )
+        val responseText = try {
+            if (campusQuery) {
+                executeCampusInferenceWithFallbacks(
+                    message = currentTurnText,
+                    history = chatHistory,
+                    onPartialText = onPartialText,
+                )
+            } else {
+                executeGeneralInferenceWithFallbacks(
+                    message = currentTurnText,
+                    history = chatHistory,
+                    onPartialText = onPartialText,
+                )
+            }
+        } catch (t: Throwable) {
+            if (t is CancellationException && t !is TimeoutCancellationException) throw t
+            if (t is PromptBlockedException) throw t
+            val apiKey = KlassRuntimeConfig.geminiApiKey.trim()
+            if (apiKey.isNotBlank()) {
+                Log.w(ZED_AI_TAG, "Firebase AI failed (${t.localizedMessage}); retrying via Secrets GEMINI_API_KEY REST endpoint")
+                executeGeminiRestInference(
+                    message = currentTurnText,
+                    history = history,
+                    campusQuery = campusQuery,
+                    apiKey = apiKey,
+                )
+            } else {
+                throw t
+            }
         }
 
         if (responseText.isBlank()) {
@@ -425,25 +476,27 @@ private suspend fun executeCampusInferenceWithFallbacks(
     history: List<Content>,
     onPartialText: (String) -> Unit,
 ): String {
-    val firstFailure: Throwable? = try {
-        val unary = withTimeout(PRIMARY_STEP_TIMEOUT_MS) {
-            generateUnary(
-                model = ZedFirebaseAiProvider.structuredModel,
-                history = history,
-                message = message,
-            )
+    var firstFailure: Throwable? = null
+    for (structuredCandidate in listOf(ZedFirebaseAiProvider.structuredModel, ZedFirebaseAiProvider.gaStructuredModel)) {
+        try {
+            val unary = withTimeout(PRIMARY_STEP_TIMEOUT_MS) {
+                generateUnary(
+                    model = structuredCandidate,
+                    history = history,
+                    message = message,
+                )
+            }
+            if (unary.isNotBlank()) return unary
+        } catch (t: Throwable) {
+            if (t is TimeoutCancellationException) {
+                currentCoroutineContext().ensureActive()
+            } else if (t is CancellationException) {
+                throw t
+            }
+            if (t is PromptBlockedException || isAppCheckOrAuthFailure(t)) throw t
+            Log.w(ZED_AI_TAG, "Structured campus call failed (${t::class.simpleName}: ${t.localizedMessage})", t)
+            firstFailure = t
         }
-        if (unary.isNotBlank()) return unary
-        null
-    } catch (t: Throwable) {
-        if (t is TimeoutCancellationException) {
-            currentCoroutineContext().ensureActive()
-        } else if (t is CancellationException) {
-            throw t
-        }
-        if (t is PromptBlockedException || isAppCheckOrAuthFailure(t)) throw t
-        Log.w(ZED_AI_TAG, "Structured campus call failed (${t::class.simpleName}: ${t.localizedMessage}); falling back to plain stream", t)
-        t
     }
 
     return executePlainAndLiteChain(
@@ -473,79 +526,165 @@ private suspend fun executePlainAndLiteChain(
 ): String {
     var lastError: Throwable? = priorFailure
 
-    try {
-        val streamed = withTimeout(PRIMARY_STEP_TIMEOUT_MS) {
-            streamChat(
-                model = ZedFirebaseAiProvider.plainModel,
-                history = history,
-                message = message,
-                onPartialText = onPartialText,
-            )
-        }
-        if (streamed.isNotBlank()) return streamed
-    } catch (t: Throwable) {
-        if (t is TimeoutCancellationException) {
-            currentCoroutineContext().ensureActive()
-        } else if (t is CancellationException) {
-            throw t
-        }
-        if (t is PromptBlockedException || isAppCheckOrAuthFailure(t)) throw t
-        Log.w(ZED_AI_TAG, "Primary stream failed (${t::class.simpleName}: ${t.localizedMessage}); trying unary primary", t)
-        lastError = t
-    }
-
-    try {
-        val unary = withTimeout(FALLBACK_STEP_TIMEOUT_MS) {
-            generateUnary(
-                model = ZedFirebaseAiProvider.plainModel,
-                history = history,
-                message = message,
-            )
-        }
-        if (unary.isNotBlank()) return unary
-    } catch (t: Throwable) {
-        if (t is TimeoutCancellationException) {
-            currentCoroutineContext().ensureActive()
-        } else if (t is CancellationException) {
-            throw t
-        }
-        if (t is PromptBlockedException || isAppCheckOrAuthFailure(t)) throw t
-        Log.w(ZED_AI_TAG, "Primary unary failed (${t::class.simpleName}: ${t.localizedMessage}); trying $GEMINI_LITE_MODEL", t)
-        lastError = t
-    }
-
-    return try {
-        withTimeout(FALLBACK_STEP_TIMEOUT_MS) {
-            val liteStreamed = runCatching {
+    val plainCandidates = listOf(
+        ZedFirebaseAiProvider.plainModel,
+        ZedFirebaseAiProvider.gaPlainModel,
+        ZedFirebaseAiProvider.litePlainModel,
+        ZedFirebaseAiProvider.gaLitePlainModel,
+    )
+    for ((idx, candidate) in plainCandidates.withIndex()) {
+        val timeoutMs = if (idx == 0) PRIMARY_STEP_TIMEOUT_MS else FALLBACK_STEP_TIMEOUT_MS
+        try {
+            val streamed = withTimeout(timeoutMs) {
                 streamChat(
-                    model = ZedFirebaseAiProvider.litePlainModel,
+                    model = candidate,
                     history = history,
                     message = message,
                     onPartialText = onPartialText,
                 )
-            }.getOrElse { ex ->
-                if (ex is CancellationException) throw ex
-                if (ex is PromptBlockedException || isAppCheckOrAuthFailure(ex)) throw ex
-                ""
             }
-            if (liteStreamed.isNotBlank()) {
-                liteStreamed
-            } else {
+            if (streamed.isNotBlank()) return streamed
+        } catch (t: Throwable) {
+            if (t is TimeoutCancellationException) {
+                currentCoroutineContext().ensureActive()
+            } else if (t is CancellationException) {
+                throw t
+            }
+            if (t is PromptBlockedException || isAppCheckOrAuthFailure(t)) throw t
+            lastError = t
+            Log.w(ZED_AI_TAG, "Stream attempt #$idx failed (${t::class.simpleName}: ${t.localizedMessage}); trying unary", t)
+        }
+
+        try {
+            val unary = withTimeout(FALLBACK_STEP_TIMEOUT_MS) {
                 generateUnary(
-                    model = ZedFirebaseAiProvider.litePlainModel,
+                    model = candidate,
                     history = history,
                     message = message,
                 )
             }
+            if (unary.isNotBlank()) return unary
+        } catch (t: Throwable) {
+            if (t is TimeoutCancellationException) {
+                currentCoroutineContext().ensureActive()
+            } else if (t is CancellationException) {
+                throw t
+            }
+            if (t is PromptBlockedException || isAppCheckOrAuthFailure(t)) throw t
+            lastError = t
+            Log.w(ZED_AI_TAG, "Unary attempt #$idx failed (${t::class.simpleName}: ${t.localizedMessage})", t)
         }
-    } catch (t: Throwable) {
-        if (t is TimeoutCancellationException) {
-            currentCoroutineContext().ensureActive()
-        } else if (t is CancellationException) {
-            throw t
-        }
-        throw (lastError ?: t)
     }
+
+    throw (lastError ?: IllegalStateException("All Firebase AI model attempts returned blank."))
+}
+
+private suspend fun executeGeminiRestInference(
+    message: String,
+    history: List<AiChatMessage>,
+    campusQuery: Boolean,
+    apiKey: String,
+): String = withContext(Dispatchers.IO) {
+    val systemPrompt = if (campusQuery) ZED_STRUCTURED_SYSTEM_PROMPT else ZED_PLAIN_SYSTEM_PROMPT
+    val contentsArray = JSONArray()
+    val turns = mutableListOf<Pair<String, String>>()
+    for (msg in history.takeLast(8)) {
+        val txt = msg.text.trim()
+        if (txt.isBlank()) continue
+        if (ZedModeration.containsProfanityOrAbuse(txt) || ZedModeration.containsSensitivePii(txt)) continue
+        val role = if (msg.isFromUser) "user" else "model"
+        if (turns.isEmpty() && role == "model") continue
+        if (turns.isNotEmpty() && turns.last().first == role) {
+            val prev = turns.removeAt(turns.lastIndex)
+            turns.add(role to "${prev.second}\n\n$txt")
+        } else {
+            turns.add(role to txt)
+        }
+    }
+    if (turns.isNotEmpty() && turns.last().first == "user") {
+        turns.removeAt(turns.lastIndex)
+    }
+    turns.forEach { (role, text) ->
+        contentsArray.put(JSONObject().apply {
+            put("role", role)
+            put("parts", JSONArray().put(JSONObject().put("text", text)))
+        })
+    }
+    contentsArray.put(JSONObject().apply {
+        put("role", "user")
+        put("parts", JSONArray().put(JSONObject().put("text", message)))
+    })
+
+    val payload = JSONObject().apply {
+        put("systemInstruction", JSONObject().apply {
+            put("parts", JSONArray().put(JSONObject().put("text", systemPrompt)))
+        })
+        put("contents", contentsArray)
+        put("generationConfig", JSONObject().apply {
+            put("temperature", if (campusQuery) 0.4 else 0.5)
+            if (campusQuery) {
+                put("responseMimeType", "application/json")
+            }
+        })
+    }.toString()
+
+    val restModels = listOf(GEMINI_GA_FLASH_MODEL, GEMINI_GA_LITE_MODEL, "gemini-2.0-flash")
+    var lastRestError: Throwable? = null
+    for (modelId in restModels) {
+        try {
+            val endpoint = java.net.URL(
+                "https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey",
+            )
+            val conn = (endpoint.openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 12_000
+                readTimeout = 25_000
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            }
+            try {
+                conn.outputStream.use { os -> os.write(payload.toByteArray(Charsets.UTF_8)) }
+                val code = conn.responseCode
+                val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    .orEmpty()
+                if (code !in 200..299) {
+                    val errMsg = runCatching {
+                        JSONObject(body).optJSONObject("error")?.optString("message").orEmpty()
+                    }.getOrDefault("")
+                    lastRestError = IllegalStateException("Gemini REST ($modelId) HTTP $code: ${errMsg.ifBlank { body.take(180) }}")
+                    Log.w(ZED_AI_TAG, lastRestError.message.orEmpty())
+                    continue
+                }
+                val root = JSONObject(body)
+                val parts = root.optJSONArray("candidates")
+                    ?.optJSONObject(0)
+                    ?.optJSONObject("content")
+                    ?.optJSONArray("parts")
+                val combined = buildString {
+                    if (parts != null) {
+                        for (i in 0 until parts.length()) {
+                            val t = parts.optJSONObject(i)?.optString("text").orEmpty()
+                            if (t.isNotBlank()) {
+                                if (isNotEmpty()) append('\n')
+                                append(t)
+                            }
+                        }
+                    }
+                }.trim()
+                if (combined.isNotBlank()) return@withContext combined
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            lastRestError = t
+            Log.w(ZED_AI_TAG, "Gemini REST ($modelId) failed: ${t.message}")
+        }
+    }
+    throw (lastRestError ?: IllegalStateException("Gemini REST request returned an empty response."))
 }
 
 private suspend fun streamChat(

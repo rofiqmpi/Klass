@@ -33,9 +33,9 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Config collection: public sign-in switches & dictionary read; admin-only mutation
+    // Config collection: public sign-in switches, dictionary, & app update feed read; admin-only mutation
     match /config/{configId} {
-      allow read: if configId in ['signin_control', 'language_dictionary'] || isAuthenticated();
+      allow read: if configId in ['signin_control', 'language_dictionary', 'app_update'] || isAuthenticated();
       allow create: if isApprovedAdmin() || (isAuthenticated() && configId != 'signin_control');
       allow update, delete: if isApprovedAdmin();
     }

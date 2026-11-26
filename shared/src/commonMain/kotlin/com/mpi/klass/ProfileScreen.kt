@@ -105,9 +105,6 @@ import com.mpi.klass.theme.PrayingHandsIcon
 import com.mpi.klass.theme.RingIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.ThemeMode
-import com.mpi.klass.theme.UserNurseIcon
-import com.mpi.klass.theme.UserPlusIcon
-import com.mpi.klass.theme.UserTieIcon
 import com.mpi.klass.theme.UsersGroupIcon
 import com.mpi.klass.theme.UsersRectangleIcon
 import com.mpi.klass.theme.VenusMarsIcon
@@ -427,9 +424,10 @@ internal fun FacebookProfileContent(
         .ifBlank { cleanEmail.substringBefore("@") }
         .ifBlank { role.defaultName }
 
-    val fbBlue = Color(0xFF0866FF)
-    val sheetBg = if (isDark) Color(0xFF0F172A) else Color.White
     val profileAccent = KlassFeaturePalette.profile(isDark)
+    val routineAccent = KlassFeaturePalette.routine(isDark)
+    val primaryAccent = profileAccent.primary
+    val sheetGlassBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f)
 
     val currentLang = LocalAppLanguage.current
     val roleCategoryLine = remember(role, profile, isBengali, currentLang) {
@@ -510,12 +508,6 @@ internal fun FacebookProfileContent(
         }
         if (role != UserRole.ADMIN && profile.maritalStatus.isNotBlank() && canViewerSeeProfileField("marital_status", profile, role, isOwnProfile)) {
             add(GoogleContactField("marital_status", "বৈবাহিক অবস্থা".localized(), profile.maritalStatus.localized(), false, RingIcon, privacy = privacyOf("marital_status")))
-        }
-        if (role == UserRole.STUDENT && profile.fatherName.isNotBlank() && canViewerSeeProfileField("father_name", profile, role, isOwnProfile)) {
-            add(GoogleContactField("father_name", "পিতার নাম".localized(), profile.fatherName, false, UserTieIcon, privacy = privacyOf("father_name")))
-        }
-        if (role == UserRole.STUDENT && profile.motherName.isNotBlank() && canViewerSeeProfileField("mother_name", profile, role, isOwnProfile)) {
-            add(GoogleContactField("mother_name", "মাতার নাম".localized(), profile.motherName, false, UserNurseIcon, privacy = privacyOf("mother_name")))
         }
     }
 
@@ -608,10 +600,10 @@ internal fun FacebookProfileContent(
                         )
                     }
 
-                    // Rounded top shoulder overlapping cover bottom (matching screenshot cca54269.jpg)
+                    // Rounded top shoulder overlapping cover bottom with translucent glass letting aurora show through
                     Surface(
                         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-                        color = sheetBg,
+                        color = sheetGlassBg,
                         shadowElevation = 0.dp,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -630,7 +622,7 @@ internal fun FacebookProfileContent(
                         Surface(
                             shape = CircleShape,
                             color = cs.surfaceContainerHigh,
-                            border = BorderStroke(4.dp, sheetBg),
+                            border = BorderStroke(4.dp, sheetGlassBg),
                             shadowElevation = 0.dp,
                             tonalElevation = 0.dp,
                             modifier = Modifier
@@ -659,11 +651,11 @@ internal fun FacebookProfileContent(
                     }
                 }
 
-                // White / dark sheet identity section below avatar
+                // Translucent identity sheet below avatar
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(sheetBg)
+                        .background(sheetGlassBg)
                         .padding(horizontal = 16.dp)
                         .padding(top = 4.dp, bottom = 14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -688,14 +680,15 @@ internal fun FacebookProfileContent(
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = CircleShape,
-                            color = fbBlue.copy(alpha = if (isDark) 0.25f else 0.14f),
-                            modifier = Modifier.size(20.dp),
+                            color = profileAccent.softTint,
+                            border = BorderStroke(0.75.dp, profileAccent.borderTint),
+                            modifier = Modifier.size(21.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = CheckIcon,
                                     contentDescription = null,
-                                    tint = fbBlue,
+                                    tint = primaryAccent,
                                     modifier = Modifier.size(11.dp),
                                 )
                             }
@@ -732,20 +725,26 @@ internal fun FacebookProfileContent(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Primary Edit Profile Rounded Pill CTA
+                    // Primary Edit Profile Rounded Pill CTA with feature-palette gradient
                     if (isOwnProfile && onEditProfileClick != null) {
                         Surface(
                             onClick = onEditProfileClick,
                             shape = RoundedCornerShape(22.dp),
-                            color = fbBlue,
+                            color = Color.Transparent,
                             shadowElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(42.dp)
+                                .height(44.dp)
                                 .testTag("profile_cta_edit_button"),
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(profileAccent.primary, routineAccent.primary)
+                                        )
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center,
                             ) {
@@ -786,7 +785,7 @@ internal fun FacebookProfileContent(
                             val selected = selectedProfileTab == idx
                             val chipBg by animateColorAsState(
                                 targetValue = if (selected) {
-                                    fbBlue.copy(alpha = if (isDark) 0.28f else 0.14f)
+                                    profileAccent.softTint
                                 } else {
                                     Color.Transparent
                                 },
@@ -797,6 +796,7 @@ internal fun FacebookProfileContent(
                                 onClick = { selectedProfileTab = idx },
                                 shape = CircleShape,
                                 color = chipBg,
+                                border = if (selected) BorderStroke(0.75.dp, profileAccent.borderTint) else null,
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .height(36.dp)
@@ -808,7 +808,7 @@ internal fun FacebookProfileContent(
                                 ) {
                                     Text(
                                         text = label,
-                                        color = if (selected) fbBlue else cs.onSurfaceVariant,
+                                        color = if (selected) primaryAccent else cs.onSurfaceVariant,
                                         fontSize = 14.5.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                                         fontFamily = hindSiliguri,
@@ -924,7 +924,12 @@ private fun ProfileAllDetailsSections(
             accent = KlassFeaturePalette.routine(isDark).primary,
             hindSiliguri = hindSiliguri,
         )
-        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+        SocialSurfaceBlock(
+            isDark = isDark,
+            showTopHairline = true,
+            showBottomHairline = true,
+            accentTint = KlassFeaturePalette.routine(isDark).primary,
+        ) {
             academicFields.forEachIndexed { idx, field ->
                 KlassDetailFieldRow(
                     label = field.label,
@@ -952,7 +957,12 @@ private fun ProfileAllDetailsSections(
             accent = KlassFeaturePalette.teachers(isDark).primary,
             hindSiliguri = hindSiliguri,
         )
-        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+        SocialSurfaceBlock(
+            isDark = isDark,
+            showTopHairline = true,
+            showBottomHairline = true,
+            accentTint = KlassFeaturePalette.teachers(isDark).primary,
+        ) {
             contactFields.forEachIndexed { idx, field ->
                 KlassDetailFieldRow(
                     label = field.label,
@@ -980,7 +990,12 @@ private fun ProfileAllDetailsSections(
             accent = KlassFeaturePalette.appearance(isDark).primary,
             hindSiliguri = hindSiliguri,
         )
-        SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
+        SocialSurfaceBlock(
+            isDark = isDark,
+            showTopHairline = true,
+            showBottomHairline = true,
+            accentTint = KlassFeaturePalette.appearance(isDark).primary,
+        ) {
             personalFields.forEachIndexed { idx, field ->
                 val rowAccent = if (field.isHighlight) bloodAccent.primary else KlassFeaturePalette.appearance(isDark).primary
                 KlassDetailFieldRow(

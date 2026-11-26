@@ -1,3 +1,5 @@
+import java.io.StringReader
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -45,6 +47,25 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = providers.gradleProperty("VERSION_CODE").orNull?.toIntOrNull() ?: 1
         versionName = providers.gradleProperty("VERSION_NAME").orNull ?: "1.0"
+
+        val parsedEnvProps = Properties()
+        listOf(".env.example", ".env").forEach { fileName ->
+            val text = providers.fileContents(rootProject.layout.projectDirectory.file(fileName)).asText.orNull
+            if (!text.isNullOrBlank()) {
+                StringReader(text).use { reader -> parsedEnvProps.load(reader) }
+            }
+        }
+        listOf("GEMINI_API_KEY", "RECAPTCHA_SITE_KEY", "FIRESTORE_DATABASE_ID", "APP_UPDATE_URL").forEach { secretKey ->
+            val fromEnv = providers.environmentVariable(secretKey).orNull?.trim().orEmpty()
+            val fromFile = parsedEnvProps.getProperty(secretKey)?.trim()?.trim('"')?.trim().orEmpty()
+            val resolved = fromEnv.ifEmpty { fromFile }
+            val escaped = resolved
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "")
+            buildConfigField("String", secretKey, "\"$escaped\"")
+        }
     }
     packaging {
         resources {
@@ -100,4 +121,5 @@ android {
 secrets {
     propertiesFileName = ".env"
     defaultPropertiesFileName = ".env.example"
+    ignoreList.addAll(listOf("GEMINI_API_KEY", "RECAPTCHA_SITE_KEY", "FIRESTORE_DATABASE_ID", "APP_UPDATE_URL"))
 }

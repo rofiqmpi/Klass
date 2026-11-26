@@ -557,4 +557,68 @@ class SharedLogicAndroidHostTest {
         assertTrue(contextJson.contains("requestedLabRouting"), "Expected requestedLabRouting in context JSON")
         assertTrue(contextJson.contains("Physics Lab"), "Expected Physics Lab specialty in context JSON")
     }
+
+    @Test
+    fun profileSetupStepsAreAllMandatoryWithoutParentFields() {
+        val studentSteps = profileSetupSteps(UserRole.STUDENT)
+        val teacherSteps = profileSetupSteps(UserRole.TEACHER)
+        assertTrue(studentSteps.isNotEmpty(), "Expected student onboarding steps")
+        assertTrue(teacherSteps.isNotEmpty(), "Expected teacher onboarding steps")
+        assertTrue(studentSteps.all { it.required }, "Every student setup step must be mandatory")
+        assertTrue(teacherSteps.all { it.required }, "Every teacher setup step must be mandatory")
+        assertTrue(
+            ProfileField.entries.none { it.name.contains("FATHER") || it.name.contains("MOTHER") },
+            "Parent fields must not exist in ProfileField",
+        )
+        assertTrue(
+            studentSteps.none { it.title.contains("পিতা") || it.title.contains("মাতা") },
+            "Parent steps must be omitted from profile setup",
+        )
+    }
+
+    @Test
+    fun facebookDobWheelUtilitiesAndValidationWorkCleanly() {
+        assertTrue(isLeapYear(2000))
+        assertTrue(isLeapYear(2024))
+        assertTrue(!isLeapYear(1900))
+        assertEquals(29, daysInMonth(2024, 2))
+        assertEquals(28, daysInMonth(2023, 2))
+        assertEquals(30, daysInMonth(2025, 4))
+        assertEquals(31, daysInMonth(2025, 1))
+
+        assertEquals(Triple(2004, 2, 29), parseIsoDob("2004-02-31"))
+        assertEquals("2004-02-29", formatIsoDob(2004, 2, 31))
+        assertEquals("2005-08-05", formatIsoDob(2005, 8, 5))
+
+        assertTrue(validateProfileField(ProfileField.NAME, "   ", isBengali = true) != null)
+        assertEquals(null, validateProfileField(ProfileField.PHONE, "01712345678", isBengali = false))
+        assertTrue(validateProfileField(ProfileField.PHONE, "1234", isBengali = false) != null)
+        assertEquals(null, validateProfileField(ProfileField.CONTACT_EMAIL, "student@mpi.edu", isBengali = false))
+        assertTrue(validateProfileField(ProfileField.CONTACT_EMAIL, "invalid-email", isBengali = false) != null)
+        assertEquals(null, validateProfileField(ProfileField.DOB, "2005-08-15", isBengali = false))
+        assertTrue(validateProfileField(ProfileField.DOB, "", isBengali = true) != null)
+    }
+
+    @Test
+    fun klassRuntimeConfigAcceptsSecretInjectedFields() {
+        val prevKey = KlassRuntimeConfig.geminiApiKey
+        val prevSiteKey = KlassRuntimeConfig.recaptchaSiteKey
+        val prevDb = KlassRuntimeConfig.firestoreDatabaseId
+        val prevUpdate = KlassRuntimeConfig.appUpdateUrl
+        try {
+            KlassRuntimeConfig.geminiApiKey = "test-placeholder"
+            KlassRuntimeConfig.recaptchaSiteKey = "site-key-placeholder"
+            KlassRuntimeConfig.firestoreDatabaseId = "custom-db"
+            KlassRuntimeConfig.appUpdateUrl = "https://example.com/update.json"
+            assertEquals("test-placeholder", KlassRuntimeConfig.geminiApiKey)
+            assertEquals("site-key-placeholder", KlassRuntimeConfig.recaptchaSiteKey)
+            assertEquals("custom-db", KlassRuntimeConfig.firestoreDatabaseId)
+            assertEquals("https://example.com/update.json", KlassRuntimeConfig.appUpdateUrl)
+        } finally {
+            KlassRuntimeConfig.geminiApiKey = prevKey
+            KlassRuntimeConfig.recaptchaSiteKey = prevSiteKey
+            KlassRuntimeConfig.firestoreDatabaseId = prevDb
+            KlassRuntimeConfig.appUpdateUrl = prevUpdate
+        }
+    }
 }

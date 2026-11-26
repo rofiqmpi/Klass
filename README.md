@@ -25,8 +25,8 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
   - Admin configures **Shift 1 Start Time**, **Shift 2 Start Time**, **Period Duration (minutes)**, **Periods Per Day**, and **Running Semesters (1–7)** before generating.
   - **Hard Constraints & Shortest-Distance Room Ranking**: Zero teacher overlap per `(shift, day, period)`, zero room/lab overlap per `(shift, day, period)`, and **Single-Teacher-per-Group-Subject Lock**. All compatible free rooms (`Theory`/`Lab` + shift) are shared institute-wide and ranked dynamically by shortest Euclidean distance (`CampusMapConfig.distanceBetween`) between the class department and each room's `nearestDepartment` zone.
   - **Draft, Manual Slot Edit & Admin Approval Workflow**: Generated routines start as **Draft** for conflict review, live clash-checked manual editing/swapping, and **Approve & Publish**. Teachers can submit **Edit/Swap Requests** requiring Admin approval.
-- **Zed AI Academic Assistant (`Firebase.ai` + App Check + A2UI Design)**:
-  - Powered by keyless **Firebase AI Logic** (`Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel("gemini-3.8-flash")` protected by Firebase **App Check** — reCAPTCHA Enterprise in release and Debug provider in debug — with zero hardcoded API keys) and resilient `ZedAiEngine` offline grounding across BTEB books, teachers, blood donors, campus map zones, and live published schedules.
+- **Zed AI Academic Assistant (`Firebase.ai` + App Check + Secrets Fallback + A2UI Design)**:
+  - Powered by **Firebase AI Logic** (`Firebase.ai(backend = GenerativeBackend.googleAI())` protected by Firebase **App Check** — reCAPTCHA Enterprise in release and Debug provider in debug), with optional `GEMINI_API_KEY` REST fallback via **Secrets** (`.env` / GitHub Actions Secrets → `BuildConfig` → `KlassRuntimeConfig`) when App Check isn't registered on a separate release Firebase project, plus resilient `ZedAiEngine` offline grounding across BTEB books, teachers, blood donors, campus map zones, and live published schedules.
   - **Clean Minimal Chat UX**: No pre-configured quick-question chips or follow-up prompt suggestions; shows a smooth animated 3-dot **AI typing indicator** (`isAiTyping`) with natural typing delay before rendering answers.
   - **Declarative A2UI Structured Rendering (`ZedA2UiSurfaceView`)**: Responses return typed A2UI blocks (`HeaderBanner`, `StatRow`, `KeyValueCard`, interactive `EntityListCard` with direct dialer CTAs for teachers/blood donors, `ScheduleListCard`, and `CalloutCard`) parsed from Gemini `responseSchema` structured JSON.
 - **Personalized Routine Views & Real Automatic Android Push Notifications**:
@@ -60,10 +60,21 @@ The `Android APKs and GitHub Release` workflow automatically builds APKs on ever
 - `GOOGLE_SERVICES_JSON`: the complete Firebase `google-services.json`.
 - `ANDROID_KEYSTORE_BASE64`: base64-encoded, persistent release keystore.
 - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+- Optional runtime secrets (injected into `.env` before Gradle builds and exposed cleanly via `BuildConfig` → `KlassRuntimeConfig`):
+  - `GEMINI_API_KEY`: optional fallback Gemini API key (recommended to restrict in Google Cloud Console by Android package `com.klass.mpi` + SHA-1 fingerprint).
+  - `RECAPTCHA_SITE_KEY`: Firebase App Check reCAPTCHA Enterprise site key for your Firebase project (blank skips mismatched default site keys on external Firebase projects).
+  - `FIRESTORE_DATABASE_ID`: optional Firestore named database ID (automatically falls back to `(default)` if omitted or unreachable).
+  - `APP_UPDATE_URL`: optional public JSON release feed URL (`{"versionCode":..., "tag":"v...", "apkUrl":"...", "notes":"..."}`).
 
 Keep the same release keystore in `ANDROID_KEYSTORE_BASE64` for every build. The current signed `Klass-release.apk` certificate fingerprints are:
 
 - SHA-1: `A0:CF:B3:13:F4:C0:5F:9D:22:B5:F6:D7:9F:84:9F:B5:3E:BC:F4:16`
 - SHA-256: `B1:F9:5D:B3:D5:74:9F:50:3B:BC:08:BB:43:1F:6D:1C:42:6C:3C:51:97:49:9D:4A:5F:4E:1B:EC:5D:4D:E0:C2`
 
-Add both fingerprints to the Android app in Firebase Console under Project settings → Your apps → SHA certificate fingerprints. The in-app checker reads the latest release through the GitHub Releases API and expects an asset named `Klass-release.apk`. This repository is currently private, so that API and its APK are not anonymously accessible to app users; in-app update downloads require a publicly reachable release feed/asset or a separately authenticated update backend. Do not embed a GitHub access token in the APK.
+Add both fingerprints to the Android app in Firebase Console under Project settings → Your apps → SHA certificate fingerprints.
+
+### In-App Update System
+No third-party updater SDK (such as Play In-App Updates, Firebase App Distribution, or Sparkle/AppCenter) is wired into the app. Instead, release builds use a built-in `HttpURLConnection` checker that resolves updates in 3 tiers without embedding any GitHub access token:
+1. Custom public feed URL configured via the `APP_UPDATE_URL` secret (`KlassRuntimeConfig.appUpdateUrl`).
+2. Public Firestore `config/app_update` document (`versionCode` / `latestVersionCode`, `tag` / `versionName`, `apkUrl` / `downloadUrl`, `notes`).
+3. Public GitHub Releases API (`releases/latest`) expecting an asset named `Klass-release.apk` (anonymous calls only succeed when the repository releases are public).

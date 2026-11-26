@@ -45,6 +45,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          FIRESTORE_DATABASE_ID: ${{ secrets.FIRESTORE_DATABASE_ID }}
+          APP_UPDATE_URL: ${{ secrets.APP_UPDATE_URL }}
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
@@ -73,6 +77,11 @@ jobs:
           fi
           printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/klass-release.jks"
+          : > .env
+          [ -n "${GEMINI_API_KEY:-}" ] && printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY" >> .env
+          [ -n "${RECAPTCHA_SITE_KEY:-}" ] && printf 'RECAPTCHA_SITE_KEY=%s\n' "$RECAPTCHA_SITE_KEY" >> .env
+          [ -n "${FIRESTORE_DATABASE_ID:-}" ] && printf 'FIRESTORE_DATABASE_ID=%s\n' "$FIRESTORE_DATABASE_ID" >> .env
+          [ -n "${APP_UPDATE_URL:-}" ] && printf 'APP_UPDATE_URL=%s\n' "$APP_UPDATE_URL" >> .env
           echo "name=$version" >> "$GITHUB_OUTPUT"
           echo "code=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
 

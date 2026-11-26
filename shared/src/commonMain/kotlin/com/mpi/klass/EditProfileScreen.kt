@@ -11,7 +11,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,16 +32,11 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,10 +55,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -94,9 +86,6 @@ import com.mpi.klass.theme.RingIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.SolidUserIcon
 import com.mpi.klass.theme.SparkleIcon
-import com.mpi.klass.theme.UserNurseIcon
-import com.mpi.klass.theme.UserTieIcon
-import com.mpi.klass.theme.UsersGroupIcon
 import com.mpi.klass.theme.UsersRectangleIcon
 import com.mpi.klass.theme.VenusMarsIcon
 import klass.shared.generated.resources.Res
@@ -196,35 +185,32 @@ private fun normalizeSectionOption(raw: String, dept: String = ""): String {
     return RoutineRules.normalizeGroup(dept, clean)
 }
 
-private data class EditPickerRequest(
-    val title: String,
-    val subtitle: String,
-    val icon: ImageVector,
-    val accent: Color,
-    val options: List<String>,
-    val selected: String,
-    val translateOptions: Boolean,
-    val onSelect: (String) -> Unit,
-)
+private fun normalizeGenderOption(raw: String): String {
+    val clean = raw.trim()
+    if (clean.isBlank()) return ""
+    return when {
+        clean.contains("Male", ignoreCase = true) || clean.contains("পুরুষ") -> "পুরুষ / Male"
+        clean.contains("Female", ignoreCase = true) || clean.contains("নারী") || clean.contains("মহিলা") -> "নারী / Female"
+        clean.contains("Other", ignoreCase = true) || clean.contains("অন্যান্য") -> "অন্যান্য / Other"
+        else -> clean
+    }
+}
+
+private fun normalizeMaritalOption(raw: String): String {
+    val clean = raw.trim()
+    if (clean.isBlank()) return ""
+    return when {
+        clean.contains("Unmarried", ignoreCase = true) || clean.contains("Single", ignoreCase = true) || clean.contains("অবিবাহিত") -> "অবিবাহিত / Single"
+        clean.contains("Married", ignoreCase = true) || clean.contains("বিবাহিত") -> "বিবাহিত / Married"
+        clean.contains("Other", ignoreCase = true) || clean.contains("অন্যান্য") -> "অন্যান্য / Other"
+        else -> clean
+    }
+}
 
 private data class PrivacyPickerRequest(
     val fieldKey: String,
     val fieldLabel: String,
     val currentPrivacy: ProfilePrivacy,
-)
-
-private data class EditTextFieldRequest(
-    val fieldKey: String,
-    val title: String,
-    val placeholder: String,
-    val initialValue: String,
-    val icon: ImageVector,
-    val singleLine: Boolean = true,
-    val keyboardType: KeyboardType = KeyboardType.Text,
-    val initialPrivacy: ProfilePrivacy = ProfilePrivacy.PUBLIC,
-    val supportsGps: Boolean = false,
-    val testTag: String = "edit_single_field_input",
-    val onSave: (String, ProfilePrivacy) -> Unit,
 )
 
 internal fun defaultProfileFieldPrivacy(fieldKey: String, role: UserRole): ProfilePrivacy = when (fieldKey) {
@@ -258,30 +244,33 @@ fun EditProfileContent(
     val isBengali = LocalAppLanguage.current == AppLanguage.BENGALI
     val currentAppLanguage = LocalAppLanguage.current
     val focusManager = LocalFocusManager.current
+
     val profileAccent = KlassFeaturePalette.profile(isDark)
     val academicAccent = KlassFeaturePalette.routine(isDark)
     val bloodAccent = KlassFeaturePalette.blood(isDark)
+    val locationAccent = KlassFeaturePalette.classrooms(isDark)
+    val contactAccent = KlassFeaturePalette.teachers(isDark)
+    val personalAccent = KlassFeaturePalette.appearance(isDark)
+    val securityAccent = KlassFeaturePalette.notifications(isDark)
 
-    val sheetBg = if (isDark) Color(0xFF0B1120) else Color.White
+    val heroGlassBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.78f)
+    val topBarFadeBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.90f)
 
-    var activePicker by remember { mutableStateOf<EditPickerRequest?>(null) }
+    var activeFieldEditor by remember { mutableStateOf<ProfileField?>(null) }
     var activePrivacyPicker by remember { mutableStateOf<PrivacyPickerRequest?>(null) }
-    var activeTextEditor by remember { mutableStateOf<EditTextFieldRequest?>(null) }
 
-    LaunchedEffect(activePicker, activePrivacyPicker, activeTextEditor) {
-        onOverlayStateChange(activePicker != null || activePrivacyPicker != null || activeTextEditor != null)
+    LaunchedEffect(activeFieldEditor, activePrivacyPicker) {
+        onOverlayStateChange(activeFieldEditor != null || activePrivacyPicker != null)
     }
 
     var hasUserEdited by remember(fallbackEmail) { mutableStateOf(false) }
     var fullName by remember(fallbackEmail) { mutableStateOf(initialProfile.name.ifBlank { fallbackName }) }
     var bio by remember(fallbackEmail) { mutableStateOf(initialProfile.bio) }
-    var fatherName by remember(fallbackEmail) { mutableStateOf(initialProfile.fatherName) }
-    var motherName by remember(fallbackEmail) { mutableStateOf(initialProfile.motherName) }
     var dob by remember(fallbackEmail) { mutableStateOf(initialProfile.dob) }
     var bloodGroup by remember(fallbackEmail) { mutableStateOf(initialProfile.bloodGroup) }
     var religion by remember(fallbackEmail) { mutableStateOf(initialProfile.religion) }
-    var gender by remember(fallbackEmail) { mutableStateOf(initialProfile.gender) }
-    var maritalStatus by remember(fallbackEmail) { mutableStateOf(initialProfile.maritalStatus.ifBlank { "অবিবাহিত (Unmarried)" }) }
+    var gender by remember(fallbackEmail) { mutableStateOf(normalizeGenderOption(initialProfile.gender)) }
+    var maritalStatus by remember(fallbackEmail) { mutableStateOf(normalizeMaritalOption(initialProfile.maritalStatus)) }
     var phone by remember(fallbackEmail) { mutableStateOf(initialProfile.phone) }
     var contactEmail by remember(fallbackEmail) { mutableStateOf(initialProfile.contactEmail.ifBlank { fallbackEmail }) }
     var currentAddress by remember(fallbackEmail) { mutableStateOf(initialProfile.address) }
@@ -305,13 +294,11 @@ fun EditProfileContent(
         if (!hasUserEdited) {
             fullName = initialProfile.name.ifBlank { fallbackName }
             bio = initialProfile.bio
-            fatherName = initialProfile.fatherName
-            motherName = initialProfile.motherName
             dob = initialProfile.dob
             bloodGroup = initialProfile.bloodGroup
             religion = initialProfile.religion
-            gender = initialProfile.gender
-            maritalStatus = initialProfile.maritalStatus.ifBlank { "অবিবাহিত (Unmarried)" }
+            gender = normalizeGenderOption(initialProfile.gender)
+            maritalStatus = normalizeMaritalOption(initialProfile.maritalStatus)
             phone = initialProfile.phone
             contactEmail = initialProfile.contactEmail.ifBlank { fallbackEmail }
             currentAddress = initialProfile.address
@@ -333,8 +320,8 @@ fun EditProfileContent(
             email = initialProfile.email.ifBlank { fallbackEmail }.trim().lowercase(),
             name = finalName,
             bio = bio.trim(),
-            fatherName = fatherName.trim(),
-            motherName = motherName.trim(),
+            fatherName = "",
+            motherName = "",
             dob = dob.trim(),
             bloodGroup = bloodGroup.trim(),
             religion = religion.trim(),
@@ -363,68 +350,36 @@ fun EditProfileContent(
         persistCurrentProfile(next)
     }
 
-    val launchDatePicker = rememberDatePickerLauncher(initialDate = dob) { picked ->
-        hasUserEdited = true
-        dob = picked
-        persistCurrentProfile()
-    }
-
     val gpsSyncLauncher = rememberLocationPermissionLauncher { realAddress ->
         if (realAddress.isNotBlank()) {
             hasUserEdited = true
             currentAddress = realAddress
-            activeTextEditor = activeTextEditor?.copy(initialValue = realAddress)
             persistCurrentProfile()
         } else {
             showToast(AppStrings.translate("লোকেশন পাওয়া যায়নি। অনুগ্রহ করে ঠিকানা লিখুন।", currentAppLanguage))
         }
     }
 
-    val bloodOptions = listOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
-    val religionOptions = listOf("ইসলাম", "হিন্দুধর্ম", "বৌদ্ধধর্ম", "খ্রিস্টধর্ম", "অন্যান্য")
-    val genderOptions = listOf("পুরুষ (Male)", "মহিলা (Female)", "অন্যান্য (Other)")
-    val maritalOptions = listOf("অবিবাহিত (Unmarried)", "বিবাহিত (Married)")
-    val baseDeptOptions = listOf(
-        "CST (Computer Science & Technology)",
-        "CT (Civil Technology)",
-        "ET (Electrical Technology)",
-        "MT (Mechanical Technology)",
-        "PT (Power Technology)",
-        "ENT (Electronics Technology)",
-        "EMT (Electro-Medical Technology)",
-    )
-    val deptOptions = if (role == UserRole.TEACHER) baseDeptOptions + "নন টেক" else baseDeptOptions
-    val semesterOptions = listOf(
-        "১ম সেমিস্টার", "২য় সেমিস্টার", "৩য় সেমিস্টার", "৪র্থ সেমিস্টার",
-        "৫ম সেমিস্টার", "৬ষ্ঠ সেমিস্টার", "৭ম সেমিস্টার",
-    )
-    val shiftOptions = listOf("১ম শিফট", "২য় শিফট")
-    val sectionOptions = remember(department) { RoutineRules.groupsForDepartment(department) }
-
     var introExpanded by remember { mutableStateOf(true) }
     var categoryExpanded by remember { mutableStateOf(true) }
     var personalExpanded by remember { mutableStateOf(true) }
     var securityExpanded by remember { mutableStateOf(true) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(sheetBg),
-    ) {
+    MinimalBackdrop(isDark = isDark, focusAccent = profileAccent.primary) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
         ) {
-            // ── TRANSPARENT TOP-TO-BOTTOM FADING HEADER ──
+            // ── TRANSLUCENT TOP-TO-BOTTOM FADING HEADER ──
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                sheetBg.copy(alpha = 0.88f),
-                                sheetBg.copy(alpha = 0.42f),
+                                topBarFadeBg,
+                                topBarFadeBg.copy(alpha = 0.45f),
                                 Color.Transparent,
                             )
                         )
@@ -489,7 +444,7 @@ fun EditProfileContent(
                 }
             }
 
-            // ── SCROLLABLE FACEBOOK EDIT PROFILE BODY ──
+            // ── SCROLLABLE AURORA EDIT PROFILE BODY ──
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -507,11 +462,13 @@ fun EditProfileContent(
                         Spacer(modifier = Modifier.height(topContentPadding))
                     }
 
-                    // ── FACEBOOK HERO: EDGE-TO-EDGE COVER + ROUNDED WHITE SHOULDER + CENTERED AVATAR + WHITE CAMERA BUTTONS ──
                     val coverHeight = 208.dp
                     val shoulderOverlap = 24.dp
                     val avatarSize = 140.dp
                     val heroTotalHeight = 268.dp
+                    val camBtnBg = if (isDark) cs.surfaceContainerHigh else Color.White
+                    val camBtnBorder = if (isDark) profileAccent.borderTint else Color(0xFFD1D5DB)
+                    val camIconTint = if (isDark) profileAccent.primary else Color(0xFF111827)
 
                     Box(
                         modifier = Modifier
@@ -543,12 +500,11 @@ fun EditProfileContent(
                                 )
                             }
 
-                            // Crisp white circular Camera icon on Cover right (above curved shoulder)
                             Surface(
                                 onClick = onCoverPhotoClick,
                                 shape = CircleShape,
-                                color = Color.White,
-                                border = BorderStroke(0.75.dp, Color(0xFFD1D5DB)),
+                                color = camBtnBg,
+                                border = BorderStroke(0.75.dp, camBtnBorder),
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
@@ -560,17 +516,17 @@ fun EditProfileContent(
                                     Icon(
                                         imageVector = CameraIcon,
                                         contentDescription = "কভার ফটো".localized(),
-                                        tint = Color(0xFF111827),
+                                        tint = camIconTint,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
                             }
                         }
 
-                        // Rounded Top Shoulder Sheet rising over Cover bottom
+                        // Translucent Glass Shoulder overlapping cover bottom
                         Surface(
                             shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-                            color = sheetBg,
+                            color = heroGlassBg,
                             shadowElevation = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -590,7 +546,7 @@ fun EditProfileContent(
                                 onClick = onAvatarClick,
                                 shape = CircleShape,
                                 color = cs.surfaceContainerHigh,
-                                border = BorderStroke(4.dp, sheetBg),
+                                border = BorderStroke(4.dp, heroGlassBg),
                                 shadowElevation = 0.dp,
                                 tonalElevation = 0.dp,
                                 modifier = Modifier
@@ -617,12 +573,11 @@ fun EditProfileContent(
                                 }
                             }
 
-                            // Crisp white circular Camera icon overlapping bottom-right of Avatar
                             Surface(
                                 onClick = onAvatarClick,
                                 shape = CircleShape,
-                                color = Color.White,
-                                border = BorderStroke(0.75.dp, Color(0xFFD1D5DB)),
+                                color = camBtnBg,
+                                border = BorderStroke(0.75.dp, camBtnBorder),
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
@@ -633,7 +588,7 @@ fun EditProfileContent(
                                     Icon(
                                         imageVector = CameraIcon,
                                         contentDescription = "Change photo",
-                                        tint = Color(0xFF111827),
+                                        tint = camIconTint,
                                         modifier = Modifier.size(17.dp),
                                     )
                                 }
@@ -644,743 +599,541 @@ fun EditProfileContent(
                     // ── SECTION 1: INTRO ──
                     FbAccordionSection(
                         title = "পরিচিতি".localized(),
+                        accent = profileAccent.primary,
                         expanded = introExpanded,
                         onToggle = { introExpanded = !introExpanded },
                         hindSiliguri = hindSiliguri,
                     ) {
-                        val bioTitle = "বায়ো".localized()
-                        val bioPlaceholder = "নিজের সম্পর্কে সংক্ষেপে লিখুন...".localized()
-                        val bioPrivacy = privacyForField("bio")
-                        FbEditDetailRow(
-                            icon = HandWaveIcon,
-                            title = bioTitle,
-                            value = bio.ifBlank { bioPlaceholder },
-                            isPlaceholder = bio.isBlank(),
-                            privacy = bioPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("bio", bioTitle, bioPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_bio_row",
-                            onClick = {
-                                activeTextEditor = EditTextFieldRequest(
-                                    fieldKey = "bio",
-                                    title = bioTitle,
-                                    placeholder = bioPlaceholder,
-                                    initialValue = bio,
-                                    icon = HandWaveIcon,
-                                    singleLine = false,
-                                    initialPrivacy = bioPrivacy,
-                                    testTag = "edit_bio_input",
-                                    onSave = { newVal, chosenPrivacy ->
-                                        hasUserEdited = true
-                                        bio = newVal
-                                        val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("bio", chosenPrivacy) }
-                                        fieldPrivacyMap = nextPriv
-                                        persistCurrentProfile(nextPriv)
-                                    },
-                                )
-                            },
-                        )
+                        SocialSurfaceBlock(
+                            isDark = isDark,
+                            showTopHairline = true,
+                            showBottomHairline = true,
+                            accentTint = profileAccent.primary,
+                        ) {
+                            val bioTitle = "বায়ো".localized()
+                            val bioPlaceholder = "নিজের সম্পর্কে সংক্ষেপে লিখুন...".localized()
+                            val bioPrivacy = privacyForField("bio")
+                            FbEditDetailRow(
+                                icon = HandWaveIcon,
+                                accent = profileAccent.primary,
+                                isDark = isDark,
+                                title = bioTitle,
+                                value = bio.ifBlank { bioPlaceholder },
+                                isPlaceholder = bio.isBlank(),
+                                privacy = bioPrivacy,
+                                onPrivacyClick = {
+                                    activePrivacyPicker = PrivacyPickerRequest("bio", bioTitle, bioPrivacy)
+                                },
+                                hindSiliguri = hindSiliguri,
+                                testTag = "edit_bio_row",
+                                onClick = { activeFieldEditor = ProfileField.BIO },
+                            )
 
-                        val nameTitle = "পূর্ণ নাম".localized()
-                        val namePlaceholder = "আপনার পুরো নাম লিখুন".localized()
-                        FbEditDetailRow(
-                            icon = SolidUserIcon,
-                            title = nameTitle,
-                            value = fullName.ifBlank { fallbackName },
-                            isPlaceholder = fullName.isBlank(),
-                            privacy = null,
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_fullname_row",
-                            onClick = {
-                                activeTextEditor = EditTextFieldRequest(
-                                    fieldKey = "name",
-                                    title = nameTitle,
-                                    placeholder = namePlaceholder,
-                                    initialValue = fullName,
-                                    icon = SolidUserIcon,
-                                    singleLine = true,
-                                    initialPrivacy = ProfilePrivacy.PUBLIC,
-                                    testTag = "edit_fullname_input",
-                                    onSave = { newVal, _ ->
-                                        hasUserEdited = true
-                                        fullName = newVal
-                                        persistCurrentProfile()
-                                    },
-                                )
-                            },
-                        )
+                            SocialInsetDivider(startIndent = 68.dp)
+
+                            val nameTitle = "পূর্ণ নাম".localized()
+                            FbEditDetailRow(
+                                icon = SolidUserIcon,
+                                accent = profileAccent.primary,
+                                isDark = isDark,
+                                title = nameTitle,
+                                value = fullName.ifBlank { fallbackName },
+                                isPlaceholder = fullName.isBlank(),
+                                privacy = null,
+                                hindSiliguri = hindSiliguri,
+                                testTag = "edit_fullname_row",
+                                onClick = { activeFieldEditor = ProfileField.NAME },
+                            )
+                        }
                     }
 
                     // ── SECTION 2: CATEGORY / ACADEMIC (Students & Teachers) ──
                     if (role != UserRole.ADMIN) {
+                        SocialSectionDividerBand(isDark = isDark, height = 8.dp)
                         FbAccordionSection(
                             title = "ক্যাটাগরি".localized(),
+                            accent = academicAccent.primary,
                             expanded = categoryExpanded,
                             onToggle = { categoryExpanded = !categoryExpanded },
                             hindSiliguri = hindSiliguri,
                         ) {
-                            val deptTitle = "ডিপার্টমেন্ট (Department)".localized()
-                            val notAddedText = "তথ্য যোগ করা হয়নি".localized()
-                            val deptPrivacy = privacyForField("department")
-                            FbEditDetailRow(
-                                icon = GraduationCapIcon,
-                                title = department.ifBlank { deptTitle },
-                                value = if (department.isNotBlank()) deptTitle else notAddedText,
-                                isPlaceholder = department.isBlank(),
-                                privacy = deptPrivacy,
-                                onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("department", deptTitle, deptPrivacy)
-                                },
-                                hindSiliguri = hindSiliguri,
-                                testTag = "edit_department_select",
-                                onClick = {
-                                    activePicker = EditPickerRequest(
-                                        title = deptTitle,
-                                        subtitle = "আপনার টেকনোলজি বেছে নিন",
-                                        icon = GraduationCapIcon,
-                                        accent = academicAccent.primary,
-                                        options = deptOptions,
-                                        selected = department,
-                                        translateOptions = false,
-                                        onSelect = {
-                                            hasUserEdited = true
-                                            department = it
-                                            if (section.isNotBlank()) {
-                                                section = RoutineRules.normalizeGroup(it, section)
-                                            }
-                                            persistCurrentProfile()
-                                        },
-                                    )
-                                },
-                            )
-
-                            if (role == UserRole.STUDENT) {
-                                val semTitle = "সেমিস্টার".localized()
-                                val semVal = if (semester.isNotBlank()) semester.localized() else ""
-                                val semPrivacy = privacyForField("semester")
+                            SocialSurfaceBlock(
+                                isDark = isDark,
+                                showTopHairline = true,
+                                showBottomHairline = true,
+                                accentTint = academicAccent.primary,
+                            ) {
+                                val deptTitle = "ডিপার্টমেন্ট (Department)".localized()
+                                val notAddedText = "তথ্য যোগ করা হয়নি".localized()
+                                val deptPrivacy = privacyForField("department")
                                 FbEditDetailRow(
-                                    icon = LayerGroupIcon,
-                                    title = semVal.ifBlank { semTitle },
-                                    value = if (semVal.isNotBlank()) semTitle else notAddedText,
-                                    isPlaceholder = semVal.isBlank(),
-                                    privacy = semPrivacy,
+                                    icon = GraduationCapIcon,
+                                    accent = academicAccent.primary,
+                                    isDark = isDark,
+                                    title = department.ifBlank { deptTitle },
+                                    value = if (department.isNotBlank()) deptTitle else notAddedText,
+                                    isPlaceholder = department.isBlank(),
+                                    privacy = deptPrivacy,
                                     onPrivacyClick = {
-                                        activePrivacyPicker = PrivacyPickerRequest("semester", semTitle, semPrivacy)
+                                        activePrivacyPicker = PrivacyPickerRequest("department", deptTitle, deptPrivacy)
                                     },
                                     hindSiliguri = hindSiliguri,
-                                    testTag = "edit_semester_select",
-                                    onClick = {
-                                        activePicker = EditPickerRequest(
-                                            title = semTitle,
-                                            subtitle = "চলমান সেমিস্টার নির্বাচন করুন",
-                                            icon = LayerGroupIcon,
-                                            accent = academicAccent.primary,
-                                            options = semesterOptions,
-                                            selected = semester,
-                                            translateOptions = true,
-                                            onSelect = {
-                                                hasUserEdited = true
-                                                semester = it
-                                                persistCurrentProfile()
-                                            },
-                                        )
-                                    },
+                                    testTag = "edit_department_select",
+                                    onClick = { activeFieldEditor = ProfileField.DEPARTMENT },
                                 )
-                            }
 
-                            val shiftTitle = "শিফট".localized()
-                            val shiftVal = if (shift.isNotBlank()) shift.localized() else ""
-                            val shiftPrivacy = privacyForField("shift")
-                            FbEditDetailRow(
-                                icon = ClockIcon,
-                                title = shiftVal.ifBlank { shiftTitle },
-                                value = if (shiftVal.isNotBlank()) shiftTitle else notAddedText,
-                                isPlaceholder = shiftVal.isBlank(),
-                                privacy = shiftPrivacy,
-                                onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("shift", shiftTitle, shiftPrivacy)
-                                },
-                                hindSiliguri = hindSiliguri,
-                                testTag = "edit_shift_select",
-                                onClick = {
-                                    activePicker = EditPickerRequest(
-                                        title = shiftTitle,
-                                        subtitle = "১ম বা ২য় শিফট বেছে নিন",
-                                        icon = ClockIcon,
+                                if (role == UserRole.STUDENT) {
+                                    SocialInsetDivider(startIndent = 68.dp)
+                                    val semTitle = "সেমিস্টার".localized()
+                                    val semVal = if (semester.isNotBlank()) semester.localized() else ""
+                                    val semPrivacy = privacyForField("semester")
+                                    FbEditDetailRow(
+                                        icon = LayerGroupIcon,
                                         accent = academicAccent.primary,
-                                        options = shiftOptions,
-                                        selected = shift,
-                                        translateOptions = true,
-                                        onSelect = {
-                                            hasUserEdited = true
-                                            shift = it
-                                            persistCurrentProfile()
+                                        isDark = isDark,
+                                        title = semVal.ifBlank { semTitle },
+                                        value = if (semVal.isNotBlank()) semTitle else notAddedText,
+                                        isPlaceholder = semVal.isBlank(),
+                                        privacy = semPrivacy,
+                                        onPrivacyClick = {
+                                            activePrivacyPicker = PrivacyPickerRequest("semester", semTitle, semPrivacy)
                                         },
+                                        hindSiliguri = hindSiliguri,
+                                        testTag = "edit_semester_select",
+                                        onClick = { activeFieldEditor = ProfileField.SEMESTER },
                                     )
-                                },
-                            )
+                                }
 
-                            if (role == UserRole.STUDENT) {
-                                val secTitle = "সেকশন (Section)".localized()
-                                val secPrivacy = privacyForField("section")
+                                SocialInsetDivider(startIndent = 68.dp)
+                                val shiftTitle = "শিফট".localized()
+                                val shiftVal = if (shift.isNotBlank()) shift.localized() else ""
+                                val shiftPrivacy = privacyForField("shift")
                                 FbEditDetailRow(
-                                    icon = UsersRectangleIcon,
-                                    title = section.ifBlank { secTitle },
-                                    value = if (section.isNotBlank()) secTitle else notAddedText,
-                                    isPlaceholder = section.isBlank(),
-                                    privacy = secPrivacy,
+                                    icon = ClockIcon,
+                                    accent = academicAccent.primary,
+                                    isDark = isDark,
+                                    title = shiftVal.ifBlank { shiftTitle },
+                                    value = if (shiftVal.isNotBlank()) shiftTitle else notAddedText,
+                                    isPlaceholder = shiftVal.isBlank(),
+                                    privacy = shiftPrivacy,
                                     onPrivacyClick = {
-                                        activePrivacyPicker = PrivacyPickerRequest("section", secTitle, secPrivacy)
+                                        activePrivacyPicker = PrivacyPickerRequest("shift", shiftTitle, shiftPrivacy)
                                     },
                                     hindSiliguri = hindSiliguri,
-                                    testTag = "edit_section_select",
-                                    onClick = {
-                                        activePicker = EditPickerRequest(
-                                            title = secTitle,
-                                            subtitle = "ক্লাস সেকশন বা গ্রুপ বেছে নিন",
-                                            icon = UsersRectangleIcon,
-                                            accent = academicAccent.primary,
-                                            options = sectionOptions,
-                                            selected = section,
-                                            translateOptions = false,
-                                            onSelect = {
-                                                hasUserEdited = true
-                                                section = it
-                                                persistCurrentProfile()
-                                            },
-                                        )
-                                    },
+                                    testTag = "edit_shift_select",
+                                    onClick = { activeFieldEditor = ProfileField.SHIFT },
                                 )
-                            }
 
-                            if (role == UserRole.TEACHER && onOpenTeachingPrefs != null) {
-                                FbEditDetailRow(
-                                    icon = SparkleIcon,
-                                    title = "শিক্ষণ বিষয়সমূহ".localized(),
-                                    value = "নির্ধারিত কোর্স ও সময়সূচি".localized(),
-                                    isPlaceholder = false,
-                                    privacy = null,
-                                    hindSiliguri = hindSiliguri,
-                                    testTag = "edit_teaching_prefs_row",
-                                    onClick = onOpenTeachingPrefs,
-                                )
+                                if (role == UserRole.STUDENT) {
+                                    SocialInsetDivider(startIndent = 68.dp)
+                                    val secTitle = "সেকশন (Section)".localized()
+                                    val secPrivacy = privacyForField("section")
+                                    FbEditDetailRow(
+                                        icon = UsersRectangleIcon,
+                                        accent = academicAccent.primary,
+                                        isDark = isDark,
+                                        title = section.ifBlank { secTitle },
+                                        value = if (section.isNotBlank()) secTitle else notAddedText,
+                                        isPlaceholder = section.isBlank(),
+                                        privacy = secPrivacy,
+                                        onPrivacyClick = {
+                                            activePrivacyPicker = PrivacyPickerRequest("section", secTitle, secPrivacy)
+                                        },
+                                        hindSiliguri = hindSiliguri,
+                                        testTag = "edit_section_select",
+                                        onClick = { activeFieldEditor = ProfileField.SECTION },
+                                    )
+                                }
+
+                                if (role == UserRole.TEACHER && onOpenTeachingPrefs != null) {
+                                    SocialInsetDivider(startIndent = 68.dp)
+                                    FbEditDetailRow(
+                                        icon = SparkleIcon,
+                                        accent = contactAccent.primary,
+                                        isDark = isDark,
+                                        title = "শিক্ষণ বিষয়সমূহ".localized(),
+                                        value = "নির্ধারিত কোর্স ও সময়সূচি".localized(),
+                                        isPlaceholder = false,
+                                        privacy = null,
+                                        hindSiliguri = hindSiliguri,
+                                        testTag = "edit_teaching_prefs_row",
+                                        onClick = onOpenTeachingPrefs,
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // ── SECTION 3: PERSONAL DETAILS (Location, Home, Blood, Contact, Family) ──
+                    // ── SECTION 3: PERSONAL DETAILS (Location, Home, Blood, Contact, Personal) ──
+                    SocialSectionDividerBand(isDark = isDark, height = 8.dp)
                     FbAccordionSection(
                         title = "ব্যক্তিগত বিবরণ".localized(),
+                        accent = personalAccent.primary,
                         expanded = personalExpanded,
                         onToggle = { personalExpanded = !personalExpanded },
                         hindSiliguri = hindSiliguri,
                     ) {
-                        val notAddedText = "তথ্য যোগ করা হয়নি".localized()
+                        SocialSurfaceBlock(
+                            isDark = isDark,
+                            showTopHairline = true,
+                            showBottomHairline = true,
+                            accentTint = personalAccent.primary,
+                        ) {
+                            val notAddedText = "তথ্য যোগ করা হয়নি".localized()
 
-                        // Current address
-                        val currAddrTitle = "বর্তমান ঠিকানা".localized()
-                        val addrPlaceholder = "গ্রাম/মহল্লা, ডাকঘর, উপজেলা, জেলা".localized()
-                        val addrPrivacy = privacyForField("address")
-                        FbEditDetailRow(
-                            icon = LocationDotIcon,
-                            title = currentAddress.ifBlank { currAddrTitle },
-                            value = if (currentAddress.isNotBlank()) currAddrTitle else notAddedText,
-                            isPlaceholder = currentAddress.isBlank(),
-                            privacy = addrPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("address", currAddrTitle, addrPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_current_address_input",
-                            onClick = {
-                                activeTextEditor = EditTextFieldRequest(
-                                    fieldKey = "address",
-                                    title = currAddrTitle,
-                                    placeholder = addrPlaceholder,
-                                    initialValue = currentAddress,
-                                    icon = LocationDotIcon,
-                                    singleLine = false,
-                                    initialPrivacy = addrPrivacy,
-                                    supportsGps = true,
-                                    testTag = "edit_current_address_field",
-                                    onSave = { newVal, chosenPrivacy ->
-                                        hasUserEdited = true
-                                        currentAddress = newVal
-                                        val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("address", chosenPrivacy) }
-                                        fieldPrivacyMap = nextPriv
-                                        persistCurrentProfile(nextPriv)
-                                    },
-                                )
-                            },
-                        )
-
-                        // Permanent address
-                        val permAddrTitle = "স্থায়ী ঠিকানা".localized()
-                        val permPrivacy = privacyForField("permanent_address")
-                        FbEditDetailRow(
-                            icon = HomeIcon,
-                            title = permanentAddress.ifBlank { permAddrTitle },
-                            value = if (permanentAddress.isNotBlank()) permAddrTitle else notAddedText,
-                            isPlaceholder = permanentAddress.isBlank(),
-                            privacy = permPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("permanent_address", permAddrTitle, permPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_permanent_address_input",
-                            onClick = {
-                                activeTextEditor = EditTextFieldRequest(
-                                    fieldKey = "permanent_address",
-                                    title = permAddrTitle,
-                                    placeholder = addrPlaceholder,
-                                    initialValue = permanentAddress,
-                                    icon = HomeIcon,
-                                    singleLine = false,
-                                    initialPrivacy = permPrivacy,
-                                    testTag = "edit_permanent_address_field",
-                                    onSave = { newVal, chosenPrivacy ->
-                                        hasUserEdited = true
-                                        permanentAddress = newVal
-                                        val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("permanent_address", chosenPrivacy) }
-                                        fieldPrivacyMap = nextPriv
-                                        persistCurrentProfile(nextPriv)
-                                    },
-                                )
-                            },
-                        )
-
-                        // Blood group
-                        val bloodTitle = "রক্তের গ্রুপ".localized()
-                        val bloodPrivacy = privacyForField("blood_group")
-                        FbEditDetailRow(
-                            icon = DropletIcon,
-                            title = bloodGroup.ifBlank { bloodTitle },
-                            value = if (bloodGroup.isNotBlank()) bloodTitle else notAddedText,
-                            isPlaceholder = bloodGroup.isBlank(),
-                            privacy = bloodPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("blood_group", bloodTitle, bloodPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_blood_group_select",
-                            onClick = {
-                                activePicker = EditPickerRequest(
-                                    title = bloodTitle,
-                                    subtitle = "রক্তের গ্রুপ বেছে নিন",
-                                    icon = DropletIcon,
-                                    accent = bloodAccent.primary,
-                                    options = bloodOptions,
-                                    selected = bloodGroup,
-                                    translateOptions = false,
-                                    onSelect = {
-                                        hasUserEdited = true
-                                        bloodGroup = it
-                                        persistCurrentProfile()
-                                    },
-                                )
-                            },
-                        )
-
-                        // Mobile phone
-                        val phoneTitle = "মোবাইল নম্বর".localized()
-                        val phonePrivacy = privacyForField("phone")
-                        FbEditDetailRow(
-                            icon = PhoneSolidIcon,
-                            title = phone.ifBlank { phoneTitle },
-                            value = if (phone.isNotBlank()) phoneTitle else notAddedText,
-                            isPlaceholder = phone.isBlank(),
-                            privacy = phonePrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("phone", phoneTitle, phonePrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_phone_input",
-                            onClick = {
-                                activeTextEditor = EditTextFieldRequest(
-                                    fieldKey = "phone",
-                                    title = phoneTitle,
-                                    placeholder = "01XXXXXXXXX",
-                                    initialValue = phone,
-                                    icon = PhoneSolidIcon,
-                                    singleLine = true,
-                                    keyboardType = KeyboardType.Phone,
-                                    initialPrivacy = phonePrivacy,
-                                    testTag = "edit_phone_field",
-                                    onSave = { newVal, chosenPrivacy ->
-                                        hasUserEdited = true
-                                        phone = newVal
-                                        val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("phone", chosenPrivacy) }
-                                        fieldPrivacyMap = nextPriv
-                                        persistCurrentProfile(nextPriv)
-                                    },
-                                )
-                            },
-                        )
-
-                        // Contact email
-                        val emailTitle = "ইমেল ঠিকানা".localized()
-                        val emailPrivacy = privacyForField("contact_email")
-                        FbEditDetailRow(
-                            icon = EnvelopeSolidIcon,
-                            title = contactEmail.ifBlank { emailTitle },
-                            value = if (contactEmail.isNotBlank()) emailTitle else notAddedText,
-                            isPlaceholder = contactEmail.isBlank(),
-                            privacy = emailPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("contact_email", emailTitle, emailPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_email_input",
-                            onClick = {
-                                activeTextEditor = EditTextFieldRequest(
-                                    fieldKey = "contact_email",
-                                    title = emailTitle,
-                                    placeholder = "example@gmail.com",
-                                    initialValue = contactEmail,
-                                    icon = EnvelopeSolidIcon,
-                                    singleLine = true,
-                                    keyboardType = KeyboardType.Email,
-                                    initialPrivacy = emailPrivacy,
-                                    testTag = "edit_email_field",
-                                    onSave = { newVal, chosenPrivacy ->
-                                        hasUserEdited = true
-                                        contactEmail = newVal
-                                        val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("contact_email", chosenPrivacy) }
-                                        fieldPrivacyMap = nextPriv
-                                        persistCurrentProfile(nextPriv)
-                                    },
-                                )
-                            },
-                        )
-
-                        // Date of birth
-                        val dobTitle = "জন্ম তারিখ".localized()
-                        val dobDisplay = if (dob.isNotBlank()) formatProfileDob(dob, isBengali) else ""
-                        val dobPrivacy = privacyForField("dob")
-                        FbEditDetailRow(
-                            icon = CalendarDaysIcon,
-                            title = dobDisplay.ifBlank { dobTitle },
-                            value = if (dobDisplay.isNotBlank()) dobTitle else notAddedText,
-                            isPlaceholder = dobDisplay.isBlank(),
-                            privacy = dobPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("dob", dobTitle, dobPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_dob_picker",
-                            onClick = { launchDatePicker() },
-                        )
-
-                        // Gender
-                        val genTitle = "লিঙ্গ".localized()
-                        val genVal = if (gender.isNotBlank()) gender.localized() else ""
-                        val genderPrivacy = privacyForField("gender")
-                        FbEditDetailRow(
-                            icon = VenusMarsIcon,
-                            title = genVal.ifBlank { genTitle },
-                            value = if (genVal.isNotBlank()) genTitle else notAddedText,
-                            isPlaceholder = genVal.isBlank(),
-                            privacy = genderPrivacy,
-                            onPrivacyClick = {
-                                activePrivacyPicker = PrivacyPickerRequest("gender", genTitle, genderPrivacy)
-                            },
-                            hindSiliguri = hindSiliguri,
-                            testTag = "edit_gender_select",
-                            onClick = {
-                                activePicker = EditPickerRequest(
-                                    title = genTitle,
-                                    subtitle = "একটি অপশন বাছাই করুন",
-                                    icon = VenusMarsIcon,
-                                    accent = KlassFeaturePalette.appearance(isDark).primary,
-                                    options = genderOptions,
-                                    selected = gender,
-                                    translateOptions = true,
-                                    onSelect = {
-                                        hasUserEdited = true
-                                        gender = it
-                                        persistCurrentProfile()
-                                    },
-                                )
-                            },
-                        )
-
-                        if (role != UserRole.ADMIN) {
-                            val relTitle = "ধর্ম".localized()
-                            val relVal = if (religion.isNotBlank()) religion.localized() else ""
-                            val relPrivacy = privacyForField("religion")
+                            // Current address
+                            val currAddrTitle = "বর্তমান ঠিকানা".localized()
+                            val addrPrivacy = privacyForField("address")
                             FbEditDetailRow(
-                                icon = PrayingHandsIcon,
-                                title = relVal.ifBlank { relTitle },
-                                value = if (relVal.isNotBlank()) relTitle else notAddedText,
-                                isPlaceholder = relVal.isBlank(),
-                                privacy = relPrivacy,
+                                icon = LocationDotIcon,
+                                accent = locationAccent.primary,
+                                isDark = isDark,
+                                title = currentAddress.ifBlank { currAddrTitle },
+                                value = if (currentAddress.isNotBlank()) currAddrTitle else notAddedText,
+                                isPlaceholder = currentAddress.isBlank(),
+                                privacy = addrPrivacy,
                                 onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("religion", relTitle, relPrivacy)
+                                    activePrivacyPicker = PrivacyPickerRequest("address", currAddrTitle, addrPrivacy)
                                 },
                                 hindSiliguri = hindSiliguri,
-                                testTag = "edit_religion_select",
-                                onClick = {
-                                    activePicker = EditPickerRequest(
-                                        title = relTitle,
-                                        subtitle = "ধর্মীয় তথ্য নির্বাচন করুন",
-                                        icon = PrayingHandsIcon,
-                                        accent = profileAccent.primary,
-                                        options = religionOptions,
-                                        selected = religion,
-                                        translateOptions = true,
-                                        onSelect = {
-                                            hasUserEdited = true
-                                            religion = it
-                                            persistCurrentProfile()
-                                        },
-                                    )
-                                },
+                                testTag = "edit_current_address_input",
+                                onClick = { activeFieldEditor = ProfileField.ADDRESS },
                             )
 
-                            val marTitle = "বৈবাহিক অবস্থা".localized()
-                            val marVal = if (maritalStatus.isNotBlank()) maritalStatus.localized() else ""
-                            val marPrivacy = privacyForField("marital_status")
-                            FbEditDetailRow(
-                                icon = RingIcon,
-                                title = marVal.ifBlank { marTitle },
-                                value = if (marVal.isNotBlank()) marTitle else notAddedText,
-                                isPlaceholder = marVal.isBlank(),
-                                privacy = marPrivacy,
-                                onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("marital_status", marTitle, marPrivacy)
-                                },
-                                hindSiliguri = hindSiliguri,
-                                testTag = "edit_marital_select",
-                                onClick = {
-                                    activePicker = EditPickerRequest(
-                                        title = marTitle,
-                                        subtitle = "অবস্থা নির্বাচন করুন",
-                                        icon = RingIcon,
-                                        accent = profileAccent.primary,
-                                        options = maritalOptions,
-                                        selected = maritalStatus,
-                                        translateOptions = true,
-                                        onSelect = {
-                                            hasUserEdited = true
-                                            maritalStatus = it
-                                            persistCurrentProfile()
-                                        },
-                                    )
-                                },
-                            )
-                        }
+                            SocialInsetDivider(startIndent = 68.dp)
 
-                        if (role == UserRole.STUDENT) {
-                            val rollTitle = "বোর্ড রোল নম্বর (Roll)".localized()
-                            val rollPlaceholder = "যেমন: ৬৪৮১২৩".localized()
-                            val rollPrivacy = privacyForField("roll_number")
+                            // Permanent address
+                            val permAddrTitle = "স্থায়ী ঠিকানা".localized()
+                            val permPrivacy = privacyForField("permanent_address")
                             FbEditDetailRow(
-                                icon = IdCardIcon,
-                                title = rollNumber.ifBlank { rollTitle },
-                                value = if (rollNumber.isNotBlank()) rollTitle else notAddedText,
-                                isPlaceholder = rollNumber.isBlank(),
-                                privacy = rollPrivacy,
+                                icon = HomeIcon,
+                                accent = locationAccent.primary,
+                                isDark = isDark,
+                                title = permanentAddress.ifBlank { permAddrTitle },
+                                value = if (permanentAddress.isNotBlank()) permAddrTitle else notAddedText,
+                                isPlaceholder = permanentAddress.isBlank(),
+                                privacy = permPrivacy,
                                 onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("roll_number", rollTitle, rollPrivacy)
+                                    activePrivacyPicker = PrivacyPickerRequest("permanent_address", permAddrTitle, permPrivacy)
                                 },
                                 hindSiliguri = hindSiliguri,
-                                testTag = "edit_roll_input",
-                                onClick = {
-                                    activeTextEditor = EditTextFieldRequest(
-                                        fieldKey = "roll_number",
-                                        title = rollTitle,
-                                        placeholder = rollPlaceholder,
-                                        initialValue = rollNumber,
-                                        icon = IdCardIcon,
-                                        singleLine = true,
-                                        keyboardType = KeyboardType.Number,
-                                        initialPrivacy = rollPrivacy,
-                                        testTag = "edit_roll_field",
-                                        onSave = { newVal, chosenPrivacy ->
-                                            hasUserEdited = true
-                                            rollNumber = newVal
-                                            val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("roll_number", chosenPrivacy) }
-                                            fieldPrivacyMap = nextPriv
-                                            persistCurrentProfile(nextPriv)
-                                        },
-                                    )
-                                },
+                                testTag = "edit_permanent_address_input",
+                                onClick = { activeFieldEditor = ProfileField.PERMANENT_ADDRESS },
                             )
 
-                            val regTitle = "রেজিস্ট্রেশন নম্বর (Registration)".localized()
-                            val regPlaceholder = "যেমন: ১৭৫৬৪২".localized()
-                            val regPrivacy = privacyForField("registration_number")
+                            SocialInsetDivider(startIndent = 68.dp)
+
+                            // Blood group
+                            val bloodTitle = "রক্তের গ্রুপ".localized()
+                            val bloodPrivacy = privacyForField("blood_group")
                             FbEditDetailRow(
-                                icon = FileLinesIcon,
-                                title = registrationNumber.ifBlank { regTitle },
-                                value = if (registrationNumber.isNotBlank()) regTitle else notAddedText,
-                                isPlaceholder = registrationNumber.isBlank(),
-                                privacy = regPrivacy,
+                                icon = DropletIcon,
+                                accent = bloodAccent.primary,
+                                isDark = isDark,
+                                title = bloodGroup.ifBlank { bloodTitle },
+                                value = if (bloodGroup.isNotBlank()) bloodTitle else notAddedText,
+                                isPlaceholder = bloodGroup.isBlank(),
+                                privacy = bloodPrivacy,
                                 onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("registration_number", regTitle, regPrivacy)
+                                    activePrivacyPicker = PrivacyPickerRequest("blood_group", bloodTitle, bloodPrivacy)
                                 },
                                 hindSiliguri = hindSiliguri,
-                                testTag = "edit_registration_input",
-                                onClick = {
-                                    activeTextEditor = EditTextFieldRequest(
-                                        fieldKey = "registration_number",
-                                        title = regTitle,
-                                        placeholder = regPlaceholder,
-                                        initialValue = registrationNumber,
-                                        icon = FileLinesIcon,
-                                        singleLine = true,
-                                        keyboardType = KeyboardType.Number,
-                                        initialPrivacy = regPrivacy,
-                                        testTag = "edit_registration_field",
-                                        onSave = { newVal, chosenPrivacy ->
-                                            hasUserEdited = true
-                                            registrationNumber = newVal
-                                            val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("registration_number", chosenPrivacy) }
-                                            fieldPrivacyMap = nextPriv
-                                            persistCurrentProfile(nextPriv)
-                                        },
-                                    )
-                                },
+                                testTag = "edit_blood_group_select",
+                                onClick = { activeFieldEditor = ProfileField.BLOOD_GROUP },
                             )
 
-                            val fatherTitle = "পিতার নাম".localized()
-                            val fatherPlaceholder = "পিতার নাম লিখুন".localized()
-                            val fatherPrivacy = privacyForField("father_name")
+                            SocialInsetDivider(startIndent = 68.dp)
+
+                            // Mobile phone
+                            val phoneTitle = "মোবাইল নম্বর".localized()
+                            val phonePrivacy = privacyForField("phone")
                             FbEditDetailRow(
-                                icon = UserTieIcon,
-                                title = fatherName.ifBlank { fatherTitle },
-                                value = if (fatherName.isNotBlank()) fatherTitle else notAddedText,
-                                isPlaceholder = fatherName.isBlank(),
-                                privacy = fatherPrivacy,
+                                icon = PhoneSolidIcon,
+                                accent = contactAccent.primary,
+                                isDark = isDark,
+                                title = phone.ifBlank { phoneTitle },
+                                value = if (phone.isNotBlank()) phoneTitle else notAddedText,
+                                isPlaceholder = phone.isBlank(),
+                                privacy = phonePrivacy,
                                 onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("father_name", fatherTitle, fatherPrivacy)
+                                    activePrivacyPicker = PrivacyPickerRequest("phone", phoneTitle, phonePrivacy)
                                 },
                                 hindSiliguri = hindSiliguri,
-                                testTag = "edit_father_name_input",
-                                onClick = {
-                                    activeTextEditor = EditTextFieldRequest(
-                                        fieldKey = "father_name",
-                                        title = fatherTitle,
-                                        placeholder = fatherPlaceholder,
-                                        initialValue = fatherName,
-                                        icon = UserTieIcon,
-                                        singleLine = true,
-                                        initialPrivacy = fatherPrivacy,
-                                        testTag = "edit_father_name_field",
-                                        onSave = { newVal, chosenPrivacy ->
-                                            hasUserEdited = true
-                                            fatherName = newVal
-                                            val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("father_name", chosenPrivacy) }
-                                            fieldPrivacyMap = nextPriv
-                                            persistCurrentProfile(nextPriv)
-                                        },
-                                    )
-                                },
+                                testTag = "edit_phone_input",
+                                onClick = { activeFieldEditor = ProfileField.PHONE },
                             )
 
-                            val motherTitle = "মাতার নাম".localized()
-                            val motherPlaceholder = "মাতার নাম লিখুন".localized()
-                            val motherPrivacy = privacyForField("mother_name")
+                            SocialInsetDivider(startIndent = 68.dp)
+
+                            // Contact email
+                            val emailTitle = "ইমেল ঠিকানা".localized()
+                            val emailPrivacy = privacyForField("contact_email")
                             FbEditDetailRow(
-                                icon = UserNurseIcon,
-                                title = motherName.ifBlank { motherTitle },
-                                value = if (motherName.isNotBlank()) motherTitle else notAddedText,
-                                isPlaceholder = motherName.isBlank(),
-                                privacy = motherPrivacy,
+                                icon = EnvelopeSolidIcon,
+                                accent = contactAccent.primary,
+                                isDark = isDark,
+                                title = contactEmail.ifBlank { emailTitle },
+                                value = if (contactEmail.isNotBlank()) emailTitle else notAddedText,
+                                isPlaceholder = contactEmail.isBlank(),
+                                privacy = emailPrivacy,
                                 onPrivacyClick = {
-                                    activePrivacyPicker = PrivacyPickerRequest("mother_name", motherTitle, motherPrivacy)
+                                    activePrivacyPicker = PrivacyPickerRequest("contact_email", emailTitle, emailPrivacy)
                                 },
                                 hindSiliguri = hindSiliguri,
-                                testTag = "edit_mother_name_input",
-                                onClick = {
-                                    activeTextEditor = EditTextFieldRequest(
-                                        fieldKey = "mother_name",
-                                        title = motherTitle,
-                                        placeholder = motherPlaceholder,
-                                        initialValue = motherName,
-                                        icon = UserNurseIcon,
-                                        singleLine = true,
-                                        initialPrivacy = motherPrivacy,
-                                        testTag = "edit_mother_name_field",
-                                        onSave = { newVal, chosenPrivacy ->
-                                            hasUserEdited = true
-                                            motherName = newVal
-                                            val nextPriv = fieldPrivacyMap.toMutableMap().apply { put("mother_name", chosenPrivacy) }
-                                            fieldPrivacyMap = nextPriv
-                                            persistCurrentProfile(nextPriv)
-                                        },
-                                    )
-                                },
+                                testTag = "edit_email_input",
+                                onClick = { activeFieldEditor = ProfileField.CONTACT_EMAIL },
                             )
+
+                            SocialInsetDivider(startIndent = 68.dp)
+
+                            // Date of birth (opens Facebook-style 3-column wheel sub-screen)
+                            val dobTitle = "জন্ম তারিখ".localized()
+                            val dobDisplay = if (dob.isNotBlank()) formatProfileDob(dob, isBengali) else ""
+                            val dobPrivacy = privacyForField("dob")
+                            FbEditDetailRow(
+                                icon = CalendarDaysIcon,
+                                accent = personalAccent.primary,
+                                isDark = isDark,
+                                title = dobDisplay.ifBlank { dobTitle },
+                                value = if (dobDisplay.isNotBlank()) dobTitle else notAddedText,
+                                isPlaceholder = dobDisplay.isBlank(),
+                                privacy = dobPrivacy,
+                                onPrivacyClick = {
+                                    activePrivacyPicker = PrivacyPickerRequest("dob", dobTitle, dobPrivacy)
+                                },
+                                hindSiliguri = hindSiliguri,
+                                testTag = "edit_dob_picker",
+                                onClick = { activeFieldEditor = ProfileField.DOB },
+                            )
+
+                            SocialInsetDivider(startIndent = 68.dp)
+
+                            // Gender
+                            val genTitle = "লিঙ্গ".localized()
+                            val genVal = if (gender.isNotBlank()) gender.localized() else ""
+                            val genderPrivacy = privacyForField("gender")
+                            FbEditDetailRow(
+                                icon = VenusMarsIcon,
+                                accent = personalAccent.primary,
+                                isDark = isDark,
+                                title = genVal.ifBlank { genTitle },
+                                value = if (genVal.isNotBlank()) genTitle else notAddedText,
+                                isPlaceholder = genVal.isBlank(),
+                                privacy = genderPrivacy,
+                                onPrivacyClick = {
+                                    activePrivacyPicker = PrivacyPickerRequest("gender", genTitle, genderPrivacy)
+                                },
+                                hindSiliguri = hindSiliguri,
+                                testTag = "edit_gender_select",
+                                onClick = { activeFieldEditor = ProfileField.GENDER },
+                            )
+
+                            if (role != UserRole.ADMIN) {
+                                SocialInsetDivider(startIndent = 68.dp)
+                                val relTitle = "ধর্ম".localized()
+                                val relVal = if (religion.isNotBlank()) religion.localized() else ""
+                                val relPrivacy = privacyForField("religion")
+                                FbEditDetailRow(
+                                    icon = PrayingHandsIcon,
+                                    accent = personalAccent.primary,
+                                    isDark = isDark,
+                                    title = relVal.ifBlank { relTitle },
+                                    value = if (relVal.isNotBlank()) relTitle else notAddedText,
+                                    isPlaceholder = relVal.isBlank(),
+                                    privacy = relPrivacy,
+                                    onPrivacyClick = {
+                                        activePrivacyPicker = PrivacyPickerRequest("religion", relTitle, relPrivacy)
+                                    },
+                                    hindSiliguri = hindSiliguri,
+                                    testTag = "edit_religion_select",
+                                    onClick = { activeFieldEditor = ProfileField.RELIGION },
+                                )
+
+                                SocialInsetDivider(startIndent = 68.dp)
+                                val marTitle = "বৈবাহিক অবস্থা".localized()
+                                val marVal = if (maritalStatus.isNotBlank()) maritalStatus.localized() else ""
+                                val marPrivacy = privacyForField("marital_status")
+                                FbEditDetailRow(
+                                    icon = RingIcon,
+                                    accent = personalAccent.primary,
+                                    isDark = isDark,
+                                    title = marVal.ifBlank { marTitle },
+                                    value = if (marVal.isNotBlank()) marTitle else notAddedText,
+                                    isPlaceholder = marVal.isBlank(),
+                                    privacy = marPrivacy,
+                                    onPrivacyClick = {
+                                        activePrivacyPicker = PrivacyPickerRequest("marital_status", marTitle, marPrivacy)
+                                    },
+                                    hindSiliguri = hindSiliguri,
+                                    testTag = "edit_marital_select",
+                                    onClick = { activeFieldEditor = ProfileField.MARITAL_STATUS },
+                                )
+                            }
+
+                            if (role == UserRole.STUDENT) {
+                                SocialInsetDivider(startIndent = 68.dp)
+                                val rollTitle = "বোর্ড রোল নম্বর (Roll)".localized()
+                                val rollPrivacy = privacyForField("roll_number")
+                                FbEditDetailRow(
+                                    icon = IdCardIcon,
+                                    accent = academicAccent.primary,
+                                    isDark = isDark,
+                                    title = rollNumber.ifBlank { rollTitle },
+                                    value = if (rollNumber.isNotBlank()) rollTitle else notAddedText,
+                                    isPlaceholder = rollNumber.isBlank(),
+                                    privacy = rollPrivacy,
+                                    onPrivacyClick = {
+                                        activePrivacyPicker = PrivacyPickerRequest("roll_number", rollTitle, rollPrivacy)
+                                    },
+                                    hindSiliguri = hindSiliguri,
+                                    testTag = "edit_roll_input",
+                                    onClick = { activeFieldEditor = ProfileField.ROLL_NUMBER },
+                                )
+
+                                SocialInsetDivider(startIndent = 68.dp)
+                                val regTitle = "রেজিস্ট্রেশন নম্বর (Registration)".localized()
+                                val regPrivacy = privacyForField("registration_number")
+                                FbEditDetailRow(
+                                    icon = FileLinesIcon,
+                                    accent = academicAccent.primary,
+                                    isDark = isDark,
+                                    title = registrationNumber.ifBlank { regTitle },
+                                    value = if (registrationNumber.isNotBlank()) regTitle else notAddedText,
+                                    isPlaceholder = registrationNumber.isBlank(),
+                                    privacy = regPrivacy,
+                                    onPrivacyClick = {
+                                        activePrivacyPicker = PrivacyPickerRequest("registration_number", regTitle, regPrivacy)
+                                    },
+                                    hindSiliguri = hindSiliguri,
+                                    testTag = "edit_registration_input",
+                                    onClick = { activeFieldEditor = ProfileField.REGISTRATION_NUMBER },
+                                )
+                            }
                         }
                     }
 
                     // ── SECTION 4: SECURITY & PASSWORD ──
+                    SocialSectionDividerBand(isDark = isDark, height = 8.dp)
                     FbAccordionSection(
                         title = "নিরাপত্তা ও পাসওয়ার্ড".localized(),
+                        accent = securityAccent.primary,
                         expanded = securityExpanded,
                         onToggle = { securityExpanded = !securityExpanded },
                         hindSiliguri = hindSiliguri,
                     ) {
-                        FbEditDetailRow(
-                            icon = LockIcon,
-                            title = if (hasLoginPassword) "পাসওয়ার্ড পরিবর্তন করুন".localized() else "পাসওয়ার্ড সেট করুন".localized(),
-                            value = if (hasLoginPassword) "পাসওয়ার্ড সেট করা আছে".localized() else "সেট করা নেই".localized(),
-                            isPlaceholder = !hasLoginPassword,
-                            privacy = null,
-                            hindSiliguri = hindSiliguri,
-                            testTag = "profile_password_button",
-                            onClick = { onPasswordSetupClick() },
-                        )
+                        SocialSurfaceBlock(
+                            isDark = isDark,
+                            showTopHairline = true,
+                            showBottomHairline = true,
+                            accentTint = securityAccent.primary,
+                        ) {
+                            FbEditDetailRow(
+                                icon = LockIcon,
+                                accent = securityAccent.primary,
+                                isDark = isDark,
+                                title = if (hasLoginPassword) "পাসওয়ার্ড পরিবর্তন করুন".localized() else "পাসওয়ার্ড সেট করুন".localized(),
+                                value = if (hasLoginPassword) "পাসওয়ার্ড সেট করা আছে".localized() else "সেট করা নেই".localized(),
+                                isPlaceholder = !hasLoginPassword,
+                                privacy = null,
+                                hindSiliguri = hindSiliguri,
+                                testTag = "profile_password_button",
+                                onClick = { onPasswordSetupClick() },
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
-    // ── SINGLE FIELD FULL-SCREEN EDITOR SUB-SCREEN ──
+    // ── UNIFIED SIGNUP-STYLE STEP EDITOR SUB-SCREEN (ALL FIELDS & DOB WHEEL) ──
     KlassSubScreenHost(
-        visible = activeTextEditor != null,
+        visible = activeFieldEditor != null,
         zIndex = 90f,
     ) {
-        activeTextEditor?.let { req ->
-            FbSingleFieldEditorSubScreen(
-                request = req,
+        activeFieldEditor?.let { field ->
+            val fieldKey = profileFieldKey(field)
+            val currentValue = when (field) {
+                ProfileField.NAME -> fullName
+                ProfileField.BIO -> bio
+                ProfileField.DEPARTMENT -> department
+                ProfileField.SEMESTER -> semester
+                ProfileField.SHIFT -> shift
+                ProfileField.SECTION -> section
+                ProfileField.ROLL_NUMBER -> rollNumber
+                ProfileField.REGISTRATION_NUMBER -> registrationNumber
+                ProfileField.PHONE -> phone
+                ProfileField.CONTACT_EMAIL -> contactEmail
+                ProfileField.BLOOD_GROUP -> bloodGroup
+                ProfileField.ADDRESS -> currentAddress
+                ProfileField.PERMANENT_ADDRESS -> permanentAddress
+                ProfileField.DOB -> dob
+                ProfileField.GENDER -> gender
+                ProfileField.RELIGION -> religion
+                ProfileField.MARITAL_STATUS -> maritalStatus
+            }
+            val inputTestTag = when (field) {
+                ProfileField.NAME -> "edit_fullname_input"
+                ProfileField.BIO -> "edit_bio_input"
+                ProfileField.PHONE -> "edit_phone_field"
+                ProfileField.CONTACT_EMAIL -> "edit_email_field"
+                ProfileField.ADDRESS -> "edit_current_address_field"
+                ProfileField.PERMANENT_ADDRESS -> "edit_permanent_address_field"
+                ProfileField.ROLL_NUMBER -> "edit_roll_field"
+                ProfileField.REGISTRATION_NUMBER -> "edit_registration_field"
+                else -> "edit_single_field_input"
+            }
+
+            ProfileStepEditorSubScreen(
+                field = field,
+                initialValue = currentValue,
+                initialPrivacy = if (field == ProfileField.NAME) ProfilePrivacy.PUBLIC else privacyForField(fieldKey),
+                role = role,
+                department = department,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
+                inputTestTag = inputTestTag,
                 onGpsSync = { gpsSyncLauncher() },
-                onDismiss = { activeTextEditor = null },
+                onSave = { newVal, chosenPrivacy ->
+                    hasUserEdited = true
+                    when (field) {
+                        ProfileField.NAME -> fullName = newVal
+                        ProfileField.BIO -> bio = newVal
+                        ProfileField.DEPARTMENT -> {
+                            department = newVal
+                            if (section.isNotBlank()) {
+                                section = RoutineRules.normalizeGroup(newVal, section)
+                            }
+                        }
+                        ProfileField.SEMESTER -> semester = newVal
+                        ProfileField.SHIFT -> shift = newVal
+                        ProfileField.SECTION -> section = newVal
+                        ProfileField.ROLL_NUMBER -> rollNumber = newVal
+                        ProfileField.REGISTRATION_NUMBER -> registrationNumber = newVal
+                        ProfileField.PHONE -> phone = newVal
+                        ProfileField.CONTACT_EMAIL -> contactEmail = newVal
+                        ProfileField.BLOOD_GROUP -> bloodGroup = newVal
+                        ProfileField.ADDRESS -> currentAddress = newVal
+                        ProfileField.PERMANENT_ADDRESS -> permanentAddress = newVal
+                        ProfileField.DOB -> dob = newVal
+                        ProfileField.GENDER -> gender = newVal
+                        ProfileField.RELIGION -> religion = newVal
+                        ProfileField.MARITAL_STATUS -> maritalStatus = newVal
+                    }
+                    val nextPrivacy = if (field == ProfileField.NAME) {
+                        fieldPrivacyMap
+                    } else {
+                        fieldPrivacyMap.toMutableMap().apply { put(fieldKey, chosenPrivacy) }
+                    }
+                    fieldPrivacyMap = nextPrivacy
+                    persistCurrentProfile(nextPrivacy)
+                },
+                onDismiss = { activeFieldEditor = null },
             )
         }
     }
 
-    // ── FULL-SCREEN SELECTION PICKER SUB-SCREEN ──
-    KlassSubScreenHost(
-        visible = activePicker != null,
-        zIndex = 88f,
-    ) {
-        activePicker?.let { picker ->
-            KlassSelectionPickerSubScreen(
-                title = picker.title,
-                subtitle = picker.subtitle.localized(),
-                levelLabel = "প্রোফাইল এডিট".localized(),
-                icon = picker.icon,
-                accent = picker.accent,
-                isDark = isDark,
-                hindSiliguri = hindSiliguri,
-                options = picker.options,
-                selectedOption = picker.options.firstOrNull { it.equals(picker.selected, ignoreCase = true) },
-                optionLabel = { opt -> if (picker.translateOptions) AppStrings.translate(opt, currentAppLanguage) else opt },
-                searchable = picker.options.size > 6,
-                onSelect = picker.onSelect,
-                onDismiss = { activePicker = null },
-            )
-        }
-    }
-
-    // ── FULL-SCREEN PER-FIELD PRIVACY PICKER ──
+    // ── QUICK PER-FIELD PRIVACY PICKER ──
     KlassSubScreenHost(
         visible = activePrivacyPicker != null,
         zIndex = 89f,
@@ -1421,6 +1174,7 @@ fun EditProfileContent(
 @Composable
 private fun FbAccordionSection(
     title: String,
+    accent: Color,
     expanded: Boolean,
     onToggle: () -> Unit,
     hindSiliguri: FontFamily,
@@ -1440,23 +1194,38 @@ private fun FbAccordionSection(
                 .clickable(onClick = onToggle)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 18.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+            )
             Text(
                 text = title,
                 color = cs.onSurface,
-                fontSize = 19.sp,
+                fontSize = 18.5.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = hindSiliguri,
+                modifier = Modifier.weight(1f),
             )
-            Icon(
-                imageVector = ChevronDownIcon,
-                contentDescription = title,
-                tint = cs.onSurface,
-                modifier = Modifier
-                    .size(20.dp)
-                    .rotate(chevronRotation),
-            )
+            Surface(
+                shape = CircleShape,
+                color = accent.copy(alpha = 0.14f),
+                modifier = Modifier.size(30.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = ChevronDownIcon,
+                        contentDescription = title,
+                        tint = accent,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .rotate(chevronRotation),
+                    )
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -1467,7 +1236,7 @@ private fun FbAccordionSection(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 6.dp),
+                    .padding(bottom = 4.dp),
             ) {
                 content()
             }
@@ -1478,6 +1247,8 @@ private fun FbAccordionSection(
 @Composable
 private fun FbEditDetailRow(
     icon: ImageVector,
+    accent: Color,
+    isDark: Boolean,
     title: String,
     value: String,
     isPlaceholder: Boolean,
@@ -1488,25 +1259,37 @@ private fun FbEditDetailRow(
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val badgeBg = accent.copy(alpha = if (isDark) 0.22f else 0.12f)
+    val badgeBorder = accent.copy(alpha = if (isDark) 0.42f else 0.26f)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
+            .padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = cs.onSurface,
+        Surface(
+            shape = CircleShape,
+            color = badgeBg,
+            border = BorderStroke(0.75.dp, badgeBorder),
+            shadowElevation = 0.dp,
             modifier = Modifier
                 .padding(top = 2.dp)
-                .size(22.dp),
-        )
+                .size(38.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column(
             modifier = Modifier.weight(1f),
@@ -1524,8 +1307,8 @@ private fun FbEditDetailRow(
                 Text(
                     text = value,
                     color = if (isPlaceholder) cs.onSurfaceVariant.copy(alpha = 0.78f) else cs.onSurfaceVariant,
-                    fontSize = 14.5.sp,
-                    lineHeight = 20.sp,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
                     fontFamily = hindSiliguri,
                 )
             }
@@ -1542,7 +1325,8 @@ private fun FbEditDetailRow(
                     onClick = { onPrivacyClick?.invoke() },
                     enabled = onPrivacyClick != null,
                     shape = CircleShape,
-                    color = cs.surfaceContainerHigh.copy(alpha = 0.6f),
+                    color = accent.copy(alpha = if (isDark) 0.16f else 0.09f),
+                    border = BorderStroke(0.5.dp, accent.copy(alpha = 0.28f)),
                     shadowElevation = 0.dp,
                     modifier = Modifier.padding(top = 2.dp),
                 ) {
@@ -1554,13 +1338,13 @@ private fun FbEditDetailRow(
                         Icon(
                             imageVector = scopeIcon,
                             contentDescription = "গোপনীয়তা".localized(),
-                            tint = cs.onSurfaceVariant,
+                            tint = accent,
                             modifier = Modifier.size(12.dp),
                         )
                         Text(
                             text = scopeLabel,
                             color = cs.onSurfaceVariant,
-                            fontSize = 12.5.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = hindSiliguri,
                         )
@@ -1576,221 +1360,9 @@ private fun FbEditDetailRow(
             Icon(
                 imageVector = EditIcon,
                 contentDescription = "এডিট করুন".localized(),
-                tint = cs.onSurfaceVariant,
-                modifier = Modifier.size(19.dp),
+                tint = accent.copy(alpha = 0.85f),
+                modifier = Modifier.size(18.dp),
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun FbSingleFieldEditorSubScreen(
-    request: EditTextFieldRequest,
-    isDark: Boolean,
-    hindSiliguri: FontFamily,
-    onGpsSync: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    val focusManager = LocalFocusManager.current
-    val profileAccent = KlassFeaturePalette.profile(isDark)
-    val sheetBg = if (isDark) Color(0xFF0B1120) else Color.White
-    var textValue by remember(request.title, request.initialValue) { mutableStateOf(request.initialValue) }
-    var selectedPrivacy by remember(request.fieldKey, request.initialPrivacy) {
-        mutableStateOf(request.initialPrivacy)
-    }
-
-    AppBackHandler(enabled = true) {
-        onDismiss()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(sheetBg)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) {
-                focusManager.clearFocus(force = true)
-            },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                sheetBg.copy(alpha = 0.88f),
-                                sheetBg.copy(alpha = 0.42f),
-                                Color.Transparent,
-                            )
-                        )
-                    ),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .height(56.dp)
-                        .padding(horizontal = 6.dp),
-                ) {
-                    IconButton(
-                        onClick = {
-                            focusManager.clearFocus(force = true)
-                            onDismiss()
-                        },
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .size(48.dp)
-                            .testTag("edit_single_field_back_button"),
-                    ) {
-                        Icon(
-                            imageVector = BackArrowIcon,
-                            contentDescription = "Back",
-                            tint = cs.onSurface,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-
-                    Text(
-                        text = request.title,
-                        color = cs.onSurface,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = hindSiliguri,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-
-                    HeaderSavePillButton(
-                        text = "সংরক্ষণ".localized(),
-                        accent = profileAccent.primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        testTag = "edit_single_field_top_save",
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 4.dp),
-                        onClick = {
-                            focusManager.clearFocus(force = true)
-                            request.onSave(textValue, selectedPrivacy)
-                            onDismiss()
-                        },
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .widthIn(max = 760.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                OutlinedTextField(
-                    value = textValue,
-                    onValueChange = { textValue = it },
-                    singleLine = request.singleLine,
-                    minLines = if (request.singleLine) 1 else 3,
-                    maxLines = if (request.singleLine) 1 else 6,
-                    label = {
-                        Text(
-                            text = request.title,
-                            fontFamily = hindSiliguri,
-                        )
-                    },
-                    placeholder = {
-                        Text(
-                            text = request.placeholder,
-                            fontFamily = hindSiliguri,
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = request.icon,
-                            contentDescription = null,
-                            tint = cs.onSurfaceVariant,
-                            modifier = Modifier.size(19.dp),
-                        )
-                    },
-                    textStyle = TextStyle(
-                        fontSize = 16.5.sp,
-                        fontFamily = hindSiliguri,
-                    ),
-                    keyboardOptions = KeyboardOptions(keyboardType = request.keyboardType),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = profileAccent.primary,
-                        unfocusedBorderColor = cs.outlineVariant,
-                        focusedLabelColor = profileAccent.primary,
-                        unfocusedLabelColor = cs.onSurfaceVariant,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag(request.testTag),
-                )
-
-                if (request.fieldKey != "name") {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "গোপনীয়তা".localized(),
-                            color = cs.onSurfaceVariant,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = hindSiliguri,
-                        )
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            ProfilePrivacy.entries.forEach { option ->
-                                val icon = when (option) {
-                                    ProfilePrivacy.PUBLIC -> LanguageGlobeIcon
-                                    ProfilePrivacy.PRIVATE -> LockIcon
-                                }
-                                val label = when (option) {
-                                    ProfilePrivacy.PUBLIC -> "পাবলিক".localized()
-                                    ProfilePrivacy.PRIVATE -> "প্রাইভেট".localized()
-                                }
-                                MinimalIconChip(
-                                    label = label,
-                                    icon = icon,
-                                    selected = selectedPrivacy == option,
-                                    accent = profileAccent.primary,
-                                    isDark = isDark,
-                                    hindSiliguri = hindSiliguri,
-                                    modifier = Modifier.testTag("edit_privacy_${option.key.lowercase()}"),
-                                    onClick = { selectedPrivacy = option },
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (request.supportsGps) {
-                    KlassTonalButton(
-                        text = "অটো-লোকেশন (GPS)".localized(),
-                        icon = LocationDotIcon,
-                        accent = KlassFeaturePalette.classrooms(isDark).primary,
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                        height = 42.dp,
-                        testTag = "edit_sync_gps_button",
-                        onClick = onGpsSync,
-                    )
-                }
-            }
         }
     }
 }

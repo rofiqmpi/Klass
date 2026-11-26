@@ -14,32 +14,8 @@ import org.json.JSONObject
 private const val REPO_TAG = "RoutineRepo"
 private const val ROUTINE_CACHE_PREFS = "klass_routine_cache_v1"
 
-private fun getRoutineCustomDbId(): String? {
-    val ctx = getAppContext() ?: return null
-    val resId = ctx.resources.getIdentifier("firestore_database_id", "string", ctx.packageName)
-    if (resId == 0) return null
-    val dbName = ctx.getString(resId).trim()
-    return if (dbName.isEmpty() || dbName == "(default)") null else dbName
-}
-
-private fun getRepoFirestoreInstances(): List<Pair<FirebaseFirestore, String>> {
-    val list = mutableListOf<Pair<FirebaseFirestore, String>>()
-    val customDbId = getRoutineCustomDbId()
-    if (customDbId != null) {
-        try {
-            list.add(FirebaseFirestore.getInstance(customDbId) to customDbId)
-            return list
-        } catch (e: Exception) {
-            Log.w(REPO_TAG, "Custom DB unavailable ($customDbId): ${e.message}")
-        }
-    }
-    try {
-        list.add(FirebaseFirestore.getInstance() to "(default)")
-    } catch (e: Exception) {
-        Log.w(REPO_TAG, "Default DB unavailable: ${e.message}")
-    }
-    return list
-}
+private fun getRepoFirestoreInstances(): List<Pair<FirebaseFirestore, String>> =
+    FirestoreResolver.getFirestoreInstances()
 
 private fun isFirebaseSignedIn(): Boolean = try {
     FirebaseAuth.getInstance().currentUser != null

@@ -26,32 +26,8 @@ import org.json.JSONObject
 
 private const val TAG = "AdminAuth"
 
-private fun getCustomDatabaseId(): String? {
-    val ctx = getAppContext() ?: return null
-    val resId = ctx.resources.getIdentifier("firestore_database_id", "string", ctx.packageName)
-    if (resId == 0) return null
-    val dbName = ctx.getString(resId).trim()
-    return if (dbName.isEmpty() || dbName == "(default)") null else dbName
-}
-
-private fun getFirestoreInstances(): List<Pair<FirebaseFirestore, String>> {
-    val list = mutableListOf<Pair<FirebaseFirestore, String>>()
-    val customDbId = getCustomDatabaseId()
-    if (customDbId != null) {
-        try {
-            list.add(FirebaseFirestore.getInstance(customDbId) to customDbId)
-            return list
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get custom db instance ($customDbId): ${e.message}")
-        }
-    }
-    try {
-        list.add(FirebaseFirestore.getInstance() to "(default)")
-    } catch (e: Exception) {
-        Log.e(TAG, "Failed to get default db instance: ${e.message}")
-    }
-    return list
-}
+private fun getFirestoreInstances(): List<Pair<FirebaseFirestore, String>> =
+    FirestoreResolver.getFirestoreInstances()
 
 suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
     addOnSuccessListener { result ->
@@ -775,16 +751,26 @@ actual suspend fun saveAdminInFirestore(email: String, name: String, photoUrl: S
         data["photo_url"] = photoUrl
     }
 
-    withTimeoutOrNull(4.seconds) {
-        val instances = getFirestoreInstances()
-        for ((db, _) in instances) {
+    var saved = false
+    var lastErr: Exception? = null
+    for ((db, dbLabel) in getFirestoreInstances()) {
+        val ok = withTimeoutOrNull(5.seconds) {
             try {
                 db.collection("admins").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
-            } catch (_: Exception) {}
+                true
+            } catch (e: Exception) {
+                lastErr = e
+                false
+            }
+        }
+        if (ok == true) {
+            FirestoreResolver.markWorkingDatabase(dbLabel)
+            saved = true
+            break
         }
     }
-
-    return Result.success(Unit)
+    return if (saved || !isNetworkAvailable()) Result.success(Unit)
+    else Result.failure(lastErr ?: Exception("Firestore admin save timed out"))
 }
 
 actual suspend fun saveTeacherInFirestore(
@@ -808,16 +794,26 @@ actual suspend fun saveTeacherInFirestore(
         data["photo_url"] = photoUrl
     }
 
-    withTimeoutOrNull(4.seconds) {
-        val instances = getFirestoreInstances()
-        for ((db, _) in instances) {
+    var saved = false
+    var lastErr: Exception? = null
+    for ((db, dbLabel) in getFirestoreInstances()) {
+        val ok = withTimeoutOrNull(5.seconds) {
             try {
                 db.collection("teachers").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
-            } catch (_: Exception) {}
+                true
+            } catch (e: Exception) {
+                lastErr = e
+                false
+            }
+        }
+        if (ok == true) {
+            FirestoreResolver.markWorkingDatabase(dbLabel)
+            saved = true
+            break
         }
     }
-
-    return Result.success(Unit)
+    return if (saved || !isNetworkAvailable()) Result.success(Unit)
+    else Result.failure(lastErr ?: Exception("Firestore teacher save timed out"))
 }
 
 actual suspend fun saveStudentInFirestore(
@@ -841,16 +837,26 @@ actual suspend fun saveStudentInFirestore(
         data["photo_url"] = photoUrl
     }
 
-    withTimeoutOrNull(4.seconds) {
-        val instances = getFirestoreInstances()
-        for ((db, _) in instances) {
+    var saved = false
+    var lastErr: Exception? = null
+    for ((db, dbLabel) in getFirestoreInstances()) {
+        val ok = withTimeoutOrNull(5.seconds) {
             try {
                 db.collection("students").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
-            } catch (_: Exception) {}
+                true
+            } catch (e: Exception) {
+                lastErr = e
+                false
+            }
+        }
+        if (ok == true) {
+            FirestoreResolver.markWorkingDatabase(dbLabel)
+            saved = true
+            break
         }
     }
-
-    return Result.success(Unit)
+    return if (saved || !isNetworkAvailable()) Result.success(Unit)
+    else Result.failure(lastErr ?: Exception("Firestore student save timed out"))
 }
 
 actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): Result<Unit> {
@@ -958,25 +964,44 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         return Result.failure(Exception("Firestore not initialized"))
     }
 
-    var firestoreSaved = false
-    var lastError: Exception? = null
-
-    val roleCollection = when (category) {
+    val resolvedCategory = prefs?.getString("${cleanEmail}_category", "")?.trim()?.uppercase()?.ifBlank { null }
+        ?: resolveRegisteredRoleFromFirestore(cleanEmail)?.name
+        ?: category
+    val finalRoleCollection = when (resolvedCategory) {
         "TEACHER" -> "teachers"
         "ADMIN" -> "admins"
         else -> "students"
     }
+    data["role"] = resolvedCategory
+    userPatch["category"] = resolvedCategory
 
-    withTimeoutOrNull(10.seconds) {
-        for ((db, dbLabel) in instances) {
+    val currentUser = runCatching { FirebaseAuth.getInstance().currentUser }.getOrNull()
+    val hasFirebaseApp = ctx != null && runCatching { com.google.firebase.FirebaseApp.getApps(ctx).isNotEmpty() }.getOrDefault(false)
+    if (hasFirebaseApp && currentUser == null && isNetworkAvailable()) {
+        return Result.failure(
+            Exception("সেশন মেয়াদ উত্তীর্ণ হয়েছে। দয়া করে Google দিয়ে পুনরায় সাইন-ইন করুন।"),
+        )
+    }
+
+    var firestoreSaved = false
+    var lastError: Exception? = null
+
+    for ((db, dbLabel) in instances) {
+        val savedOnThisDb = withTimeoutOrNull(7.seconds) {
             try {
-                db.collection(roleCollection).document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
+                db.collection(finalRoleCollection).document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
                 db.collection("users").document(cleanEmail).set(userPatch, SetOptions.merge()).awaitTask()
-                firestoreSaved = true
+                true
             } catch (e: Exception) {
                 lastError = e
                 Log.e("StudentProfile", "[$dbLabel] Failed saving profile to firestore: ${e.message}")
+                false
             }
+        }
+        if (savedOnThisDb == true) {
+            FirestoreResolver.markWorkingDatabase(dbLabel)
+            firestoreSaved = true
+            break
         }
     }
 
@@ -984,11 +1009,16 @@ actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): R
         return Result.success(Unit)
     }
     lastError?.let { err ->
+        val msg = err.localizedMessage?.takeIf { it.isNotBlank() } ?: "Firestore save failed"
+        if (msg.contains("PERMISSION_DENIED", ignoreCase = true) && currentUser == null) {
+            return Result.failure(
+                Exception("প্রোফাইল সংরক্ষণের অনুমতি পাওয়া যায়নি। Google দিয়ে আবার সাইন-ইন করুন।"),
+            )
+        }
         return Result.failure(err)
     }
-    // Timed out while waiting for server ack: check if device is offline (queued locally) vs online failure
     return if (isNetworkAvailable()) {
-        Result.failure(Exception("Firestore save timed out"))
+        Result.failure(Exception("সার্ভারের সাথে সংযোগ করতে সময় বেশি লাগছে। ইন্টারনেট যাচাই করে আবার চেষ্টা করুন।"))
     } else {
         Result.success(Unit)
     }
@@ -1243,15 +1273,26 @@ actual suspend fun saveUserInFirestore(
     if (!photoUrl.isNullOrBlank()) {
         data["photo_url"] = photoUrl
     }
-    withTimeoutOrNull(4.seconds) {
-        val instances = getFirestoreInstances()
-        for ((db, _) in instances) {
+    var saved = false
+    var lastErr: Exception? = null
+    for ((db, dbLabel) in getFirestoreInstances()) {
+        val ok = withTimeoutOrNull(5.seconds) {
             try {
                 db.collection("users").document(cleanEmail).set(data, SetOptions.merge()).awaitTask()
-            } catch (_: Exception) {}
+                true
+            } catch (e: Exception) {
+                lastErr = e
+                false
+            }
+        }
+        if (ok == true) {
+            FirestoreResolver.markWorkingDatabase(dbLabel)
+            saved = true
+            break
         }
     }
-    return Result.success(Unit)
+    return if (saved || !isNetworkAvailable()) Result.success(Unit)
+    else Result.failure(lastErr ?: Exception("Firestore user save timed out"))
 }
 
 actual suspend fun fetchUserFromFirestore(email: String): UserProfile? {

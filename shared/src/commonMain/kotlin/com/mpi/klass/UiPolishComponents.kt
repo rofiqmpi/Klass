@@ -1798,7 +1798,11 @@ internal fun KlassProfileSkeleton(
     modifier: Modifier = Modifier,
 ) {
     val shimmerBrush = rememberKlassShimmerBrush(isDark)
-    val sheetBg = if (isDark) Color(0xFF0F172A) else Color.White
+    val sheetBg = if (isDark) {
+        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.68f)
+    } else {
+        Color.White.copy(alpha = 0.72f)
+    }
     val statusBarTop = if (topContentPadding == 0.dp) {
         WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     } else {

@@ -59,6 +59,11 @@ class MainActivity : ComponentActivity() {
     private var pendingUpdateUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        KlassRuntimeConfig.geminiApiKey = BuildConfig.GEMINI_API_KEY.trim().trim('"').trim()
+        KlassRuntimeConfig.recaptchaSiteKey = BuildConfig.RECAPTCHA_SITE_KEY.trim().trim('"').trim()
+        KlassRuntimeConfig.firestoreDatabaseId = BuildConfig.FIRESTORE_DATABASE_ID.trim().trim('"').trim()
+        KlassRuntimeConfig.appUpdateUrl = BuildConfig.APP_UPDATE_URL.trim().trim('"').trim()
+
         initThemeContext(this)
         AppStrings.preloadCacheSync()
         applyAppLocale(this, loadAppLanguage())
@@ -100,7 +105,8 @@ class MainActivity : ComponentActivity() {
             } else {
                 getSharedPreferences("klass_update", Context.MODE_PRIVATE)
                     .edit()
-                    .remove("last_prompted_tag")
+                    .remove("dismissed_tag")
+                    .remove("dismissed_at")
                     .apply()
             }
         }
@@ -226,37 +232,112 @@ class MainActivity : ComponentActivity() {
         context.resources.updateConfiguration(config, context.resources.displayMetrics)
     }
 
+    private data class RemoteReleaseInfo(
+        val version: String,
+        val apkUrl: String,
+        val notes: String = "",
+        val force: Boolean = false,
+    )
+
+    private fun parseReleaseJsonPayload(payload: String): RemoteReleaseInfo? {
+        val json = org.json.JSONObject(payload)
+        val tag = json.optString("tag_name")
+            .ifBlank { json.optString("version") }
+            .ifBlank { json.optString("latest_version") }
+            .trim()
+        val notes = json.optString("notes")
+            .ifBlank { json.optString("body") }
+            .trim()
+        val force = json.optBoolean("force", false)
+        val directApkUrl = json.optString("apk_url")
+            .ifBlank { json.optString("download_url") }
+            .trim()
+        val assetApkUrl = json.optJSONArray("assets")?.let { assets ->
+            (0 until assets.length())
+                .mapNotNull { assets.optJSONObject(it) }
+                .firstOrNull { asset ->
+                    val name = asset.optString("name")
+                    name == "Klass-release.apk" || name.endsWith(".apk", ignoreCase = true)
+                }
+                ?.optString("browser_download_url")
+                ?.trim()
+        }.orEmpty()
+        val finalUrl = directApkUrl.ifBlank { assetApkUrl }
+        return if (tag.isBlank() || finalUrl.isBlank()) null else RemoteReleaseInfo(tag, finalUrl, notes, force)
+    }
+
+    private fun fetchReleaseFromHttp(feedUrl: String): RemoteReleaseInfo? {
+        return try {
+            val connection = (URL(feedUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8_000
+                readTimeout = 8_000
+                instanceFollowRedirects = true
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/vnd.github+json, application/json")
+                setRequestProperty("User-Agent", "Klass-Android")
+            }
+            try {
+                if (connection.responseCode !in 200..299) {
+                    Log.w(UPDATE_TAG, "Release check HTTP ${connection.responseCode} for $feedUrl")
+                    return null
+                }
+                val payload = connection.inputStream.bufferedReader().use { it.readText() }
+                parseReleaseJsonPayload(payload)
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(UPDATE_TAG, "Could not fetch release feed ($feedUrl): ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun fetchReleaseFromFirestoreConfig(): RemoteReleaseInfo? {
+        for ((db, label) in FirestoreResolver.getFirestoreInstances()) {
+            val info = kotlinx.coroutines.withTimeoutOrNull(4_500L) {
+                try {
+                    val doc = db.collection("config").document("app_update").get().await()
+                    if (!doc.exists()) return@withTimeoutOrNull null
+                    val enabled = doc.getBoolean("enabled") ?: true
+                    if (!enabled) return@withTimeoutOrNull null
+                    val version = (doc.getString("latest_version")
+                        ?: doc.getString("version")
+                        ?: doc.getString("versionName")
+                        ?: doc.getString("tag")
+                        ?: doc.getString("tag_name")).orEmpty().trim()
+                    val apkUrl = (doc.getString("apk_url")
+                        ?: doc.getString("download_url")
+                        ?: doc.getString("apkUrl")
+                        ?: doc.getString("downloadUrl")).orEmpty().trim()
+                    val notes = doc.getString("notes").orEmpty().trim()
+                    val force = doc.getBoolean("force") ?: false
+                    if (version.isNotBlank() && apkUrl.isNotBlank()) {
+                        FirestoreResolver.markWorkingDatabase(label)
+                        RemoteReleaseInfo(version, apkUrl, notes, force)
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    null
+                }
+            }
+            if (info != null) return info
+        }
+        return null
+    }
+
     private fun checkForReleaseUpdate() {
         lifecycleScope.launch {
             val release = withContext(Dispatchers.IO) {
-                try {
-                    val connection = (URL(LATEST_RELEASE_URL).openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 8_000
-                        readTimeout = 8_000
-                        requestMethod = "GET"
-                        setRequestProperty("Accept", "application/vnd.github+json")
-                        setRequestProperty("User-Agent", "Klass-Android")
-                    }
-                    try {
-                        if (connection.responseCode !in 200..299) return@withContext null
-                        val payload = connection.inputStream.bufferedReader().use { it.readText() }
-                        val json = org.json.JSONObject(payload)
-                        val tag = json.optString("tag_name")
-                        val assets = json.optJSONArray("assets") ?: return@withContext null
-                        val apkUrl = (0 until assets.length())
-                            .mapNotNull { assets.optJSONObject(it) }
-                            .firstOrNull { it.optString("name") == "Klass-release.apk" }
-                            ?.optString("browser_download_url")
-                        if (tag.isBlank() || apkUrl.isNullOrBlank()) null else tag to apkUrl
-                    } finally {
-                        connection.disconnect()
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w(UPDATE_TAG, "Could not check the latest release: ${e.message}")
-                    null
+                val customUrl = KlassRuntimeConfig.appUpdateUrl.trim()
+                if (customUrl.isNotBlank()) {
+                    fetchReleaseFromHttp(customUrl)?.let { return@withContext it }
                 }
+                fetchReleaseFromFirestoreConfig()?.let { return@withContext it }
+                fetchReleaseFromHttp(LATEST_RELEASE_URL)
             } ?: return@launch
 
             val installedPackageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -266,16 +347,55 @@ class MainActivity : ComponentActivity() {
                 packageManager.getPackageInfo(packageName, 0)
             }
             val installedVersion = installedPackageInfo.versionName.orEmpty()
-            if (compareVersions(release.first, installedVersion) <= 0) return@launch
+            if (compareVersions(release.version, installedVersion) <= 0) return@launch
 
             val preferences = getSharedPreferences("klass_update", Context.MODE_PRIVATE)
-            if (preferences.getString("last_prompted_tag", null) == release.first) return@launch
-            preferences.edit().putString("last_prompted_tag", release.first).apply()
+            val dismissedTag = preferences.getString("dismissed_tag", null)
+            val dismissedAt = preferences.getLong("dismissed_at", 0L)
+            val withinCooldown = dismissedTag == release.version &&
+                (System.currentTimeMillis() - dismissedAt) < 24L * 60L * 60L * 1000L
+            if (!release.force && withinCooldown) return@launch
+
+            val isBn = loadAppLanguage() == AppLanguage.BENGALI
+            val title = if (isBn) "নতুন আপডেট পাওয়া গেছে" else "Klass update available"
+            val baseMessage = if (isBn) {
+                "নতুন ভার্সন ${release.version} প্রস্তুত। এখনই ডাউনলোড ও ইনস্টল করতে চান?"
+            } else {
+                "Version ${release.version} is ready. Download and install it now?"
+            }
+            val message = if (release.notes.isNotBlank()) {
+                "$baseMessage\n\n${release.notes.take(260)}"
+            } else {
+                baseMessage
+            }
+
             AlertDialog.Builder(this@MainActivity)
-                .setTitle("Klass update available")
-                .setMessage("Version ${release.first} is ready. Download and install it now?")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Update") { _, _ -> beginUpdateInstall(release.second) }
+                .setTitle(title)
+                .setMessage(message)
+                .setCancelable(!release.force)
+                .apply {
+                    if (!release.force) {
+                        setNegativeButton(if (isBn) "পরে" else "Later") { _, _ ->
+                            preferences.edit()
+                                .putString("dismissed_tag", release.version)
+                                .putLong("dismissed_at", System.currentTimeMillis())
+                                .apply()
+                        }
+                        setOnCancelListener {
+                            preferences.edit()
+                                .putString("dismissed_tag", release.version)
+                                .putLong("dismissed_at", System.currentTimeMillis())
+                                .apply()
+                        }
+                    }
+                }
+                .setPositiveButton(if (isBn) "আপডেট করুন" else "Update") { _, _ ->
+                    preferences.edit()
+                        .remove("dismissed_tag")
+                        .remove("dismissed_at")
+                        .apply()
+                    beginUpdateInstall(release.apkUrl)
+                }
                 .show()
         }
     }
@@ -295,15 +415,41 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun downloadAndInstallUpdate(downloadUrl: String) {
+        val isBn = loadAppLanguage() == AppLanguage.BENGALI
+        Toast.makeText(
+            this@MainActivity,
+            if (isBn) "আপডেট ডাউনলোড হচ্ছে…" else "Downloading update…",
+            Toast.LENGTH_SHORT,
+        ).show()
+
         lifecycleScope.launch {
             try {
                 val apk = withContext(Dispatchers.IO) {
-                    val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 15_000
-                        readTimeout = 30_000
-                        requestMethod = "GET"
-                        setRequestProperty("User-Agent", "Klass-Android")
+                    var currentUrl = downloadUrl
+                    var redirects = 0
+                    var activeConnection: HttpURLConnection? = null
+                    while (redirects < 6) {
+                        val conn = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 15_000
+                            readTimeout = 45_000
+                            instanceFollowRedirects = false
+                            requestMethod = "GET"
+                            setRequestProperty("User-Agent", "Klass-Android")
+                        }
+                        val code = conn.responseCode
+                        if (code in listOf(301, 302, 303, 307, 308)) {
+                            val location = conn.getHeaderField("Location").orEmpty()
+                            conn.disconnect()
+                            if (location.isBlank()) error("Empty redirect location")
+                            currentUrl = URL(URL(currentUrl), location).toString()
+                            redirects++
+                            continue
+                        }
+                        activeConnection = conn
+                        break
                     }
+
+                    val connection = activeConnection ?: error("Too many redirects while downloading update")
                     try {
                         if (connection.responseCode !in 200..299) {
                             error("APK download returned HTTP ${connection.responseCode}")
@@ -315,6 +461,9 @@ class MainActivity : ComponentActivity() {
                         val outputFile = File(directory, "Klass-release.apk")
                         connection.inputStream.use { input ->
                             FileOutputStream(outputFile).use { output -> input.copyTo(output) }
+                        }
+                        if (!outputFile.exists() || outputFile.length() == 0L) {
+                            error("Downloaded APK file is empty")
                         }
                         outputFile
                     } finally {
@@ -337,9 +486,14 @@ class MainActivity : ComponentActivity() {
                 Log.e(UPDATE_TAG, "Failed to download or open the update APK", e)
                 getSharedPreferences("klass_update", Context.MODE_PRIVATE)
                     .edit()
-                    .remove("last_prompted_tag")
+                    .remove("dismissed_tag")
+                    .remove("dismissed_at")
                     .apply()
-                Toast.makeText(this@MainActivity, "Update download failed. Please try again later.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    if (isBn) "আপডেট ডাউনলোড ব্যর্থ হয়েছে। পরে আবার চেষ্টা করুন।" else "Update download failed. Please try again later.",
+                    Toast.LENGTH_LONG,
+                ).show()
             }
         }
     }
@@ -419,19 +573,22 @@ fun configureAppCheck(context: Context, intent: Intent?) {
             )
             Log.d(APPCHECK_TAG, "DebugAppCheckProviderFactory installed.")
         } else {
-            val resId = context.resources.getIdentifier(RECAPTCHA_SITE_KEY_RES, "string", context.packageName)
-            if (resId != 0) {
-                val siteKey = context.getString(resId)
-                if (siteKey.isNotBlank()) {
-                    FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
-                        RecaptchaAppCheckProviderFactory.getInstance(siteKey),
-                    )
-                    Log.d(APPCHECK_TAG, "RecaptchaAppCheckProviderFactory installed.")
-                } else {
-                    Log.e(APPCHECK_TAG, "recaptcha_site_key resource string is blank.")
-                }
+            val projectId = runCatching { FirebaseApp.getInstance().options.projectId?.trim().orEmpty() }.getOrDefault("")
+            val secretSiteKey = KlassRuntimeConfig.recaptchaSiteKey.trim()
+            val resourceSiteKey = if (projectId.isEmpty() || projectId == AI_STUDIO_FIREBASE_PROJECT_ID) {
+                val resId = context.resources.getIdentifier(RECAPTCHA_SITE_KEY_RES, "string", context.packageName)
+                if (resId != 0) context.getString(resId).trim() else ""
             } else {
-                Log.e(APPCHECK_TAG, "recaptcha_site_key string resource not found in package.")
+                ""
+            }
+            val siteKey = secretSiteKey.ifBlank { resourceSiteKey }
+            if (siteKey.isNotBlank()) {
+                FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                    RecaptchaAppCheckProviderFactory.getInstance(siteKey),
+                )
+                Log.d(APPCHECK_TAG, "RecaptchaAppCheckProviderFactory installed.")
+            } else {
+                Log.w(APPCHECK_TAG, "No matching RECAPTCHA_SITE_KEY configured for project '$projectId'; skipping Recaptcha provider.")
             }
         }
     } catch (e: Exception) {
