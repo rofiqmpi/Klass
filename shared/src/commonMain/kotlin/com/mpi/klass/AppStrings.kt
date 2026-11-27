@@ -28,7 +28,7 @@ object AppStrings {
     var isSyncingOnline by mutableStateOf(false)
         private set
 
-    fun setCurrentLanguage(language: AppLanguage) {
+    fun updateLanguageState(language: AppLanguage) {
         currentLanguage = language
     }
 

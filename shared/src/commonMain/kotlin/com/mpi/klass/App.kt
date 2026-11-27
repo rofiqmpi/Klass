@@ -136,7 +136,7 @@ fun App(
 ) {
     var themeMode by remember { mutableStateOf(loadThemeMode()) }
     var appLanguage by remember { mutableStateOf(loadAppLanguage()) }
-    SideEffect { AppStrings.setCurrentLanguage(appLanguage) }
+    SideEffect { AppStrings.updateLanguageState(appLanguage) }
     val systemInDark = isSystemInDarkTheme()
     val isDark = when (themeMode) {
         ThemeMode.LIGHT -> false
@@ -544,7 +544,7 @@ fun App(
                                 currentLanguage = appLanguage,
                                 onLanguageChange = { newLanguage ->
                                     appLanguage = newLanguage
-                                    AppStrings.setCurrentLanguage(newLanguage)
+                                    AppStrings.updateLanguageState(newLanguage)
                                     saveAppLanguage(newLanguage)
                                     coroutineScope.launch {
                                         AppStrings.initializeOnlineDictionary()
@@ -615,7 +615,7 @@ fun App(
                                     currentLanguage = appLanguage,
                                     onLanguageChange = { newLanguage ->
                                         appLanguage = newLanguage
-                                        AppStrings.setCurrentLanguage(newLanguage)
+                                        AppStrings.updateLanguageState(newLanguage)
                                         saveAppLanguage(newLanguage)
                                         coroutineScope.launch {
                                             AppStrings.initializeOnlineDictionary()
@@ -643,7 +643,7 @@ fun App(
                                     currentLanguage = appLanguage,
                                     onLanguageChange = { newLanguage ->
                                         appLanguage = newLanguage
-                                        AppStrings.setCurrentLanguage(newLanguage)
+                                        AppStrings.updateLanguageState(newLanguage)
                                         saveAppLanguage(newLanguage)
                                         coroutineScope.launch {
                                             AppStrings.initializeOnlineDictionary()
