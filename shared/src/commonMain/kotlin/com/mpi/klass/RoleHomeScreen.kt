@@ -80,22 +80,21 @@ import com.mpi.klass.theme.EditIcon
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
+import com.mpi.klass.theme.NotificationIcon
 import com.mpi.klass.theme.PersonIcon
 import com.mpi.klass.theme.RightArrowIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.SwapIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.departmentAccent
 import com.mpi.klass.theme.getHindSiliguriFontFamily
-import klass.shared.generated.resources.Res
-import klass.shared.generated.resources.notification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun RoleHomeScreen(
@@ -790,11 +789,11 @@ fun RoleHomeScreen(
                                                 .testTag("profile_back_button"),
                                         ) {
                                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                                Icon(
-                                                    imageVector = BackArrowIcon,
+                                                TelegramAnimatedIcon(
+                                                    icon = BackArrowIcon,
                                                     contentDescription = "Back",
                                                     tint = barIconTint,
-                                                    modifier = Modifier.size(20.dp),
+                                                    size = 20.dp,
                                                 )
                                             }
                                         }
@@ -817,11 +816,11 @@ fun RoleHomeScreen(
                                                     .testTag("profile_edit_button"),
                                             ) {
                                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                                    Icon(
-                                                        imageVector = EditIcon,
+                                                    TelegramAnimatedIcon(
+                                                        icon = EditIcon,
                                                         contentDescription = "এডিট করুন".localized(),
                                                         tint = barIconTint,
-                                                        modifier = Modifier.size(18.dp),
+                                                        size = 18.dp,
                                                     )
                                                 }
                                             }
@@ -838,11 +837,11 @@ fun RoleHomeScreen(
                                                     .testTag("profile_ai_button"),
                                             ) {
                                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                                    Icon(
-                                                        imageVector = SparkleIcon,
+                                                    TelegramAnimatedIcon(
+                                                        icon = SparkleIcon,
                                                         contentDescription = "Zed AI",
                                                         tint = barIconTint,
-                                                        modifier = Modifier.size(18.dp),
+                                                        size = 18.dp,
                                                     )
                                                 }
                                             }
@@ -860,11 +859,11 @@ fun RoleHomeScreen(
                                                         .testTag("top_bar_notification_button"),
                                                 ) {
                                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                                        Icon(
-                                                            painter = painterResource(Res.drawable.notification),
+                                                        TelegramAnimatedIcon(
+                                                            icon = NotificationIcon,
                                                             contentDescription = "Notifications",
                                                             tint = barIconTint,
-                                                            modifier = Modifier.size(18.dp),
+                                                            size = 18.dp,
                                                         )
                                                     }
                                                 }

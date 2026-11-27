@@ -87,6 +87,7 @@ import com.mpi.klass.theme.RingIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.SolidUserIcon
 import com.mpi.klass.theme.SparkleIcon
+import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.UsersRectangleIcon
 import com.mpi.klass.theme.VenusMarsIcon
 
@@ -400,11 +401,11 @@ fun EditProfileContent(
                             .size(48.dp)
                             .testTag("edit_to_view_profile_button"),
                     ) {
-                        Icon(
-                            imageVector = BackArrowIcon,
+                        TelegramAnimatedIcon(
+                            icon = BackArrowIcon,
                             contentDescription = "Back",
                             tint = cs.onSurface,
-                            modifier = Modifier.size(22.dp),
+                            size = 22.dp,
                         )
                     }
 
