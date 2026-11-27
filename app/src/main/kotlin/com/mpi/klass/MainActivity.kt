@@ -103,10 +103,6 @@ class MainActivity : ComponentActivity() {
             )
             InAppUpdateOverlay(
                 state = updateUiState,
-                onLater = { release ->
-                    dismissReleasePromptForCooldown(release)
-                    updateUiState = InAppUpdateUiState.Hidden
-                },
                 onStartDownload = { release ->
                     clearReleasePromptCooldown()
                     beginUpdateInstall(release)
@@ -121,20 +117,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 },
-                onCancelDownload = { release ->
-                    updateDownloadJob?.cancel()
-                    updateDownloadJob = null
-                    if (release.force) {
-                        updateUiState = InAppUpdateUiState.Available(release, currentInstalledVersionName())
-                    } else {
-                        updateUiState = InAppUpdateUiState.Hidden
-                    }
-                },
                 onInstallNow = { release ->
                     launchCachedApkInstaller(release)
-                },
-                onDismiss = {
-                    updateUiState = InAppUpdateUiState.Hidden
                 },
             )
         }
@@ -419,14 +403,6 @@ class MainActivity : ComponentActivity() {
         return info.versionName.orEmpty()
     }
 
-    private fun dismissReleasePromptForCooldown(release: RemoteReleaseInfo) {
-        getSharedPreferences("klass_update", Context.MODE_PRIVATE)
-            .edit()
-            .putString("dismissed_tag", release.version)
-            .putLong("dismissed_at", System.currentTimeMillis())
-            .apply()
-    }
-
     private fun clearReleasePromptCooldown() {
         getSharedPreferences("klass_update", Context.MODE_PRIVATE)
             .edit()
@@ -498,16 +474,7 @@ class MainActivity : ComponentActivity() {
                     return@launch
                 }
 
-                if (manual) {
-                    clearReleasePromptCooldown()
-                } else {
-                    val preferences = getSharedPreferences("klass_update", Context.MODE_PRIVATE)
-                    val dismissedTag = preferences.getString("dismissed_tag", null)
-                    val dismissedAt = preferences.getLong("dismissed_at", 0L)
-                    val withinCooldown = dismissedTag == release.version &&
-                        (System.currentTimeMillis() - dismissedAt) < 24L * 60L * 60L * 1000L
-                    if (!release.force && withinCooldown) return@launch
-                }
+                clearReleasePromptCooldown()
 
                 if (manual || updateUiState is InAppUpdateUiState.Hidden) {
                     updateUiState = InAppUpdateUiState.Available(

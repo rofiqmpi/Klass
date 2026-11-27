@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -54,7 +55,6 @@ import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.UsersGroupIcon
-import com.mpi.klass.theme.getHindSiliguriFontFamily
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -109,7 +109,7 @@ fun GuestHomeScreen(
         }
     }
 
-    val hindSiliguri = getHindSiliguriFontFamily()
+    val hindSiliguri = FontFamily.Default
     val tabBackStack = remember { mutableStateListOf("home") }
     val selectedTab = tabBackStack.lastOrNull() ?: "home"
 

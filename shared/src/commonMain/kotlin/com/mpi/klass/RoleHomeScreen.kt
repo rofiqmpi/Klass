@@ -89,7 +89,6 @@ import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.TrashCanIcon
 import com.mpi.klass.theme.departmentAccent
-import com.mpi.klass.theme.getHindSiliguriFontFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -151,7 +150,7 @@ fun RoleHomeScreen(
     }
 
     val currentLang = LocalAppLanguage.current
-    val hindSiliguri = getHindSiliguriFontFamily()
+    val hindSiliguri = FontFamily.Default
     val tabBackStack = remember { mutableStateListOf(initialTab) }
     val selectedTab = tabBackStack.lastOrNull() ?: "home"
     var lastBackPressTime by remember { mutableStateOf(0L) }

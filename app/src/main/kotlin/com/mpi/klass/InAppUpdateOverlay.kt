@@ -30,11 +30,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,7 +57,6 @@ import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.ThemeMode
 import com.mpi.klass.theme.WarningIcon
-import com.mpi.klass.theme.getHindSiliguriFontFamily
 import com.mpi.klass.theme.loadThemeMode
 
 internal data class RemoteReleaseInfo(
@@ -102,12 +100,9 @@ private fun formatMegabytes(bytes: Long): String {
 @Composable
 internal fun InAppUpdateOverlay(
     state: InAppUpdateUiState,
-    onLater: (RemoteReleaseInfo) -> Unit,
     onStartDownload: (RemoteReleaseInfo) -> Unit,
     onOpenInstallSettings: () -> Unit,
-    onCancelDownload: (RemoteReleaseInfo) -> Unit,
     onInstallNow: (RemoteReleaseInfo) -> Unit,
-    onDismiss: () -> Unit,
 ) {
     val visible = state !is InAppUpdateUiState.Hidden
     val themeMode = remember(visible) { loadThemeMode() }
@@ -120,30 +115,13 @@ internal fun InAppUpdateOverlay(
 
     AppTheme(themeMode = themeMode) {
         val cs = MaterialTheme.colorScheme
-        val font = getHindSiliguriFontFamily()
+        val font = FontFamily.Default
         val profileAccent = KlassFeaturePalette.profile(isDark)
         val routineAccent = KlassFeaturePalette.routine(isDark)
         val successAccent = KlassFeaturePalette.success(isDark)
         val errorAccent = KlassFeaturePalette.error(isDark)
 
-        val currentForce = when (state) {
-            is InAppUpdateUiState.Available -> state.release.force
-            is InAppUpdateUiState.PermissionRequired -> state.release.force
-            is InAppUpdateUiState.Downloading -> state.release.force
-            is InAppUpdateUiState.ReadyToInstall -> state.release.force
-            is InAppUpdateUiState.Error -> state.release.force
-            InAppUpdateUiState.Hidden -> false
-        }
-
         BackHandler(enabled = visible) {
-            when (state) {
-                is InAppUpdateUiState.Available -> if (!state.release.force) onLater(state.release)
-                is InAppUpdateUiState.Downloading -> if (!state.release.force) onCancelDownload(state.release)
-                is InAppUpdateUiState.PermissionRequired,
-                is InAppUpdateUiState.ReadyToInstall,
-                is InAppUpdateUiState.Error -> if (!currentForce) onDismiss()
-                InAppUpdateUiState.Hidden -> Unit
-            }
         }
 
         AnimatedVisibility(
@@ -167,15 +145,12 @@ internal fun InAppUpdateOverlay(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) {
-                        if (state is InAppUpdateUiState.Available && !state.release.force) {
-                            onLater(state.release)
-                        }
                     }
                     .padding(horizontal = 20.dp, vertical = 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Surface(
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(24.dp),
                     color = cardSurface,
                     border = BorderStroke(1.dp, cardBorder),
                     shadowElevation = 18.dp,
@@ -192,7 +167,7 @@ internal fun InAppUpdateOverlay(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 22.dp, vertical = 24.dp),
+                            .padding(horizontal = 18.dp, vertical = 18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         val headerIcon = when (state) {
@@ -211,19 +186,19 @@ internal fun InAppUpdateOverlay(
                             shape = CircleShape,
                             color = headerAccent.copy(alpha = if (isDark) 0.22f else 0.12f),
                             border = BorderStroke(1.dp, headerAccent.copy(alpha = 0.35f)),
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier.size(48.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = headerIcon,
                                     contentDescription = null,
                                     tint = headerAccent,
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(22.dp),
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         when (state) {
                             is InAppUpdateUiState.Available -> {
@@ -231,11 +206,11 @@ internal fun InAppUpdateOverlay(
                                     text = if (isBn) "নতুন আপডেট পাওয়া গেছে" else "App Update Available",
                                     color = cs.onSurface,
                                     fontFamily = font,
-                                    fontSize = 20.sp,
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Surface(
                                     shape = CircleShape,
                                     color = profileAccent.softTint,
@@ -250,7 +225,7 @@ internal fun InAppUpdateOverlay(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(
                                     text = if (isBn) {
                                         "ব্রাউজারে না গিয়ে অ্যাপের ভেতরেই সরাসরি ডাউনলোড ও আপডেট সম্পন্ন হবে।"
@@ -259,8 +234,8 @@ internal fun InAppUpdateOverlay(
                                     },
                                     color = cs.onSurfaceVariant,
                                     fontFamily = font,
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp,
                                     textAlign = TextAlign.Center,
                                 )
                                 if (state.release.notes.isNotBlank()) {
@@ -271,55 +246,31 @@ internal fun InAppUpdateOverlay(
                                         border = BorderStroke(0.75.dp, cs.outlineVariant.copy(alpha = 0.55f)),
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(92.dp),
+                                            .height(76.dp),
                                     ) {
                                         Text(
                                             text = state.release.notes.take(400),
                                             color = cs.onSurface,
                                             fontFamily = font,
-                                            fontSize = 13.sp,
-                                            lineHeight = 19.sp,
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp,
                                             modifier = Modifier
                                                 .verticalScroll(rememberScrollState())
                                                 .padding(12.dp),
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    if (!state.release.force) {
-                                        OutlinedButton(
-                                            onClick = { onLater(state.release) },
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = BorderStroke(1.dp, cs.outlineVariant),
-                                            modifier = Modifier
-                                                .weight(0.9f)
-                                                .height(48.dp)
-                                                .testTag("in_app_update_later_button"),
-                                        ) {
-                                            Text(
-                                                text = if (isBn) "পরে" else "Later",
-                                                color = cs.onSurfaceVariant,
-                                                fontFamily = font,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 14.5.sp,
-                                            )
-                                        }
-                                    }
-                                    GradientActionButton(
-                                        label = if (isBn) "আপডেট করুন" else "Update Now",
-                                        icon = DownloadIcon,
-                                        colors = listOf(profileAccent.primary, routineAccent.primary),
-                                        modifier = Modifier
-                                            .weight(1.25f)
-                                            .height(48.dp)
-                                            .testTag("in_app_update_confirm_button"),
-                                        onClick = { onStartDownload(state.release) },
-                                    )
-                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                GradientActionButton(
+                                    label = if (isBn) "আপডেট করুন" else "Update now",
+                                    icon = DownloadIcon,
+                                    colors = listOf(profileAccent.primary, routineAccent.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp)
+                                        .testTag("in_app_update_confirm_button"),
+                                    onClick = { onStartDownload(state.release) },
+                                )
                             }
 
                             is InAppUpdateUiState.PermissionRequired -> {
@@ -344,39 +295,17 @@ internal fun InAppUpdateOverlay(
                                     lineHeight = 20.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    if (!state.release.force) {
-                                        OutlinedButton(
-                                            onClick = onDismiss,
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = BorderStroke(1.dp, cs.outlineVariant),
-                                            modifier = Modifier
-                                                .weight(0.85f)
-                                                .height(48.dp),
-                                        ) {
-                                            Text(
-                                                text = if (isBn) "বাতিল" else "Cancel",
-                                                color = cs.onSurfaceVariant,
-                                                fontFamily = font,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                        }
-                                    }
-                                    GradientActionButton(
-                                        label = if (isBn) "অনুমতি দিন" else "Allow & Update",
-                                        icon = ShieldIcon,
-                                        colors = listOf(profileAccent.primary, routineAccent.primary),
-                                        modifier = Modifier
-                                            .weight(1.25f)
-                                            .height(48.dp)
-                                            .testTag("in_app_update_permission_button"),
-                                        onClick = onOpenInstallSettings,
-                                    )
-                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                GradientActionButton(
+                                    label = if (isBn) "অনুমতি দিন" else "Allow & update",
+                                    icon = ShieldIcon,
+                                    colors = listOf(profileAccent.primary, routineAccent.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp)
+                                        .testTag("in_app_update_permission_button"),
+                                    onClick = onOpenInstallSettings,
+                                )
                             }
 
                             is InAppUpdateUiState.Downloading -> {
@@ -454,26 +383,6 @@ internal fun InAppUpdateOverlay(
                                         fontWeight = FontWeight.Bold,
                                     )
                                 }
-                                if (!state.release.force) {
-                                    Spacer(modifier = Modifier.height(18.dp))
-                                    OutlinedButton(
-                                        onClick = { onCancelDownload(state.release) },
-                                        shape = RoundedCornerShape(16.dp),
-                                        border = BorderStroke(1.dp, cs.outlineVariant),
-                                        colors = ButtonDefaults.outlinedButtonColors(),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(46.dp)
-                                            .testTag("in_app_update_cancel_button"),
-                                    ) {
-                                        Text(
-                                            text = if (isBn) "বাতিল করুন" else "Cancel",
-                                            color = cs.onSurfaceVariant,
-                                            fontFamily = font,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                    }
-                                }
                             }
 
                             is InAppUpdateUiState.ReadyToInstall -> {
@@ -498,39 +407,17 @@ internal fun InAppUpdateOverlay(
                                     lineHeight = 20.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    if (!state.release.force) {
-                                        OutlinedButton(
-                                            onClick = onDismiss,
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = BorderStroke(1.dp, cs.outlineVariant),
-                                            modifier = Modifier
-                                                .weight(0.85f)
-                                                .height(48.dp),
-                                        ) {
-                                            Text(
-                                                text = if (isBn) "বন্ধ করুন" else "Close",
-                                                color = cs.onSurfaceVariant,
-                                                fontFamily = font,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                        }
-                                    }
-                                    GradientActionButton(
-                                        label = if (isBn) "ইনস্টল করুন" else "Install Now",
-                                        icon = CheckIcon,
-                                        colors = listOf(successAccent.primary, routineAccent.primary),
-                                        modifier = Modifier
-                                            .weight(1.25f)
-                                            .height(48.dp)
-                                            .testTag("in_app_update_install_button"),
-                                        onClick = { onInstallNow(state.release) },
-                                    )
-                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                GradientActionButton(
+                                    label = if (isBn) "ইনস্টল করুন" else "Install now",
+                                    icon = CheckIcon,
+                                    colors = listOf(successAccent.primary, routineAccent.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp)
+                                        .testTag("in_app_update_install_button"),
+                                    onClick = { onInstallNow(state.release) },
+                                )
                             }
 
                             is InAppUpdateUiState.Error -> {
@@ -551,39 +438,17 @@ internal fun InAppUpdateOverlay(
                                     lineHeight = 19.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    if (!state.release.force) {
-                                        OutlinedButton(
-                                            onClick = onDismiss,
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = BorderStroke(1.dp, cs.outlineVariant),
-                                            modifier = Modifier
-                                                .weight(0.85f)
-                                                .height(48.dp),
-                                        ) {
-                                            Text(
-                                                text = if (isBn) "বন্ধ করুন" else "Close",
-                                                color = cs.onSurfaceVariant,
-                                                fontFamily = font,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                        }
-                                    }
-                                    GradientActionButton(
-                                        label = if (isBn) "আবার চেষ্টা" else "Retry",
-                                        icon = RefreshIcon,
-                                        colors = listOf(profileAccent.primary, routineAccent.primary),
-                                        modifier = Modifier
-                                            .weight(1.25f)
-                                            .height(48.dp)
-                                            .testTag("in_app_update_retry_button"),
-                                        onClick = { onStartDownload(state.release) },
-                                    )
-                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                GradientActionButton(
+                                    label = if (isBn) "আবার চেষ্টা করুন" else "Try again",
+                                    icon = RefreshIcon,
+                                    colors = listOf(profileAccent.primary, routineAccent.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp)
+                                        .testTag("in_app_update_retry_button"),
+                                    onClick = { onStartDownload(state.release) },
+                                )
                             }
 
                             InAppUpdateUiState.Hidden -> Unit

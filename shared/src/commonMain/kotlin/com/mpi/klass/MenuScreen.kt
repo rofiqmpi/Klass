@@ -336,7 +336,7 @@ fun MenuScreen(
                     SocialMenuRow(
                         tile = MenuTileSpec(
                             id = "appearance",
-                            title = "Appearance".localized(),
+                            title = "থিম ও প্রদর্শন".localized(),
                             subtitle = "Theme mode & color preview".localized(),
                             icon = PaletteIcon,
                             accent = KlassFeaturePalette.appearance(isDark),
@@ -445,19 +445,25 @@ fun AppearanceSubScreen(
     onBack: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val currentLang = LocalAppLanguage.current
     val appearanceAccent = KlassFeaturePalette.appearance(isDark)
 
-    val options = remember(isDark) {
+    val options = remember(isDark, currentLang) {
         listOf(
-            Triple(ThemeMode.LIGHT, "Light Mode" to "Bright rainbow pastel canvas", LightModeIcon to KlassFeaturePalette.books(isDark)),
-            Triple(ThemeMode.DARK, "Dark Mode" to "Deep aurora slate contrast", DarkModeIcon to KlassFeaturePalette.profile(isDark)),
-            Triple(ThemeMode.DEFAULT, "System Default" to "Match device brightness setting", AutoModeIcon to KlassFeaturePalette.teaching(isDark)),
+            Triple(ThemeMode.LIGHT, "লাইট মোড".localized(currentLang) to "পরিষ্কার ও উজ্জ্বল রঙের থিম".localized(currentLang), LightModeIcon to KlassFeaturePalette.books(isDark)),
+            Triple(ThemeMode.DARK, "ডার্ক মোড".localized(currentLang) to "কম আলোতে আরামদায়ক গাঢ় থিম".localized(currentLang), DarkModeIcon to KlassFeaturePalette.profile(isDark)),
+            Triple(ThemeMode.DEFAULT, "সিস্টেম ডিফল্ট".localized(currentLang) to "ডিভাইসের থিম সেটিং অনুসরণ করুন".localized(currentLang), AutoModeIcon to KlassFeaturePalette.teaching(isDark)),
         )
     }
+    val activeThemeName = currentThemeMode.getDisplayName()
 
     MinimalFullScreenSheet(
-        title = "Appearance".localized(),
-        subtitle = "Active: ${currentThemeMode.name.lowercase().replaceFirstChar { it.uppercase() }}",
+        title = "থিম ও প্রদর্শন".localized(currentLang),
+        subtitle = if (currentLang == AppLanguage.BENGALI) {
+            "বর্তমান: $activeThemeName"
+        } else {
+            "Active: ${activeThemeName.localized(currentLang)}"
+        },
         levelLabel = "Menu › Preferences",
         icon = PaletteIcon,
         accent = appearanceAccent.primary,
@@ -473,7 +479,7 @@ fun AppearanceSubScreen(
         ) {
             Spacer(modifier = Modifier.height(10.dp))
             GoogleSectionHeader(
-                title = "Select Theme Mode".localized(),
+                title = "থিম নির্বাচন করুন".localized(currentLang),
                 accent = appearanceAccent.primary,
                 hindSiliguri = hindSiliguri,
             )
@@ -555,24 +561,28 @@ fun LanguageSubScreen(
     val cs = MaterialTheme.colorScheme
     val langAccent = KlassFeaturePalette.teaching(isDark)
 
-    val options = remember(isDark) {
+    val options = remember(isDark, currentLanguage) {
         listOf(
             Triple(
                 AppLanguage.BENGALI,
-                "বাংলা (Bengali)" to "সহজ বাংলায় পুরো অ্যাপ ব্যবহার করুন",
+                "বাংলা" to "অ্যাপের সব লেখা বাংলায় দেখুন".localized(currentLanguage),
                 KlassFeaturePalette.books(isDark),
             ),
             Triple(
                 AppLanguage.ENGLISH,
-                "English (EN)" to "Use the app interface in English",
+                "English" to "View the entire app in English".localized(currentLanguage),
                 KlassFeaturePalette.routine(isDark),
             ),
         )
     }
 
     MinimalFullScreenSheet(
-        title = "Language".localized(),
-        subtitle = "Active: ${currentLanguage.displayName}",
+        title = "ভাষা".localized(currentLanguage),
+        subtitle = if (currentLanguage == AppLanguage.BENGALI) {
+            "বর্তমান: বাংলা"
+        } else {
+            "Active: English"
+        },
         levelLabel = "Menu › Preferences",
         icon = LanguageGlobeIcon,
         accent = langAccent.primary,
@@ -588,7 +598,7 @@ fun LanguageSubScreen(
         ) {
             Spacer(modifier = Modifier.height(10.dp))
             GoogleSectionHeader(
-                title = "Select App Language".localized(),
+                title = "অ্যাপের ভাষা নির্বাচন করুন".localized(currentLanguage),
                 accent = langAccent.primary,
                 hindSiliguri = hindSiliguri,
             )
@@ -1040,7 +1050,6 @@ fun AppUpdateManagerSubScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var enabled by remember { mutableStateOf(true) }
-    var forceUpdate by remember { mutableStateOf(false) }
     var latestVersion by remember { mutableStateOf("") }
     var apkUrl by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -1049,7 +1058,6 @@ fun AppUpdateManagerSubScreen(
         try {
             val loaded = RoleConfig.fetchAppUpdateConfig()
             enabled = loaded.enabled
-            forceUpdate = loaded.force
             latestVersion = loaded.latestVersion
             apkUrl = loaded.apkUrl
             notes = loaded.notes
@@ -1078,7 +1086,7 @@ fun AppUpdateManagerSubScreen(
                         latestVersion = cleanVersion,
                         apkUrl = normalizedUrl,
                         notes = notes.trim(),
-                        force = forceUpdate,
+                        force = true,
                     ),
                 )
                 if (res.isSuccess) {
@@ -1153,15 +1161,15 @@ fun AppUpdateManagerSubScreen(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     SignInToggleRow(
-                        title = "Force Mandatory Update".localized(),
-                        subtitle = "Hide 'Later' button until user updates".localized(),
+                        title = "বাধ্যতামূলক আপডেট".localized(),
+                        subtitle = "ব্যবহার চালিয়ে যেতে আপডেট ইনস্টল করতে হবে। এড়িয়ে যাওয়ার সুযোগ নেই।".localized(),
                         icon = ShieldIcon,
                         accent = KlassFeaturePalette.admin(isDark).primary,
                         isDark = isDark,
-                        checked = forceUpdate,
-                        enabled = !isSaving,
+                        checked = true,
+                        enabled = false,
                         hindSiliguri = hindSiliguri,
-                        onToggle = { forceUpdate = it },
+                        onToggle = {},
                     )
                 }
 

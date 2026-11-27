@@ -3,6 +3,7 @@ package com.mpi.klass
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.mpi.klass.theme.ThemeMode
 
 class SharedCommonTest {
 
@@ -98,6 +99,16 @@ class SharedCommonTest {
         assertEquals("সব", AppStrings.translate("All", AppLanguage.BENGALI))
         assertEquals("সম্পর্কে", AppStrings.translate("About", AppLanguage.BENGALI))
         assertEquals("প্রোফাইল এডিট", AppStrings.translate("প্রোফাইল এডিট", AppLanguage.BENGALI))
+    }
+
+    @Test
+    fun themeLabelsUseProfessionalBilingualNames() {
+        assertEquals("লাইট মোড", ThemeMode.LIGHT.getDisplayName())
+        assertEquals("ডার্ক মোড", ThemeMode.DARK.getDisplayName())
+        assertEquals("সিস্টেম ডিফল্ট", ThemeMode.DEFAULT.getDisplayName())
+        assertEquals("Light mode", AppStrings.translate(ThemeMode.LIGHT.getDisplayName(), AppLanguage.ENGLISH))
+        assertEquals("Dark mode", AppStrings.translate(ThemeMode.DARK.getDisplayName(), AppLanguage.ENGLISH))
+        assertEquals("System default", AppStrings.translate(ThemeMode.DEFAULT.getDisplayName(), AppLanguage.ENGLISH))
     }
 
     @Test

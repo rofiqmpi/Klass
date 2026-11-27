@@ -15,9 +15,9 @@ enum class ThemeMode {
     DEFAULT;
 
     fun getDisplayName(): String = when (this) {
-        LIGHT -> "লাইট"
-        DARK -> "ডার্ক"
-        DEFAULT -> "ডিফল্ট"
+        LIGHT -> "লাইট মোড"
+        DARK -> "ডার্ক মোড"
+        DEFAULT -> "সিস্টেম ডিফল্ট"
     }
 }
 

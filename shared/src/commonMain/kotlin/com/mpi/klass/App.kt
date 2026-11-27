@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,7 +77,6 @@ import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.ThemeMode
-import com.mpi.klass.theme.getHindSiliguriFontFamily
 import com.mpi.klass.theme.loadThemeMode
 import com.mpi.klass.theme.saveThemeMode
 import kotlin.math.PI
@@ -173,7 +173,7 @@ fun App(
     var isLoadingOverlay by remember { mutableStateOf(value = false) }
 
     val coroutineScope = rememberCoroutineScope()
-    val hindSiliguri = getHindSiliguriFontFamily()
+    val hindSiliguri = FontFamily.Default
 
     var pendingWelcomePush by remember { mutableStateOf<Pair<String, String>?>(null) }
     val requestNotificationPermission = rememberNotificationPermissionLauncher { granted ->
@@ -925,7 +925,7 @@ fun ErrorImagePopup(
 
     val textColorPrimary = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val textColorSecondary = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569)
-    val fontBengali = getHindSiliguriFontFamily()
+    val fontBengali = FontFamily.Default
 
     AppBackHandler(enabled = true) { onDismiss() }
 

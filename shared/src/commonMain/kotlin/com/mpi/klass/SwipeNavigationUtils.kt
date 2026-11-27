@@ -89,7 +89,6 @@ import com.mpi.klass.theme.RefreshIcon
 import com.mpi.klass.theme.SparkleIcon
 import com.mpi.klass.theme.TelegramAnimatedIcon
 import com.mpi.klass.theme.departmentAccent
-import com.mpi.klass.theme.getHindSiliguriFontFamily
 import klass.shared.generated.resources.Res
 import klass.shared.generated.resources.home
 import klass.shared.generated.resources.menu
@@ -141,7 +140,7 @@ fun HomeRoutineHeader(
     defaultFilter: RoutineQuickFilter = RoutineQuickFilter(),
     onTempFilterChange: (RoutineQuickFilter?) -> Unit = {},
 ) {
-    val hindSiliguri = getHindSiliguriFontFamily()
+    val hindSiliguri = FontFamily.Default
     val cs = MaterialTheme.colorScheme
     val profileAccent = KlassFeaturePalette.profile(isDark)
     val routineAccent = KlassFeaturePalette.routine(isDark)
