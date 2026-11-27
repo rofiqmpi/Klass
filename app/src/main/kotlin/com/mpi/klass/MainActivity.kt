@@ -138,9 +138,7 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
-        if (!BuildConfig.DEBUG || BuildConfig.VERSION_NAME != "1.0") {
-            checkForReleaseUpdate(manual = false)
-        }
+        checkForReleaseUpdate(manual = false)
     }
 
     override fun onStart() {
@@ -476,9 +474,9 @@ class MainActivity : ComponentActivity() {
                     if (manual) {
                         showToast(
                             if (isBn) {
-                                "পাবলিক আপডেট ফিড পাওয়া যায়নি। Admin Panel > App Updates থেকে পাবলিক লিংক দিন।"
+                                "কোন রিলিজ বা আপডেট ফিড পাওয়া যায়নি। গিটহাবে প্রথম রিলিজ পুশ করুন অথবা অ্যাডমিন প্যানেল থেকে লিংক দিন।"
                             } else {
-                                "No public update feed reachable. Configure a public release URL in Admin > App Updates."
+                                "No release or update feed found. Push your first release to GitHub or configure update feed in Admin Panel."
                             },
                         )
                     }
