@@ -77,7 +77,7 @@ fun DynamicAvatar(
     ) {
         AsyncImage(
             model = imageRequest,
-            contentDescription = "DiceBear Avatar",
+            contentDescription = "DiceBear Avatar".localized(),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )

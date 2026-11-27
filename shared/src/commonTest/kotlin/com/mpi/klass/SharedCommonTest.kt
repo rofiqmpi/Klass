@@ -94,6 +94,13 @@ class SharedCommonTest {
     }
 
     @Test
+    fun localizedEnglishLabelsTranslateToBengali() {
+        assertEquals("সব", AppStrings.translate("All", AppLanguage.BENGALI))
+        assertEquals("সম্পর্কে", AppStrings.translate("About", AppLanguage.BENGALI))
+        assertEquals("প্রোফাইল এডিট", AppStrings.translate("প্রোফাইল এডিট", AppLanguage.BENGALI))
+    }
+
+    @Test
     fun customKeyboardIncludesRareSymbolsEmojisAndDeletesWholeEmojiTokens() {
         val allSpecial = KlassKeyboardLayouts.specialRow1 +
             KlassKeyboardLayouts.specialRow2 +

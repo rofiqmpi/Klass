@@ -468,7 +468,7 @@ internal fun HeaderAiNotificationActions(
                 ) {
                     TelegramAnimatedIcon(
                         icon = SparkleIcon,
-                        contentDescription = "Zed AI",
+                        contentDescription = "Zed AI".localized(),
                         tint = aiAccent.primary,
                         size = 19.dp,
                         interactionSource = aiInteraction,
@@ -516,7 +516,7 @@ internal fun HeaderAiNotificationActions(
                     ) {
                         TelegramAnimatedIcon(
                             icon = NotificationIcon,
-                            contentDescription = "Notifications",
+                            contentDescription = "Notifications".localized(),
                             tint = notiAccent.primary,
                             size = 19.dp,
                             interactionSource = notiInteraction,
@@ -1234,7 +1234,7 @@ internal fun MinimalSearchBar(
                 ) {
                     TelegramAnimatedIcon(
                         icon = CloseIcon,
-                        contentDescription = "Clear search",
+                        contentDescription = "Clear search".localized(),
                         tint = cs.onSurfaceVariant,
                         size = 16.dp,
                     )
@@ -1466,7 +1466,7 @@ internal fun MinimalFullScreenSheet(
                     ) {
                         TelegramAnimatedIcon(
                             icon = navigationIcon,
-                            contentDescription = "Back",
+                            contentDescription = "Back".localized(),
                             tint = cs.onSurface,
                             size = 22.dp,
                         )

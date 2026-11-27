@@ -324,7 +324,7 @@ fun GuestHomeScreen(
                                         isDownloading = isDownloadingRoutine,
                                         onDownloadClick = {
                                             if (displayedEntries.isEmpty()) {
-                                                showToast("No classes to download")
+                                                showToast("No classes to download".localized())
                                             } else if (!isDownloadingRoutine) {
                                                 isDownloadingRoutine = true
                                                 val label = headerBadgeText.ifBlank { "Class_Routine" }
@@ -359,7 +359,7 @@ fun GuestHomeScreen(
                                     .rainbowScreenBackground(isDark),
                             ) {
                                 GoogleTopAppBar(
-                                    title = "Menu",
+                                    title = "Menu".localized(),
                                     hindSiliguri = hindSiliguri,
                                     navigationIcon = null,
                                     actions = {
@@ -436,7 +436,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isProfileSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Profile",
+                                    title = "Profile".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -485,7 +485,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isNotificationsSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Notifications",
+                                    title = "Notifications".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -521,7 +521,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Books library",
+                                    title = "Books library".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -555,7 +555,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Classrooms",
+                                    title = "Classrooms".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -586,7 +586,7 @@ fun GuestHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Blood finder",
+                                    title = "Blood finder".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -657,7 +657,7 @@ fun GuestHomeScreen(
                                         ZedActionType.OPEN_CLASSROOMS -> navigateTo("classrooms")
                                         ZedActionType.OPEN_ROUTINE -> navigateTo("home")
                                         ZedActionType.OPEN_NOTIFICATIONS -> navigateTo("notification")
-                                        ZedActionType.OPEN_TEACHERS -> showToast("Sign in to browse the Teachers directory.")
+                                        ZedActionType.OPEN_TEACHERS -> showToast("Sign in to browse the Teachers directory.".localized())
                                         ZedActionType.COPY_TEXT, ZedActionType.ASK_FOLLOWUP -> Unit
                                     }
                                 },

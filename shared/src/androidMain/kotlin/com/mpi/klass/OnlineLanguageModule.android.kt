@@ -114,7 +114,10 @@ actual suspend fun fetchOnlineDictionaryFromCloud(): Map<String, String> = withC
     }
 }
 
-actual suspend fun fetchOnlineTranslations(texts: List<String>): Map<String, String> = withContext(Dispatchers.IO) {
+actual suspend fun fetchOnlineTranslations(
+    texts: List<String>,
+    sourceLanguage: AppLanguage,
+): Map<String, String> = withContext(Dispatchers.IO) {
     val distinct = texts.map { it.trim() }.filter { it.isNotBlank() }.distinct()
     if (distinct.isEmpty()) return@withContext emptyMap()
 
@@ -150,7 +153,7 @@ actual suspend fun fetchOnlineTranslations(texts: List<String>): Map<String, Str
             async {
                 batchSemaphore.withPermit {
                     val joined = batch.joinToString("\n")
-                    val translated = translateViaHttpApi(joined)
+                    val translated = translateViaHttpApi(joined, sourceLanguage)
                     if (!translated.isNullOrBlank()) {
                         val lines = translated.split("\n")
                         if (lines.size == batch.size) {
@@ -182,7 +185,7 @@ actual suspend fun fetchOnlineTranslations(texts: List<String>): Map<String, Str
             fallbackSingles.distinct().map { item ->
                 async {
                     singleSemaphore.withPermit {
-                        val translated = translateViaHttpApi(item)?.trim()
+                        val translated = translateViaHttpApi(item, sourceLanguage)?.trim()
                         if (!translated.isNullOrBlank()) {
                             synchronized(result) {
                                 result[item] = translated
@@ -197,11 +200,13 @@ actual suspend fun fetchOnlineTranslations(texts: List<String>): Map<String, Str
     result
 }
 
-private fun translateViaHttpApi(text: String): String? {
+private fun translateViaHttpApi(text: String, sourceLanguage: AppLanguage): String? {
     var conn: HttpURLConnection? = null
     return try {
         val encoded = URLEncoder.encode(text, "UTF-8")
-        val urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=bn&tl=en&dt=t&q=$encoded"
+        val sourceTag = if (sourceLanguage == AppLanguage.BENGALI) "bn" else "en"
+        val targetTag = if (sourceLanguage == AppLanguage.BENGALI) "en" else "bn"
+        val urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=$sourceTag&tl=$targetTag&dt=t&q=$encoded"
         val url = URL(urlStr)
         conn = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"

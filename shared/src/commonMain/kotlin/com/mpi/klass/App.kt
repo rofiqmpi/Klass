@@ -543,10 +543,8 @@ fun App(
                                 onLanguageChange = { newLanguage ->
                                     appLanguage = newLanguage
                                     saveAppLanguage(newLanguage)
-                                    if (newLanguage == AppLanguage.ENGLISH) {
-                                        coroutineScope.launch {
-                                            AppStrings.initializeOnlineDictionary()
-                                        }
+                                    coroutineScope.launch {
+                                        AppStrings.initializeOnlineDictionary()
                                     }
                                 },
                                 onGuestClick = { launchGuestMode() },
@@ -615,10 +613,8 @@ fun App(
                                     onLanguageChange = { newLanguage ->
                                         appLanguage = newLanguage
                                         saveAppLanguage(newLanguage)
-                                        if (newLanguage == AppLanguage.ENGLISH) {
-                                            coroutineScope.launch {
-                                                AppStrings.initializeOnlineDictionary()
-                                            }
+                                        coroutineScope.launch {
+                                            AppStrings.initializeOnlineDictionary()
                                         }
                                     },
                                     onSwitchToLogin = { signOutAndReturnToWelcome() },
@@ -644,10 +640,8 @@ fun App(
                                     onLanguageChange = { newLanguage ->
                                         appLanguage = newLanguage
                                         saveAppLanguage(newLanguage)
-                                        if (newLanguage == AppLanguage.ENGLISH) {
-                                            coroutineScope.launch {
-                                                AppStrings.initializeOnlineDictionary()
-                                            }
+                                        coroutineScope.launch {
+                                            AppStrings.initializeOnlineDictionary()
                                         }
                                     },
                                     onSignOut = { signOutAndReturnToWelcome() },
@@ -995,7 +989,7 @@ fun ErrorImagePopup(
                     ) {
                         Icon(
                             imageVector = CloseIcon,
-                            contentDescription = "Close",
+                            contentDescription = "Close".localized(),
                             tint = textColorSecondary,
                             modifier = Modifier.size(20.dp),
                         )
@@ -1004,7 +998,7 @@ fun ErrorImagePopup(
 
                 Image(
                     painter = painterResource(drawableRes),
-                    contentDescription = "Error Illustration",
+                    contentDescription = "Error Illustration".localized(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(126.dp)
@@ -1056,7 +1050,7 @@ fun ErrorImagePopup(
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 Text(
-                                    text = "• ",
+                                    text = "• ".localized(),
                                     fontFamily = fontBengali,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,

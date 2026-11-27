@@ -467,7 +467,7 @@ object ZedAiEngine {
             blocks = listOf(
                 ZedA2UiBlock.HeaderBanner(
                     title = if (isBn) "সাপোর্টেড বিষয়" else "Supported Campus Modules",
-                    subtitle = "Books • Blood • Teachers • Classrooms • Routine",
+                    subtitle = "Books • Blood • Teachers • Classrooms • Routine".localized(),
                     domain = "GENERAL",
                 ),
                 ZedA2UiBlock.CalloutCard(message = rejectMsg, isWarning = false),
@@ -527,7 +527,7 @@ object ZedAiEngine {
                 sourceBadge = "Zed AI",
                 blocks = listOf(
                     ZedA2UiBlock.HeaderBanner(
-                        title = "Zed AI Assistant",
+                        title = "Zed AI Assistant".localized(),
                         subtitle = if (isBn) "স্মার্ট ও নিরাপদ ক্যাম্পাস অ্যাসিস্ট্যান্ট" else "Privacy-Safe Campus Intelligence",
                         domain = "GENERAL",
                     ),
@@ -620,7 +620,7 @@ object ZedAiEngine {
 
         val blocks = mutableListOf<ZedA2UiBlock>(
             ZedA2UiBlock.HeaderBanner(
-                title = "Books Library",
+                title = "Books Library".localized(),
                 subtitle = scopeTag ?: "BTEB Curriculum Catalog",
                 domain = "BOOKS",
             ),
@@ -653,7 +653,7 @@ object ZedAiEngine {
                             secondary = "${b.credit} Cr • ${b.theoryClassesPerWeek}T/${b.practicalClassesPerWeek}P • $deptInfo",
                             badge = b.subjectCode,
                             action = ZedA2UiAction(
-                                label = "Copy Code",
+                                label = "Copy Code".localized(),
                                 actionType = ZedActionType.COPY_TEXT,
                                 query = b.subjectCode,
                             ),
@@ -720,7 +720,7 @@ object ZedAiEngine {
 
         val blocks = mutableListOf<ZedA2UiBlock>(
             ZedA2UiBlock.HeaderBanner(
-                title = "Blood Finder",
+                title = "Blood Finder".localized(),
                 subtitle = groupTitle + (requestedDept?.let { " • $it" } ?: ""),
                 domain = "BLOOD",
             ),
@@ -820,7 +820,7 @@ object ZedAiEngine {
 
         val blocks = mutableListOf<ZedA2UiBlock>(
             ZedA2UiBlock.HeaderBanner(
-                title = "Teachers",
+                title = "Teachers".localized(),
                 subtitle = requestedDept ?: "All Departments",
                 domain = "TEACHERS",
             ),
@@ -1050,7 +1050,7 @@ object ZedAiEngine {
                 sourceBadge = "Routine",
                 blocks = listOf(
                     ZedA2UiBlock.HeaderBanner(
-                        title = "Class Routine",
+                        title = "Class Routine".localized(),
                         subtitle = if (isBn) "MPI শিফট ও ক্লাস সময়সূচি" else "MPI Standard Shift Timings",
                         domain = "ROUTINE",
                     ),
@@ -1108,7 +1108,7 @@ object ZedAiEngine {
 
         val blocks = mutableListOf<ZedA2UiBlock>(
             ZedA2UiBlock.HeaderBanner(
-                title = "Class Routine",
+                title = "Class Routine".localized(),
                 subtitle = scopeLabel,
                 domain = "ROUTINE",
             ),

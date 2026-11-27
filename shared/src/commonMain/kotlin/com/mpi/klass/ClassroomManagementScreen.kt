@@ -188,7 +188,7 @@ fun ClassroomManagementScreen(
 
                         KlassHeaderIconButton(
                             icon = RefreshIcon,
-                            contentDescription = "Refresh classrooms",
+                            contentDescription = "Refresh classrooms".localized(),
                             isDark = isDark,
                             containerColor = classroomAccent.softTint,
                             iconTint = classroomAccent.primary,
@@ -202,7 +202,7 @@ fun ClassroomManagementScreen(
                         if (canEdit && rooms.isNotEmpty()) {
                             KlassHeaderIconButton(
                                 icon = TrashCanIcon,
-                                contentDescription = "Reset all rooms",
+                                contentDescription = "Reset all rooms".localized(),
                                 isDark = isDark,
                                 containerColor = errorAccent.softTint,
                                 iconTint = errorAccent.primary,
@@ -272,7 +272,7 @@ fun ClassroomManagementScreen(
                                 ) {
                                     KlassEmptyState(
                                         icon = DoorOpenIcon,
-                                        title = "No Classrooms Found",
+                                        title = "No Classrooms Found".localized(),
                                         subtitle = if (canEdit) {
                                             "Tap Add Room to configure theory rooms and labs, or load realistic MPI demo campus rooms & teachers."
                                         } else {
@@ -461,7 +461,7 @@ fun ClassroomManagementScreen(
                                                                         ) {
                                                                             com.mpi.klass.theme.TelegramAnimatedIcon(
                                                                                 icon = MoreVertIcon,
-                                                                                contentDescription = "Room actions",
+                                                                                contentDescription = "Room actions".localized(),
                                                                                 tint = cs.onSurfaceVariant,
                                                                                 size = 18.dp,
                                                                             )
@@ -473,7 +473,7 @@ fun ClassroomManagementScreen(
                                                                             containerColor = cs.surfaceContainerLow,
                                                                         ) {
                                                                             DropdownMenuItem(
-                                                                                text = { Text("Edit", fontFamily = hindSiliguri) },
+                                                                                text = { Text("Edit".localized(), fontFamily = hindSiliguri) },
                                                                                 leadingIcon = {
                                                                                     com.mpi.klass.theme.TelegramAnimatedIcon(
                                                                                         icon = EditIcon,
@@ -489,7 +489,7 @@ fun ClassroomManagementScreen(
                                                                                 },
                                                                             )
                                                                             DropdownMenuItem(
-                                                                                text = { Text("Delete", color = errorAccent.primary, fontFamily = hindSiliguri) },
+                                                                                text = { Text("Delete".localized(), color = errorAccent.primary, fontFamily = hindSiliguri) },
                                                                                 leadingIcon = {
                                                                                     com.mpi.klass.theme.TelegramAnimatedIcon(
                                                                                         icon = TrashCanIcon,
@@ -549,7 +549,7 @@ fun ClassroomManagementScreen(
             ) {
                 Icon(
                     imageVector = PlusIcon,
-                    contentDescription = "Add room",
+                    contentDescription = "Add room".localized(),
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -573,12 +573,12 @@ fun ClassroomManagementScreen(
                         try {
                             val res = saveClassroomInFirestore(roomToSave)
                             if (res.isSuccess) {
-                                showToast("Room saved successfully!")
+                                showToast("Room saved successfully!".localized())
                                 isAddEditorOpen = false
                                 editingRoom = null
                                 refreshAll()
                             } else {
-                                showToast("Failed to save room.")
+                                showToast("Failed to save room.".localized())
                             }
                         } finally {
                             isBusy = false
@@ -626,7 +626,7 @@ fun ClassroomManagementScreen(
                         deleteClassroomFromFirestore(toDelete.id)
                         confirmDeleteRoom = null
                         refreshAll()
-                        showToast("Room deleted.")
+                        showToast("Room deleted.".localized())
                     } finally {
                         isBusy = false
                     }
@@ -638,8 +638,8 @@ fun ClassroomManagementScreen(
 
     if (confirmFreshReset) {
         KlassConfirmDialog(
-            title = "Clear All Rooms?",
-            message = "All existing classrooms and labs will be deleted for fresh entry.",
+            title = "Clear All Rooms?".localized(),
+            message = "All existing classrooms and labs will be deleted for fresh entry.".localized(),
             icon = TrashCanIcon,
             accent = errorAccent.primary,
             isDark = isDark,
@@ -654,7 +654,7 @@ fun ClassroomManagementScreen(
                         deleteAllClassroomsFromFirestore()
                         confirmFreshReset = false
                         refreshAll()
-                        showToast("All classrooms cleared for fresh entry.")
+                        showToast("All classrooms cleared for fresh entry.".localized())
                     } finally {
                         isBusy = false
                     }
@@ -698,7 +698,7 @@ private fun RoomEditorFullScreen(
     fun submitRoom() {
         val cleanRoom = roomNumber.trim()
         if (cleanRoom.isBlank()) {
-            showToast("Please enter a room number or lab name.")
+            showToast("Please enter a room number or lab name.".localized())
             return
         }
         val shifts = buildList {
@@ -706,7 +706,7 @@ private fun RoomEditorFullScreen(
             if (shift2Enabled) add(RoutineRules.SHIFT_2)
         }
         if (shifts.isEmpty()) {
-            showToast("Select at least one shift.")
+            showToast("Select at least one shift.".localized())
             return
         }
         val sortedNear = RoutineRules.TECH_DEPARTMENTS.filter { it in selectedNearDepts }
@@ -735,7 +735,7 @@ private fun RoomEditorFullScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
             title = if (initialRoom == null) "Add Classroom / Lab" else "Edit Room ${initialRoom.roomNumber}",
-            subtitle = "Classroom Inventory",
+            subtitle = "Classroom Inventory".localized(),
             levelLabel = "Classrooms • Level 1",
             icon = DoorOpenIcon,
             accent = activeTypeAccent.primary,
@@ -766,7 +766,7 @@ private fun RoomEditorFullScreen(
             ) {
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Room Details",
+                        title = "Room Details".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = activeTypeAccent.primary,
                     )
@@ -784,18 +784,18 @@ private fun RoomEditorFullScreen(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     ClassroomTextInput(
-                                        label = "Room Number / Lab *",
+                                        label = "Room Number / Lab *".localized(),
                                         value = roomNumber,
-                                        placeholder = "e.g. 301 or CST-Lab-1",
+                                        placeholder = "e.g. 301 or CST-Lab-1".localized(),
                                         accent = activeTypeAccent.primary,
                                         onValueChange = { roomNumber = it },
                                         hindSiliguri = hindSiliguri,
                                         modifier = Modifier.weight(1f),
                                     )
                                     ClassroomTextInput(
-                                        label = "Building / Floor",
+                                        label = "Building / Floor".localized(),
                                         value = buildingOrFloor,
-                                        placeholder = "e.g. Academic Bldg 2, 3F",
+                                        placeholder = "e.g. Academic Bldg 2, 3F".localized(),
                                         accent = activeTypeAccent.primary,
                                         onValueChange = { buildingOrFloor = it },
                                         hindSiliguri = hindSiliguri,
@@ -805,17 +805,17 @@ private fun RoomEditorFullScreen(
                             } else {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     ClassroomTextInput(
-                                        label = "Room Number / Lab *",
+                                        label = "Room Number / Lab *".localized(),
                                         value = roomNumber,
-                                        placeholder = "e.g. 301 or CST-Lab-1",
+                                        placeholder = "e.g. 301 or CST-Lab-1".localized(),
                                         accent = activeTypeAccent.primary,
                                         onValueChange = { roomNumber = it },
                                         hindSiliguri = hindSiliguri,
                                     )
                                     ClassroomTextInput(
-                                        label = "Building / Floor",
+                                        label = "Building / Floor".localized(),
                                         value = buildingOrFloor,
-                                        placeholder = "e.g. Academic Bldg 2, 3F",
+                                        placeholder = "e.g. Academic Bldg 2, 3F".localized(),
                                         accent = activeTypeAccent.primary,
                                         onValueChange = { buildingOrFloor = it },
                                         hindSiliguri = hindSiliguri,
@@ -826,7 +826,7 @@ private fun RoomEditorFullScreen(
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = "Room Category",
+                                text = "Room Category".localized(),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 fontFamily = hindSiliguri,
@@ -860,7 +860,7 @@ private fun RoomEditorFullScreen(
                             ).effectiveLabSpecialty()
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "Lab Specialty (for Physics / Chemistry / Subject Routing)",
+                                    text = "Lab Specialty (for Physics / Chemistry / Subject Routing)".localized(),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     fontFamily = hindSiliguri,
@@ -897,7 +897,7 @@ private fun RoomEditorFullScreen(
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Near Departments & Shifts",
+                        title = "Near Departments & Shifts".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = deptAccent.primary,
                     )
@@ -914,7 +914,7 @@ private fun RoomEditorFullScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Near Departments (Multi-select)",
+                                    text = "Near Departments (Multi-select)".localized(),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     fontFamily = hindSiliguri,
@@ -952,7 +952,7 @@ private fun RoomEditorFullScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             MinimalIconChip(
-                                label = "All Depts (Center)",
+                                label = "All Depts (Center)".localized(),
                                 selected = selectedNearDepts.isEmpty(),
                                 accent = classroomAccent.primary,
                                 isDark = isDark,
@@ -1059,7 +1059,7 @@ private fun RoomScheduleViewerFullScreen(
             headerActions = {
                 if (canEdit) {
                     KlassTonalButton(
-                        text = "Edit",
+                        text = "Edit".localized(),
                         icon = EditIcon,
                         accent = roomAccent.primary,
                         isDark = isDark,
@@ -1235,7 +1235,7 @@ private fun RoomScheduleViewerFullScreen(
                     ) {
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassDetailFieldRow(
-                                label = "Department & Group",
+                                label = "Department & Group".localized(),
                                 value = "${slot.department} • ${RoutineRules.semesterDisplayLabel(slot.semester)} • ${slot.group}",
                                 icon = LayerGroupIcon,
                                 accent = deptAccent.primary,
@@ -1244,7 +1244,7 @@ private fun RoomScheduleViewerFullScreen(
                             )
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
-                                label = "Instructor",
+                                label = "Instructor".localized(),
                                 value = slot.teacherName.ifBlank { slot.teacherEmail },
                                 icon = PersonIcon,
                                 accent = KlassFeaturePalette.teachers(isDark).primary,
@@ -1253,7 +1253,7 @@ private fun RoomScheduleViewerFullScreen(
                             )
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
-                                label = "Shift & Timing",
+                                label = "Shift & Timing".localized(),
                                 value = "${slot.shift} • ${slot.day} (${slot.startTime} – ${slot.endTime})",
                                 icon = ClockIcon,
                                 accent = dayAccent.primary,
@@ -1262,7 +1262,7 @@ private fun RoomScheduleViewerFullScreen(
                             )
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
-                                label = "Session Type",
+                                label = "Session Type".localized(),
                                 value = if (slot.isPractical) "Practical / Lab Class" else "Theory Lecture",
                                 icon = SparkleIcon,
                                 accent = KlassFeaturePalette.ai(isDark).primary,

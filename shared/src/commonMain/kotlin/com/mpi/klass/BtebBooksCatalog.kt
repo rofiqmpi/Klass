@@ -13,7 +13,7 @@ object BtebBooksCatalog {
         listOf(
             LibraryBook(
                 id = "bteb_21011",
-                title = "Engineering Drawing",
+                title = "Engineering Drawing".localized(),
                 subjectCode = "21011",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -24,7 +24,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25711",
-                title = "Bangla-I",
+                title = "Bangla-I".localized(),
                 subjectCode = "25711",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -35,7 +35,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25712",
-                title = "English-I",
+                title = "English-I".localized(),
                 subjectCode = "25712",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -46,7 +46,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25721",
-                title = "Bangla-II",
+                title = "Bangla-II".localized(),
                 subjectCode = "25721",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার"), "CT" to listOf("২য় সেমিস্টার"), "ET" to listOf("২য় সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "MT" to listOf("২য় সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার"), "EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -57,7 +57,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25722",
-                title = "English-II",
+                title = "English-II".localized(),
                 subjectCode = "25722",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার"), "CT" to listOf("২য় সেমিস্টার"), "ET" to listOf("২য় সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "MT" to listOf("২য় সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার"), "EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -68,7 +68,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25811",
-                title = "Social Science",
+                title = "Social Science".localized(),
                 subjectCode = "25811",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("৪র্থ সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "MT" to listOf("৩য় সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -79,7 +79,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25812",
-                title = "Physical Education & Life skills Development",
+                title = "Physical Education & Life skills Development".localized(),
                 subjectCode = "25812",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার"), "CT" to listOf("২য় সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -90,7 +90,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25831",
-                title = "Business Communication",
+                title = "Business Communication".localized(),
                 subjectCode = "25831",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার"), "CT" to listOf("৩য় সেমিস্টার"), "ET" to listOf("৭ম সেমিস্টার"), "ENT" to listOf("৭ম সেমিস্টার"), "MT" to listOf("৩য় সেমিস্টার"), "PT" to listOf("৫ম সেমিস্টার"), "EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -101,7 +101,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25841",
-                title = "Accounting",
+                title = "Accounting".localized(),
                 subjectCode = "25841",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার"), "CT" to listOf("৪র্থ সেমিস্টার"), "ET" to listOf("৪র্থ সেমিস্টার"), "ENT" to listOf("৪র্থ সেমিস্টার"), "MT" to listOf("৪র্থ সেমিস্টার"), "PT" to listOf("৪র্থ সেমিস্টার"), "EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -112,7 +112,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25851",
-                title = "Principles of Marketing",
+                title = "Principles of Marketing".localized(),
                 subjectCode = "25851",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার"), "CT" to listOf("৭ম সেমিস্টার"), "ET" to listOf("৫ম সেমিস্টার"), "ENT" to listOf("৫ম সেমিস্টার"), "MT" to listOf("৬ষ্ঠ সেমিস্টার"), "PT" to listOf("৭ম সেমিস্টার"), "EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -123,7 +123,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25852",
-                title = "Industrial Management",
+                title = "Industrial Management".localized(),
                 subjectCode = "25852",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার"), "CT" to listOf("৫ম সেমিস্টার"), "ET" to listOf("৫ম সেমিস্টার"), "ENT" to listOf("৫ম সেমিস্টার"), "MT" to listOf("৫ম সেমিস্টার"), "PT" to listOf("৫ম সেমিস্টার"), "EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -134,7 +134,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25853",
-                title = "Innovation & Entrepreneurship",
+                title = "Innovation & Entrepreneurship".localized(),
                 subjectCode = "25853",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার"), "CT" to listOf("৭ম সেমিস্টার"), "ET" to listOf("৭ম সেমিস্টার"), "ENT" to listOf("৭ম সেমিস্টার"), "MT" to listOf("৭ম সেমিস্টার"), "PT" to listOf("৭ম সেমিস্টার"), "EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -145,7 +145,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25911",
-                title = "Mathematics-I",
+                title = "Mathematics-I".localized(),
                 subjectCode = "25911",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -156,7 +156,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25912",
-                title = "Physics-I",
+                title = "Physics-I".localized(),
                 subjectCode = "25912",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("২য় সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("১ম সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -167,7 +167,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25913",
-                title = "Chemistry",
+                title = "Chemistry".localized(),
                 subjectCode = "25913",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("৩য় সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "MT" to listOf("২য় সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার"), "EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -178,7 +178,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25921",
-                title = "Mathematics-II",
+                title = "Mathematics-II".localized(),
                 subjectCode = "25921",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার"), "CT" to listOf("২য় সেমিস্টার"), "ET" to listOf("২য় সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "MT" to listOf("২য় সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -189,7 +189,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25921_emt",
-                title = "Mathematics-II",
+                title = "Mathematics-II".localized(),
                 subjectCode = "25921",
                 departmentSemesters = linkedMapOf("EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -200,7 +200,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25922",
-                title = "Physics-II",
+                title = "Physics-II".localized(),
                 subjectCode = "25922",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার"), "CT" to listOf("৩য় সেমিস্টার"), "ET" to listOf("২য় সেমিস্টার"), "ENT" to listOf("৩য় সেমিস্টার"), "MT" to listOf("২য় সেমিস্টার"), "PT" to listOf("৩য় সেমিস্টার"), "EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -211,7 +211,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_25931",
-                title = "Mathematics-III",
+                title = "Mathematics-III".localized(),
                 subjectCode = "25931",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার"), "CT" to listOf("৩য় সেমিস্টার"), "ET" to listOf("৩য় সেমিস্টার"), "ENT" to listOf("৩য় সেমিস্টার"), "MT" to listOf("৩য় সেমিস্টার"), "PT" to listOf("৩য় সেমিস্টার"), "EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -222,7 +222,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26211",
-                title = "Automobile Fundamentals",
+                title = "Automobile Fundamentals".localized(),
                 subjectCode = "26211",
                 departmentSemesters = linkedMapOf("MT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -233,7 +233,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26241",
-                title = "Automotive Body Building",
+                title = "Automotive Body Building".localized(),
                 subjectCode = "26241",
                 departmentSemesters = linkedMapOf("PT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -244,7 +244,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26262",
-                title = "Suspention, Brake, Steering & Transmission System of Automobile",
+                title = "Suspention, Brake, Steering & Transmission System of Automobile".localized(),
                 subjectCode = "26262",
                 departmentSemesters = linkedMapOf("PT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -255,7 +255,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26411",
-                title = "Civil Engineering Metarials",
+                title = "Civil Engineering Metarials".localized(),
                 subjectCode = "26411",
                 departmentSemesters = linkedMapOf("CT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -266,7 +266,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26421",
-                title = "Civil Engineering Drawing",
+                title = "Civil Engineering Drawing".localized(),
                 subjectCode = "26421",
                 departmentSemesters = linkedMapOf("CT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -277,7 +277,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26431",
-                title = "Structural Mechanics",
+                title = "Structural Mechanics".localized(),
                 subjectCode = "26431",
                 departmentSemesters = linkedMapOf("CT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -288,7 +288,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26432",
-                title = "Surveying-I",
+                title = "Surveying-I".localized(),
                 subjectCode = "26432",
                 departmentSemesters = linkedMapOf("CT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -299,7 +299,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26433",
-                title = "Construction Process-I",
+                title = "Construction Process-I".localized(),
                 subjectCode = "26433",
                 departmentSemesters = linkedMapOf("CT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -310,7 +310,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26441",
-                title = "Construction Process-II",
+                title = "Construction Process-II".localized(),
                 subjectCode = "26441",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -321,7 +321,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26442",
-                title = "Estimating & Costing-I",
+                title = "Estimating & Costing-I".localized(),
                 subjectCode = "26442",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -332,7 +332,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26443",
-                title = "Civil CAD-I",
+                title = "Civil CAD-I".localized(),
                 subjectCode = "26443",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -343,7 +343,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26444",
-                title = "Surveying-II",
+                title = "Surveying-II".localized(),
                 subjectCode = "26444",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -354,7 +354,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26445",
-                title = "Geotechnical Engineering",
+                title = "Geotechnical Engineering".localized(),
                 subjectCode = "26445",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -365,7 +365,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26446",
-                title = "Hydrology",
+                title = "Hydrology".localized(),
                 subjectCode = "26446",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -376,7 +376,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26451",
-                title = "Foundation Engineering",
+                title = "Foundation Engineering".localized(),
                 subjectCode = "26451",
                 departmentSemesters = linkedMapOf("CT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -387,7 +387,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26452",
-                title = "Civil CAD-II",
+                title = "Civil CAD-II".localized(),
                 subjectCode = "26452",
                 departmentSemesters = linkedMapOf("CT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -398,7 +398,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26453",
-                title = "Surveying-III",
+                title = "Surveying-III".localized(),
                 subjectCode = "26453",
                 departmentSemesters = linkedMapOf("CT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -409,7 +409,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26454",
-                title = "Theory of Structure",
+                title = "Theory of Structure".localized(),
                 subjectCode = "26454",
                 departmentSemesters = linkedMapOf("CT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -420,7 +420,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26455",
-                title = "Water Supply Engineering",
+                title = "Water Supply Engineering".localized(),
                 subjectCode = "26455",
                 departmentSemesters = linkedMapOf("CT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -431,7 +431,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26456",
-                title = "Hydraulics",
+                title = "Hydraulics".localized(),
                 subjectCode = "26456",
                 departmentSemesters = linkedMapOf("CT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -442,7 +442,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26461",
-                title = "Water Resources Engineering",
+                title = "Water Resources Engineering".localized(),
                 subjectCode = "26461",
                 departmentSemesters = linkedMapOf("CT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -453,7 +453,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26462",
-                title = "Advance Surveying",
+                title = "Advance Surveying".localized(),
                 subjectCode = "26462",
                 departmentSemesters = linkedMapOf("CT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -464,7 +464,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26463",
-                title = "Transportation Engineering-I",
+                title = "Transportation Engineering-I".localized(),
                 subjectCode = "26463",
                 departmentSemesters = linkedMapOf("CT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -475,7 +475,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26464",
-                title = "Design of Structure-I",
+                title = "Design of Structure-I".localized(),
                 subjectCode = "26464",
                 departmentSemesters = linkedMapOf("CT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -486,7 +486,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26471",
-                title = "Civil Engineering Project",
+                title = "Civil Engineering Project".localized(),
                 subjectCode = "26471",
                 departmentSemesters = linkedMapOf("CT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -497,7 +497,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26472",
-                title = "Sanitary Engineering",
+                title = "Sanitary Engineering".localized(),
                 subjectCode = "26472",
                 departmentSemesters = linkedMapOf("CT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -508,7 +508,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26473",
-                title = "Transportation Engineering-II",
+                title = "Transportation Engineering-II".localized(),
                 subjectCode = "26473",
                 departmentSemesters = linkedMapOf("CT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -519,7 +519,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26474",
-                title = "Design of Structure-II",
+                title = "Design of Structure-II".localized(),
                 subjectCode = "26474",
                 departmentSemesters = linkedMapOf("CT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -530,7 +530,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26475",
-                title = "Estimating & Costing-II",
+                title = "Estimating & Costing-II".localized(),
                 subjectCode = "26475",
                 departmentSemesters = linkedMapOf("CT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -541,7 +541,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26521",
-                title = "Wood Workshop Practice",
+                title = "Wood Workshop Practice".localized(),
                 subjectCode = "26521",
                 departmentSemesters = linkedMapOf("CT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -552,7 +552,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26711",
-                title = "Basic Electricity",
+                title = "Basic Electricity".localized(),
                 subjectCode = "26711",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("১ম সেমিস্টার"), "ET" to listOf("১ম সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("২য় সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার"), "EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -563,7 +563,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26712",
-                title = "Electrical Engineering Materials",
+                title = "Electrical Engineering Materials".localized(),
                 subjectCode = "26712",
                 departmentSemesters = linkedMapOf("ET" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -574,7 +574,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26721",
-                title = "Electrical Circuits-I",
+                title = "Electrical Circuits-I".localized(),
                 subjectCode = "26721",
                 departmentSemesters = linkedMapOf("ET" to listOf("২য় সেমিস্টার"), "ENT" to listOf("২য় সেমিস্টার"), "EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -585,7 +585,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26722",
-                title = "Electrical Engineering Drawing",
+                title = "Electrical Engineering Drawing".localized(),
                 subjectCode = "26722",
                 departmentSemesters = linkedMapOf("ET" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -596,7 +596,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26731",
-                title = "Electrical Circuits-II",
+                title = "Electrical Circuits-II".localized(),
                 subjectCode = "26731",
                 departmentSemesters = linkedMapOf("ET" to listOf("৩য় সেমিস্টার"), "ENT" to listOf("৩য় সেমিস্টার"), "EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -607,7 +607,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26732",
-                title = "Electrical Appliances",
+                title = "Electrical Appliances".localized(),
                 subjectCode = "26732",
                 departmentSemesters = linkedMapOf("ET" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -618,7 +618,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26741",
-                title = "Electrical Installation, Planning and Estimating",
+                title = "Electrical Installation, Planning and Estimating".localized(),
                 subjectCode = "26741",
                 departmentSemesters = linkedMapOf("ET" to listOf("৪র্থ সেমিস্টার"), "ENT" to listOf("৪র্থ সেমিস্টার"), "EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -629,7 +629,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26742",
-                title = "Estimating DC Machine",
+                title = "Estimating DC Machine".localized(),
                 subjectCode = "26742",
                 departmentSemesters = linkedMapOf("ET" to listOf("৪র্থ সেমিস্টার"), "ENT" to listOf("৪র্থ সেমিস্টার"), "EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -640,7 +640,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26743",
-                title = "Electrical Engineering Project-I",
+                title = "Electrical Engineering Project-I".localized(),
                 subjectCode = "26743",
                 departmentSemesters = linkedMapOf("ET" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -651,7 +651,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26751",
-                title = "Generation of Electrical Power",
+                title = "Generation of Electrical Power".localized(),
                 subjectCode = "26751",
                 departmentSemesters = linkedMapOf("ET" to listOf("৫ম সেমিস্টার"), "ENT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -662,7 +662,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26752",
-                title = "Electrical & Electronic Measurements-I",
+                title = "Electrical & Electronic Measurements-I".localized(),
                 subjectCode = "26752",
                 departmentSemesters = linkedMapOf("ET" to listOf("৫ম সেমিস্টার"), "ENT" to listOf("৫ম সেমিস্টার"), "EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -673,7 +673,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26753",
-                title = "Testing and Maintannance of Electrical Equipments",
+                title = "Testing and Maintannance of Electrical Equipments".localized(),
                 subjectCode = "26753",
                 departmentSemesters = linkedMapOf("ET" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -684,7 +684,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26754",
-                title = "Electrical Engineering Project-II",
+                title = "Electrical Engineering Project-II".localized(),
                 subjectCode = "26754",
                 departmentSemesters = linkedMapOf("ET" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -695,7 +695,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26761",
-                title = "AC Machine-I",
+                title = "AC Machine-I".localized(),
                 subjectCode = "26761",
                 departmentSemesters = linkedMapOf("ET" to listOf("৬ষ্ঠ সেমিস্টার"), "ENT" to listOf("৬ষ্ঠ সেমিস্টার"), "EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -706,7 +706,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26762",
-                title = "Transmission and Distribution of Electrical Power-I",
+                title = "Transmission and Distribution of Electrical Power-I".localized(),
                 subjectCode = "26762",
                 departmentSemesters = linkedMapOf("ET" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -717,7 +717,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26763",
-                title = "Electrical & Electronic Measurements-II",
+                title = "Electrical & Electronic Measurements-II".localized(),
                 subjectCode = "26763",
                 departmentSemesters = linkedMapOf("ET" to listOf("৬ষ্ঠ সেমিস্টার"), "ENT" to listOf("৬ষ্ঠ সেমিস্টার"), "EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -728,7 +728,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26764",
-                title = "Transmission and Distribution of Electrical Power",
+                title = "Transmission and Distribution of Electrical Power".localized(),
                 subjectCode = "26764",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৬ষ্ঠ সেমিস্টার"), "PT" to listOf("৬ষ্ঠ সেমিস্টার"), "EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -739,7 +739,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26771",
-                title = "AC Machine-II",
+                title = "AC Machine-II".localized(),
                 subjectCode = "26771",
                 departmentSemesters = linkedMapOf("ET" to listOf("৭ম সেমিস্টার"), "ENT" to listOf("৭ম সেমিস্টার"), "EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -750,7 +750,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26772",
-                title = "Transmission and Distribution of Electrical Power-II",
+                title = "Transmission and Distribution of Electrical Power-II".localized(),
                 subjectCode = "26772",
                 departmentSemesters = linkedMapOf("ET" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -761,7 +761,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26773",
-                title = "Switch Gear and Protection",
+                title = "Switch Gear and Protection".localized(),
                 subjectCode = "26773",
                 departmentSemesters = linkedMapOf("ET" to listOf("৭ম সেমিস্টার"), "EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -772,7 +772,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26774",
-                title = "Electrical Engineering Project-III",
+                title = "Electrical Engineering Project-III".localized(),
                 subjectCode = "26774",
                 departmentSemesters = linkedMapOf("ET" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -783,7 +783,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26811",
-                title = "Basic Electronics",
+                title = "Basic Electronics".localized(),
                 subjectCode = "26811",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার"), "CT" to listOf("২য় সেমিস্টার"), "ET" to listOf("২য় সেমিস্টার"), "ENT" to listOf("১ম সেমিস্টার"), "MT" to listOf("৪র্থ সেমিস্টার"), "PT" to listOf("৩য় সেমিস্টার"), "EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -794,7 +794,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26821",
-                title = "Electronic Devices and Circuits",
+                title = "Electronic Devices and Circuits".localized(),
                 subjectCode = "26821",
                 departmentSemesters = linkedMapOf("ENT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -805,7 +805,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26831",
-                title = "Digital Electronics-I",
+                title = "Digital Electronics-I".localized(),
                 subjectCode = "26831",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার"), "ENT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -816,7 +816,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26832",
-                title = "Power Electronics",
+                title = "Power Electronics".localized(),
                 subjectCode = "26832",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -827,7 +827,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26833",
-                title = "Industrial Electronics",
+                title = "Industrial Electronics".localized(),
                 subjectCode = "26833",
                 departmentSemesters = linkedMapOf("ET" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -838,7 +838,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26841",
-                title = "Digital Electronics-II",
+                title = "Digital Electronics-II".localized(),
                 subjectCode = "26841",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার"), "ENT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -849,7 +849,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26842",
-                title = "Communication Engineering",
+                title = "Communication Engineering".localized(),
                 subjectCode = "26842",
                 departmentSemesters = linkedMapOf("ET" to listOf("৬ষ্ঠ সেমিস্টার"), "ENT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -860,7 +860,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26843",
-                title = "Networks, Filters and Transmission lines",
+                title = "Networks, Filters and Transmission lines".localized(),
                 subjectCode = "26843",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -871,7 +871,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26844",
-                title = "Electronic servicing",
+                title = "Electronic servicing".localized(),
                 subjectCode = "26844",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -882,7 +882,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26845",
-                title = "Digital Electronics",
+                title = "Digital Electronics".localized(),
                 subjectCode = "26845",
                 departmentSemesters = linkedMapOf("ET" to listOf("৪র্থ সেমিস্টার"), "EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -893,7 +893,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26851",
-                title = "Television Engineering",
+                title = "Television Engineering".localized(),
                 subjectCode = "26851",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -904,7 +904,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26852",
-                title = "Electronic Appliances",
+                title = "Electronic Appliances".localized(),
                 subjectCode = "26852",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -915,7 +915,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26853",
-                title = "Microprocessor & Microcontroller",
+                title = "Microprocessor & Microcontroller".localized(),
                 subjectCode = "26853",
                 departmentSemesters = linkedMapOf("ET" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -926,7 +926,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26861",
-                title = "TV Studio and Broadcasting",
+                title = "TV Studio and Broadcasting".localized(),
                 subjectCode = "26861",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -937,7 +937,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26862",
-                title = "Microcontroller and Embedded System",
+                title = "Microcontroller and Embedded System".localized(),
                 subjectCode = "26862",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -948,7 +948,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26863",
-                title = "PCB Design and Prototyping",
+                title = "PCB Design and Prototyping".localized(),
                 subjectCode = "26863",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -959,7 +959,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26871",
-                title = "Microwave Radar and Navigation Aids",
+                title = "Microwave Radar and Navigation Aids".localized(),
                 subjectCode = "26871",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -970,7 +970,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26872",
-                title = "Industrial Automation and PLC",
+                title = "Industrial Automation and PLC".localized(),
                 subjectCode = "26872",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -981,7 +981,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26873",
-                title = "Control System and Robotics",
+                title = "Control System and Robotics".localized(),
                 subjectCode = "26873",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -992,7 +992,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26874",
-                title = "Electronic Project",
+                title = "Electronic Project".localized(),
                 subjectCode = "26874",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1003,7 +1003,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_26875",
-                title = "Automation Engineering & PLC",
+                title = "Automation Engineering & PLC".localized(),
                 subjectCode = "26875",
                 departmentSemesters = linkedMapOf("ET" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1014,7 +1014,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27011",
-                title = "Basic Workshop Practice",
+                title = "Basic Workshop Practice".localized(),
                 subjectCode = "27011",
                 departmentSemesters = linkedMapOf("CT" to listOf("২য় সেমিস্টার"), "MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1025,7 +1025,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27012",
-                title = "Machine Shop Practice I",
+                title = "Machine Shop Practice I".localized(),
                 subjectCode = "27012",
                 departmentSemesters = linkedMapOf("MT" to listOf("১ম সেমিস্টার"), "PT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1036,7 +1036,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27021",
-                title = "Mechanical Engineering Drawing",
+                title = "Mechanical Engineering Drawing".localized(),
                 subjectCode = "27021",
                 departmentSemesters = linkedMapOf("MT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1047,7 +1047,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27031",
-                title = "Mechanical Engineering Materials",
+                title = "Mechanical Engineering Materials".localized(),
                 subjectCode = "27031",
                 departmentSemesters = linkedMapOf("MT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1058,7 +1058,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27032",
-                title = "Machine Shop Practice-II",
+                title = "Machine Shop Practice-II".localized(),
                 subjectCode = "27032",
                 departmentSemesters = linkedMapOf("MT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1069,7 +1069,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27041",
-                title = "Engineering Mechanics",
+                title = "Engineering Mechanics".localized(),
                 subjectCode = "27041",
                 departmentSemesters = linkedMapOf("MT" to listOf("৪র্থ সেমিস্টার"), "PT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1080,7 +1080,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27042",
-                title = "Machine Shop Practice III",
+                title = "Machine Shop Practice III".localized(),
                 subjectCode = "27042",
                 departmentSemesters = linkedMapOf("MT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1091,7 +1091,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27043",
-                title = "Metallurgy",
+                title = "Metallurgy".localized(),
                 subjectCode = "27043",
                 departmentSemesters = linkedMapOf("MT" to listOf("৪র্থ সেমিস্টার"), "PT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1102,7 +1102,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27044",
-                title = "Applied Mechanics",
+                title = "Applied Mechanics".localized(),
                 subjectCode = "27044",
                 departmentSemesters = linkedMapOf("ET" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1113,7 +1113,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27051",
-                title = "Fluid Mechanics & Machineries",
+                title = "Fluid Mechanics & Machineries".localized(),
                 subjectCode = "27051",
                 departmentSemesters = linkedMapOf("MT" to listOf("৫ম সেমিস্টার"), "PT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1124,7 +1124,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27052",
-                title = "Mechanical Estimating & Costing",
+                title = "Mechanical Estimating & Costing".localized(),
                 subjectCode = "27052",
                 departmentSemesters = linkedMapOf("MT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1135,7 +1135,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27053",
-                title = "Advanced Welding-I",
+                title = "Advanced Welding-I".localized(),
                 subjectCode = "27053",
                 departmentSemesters = linkedMapOf("MT" to listOf("৫ম সেমিস্টার"), "PT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1146,7 +1146,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27054",
-                title = "Foundry & Pattern Making",
+                title = "Foundry & Pattern Making".localized(),
                 subjectCode = "27054",
                 departmentSemesters = linkedMapOf("MT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1157,7 +1157,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27055",
-                title = "Manufacturing Process",
+                title = "Manufacturing Process".localized(),
                 subjectCode = "27055",
                 departmentSemesters = linkedMapOf("MT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1168,7 +1168,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27061",
-                title = "Strength of Materials",
+                title = "Strength of Materials".localized(),
                 subjectCode = "27061",
                 departmentSemesters = linkedMapOf("MT" to listOf("৬ষ্ঠ সেমিস্টার"), "PT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1179,7 +1179,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27062",
-                title = "Mechanical Measurement & Metrology",
+                title = "Mechanical Measurement & Metrology".localized(),
                 subjectCode = "27062",
                 departmentSemesters = linkedMapOf("MT" to listOf("৬ষ্ঠ সেমিস্টার"), "PT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1190,7 +1190,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27063",
-                title = "CAD & CAM",
+                title = "CAD & CAM".localized(),
                 subjectCode = "27063",
                 departmentSemesters = linkedMapOf("MT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1201,7 +1201,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27064",
-                title = "Advanced Welding-II",
+                title = "Advanced Welding-II".localized(),
                 subjectCode = "27064",
                 departmentSemesters = linkedMapOf("MT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1212,7 +1212,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27065",
-                title = "Plant Engineering & Maintainance",
+                title = "Plant Engineering & Maintainance".localized(),
                 subjectCode = "27065",
                 departmentSemesters = linkedMapOf("MT" to listOf("৬ষ্ঠ সেমিস্টার"), "PT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1223,7 +1223,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27071",
-                title = "Design of Machine Elements",
+                title = "Design of Machine Elements".localized(),
                 subjectCode = "27071",
                 departmentSemesters = linkedMapOf("MT" to listOf("৭ম সেমিস্টার"), "PT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1234,7 +1234,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27072",
-                title = "Tool Design",
+                title = "Tool Design".localized(),
                 subjectCode = "27072",
                 departmentSemesters = linkedMapOf("MT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1245,7 +1245,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27073",
-                title = "Heat Treatment of Metal",
+                title = "Heat Treatment of Metal".localized(),
                 subjectCode = "27073",
                 departmentSemesters = linkedMapOf("MT" to listOf("৭ম সেমিস্টার"), "PT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1256,7 +1256,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27074",
-                title = "Mechanical Engineering Project",
+                title = "Mechanical Engineering Project".localized(),
                 subjectCode = "27074",
                 departmentSemesters = linkedMapOf("MT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1267,7 +1267,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27075",
-                title = "Production Planning & Control",
+                title = "Production Planning & Control".localized(),
                 subjectCode = "27075",
                 departmentSemesters = linkedMapOf("MT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1278,7 +1278,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27111",
-                title = "Power Engineering Fundmental",
+                title = "Power Engineering Fundmental".localized(),
                 subjectCode = "27111",
                 departmentSemesters = linkedMapOf("PT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1289,7 +1289,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27121",
-                title = "Power Equipment Management & Safety",
+                title = "Power Equipment Management & Safety".localized(),
                 subjectCode = "27121",
                 departmentSemesters = linkedMapOf("PT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1300,7 +1300,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27131",
-                title = "Engineering Thermodynamics",
+                title = "Engineering Thermodynamics".localized(),
                 subjectCode = "27131",
                 departmentSemesters = linkedMapOf("MT" to listOf("৪র্থ সেমিস্টার"), "PT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1311,7 +1311,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27141",
-                title = "IC Engine Details",
+                title = "IC Engine Details".localized(),
                 subjectCode = "27141",
                 departmentSemesters = linkedMapOf("PT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1322,7 +1322,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27142",
-                title = "Fuels & Lubricants",
+                title = "Fuels & Lubricants".localized(),
                 subjectCode = "27142",
                 departmentSemesters = linkedMapOf("PT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1333,7 +1333,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27151",
-                title = "Automotive Electricity, Electronics & Automation",
+                title = "Automotive Electricity, Electronics & Automation".localized(),
                 subjectCode = "27151",
                 departmentSemesters = linkedMapOf("PT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1344,7 +1344,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27152",
-                title = "Power Plant Enginnering",
+                title = "Power Plant Enginnering".localized(),
                 subjectCode = "27152",
                 departmentSemesters = linkedMapOf("PT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1355,7 +1355,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27161",
-                title = "Engine Overhauling, Inspection & Testing",
+                title = "Engine Overhauling, Inspection & Testing".localized(),
                 subjectCode = "27161",
                 departmentSemesters = linkedMapOf("PT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1366,7 +1366,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27171",
-                title = "Service Station Operation, Estimating & Vechicle driving",
+                title = "Service Station Operation, Estimating & Vechicle driving".localized(),
                 subjectCode = "27171",
                 departmentSemesters = linkedMapOf("PT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1377,7 +1377,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27172",
-                title = "Hybrid & Electric Vehicle",
+                title = "Hybrid & Electric Vehicle".localized(),
                 subjectCode = "27172",
                 departmentSemesters = linkedMapOf("PT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1388,7 +1388,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27173",
-                title = "Power Engineering Project",
+                title = "Power Engineering Project".localized(),
                 subjectCode = "27173",
                 departmentSemesters = linkedMapOf("PT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1399,7 +1399,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_27231",
-                title = "RAC Cycles and Components",
+                title = "RAC Cycles and Components".localized(),
                 subjectCode = "27231",
                 departmentSemesters = linkedMapOf("MT" to listOf("৩য় সেমিস্টার"), "PT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1410,7 +1410,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28511",
-                title = "Computer Office Applications",
+                title = "Computer Office Applications".localized(),
                 subjectCode = "28511",
                 departmentSemesters = linkedMapOf("CST" to listOf("১ম সেমিস্টার"), "CT" to listOf("৩য় সেমিস্টার"), "ET" to listOf("৩য় সেমিস্টার"), "ENT" to listOf("৩য় সেমিস্টার"), "MT" to listOf("৩য় সেমিস্টার"), "PT" to listOf("২য় সেমিস্টার"), "EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1421,7 +1421,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28521",
-                title = "Python Programming",
+                title = "Python Programming".localized(),
                 subjectCode = "28521",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1432,7 +1432,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28522",
-                title = "Computer Graphics Design-I",
+                title = "Computer Graphics Design-I".localized(),
                 subjectCode = "28522",
                 departmentSemesters = linkedMapOf("CST" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1443,7 +1443,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28531",
-                title = "Application Development Using Python",
+                title = "Application Development Using Python".localized(),
                 subjectCode = "28531",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1454,7 +1454,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28532",
-                title = "Computer Graphics Design-II",
+                title = "Computer Graphics Design-II".localized(),
                 subjectCode = "28532",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1465,7 +1465,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28533",
-                title = "IT Support Services",
+                title = "IT Support Services".localized(),
                 subjectCode = "28533",
                 departmentSemesters = linkedMapOf("CST" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1476,7 +1476,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28541",
-                title = "Java Programming",
+                title = "Java Programming".localized(),
                 subjectCode = "28541",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1487,7 +1487,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28542",
-                title = "Data Structure & Algorithm",
+                title = "Data Structure & Algorithm".localized(),
                 subjectCode = "28542",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1498,7 +1498,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28543",
-                title = "Computer Peripherals & Interfacing",
+                title = "Computer Peripherals & Interfacing".localized(),
                 subjectCode = "28543",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1509,7 +1509,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28544",
-                title = "Web Design & Development-I",
+                title = "Web Design & Development-I".localized(),
                 subjectCode = "28544",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1520,7 +1520,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28551",
-                title = "Application Development Using Java",
+                title = "Application Development Using Java".localized(),
                 subjectCode = "28551",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1531,7 +1531,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28552",
-                title = "Web Design & Development-II",
+                title = "Web Design & Development-II".localized(),
                 subjectCode = "28552",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1542,7 +1542,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28553",
-                title = "Computer Architecture & Microprocessor",
+                title = "Computer Architecture & Microprocessor".localized(),
                 subjectCode = "28553",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1553,7 +1553,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28554",
-                title = "Data Communication",
+                title = "Data Communication".localized(),
                 subjectCode = "28554",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1564,7 +1564,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28555",
-                title = "Operating System",
+                title = "Operating System".localized(),
                 subjectCode = "28555",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1575,7 +1575,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28556",
-                title = "Project Work-I",
+                title = "Project Work-I".localized(),
                 subjectCode = "28556",
                 departmentSemesters = linkedMapOf("CST" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1586,7 +1586,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28561",
-                title = "Database Management System",
+                title = "Database Management System".localized(),
                 subjectCode = "28561",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1597,7 +1597,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28562",
-                title = "Computer Networking",
+                title = "Computer Networking".localized(),
                 subjectCode = "28562",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1608,7 +1608,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28563",
-                title = "Sensor & IoT System",
+                title = "Sensor & IoT System".localized(),
                 subjectCode = "28563",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1619,7 +1619,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28564",
-                title = "Microcontroller Based System Design & Development",
+                title = "Microcontroller Based System Design & Development".localized(),
                 subjectCode = "28564",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1630,7 +1630,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28565",
-                title = "Surveillance Security System",
+                title = "Surveillance Security System".localized(),
                 subjectCode = "28565",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1641,7 +1641,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28566",
-                title = "Web Development Project",
+                title = "Web Development Project".localized(),
                 subjectCode = "28566",
                 departmentSemesters = linkedMapOf("CST" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1652,7 +1652,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28567",
-                title = "Programming in C",
+                title = "Programming in C".localized(),
                 subjectCode = "28567",
                 departmentSemesters = linkedMapOf("ET" to listOf("৬ষ্ঠ সেমিস্টার"), "ENT" to listOf("৫ম সেমিস্টার"), "MT" to listOf("৫ম সেমিস্টার"), "PT" to listOf("৪র্থ সেমিস্টার"), "EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1663,7 +1663,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28571",
-                title = "Digital Marketing Technique",
+                title = "Digital Marketing Technique".localized(),
                 subjectCode = "28571",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1674,7 +1674,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28572",
-                title = "Network Administration & Services",
+                title = "Network Administration & Services".localized(),
                 subjectCode = "28572",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1685,7 +1685,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28573",
-                title = "Cyber Security & Ethics",
+                title = "Cyber Security & Ethics".localized(),
                 subjectCode = "28573",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1696,7 +1696,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28574",
-                title = "Apps Development Project",
+                title = "Apps Development Project".localized(),
                 subjectCode = "28574",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1707,7 +1707,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28575",
-                title = "Multimedia & Animation",
+                title = "Multimedia & Animation".localized(),
                 subjectCode = "28575",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1718,7 +1718,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28576",
-                title = "Project Work-II",
+                title = "Project Work-II".localized(),
                 subjectCode = "28576",
                 departmentSemesters = linkedMapOf("CST" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1729,7 +1729,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28611",
-                title = "Human Anatomy and Physiology",
+                title = "Human Anatomy and Physiology".localized(),
                 subjectCode = "28611",
                 departmentSemesters = linkedMapOf("EMT" to listOf("১ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1740,7 +1740,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28621",
-                title = "Basic Biomedical Engineering",
+                title = "Basic Biomedical Engineering".localized(),
                 subjectCode = "28621",
                 departmentSemesters = linkedMapOf("EMT" to listOf("২য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1751,7 +1751,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28631",
-                title = "Medical transducer and Sensors",
+                title = "Medical transducer and Sensors".localized(),
                 subjectCode = "28631",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1762,7 +1762,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28632",
-                title = "Operating Room Equipment",
+                title = "Operating Room Equipment".localized(),
                 subjectCode = "28632",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৩য় সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1773,7 +1773,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28641",
-                title = "Dental Equipment",
+                title = "Dental Equipment".localized(),
                 subjectCode = "28641",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1784,7 +1784,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28642",
-                title = "Anesthesia and Respiratory Equipment",
+                title = "Anesthesia and Respiratory Equipment".localized(),
                 subjectCode = "28642",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৪র্থ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1795,7 +1795,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28651",
-                title = "Radiology and Imaging Equipment",
+                title = "Radiology and Imaging Equipment".localized(),
                 subjectCode = "28651",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1806,7 +1806,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28652",
-                title = "Fibre Optics and Laser in Medical Field",
+                title = "Fibre Optics and Laser in Medical Field".localized(),
                 subjectCode = "28652",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1817,7 +1817,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28653",
-                title = "Physiotherapy and Rehabilitation Devices",
+                title = "Physiotherapy and Rehabilitation Devices".localized(),
                 subjectCode = "28653",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1828,7 +1828,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28654",
-                title = "Bio-Medical Instruments",
+                title = "Bio-Medical Instruments".localized(),
                 subjectCode = "28654",
                 departmentSemesters = linkedMapOf("ENT" to listOf("৫ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1839,7 +1839,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28661",
-                title = "Diagonestic and Laboratory Equipment",
+                title = "Diagonestic and Laboratory Equipment".localized(),
                 subjectCode = "28661",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1850,7 +1850,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28662",
-                title = "Microprocesor and Biomedical Application",
+                title = "Microprocesor and Biomedical Application".localized(),
                 subjectCode = "28662",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1861,7 +1861,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28663",
-                title = "Testing and Maintenance Biomedical Equipment",
+                title = "Testing and Maintenance Biomedical Equipment".localized(),
                 subjectCode = "28663",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 1,
@@ -1872,7 +1872,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28664",
-                title = "CAD in Biomedical Engineering",
+                title = "CAD in Biomedical Engineering".localized(),
                 subjectCode = "28664",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1883,7 +1883,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28671",
-                title = "Advance Biomedical Equiment",
+                title = "Advance Biomedical Equiment".localized(),
                 subjectCode = "28671",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,
@@ -1894,7 +1894,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28672",
-                title = "ICU and CCU Equipment",
+                title = "ICU and CCU Equipment".localized(),
                 subjectCode = "28672",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1905,7 +1905,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28673",
-                title = "Biomedical Engineering Project",
+                title = "Biomedical Engineering Project".localized(),
                 subjectCode = "28673",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 0,
@@ -1916,7 +1916,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28674",
-                title = "Medical Physics and Nuclear Instruments",
+                title = "Medical Physics and Nuclear Instruments".localized(),
                 subjectCode = "28674",
                 departmentSemesters = linkedMapOf("EMT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1927,7 +1927,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28861",
-                title = "Advanced Construction",
+                title = "Advanced Construction".localized(),
                 subjectCode = "28861",
                 departmentSemesters = linkedMapOf("CT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1938,7 +1938,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28863",
-                title = "Steel Structures",
+                title = "Steel Structures".localized(),
                 subjectCode = "28863",
                 departmentSemesters = linkedMapOf("CT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1949,7 +1949,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_28871",
-                title = "Construction Management & Documentation",
+                title = "Construction Management & Documentation".localized(),
                 subjectCode = "28871",
                 departmentSemesters = linkedMapOf("CT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1960,7 +1960,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_29041",
-                title = "Environmental Studies",
+                title = "Environmental Studies".localized(),
                 subjectCode = "29041",
                 departmentSemesters = linkedMapOf("CST" to listOf("৪র্থ সেমিস্টার"), "CT" to listOf("৬ষ্ঠ সেমিস্টার"), "ET" to listOf("৬ষ্ঠ সেমিস্টার"), "ENT" to listOf("৬ষ্ঠ সেমিস্টার"), "MT" to listOf("৪র্থ সেমিস্টার"), "PT" to listOf("৬ষ্ঠ সেমিস্টার"), "EMT" to listOf("৬ষ্ঠ সেমিস্টার")),
                 theoryClassesPerWeek = 2,
@@ -1971,7 +1971,7 @@ object BtebBooksCatalog {
             ),
             LibraryBook(
                 id = "bteb_29231",
-                title = "Mechatronics & PLC",
+                title = "Mechatronics & PLC".localized(),
                 subjectCode = "29231",
                 departmentSemesters = linkedMapOf("MT" to listOf("৭ম সেমিস্টার")),
                 theoryClassesPerWeek = 3,

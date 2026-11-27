@@ -218,7 +218,7 @@ internal fun ZedEngineWizardHost(
                         }
                         KlassHeaderIconButton(
                             icon = RefreshIcon,
-                            contentDescription = "Refresh data",
+                            contentDescription = "Refresh data".localized(),
                             isDark = isDark,
                             containerColor = stepMeta.third.copy(alpha = if (isDark) 0.18f else 0.10f),
                             iconTint = stepMeta.third,
@@ -330,7 +330,7 @@ internal fun ZedEngineWizardHost(
                 ) {
                     if (wizardStep > 0) {
                         KlassTonalButton(
-                            text = "Back",
+                            text = "Back".localized(),
                             icon = BackArrowIcon,
                             accent = cs.onSurfaceVariant,
                             isDark = isDark,
@@ -353,13 +353,13 @@ internal fun ZedEngineWizardHost(
                         onClick = {
                             when {
                                 wizardStep == 0 && activeBookIds.isEmpty() ->
-                                    showToast("Select at least one active book.")
+                                    showToast("Select at least one active book.".localized())
                                 wizardStep == 1 && activeTeacherEmails.isEmpty() ->
-                                    showToast("Select at least one active teacher.")
+                                    showToast("Select at least one active teacher.".localized())
                                 wizardStep == 2 && activeClassroomIds.isEmpty() ->
-                                    showToast("Select at least one active classroom.")
+                                    showToast("Select at least one active classroom.".localized())
                                 wizardStep == 4 && activeSemesters.isEmpty() ->
-                                    showToast("Select at least one active semester.")
+                                    showToast("Select at least one active semester.".localized())
                                 else -> onWizardStepChange(wizardStep + 1)
                             }
                         },
@@ -442,7 +442,7 @@ private fun WizardBooksStep(
                 },
                 placeholder = {
                     Text(
-                        text = "Search books by title or code",
+                        text = "Search books by title or code".localized(),
                         fontFamily = hindSiliguri,
                         fontSize = 14.sp,
                     )
@@ -477,7 +477,7 @@ private fun WizardBooksStep(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 KlassTonalButton(
-                    text = "Activate All",
+                    text = "Activate All".localized(),
                     icon = CheckIcon,
                     accent = successAccent.primary,
                     isDark = isDark,
@@ -491,7 +491,7 @@ private fun WizardBooksStep(
                     },
                 )
                 KlassTonalButton(
-                    text = "Deactivate All",
+                    text = "Deactivate All".localized(),
                     accent = errorAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -515,8 +515,8 @@ private fun WizardBooksStep(
             ) {
                 KlassEmptyState(
                     icon = BookIcon,
-                    title = "No Books Found",
-                    subtitle = "Adjust the search query or department filter.",
+                    title = "No Books Found".localized(),
+                    subtitle = "Adjust the search query or department filter.".localized(),
                     accent = bookAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -655,7 +655,7 @@ private fun WizardTeachersStep(
                     )
                 },
                 placeholder = {
-                    Text("Search teachers or department", fontFamily = hindSiliguri, fontSize = 14.sp)
+                    Text("Search teachers or department".localized(), fontFamily = hindSiliguri, fontSize = 14.sp)
                 },
                 shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -669,7 +669,7 @@ private fun WizardTeachersStep(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 KlassTonalButton(
-                    text = "Activate All",
+                    text = "Activate All".localized(),
                     icon = CheckIcon,
                     accent = successAccent.primary,
                     isDark = isDark,
@@ -681,7 +681,7 @@ private fun WizardTeachersStep(
                     },
                 )
                 KlassTonalButton(
-                    text = "Deactivate All",
+                    text = "Deactivate All".localized(),
                     accent = errorAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -699,7 +699,7 @@ private fun WizardTeachersStep(
             ) {
                 KlassEmptyState(
                     icon = PersonIcon,
-                    title = "No Teachers Available",
+                    title = "No Teachers Available".localized(),
                     subtitle = if (onSeedDemoCampus != null && teachers.isEmpty()) {
                         "No teachers have configured subjects yet. Load realistic MPI campus teachers & labs to test immediately."
                     } else {
@@ -827,7 +827,7 @@ private fun WizardClassroomsStep(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             KlassTonalButton(
-                text = "Activate All",
+                text = "Activate All".localized(),
                 icon = CheckIcon,
                 accent = successAccent.primary,
                 isDark = isDark,
@@ -837,7 +837,7 @@ private fun WizardClassroomsStep(
                 onClick = { onActiveClassroomIdsChange(classrooms.map { it.id }.toSet()) },
             )
             KlassTonalButton(
-                text = "Deactivate All",
+                text = "Deactivate All".localized(),
                 accent = errorAccent.primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
@@ -854,7 +854,7 @@ private fun WizardClassroomsStep(
             ) {
                 KlassEmptyState(
                     icon = DoorOpenIcon,
-                    title = "No Classrooms Added",
+                    title = "No Classrooms Added".localized(),
                     subtitle = if (onSeedDemoCampus != null) {
                         "Add rooms in Classrooms or load realistic MPI Theory rooms, Physics/Chemistry Labs & Teachers."
                     } else {
@@ -984,7 +984,7 @@ private fun WizardScheduleSettingsStep(
     ) {
         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
             GoogleSectionHeader(
-                title = "Shift Timings & Daily Periods",
+                title = "Shift Timings & Daily Periods".localized(),
                 hindSiliguri = hindSiliguri,
                 accent = genAccent.primary,
             )
@@ -1002,7 +1002,7 @@ private fun WizardScheduleSettingsStep(
                         value = shift1Start,
                         onValueChange = onShift1Change,
                         singleLine = true,
-                        label = { Text("1st Shift (24h)", fontFamily = hindSiliguri) },
+                        label = { Text("1st Shift (24h)".localized(), fontFamily = hindSiliguri) },
                         textStyle = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = hindSiliguri),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f),
@@ -1011,7 +1011,7 @@ private fun WizardScheduleSettingsStep(
                         value = shift2Start,
                         onValueChange = onShift2Change,
                         singleLine = true,
-                        label = { Text("2nd Shift (24h)", fontFamily = hindSiliguri) },
+                        label = { Text("2nd Shift (24h)".localized(), fontFamily = hindSiliguri) },
                         textStyle = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = hindSiliguri),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f),
@@ -1023,7 +1023,7 @@ private fun WizardScheduleSettingsStep(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     WizardStepperCard(
-                        label = "Duration",
+                        label = "Duration".localized(),
                         valueText = "$periodDuration min",
                         accent = genAccent.primary,
                         isDark = isDark,
@@ -1033,7 +1033,7 @@ private fun WizardScheduleSettingsStep(
                         modifier = Modifier.weight(1f),
                     )
                     WizardStepperCard(
-                        label = "Periods / Day",
+                        label = "Periods / Day".localized(),
                         valueText = "$periodsPerDay",
                         accent = bookAccent.primary,
                         isDark = isDark,
@@ -1050,7 +1050,7 @@ private fun WizardScheduleSettingsStep(
 
         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
             GoogleSectionHeader(
-                title = "Practical / Lab Period Allocation",
+                title = "Practical / Lab Period Allocation".localized(),
                 hindSiliguri = hindSiliguri,
                 accent = teacherAccent.primary,
             )
@@ -1130,7 +1130,7 @@ private fun WizardStepperCard(
                     modifier = Modifier.size(36.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = accent)
+                        Text("−".localized(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = accent)
                     }
                 }
                 Text(
@@ -1147,7 +1147,7 @@ private fun WizardStepperCard(
                     modifier = Modifier.size(36.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = accent)
+                        Text("+".localized(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = accent)
                     }
                 }
             }
@@ -1179,13 +1179,13 @@ private fun WizardSemestersStep(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Select semesters for routine generation",
+                    text = "Select semesters for routine generation".localized(),
                     fontSize = 13.5.sp,
                     fontFamily = hindSiliguri,
                     color = cs.onSurfaceVariant,
                 )
                 KlassTonalButton(
-                    text = "All 7",
+                    text = "All 7".localized(),
                     icon = CheckIcon,
                     accent = semAccent.primary,
                     isDark = isDark,
@@ -1472,12 +1472,12 @@ private fun ZedHoldGenerateDisplay(
             ) {
                 Icon(
                     imageVector = BackArrowIcon,
-                    contentDescription = "Back",
+                    contentDescription = "Back".localized(),
                     tint = cs.onSurface,
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
-                    text = "Setup",
+                    text = "Setup".localized(),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = hindSiliguri,
@@ -1515,7 +1515,7 @@ private fun ZedHoldGenerateDisplay(
                     }
                 }
                 Text(
-                    text = "Ready to Generate",
+                    text = "Ready to Generate".localized(),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = hindSiliguri,
@@ -1551,7 +1551,7 @@ private fun ZedHoldGenerateDisplay(
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 KlassTonalButton(
-                                    text = "Explore",
+                                    text = "Explore".localized(),
                                     icon = CalendarDaysIcon,
                                     accent = genAccent.primary,
                                     isDark = isDark,
@@ -1561,7 +1561,7 @@ private fun ZedHoldGenerateDisplay(
                                 )
                                 if (!isLive) {
                                     KlassTonalButton(
-                                        text = "Publish Live",
+                                        text = "Publish Live".localized(),
                                         icon = CheckIcon,
                                         accent = publishAccent.primary,
                                         isDark = isDark,
@@ -1741,19 +1741,19 @@ private fun ZedHoldGenerateDisplay(
                             awaitFirstDown(requireUnconsumed = false)
                             if (isProcessing) return@awaitEachGesture
                             if (activeBookIds.isEmpty()) {
-                                showToast("Please activate at least one book first.")
+                                showToast("Please activate at least one book first.".localized())
                                 return@awaitEachGesture
                             }
                             if (activeTeacherEmails.isEmpty()) {
-                                showToast("Please activate at least one teacher first.")
+                                showToast("Please activate at least one teacher first.".localized())
                                 return@awaitEachGesture
                             }
                             if (activeClassroomIds.isEmpty()) {
-                                showToast("Please activate at least one classroom first.")
+                                showToast("Please activate at least one classroom first.".localized())
                                 return@awaitEachGesture
                             }
                             if (activeSemesters.isEmpty()) {
-                                showToast("Please activate at least one semester first.")
+                                showToast("Please activate at least one semester first.".localized())
                                 return@awaitEachGesture
                             }
                             isHolding = true
@@ -1763,7 +1763,7 @@ private fun ZedHoldGenerateDisplay(
                             if (readyOnRelease && !isProcessing) {
                                 onHoldCompleteGenerate()
                             } else if (!readyOnRelease && !isProcessing) {
-                                showToast("Hold until the bow loader reaches 100%, then release.")
+                                showToast("Hold until the bow loader reaches 100%, then release.".localized())
                             }
                         }
                     },
@@ -1784,7 +1784,7 @@ private fun ZedHoldGenerateDisplay(
                     } else {
                         Icon(
                             imageVector = if (holdProgress >= 0.995f) CheckIcon else SparkleIcon,
-                            contentDescription = "Generate",
+                            contentDescription = "Generate".localized(),
                             tint = buttonContentColor,
                             modifier = Modifier.size(16.dp),
                         )

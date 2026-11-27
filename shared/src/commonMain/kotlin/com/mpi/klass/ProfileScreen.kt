@@ -716,56 +716,7 @@ internal fun FacebookProfileContent(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Primary Edit Profile Rounded Pill CTA with feature-palette gradient
-                    if (isOwnProfile && onEditProfileClick != null) {
-                        Surface(
-                            onClick = onEditProfileClick,
-                            shape = RoundedCornerShape(22.dp),
-                            color = Color.Transparent,
-                            shadowElevation = 0.dp,
-                            modifier = Modifier
-                                .widthIn(max = 260.dp)
-                                .fillMaxWidth(0.72f)
-                                .height(42.dp)
-                                .testTag("profile_cta_edit_button"),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            colors = listOf(profileAccent.primary, routineAccent.primary)
-                                        )
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                            ) {
-                                Icon(
-                                    imageVector = EditIcon,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Spacer(modifier = Modifier.width(7.dp))
-                                Text(
-                                    text = "প্রোফাইল এডিট".localized(),
-                                    color = Color.White,
-                                    fontSize = 14.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = hindSiliguri,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Filter Chips Row (All / About)
-                    val tabs = listOf(
-                        0 to "All",
-                        1 to "সম্পর্কে".localized(),
-                    )
+                    // The former About tab is replaced by the profile edit action.
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -773,36 +724,62 @@ internal fun FacebookProfileContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        tabs.forEach { (idx, label) ->
-                            val selected = selectedProfileTab == idx
-                            val chipBg by animateColorAsState(
-                                targetValue = if (selected) {
-                                    profileAccent.softTint
-                                } else {
-                                    Color.Transparent
-                                },
-                                animationSpec = tween(160),
-                                label = "fb_tab_$idx",
-                            )
+                        val selected = selectedProfileTab == 0
+                        val chipBg by animateColorAsState(
+                            targetValue = if (selected) profileAccent.softTint else Color.Transparent,
+                            animationSpec = tween(160),
+                            label = "fb_tab_all",
+                        )
+                        Surface(
+                            onClick = { selectedProfileTab = 0 },
+                            shape = CircleShape,
+                            color = chipBg,
+                            border = if (selected) BorderStroke(0.75.dp, profileAccent.borderTint) else null,
+                            shadowElevation = 0.dp,
+                            modifier = Modifier
+                                .height(36.dp)
+                                .testTag("profile_tab_0"),
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "All".localized(),
+                                    color = if (selected) primaryAccent else cs.onSurfaceVariant,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                                    fontFamily = hindSiliguri,
+                                )
+                            }
+                        }
+                        if (isOwnProfile && onEditProfileClick != null) {
                             Surface(
-                                onClick = { selectedProfileTab = idx },
+                                onClick = onEditProfileClick,
                                 shape = CircleShape,
-                                color = chipBg,
-                                border = if (selected) BorderStroke(0.75.dp, profileAccent.borderTint) else null,
+                                color = profileAccent.softTint,
+                                border = BorderStroke(0.75.dp, profileAccent.borderTint),
                                 shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .height(36.dp)
-                                    .testTag("profile_tab_$idx"),
+                                    .testTag("profile_cta_edit_button"),
                             ) {
-                                Box(
+                                Row(
                                     modifier = Modifier.padding(horizontal = 16.dp),
-                                    contentAlignment = Alignment.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
+                                    Icon(
+                                        imageVector = EditIcon,
+                                        contentDescription = null,
+                                        tint = primaryAccent,
+                                        modifier = Modifier.size(15.dp),
+                                    )
                                     Text(
-                                        text = label,
-                                        color = if (selected) primaryAccent else cs.onSurfaceVariant,
+                                        text = "প্রোফাইল এডিট".localized(),
+                                        color = primaryAccent,
                                         fontSize = 14.5.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                                        fontWeight = FontWeight.SemiBold,
                                         fontFamily = hindSiliguri,
                                     )
                                 }
@@ -829,7 +806,7 @@ internal fun FacebookProfileContent(
                         KlassEmptyState(
                             icon = LockIcon,
                             title = "তথ্য সম্পূর্ণ নয়".localized(),
-                            subtitle = if (isOwnProfile) "Tap Edit Profile above to add information." else "No visible profile details for your privacy level.",
+                            subtitle = (if (isOwnProfile) "Tap Edit Profile above to add information." else "No visible profile details for your privacy level.").localized(),
                             accent = profileAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
@@ -900,11 +877,11 @@ private fun ProfileAllDetailsSections(
             ProfileFieldActionType.EMAIL -> runCatching { uriHandler.openUri("mailto:${field.value}") }
                 .onFailure {
                     clipboard.setText(AnnotatedString(field.value))
-                    showToast("কপি করা হয়েছে!")
+                    showToast("কপি করা হয়েছে!".localized())
                 }
             ProfileFieldActionType.NONE -> {
                 clipboard.setText(AnnotatedString(field.value))
-                showToast("কপি করা হয়েছে!")
+                showToast("কপি করা হয়েছে!".localized())
             }
         }
     }
@@ -1073,11 +1050,11 @@ private fun ProfileDetailsSubScreen(
                                 ProfileFieldActionType.EMAIL -> runCatching { uriHandler.openUri("mailto:${field.value}") }
                                     .onFailure {
                                         clipboard.setText(AnnotatedString(field.value))
-                                        showToast("কপি করা হয়েছে!")
+                                        showToast("কপি করা হয়েছে!".localized())
                                     }
                                 ProfileFieldActionType.NONE -> {
                                     clipboard.setText(AnnotatedString(field.value))
-                                    showToast("কপি করা হয়েছে!")
+                                    showToast("কপি করা হয়েছে!".localized())
                                 }
                             }
                         },
@@ -1131,7 +1108,7 @@ private fun GuestSignInPrompt(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Sign in to Klass",
+                    text = "Sign in to Klass".localized(),
                     color = cs.onSurface,
                     fontSize = 23.sp,
                     fontWeight = FontWeight.Bold,
@@ -1142,7 +1119,7 @@ private fun GuestSignInPrompt(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "View your class routine, profile, and automatic class reminders.",
+                    text = "View your class routine, profile, and automatic class reminders.".localized(),
                     color = cs.onSurfaceVariant,
                     fontSize = 16.sp,
                     lineHeight = 22.sp,

@@ -377,7 +377,7 @@ fun RoutineGeneratorScreen(
                                     saveRoutinePlanInFirestore(published.copy(id = "master_6m"))
                                     currentPlan = published
                                     onPlanPublished(published)
-                                    showToast("6-Month routine published live!")
+                                    showToast("6-Month routine published live!".localized())
                                 } finally {
                                     isProcessing = false
                                 }
@@ -394,7 +394,7 @@ fun RoutineGeneratorScreen(
         KlassSubScreenHost(visible = showExplorerScreen, zIndex = 70f) {
             val plan = currentPlan
             MinimalFullScreenSheet(
-                title = "Routine Explorer",
+                title = "Routine Explorer".localized(),
                 subtitle = if (plan != null) "${plan.status} • ${plan.entries.size} class slots" else "Browse generated routine",
                 levelLabel = "Zed engine • Explorer",
                 icon = CalendarDaysIcon,
@@ -413,8 +413,8 @@ fun RoutineGeneratorScreen(
                     ) {
                         KlassEmptyState(
                             icon = CalendarDaysIcon,
-                            title = "No Routine Generated Yet",
-                            subtitle = "Complete the setup steps and hold Generate first.",
+                            title = "No Routine Generated Yet".localized(),
+                            subtitle = "Complete the setup steps and hold Generate first.".localized(),
                             accent = teacherAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
@@ -486,7 +486,7 @@ fun RoutineGeneratorScreen(
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                         Icon(
                                             imageVector = FilterIcon,
-                                            contentDescription = "Filter routine",
+                                            contentDescription = "Filter routine".localized(),
                                             tint = explorerAccent.primary,
                                             modifier = Modifier.size(16.dp),
                                         )
@@ -553,7 +553,7 @@ fun RoutineGeneratorScreen(
         // Level 1 Overlay: Teacher Edit / Swap Requests
         KlassSubScreenHost(visible = showRequestsScreen, zIndex = 72f) {
             MinimalFullScreenSheet(
-                title = "Edit Requests",
+                title = "Edit Requests".localized(),
                 subtitle = "${editRequests.size} total • $pendingRequestsCount pending",
                 levelLabel = "Zed engine • Requests",
                 icon = SwapIcon,
@@ -572,8 +572,8 @@ fun RoutineGeneratorScreen(
                     ) {
                         KlassEmptyState(
                             icon = SwapIcon,
-                            title = "No Teacher Edit Requests",
-                            subtitle = "Teacher slot swap requests appear here with live clash checking.",
+                            title = "No Teacher Edit Requests".localized(),
+                            subtitle = "Teacher slot swap requests appear here with live clash checking.".localized(),
                             accent = adminAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
@@ -715,12 +715,12 @@ fun RoutineGeneratorScreen(
                             try {
                                 val plan = currentPlan
                                 if (plan == null) {
-                                    showToast("No active routine loaded.")
+                                    showToast("No active routine loaded.".localized())
                                     return@launch
                                 }
                                 val targetExists = plan.entries.any { it.id == req.targetEntryId }
                                 if (!targetExists) {
-                                    showToast("Target slot no longer exists in current routine.")
+                                    showToast("Target slot no longer exists in current routine.".localized())
                                     return@launch
                                 }
                                 val (st, et) = RoutineRules.periodTimeRange(
@@ -766,7 +766,7 @@ fun RoutineGeneratorScreen(
                                 )
                                 reviewingRequest = null
                                 refreshAll()
-                                showToast("Edit request approved & routine updated.")
+                                showToast("Edit request approved & routine updated.".localized())
                             } finally {
                                 isProcessing = false
                             }
@@ -783,7 +783,7 @@ fun RoutineGeneratorScreen(
                                 )
                                 reviewingRequest = null
                                 refreshAll()
-                                showToast("Edit request declined.")
+                                showToast("Edit request declined.".localized())
                             } finally {
                                 isProcessing = false
                             }
@@ -850,7 +850,7 @@ fun RoutineGeneratorScreen(
                                 currentPlan = updatedPlan
                                 editingSlot = null
                                 resolvingConflict = null
-                                showToast("Routine slot updated!")
+                                showToast("Routine slot updated!".localized())
                             } finally {
                                 isProcessing = false
                             }
@@ -894,8 +894,8 @@ private fun ExplorerFilterSubScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
-            title = "Explore Routine",
-            subtitle = "Switch between Group, Teacher or Room view",
+            title = "Explore Routine".localized(),
+            subtitle = "Switch between Group, Teacher or Room view".localized(),
             levelLabel = "Routine Explorer • Level 1",
             icon = FilterIcon,
             accent = teacherAccent.primary,
@@ -904,7 +904,7 @@ private fun ExplorerFilterSubScreen(
             onDismiss = onDismiss,
             headerActions = {
                 HeaderSavePillButton(
-                    text = "Done",
+                    text = "Done".localized(),
                     accent = teacherAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -945,7 +945,7 @@ private fun ExplorerFilterSubScreen(
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Shift",
+                        title = "Shift".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = teacherAccent.primary,
                     )
@@ -973,7 +973,7 @@ private fun ExplorerFilterSubScreen(
                     0 -> {
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             GoogleSectionHeader(
-                                title = "Department",
+                                title = "Department".localized(),
                                 hindSiliguri = hindSiliguri,
                                 accent = deptAccent.primary,
                             )
@@ -997,7 +997,7 @@ private fun ExplorerFilterSubScreen(
                             SocialInsetDivider(startIndent = 16.dp)
 
                             GoogleSectionHeader(
-                                title = "Semester",
+                                title = "Semester".localized(),
                                 hindSiliguri = hindSiliguri,
                                 accent = deptAccent.primary,
                             )
@@ -1021,7 +1021,7 @@ private fun ExplorerFilterSubScreen(
                             SocialInsetDivider(startIndent = 16.dp)
 
                             GoogleSectionHeader(
-                                title = "Group",
+                                title = "Group".localized(),
                                 hindSiliguri = hindSiliguri,
                                 accent = deptAccent.primary,
                             )
@@ -1047,7 +1047,7 @@ private fun ExplorerFilterSubScreen(
                         val currentTeacher = teachers.firstOrNull { it.email.equals(filterTeacherEmail, true) }
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassNavigationRow(
-                                title = "Select Teacher",
+                                title = "Select Teacher".localized(),
                                 subtitle = currentTeacher?.name?.ifBlank { currentTeacher.email } ?: "Tap to choose faculty",
                                 icon = PersonIcon,
                                 accent = teacherAccent.primary,
@@ -1062,7 +1062,7 @@ private fun ExplorerFilterSubScreen(
                         val currentRoom = classrooms.firstOrNull { it.roomNumber.equals(filterRoomNumber, true) }
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassNavigationRow(
-                                title = "Select Classroom / Lab",
+                                title = "Select Classroom / Lab".localized(),
                                 subtitle = if (filterRoomNumber.isBlank()) "Tap to pick room" else "Room $filterRoomNumber",
                                 icon = DoorOpenIcon,
                                 accent = roomAccent.primary,
@@ -1080,7 +1080,7 @@ private fun ExplorerFilterSubScreen(
         // Level 2: Teacher Picker
         KlassSubScreenHost(visible = showTeacherPicker, zIndex = 88f) {
             KlassSelectionPickerSubScreen(
-                title = "Choose Teacher",
+                title = "Choose Teacher".localized(),
                 subtitle = "${teachers.size} faculty configured",
                 levelLabel = "Explorer Filter • Level 2",
                 icon = PersonIcon,
@@ -1099,7 +1099,7 @@ private fun ExplorerFilterSubScreen(
         // Level 2: Classroom Picker
         KlassSubScreenHost(visible = showRoomPicker, zIndex = 88f) {
             KlassSelectionPickerSubScreen(
-                title = "Choose Classroom / Lab",
+                title = "Choose Classroom / Lab".localized(),
                 subtitle = "${classrooms.size} rooms available",
                 levelLabel = "Explorer Filter • Level 2",
                 icon = DoorOpenIcon,
@@ -1147,7 +1147,7 @@ private fun RequestReviewSubScreen(
         headerActions = {
             if (req.status == EditRequestStatus.PENDING) {
                 KlassTonalButton(
-                    text = "Decline",
+                    text = "Decline".localized(),
                     accent = declineAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -1182,7 +1182,7 @@ private fun RequestReviewSubScreen(
 
             SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                 KlassDetailFieldRow(
-                    label = "Current Slot",
+                    label = "Current Slot".localized(),
                     value = "${req.originalDay} • Period ${req.originalPeriod + 1} • Room ${req.originalRoomNumber}",
                     icon = ClockIcon,
                     accent = KlassFeaturePalette.teachers(isDark).primary,
@@ -1191,7 +1191,7 @@ private fun RequestReviewSubScreen(
                 )
                 SocialInsetDivider(startIndent = 68.dp)
                 KlassDetailFieldRow(
-                    label = "Requested New Slot",
+                    label = "Requested New Slot".localized(),
                     value = "${req.requestedDay} • Period ${req.requestedPeriod + 1} • Room ${req.requestedRoomNumber}",
                     icon = CalendarDaysIcon,
                     accent = deptAccent.primary,
@@ -1201,7 +1201,7 @@ private fun RequestReviewSubScreen(
                 if (req.reason.isNotBlank()) {
                     SocialInsetDivider(startIndent = 68.dp)
                     KlassDetailFieldRow(
-                        label = "Teacher's Reason",
+                        label = "Teacher's Reason".localized(),
                         value = req.reason,
                         icon = InfoCircleIcon,
                         accent = adminAccent.primary,
@@ -1399,7 +1399,7 @@ private fun ManualSlotEditorOverlay(
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Working Day (Sun–Thu)",
+                        title = "Working Day (Sun–Thu)".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = genAccent.primary,
                     )
@@ -1422,7 +1422,7 @@ private fun ManualSlotEditorOverlay(
                     SocialInsetDivider(startIndent = 16.dp)
 
                     GoogleSectionHeader(
-                        title = "Period",
+                        title = "Period".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = genAccent.primary,
                     )
@@ -1451,12 +1451,12 @@ private fun ManualSlotEditorOverlay(
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Room & Instructor Assignment",
+                        title = "Room & Instructor Assignment".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = teacherAccent.primary,
                     )
                     KlassNavigationRow(
-                        title = "Classroom / Lab",
+                        title = "Classroom / Lab".localized(),
                         subtitle = if (selectedRoomNumber.isBlank()) "Tap to pick a room" else "Room $selectedRoomNumber",
                         icon = DoorOpenIcon,
                         accent = roomAccent.primary,
@@ -1467,7 +1467,7 @@ private fun ManualSlotEditorOverlay(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     KlassNavigationRow(
-                        title = "Assigned Teacher",
+                        title = "Assigned Teacher".localized(),
                         subtitle = currentTeacher?.name?.ifBlank { currentTeacher.email } ?: selectedTeacherEmail.ifBlank { "Tap to pick faculty" },
                         icon = PersonIcon,
                         accent = teacherAccent.primary,
@@ -1483,7 +1483,7 @@ private fun ManualSlotEditorOverlay(
         // Level 3: Room Picker with Busy/Free Hint
         KlassSubScreenHost(visible = showRoomPicker, zIndex = 92f) {
             KlassSelectionPickerSubScreen(
-                title = "Pick Classroom / Lab",
+                title = "Pick Classroom / Lab".localized(),
                 subtitle = "$selectedDay • Period ${selectedPeriod + 1}",
                 levelLabel = "Slot Editor • Level 3",
                 icon = DoorOpenIcon,
@@ -1513,7 +1513,7 @@ private fun ManualSlotEditorOverlay(
         // Level 3: Teacher Picker with Busy/Free Hint
         KlassSubScreenHost(visible = showTeacherPicker, zIndex = 92f) {
             KlassSelectionPickerSubScreen(
-                title = "Pick Assigned Teacher",
+                title = "Pick Assigned Teacher".localized(),
                 subtitle = "$selectedDay • Period ${selectedPeriod + 1}",
                 levelLabel = "Slot Editor • Level 3",
                 icon = PersonIcon,
@@ -1629,7 +1629,7 @@ private fun StepperChipCard(
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Text(
-                            text = "−",
+                            text = "−".localized(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = accent,
@@ -1651,7 +1651,7 @@ private fun StepperChipCard(
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Text(
-                            text = "+",
+                            text = "+".localized(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = accent,
@@ -1686,8 +1686,8 @@ private fun ScheduleSettingsSubScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
-            title = "Schedule Settings",
-            subtitle = "Shift timings & active semesters",
+            title = "Schedule Settings".localized(),
+            subtitle = "Shift timings & active semesters".localized(),
             levelLabel = "Zed engine • Level 1",
             icon = ClockIcon,
             accent = genAccent.primary,
@@ -1705,7 +1705,7 @@ private fun ScheduleSettingsSubScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Shift Timings & Periods",
+                        title = "Shift Timings & Periods".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = genAccent.primary,
                     )
@@ -1720,7 +1720,7 @@ private fun ScheduleSettingsSubScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             RoutineConfigTimeField(
-                                label = "1st Shift (24h)",
+                                label = "1st Shift (24h)".localized(),
                                 value = shift1Start,
                                 preview = RoutineRules.formatMinutesToTime(
                                     RoutineRules.parseMinutesFromHhMm(shift1Start, 8 * 60)
@@ -1731,7 +1731,7 @@ private fun ScheduleSettingsSubScreen(
                                 modifier = Modifier.weight(1f),
                             )
                             RoutineConfigTimeField(
-                                label = "2nd Shift (24h)",
+                                label = "2nd Shift (24h)".localized(),
                                 value = shift2Start,
                                 preview = RoutineRules.formatMinutesToTime(
                                     RoutineRules.parseMinutesFromHhMm(shift2Start, 13 * 60 + 30)
@@ -1748,7 +1748,7 @@ private fun ScheduleSettingsSubScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             StepperChipCard(
-                                label = "Duration",
+                                label = "Duration".localized(),
                                 valueText = "$periodDuration min",
                                 accent = genAccent.primary,
                                 isDark = isDark,
@@ -1758,7 +1758,7 @@ private fun ScheduleSettingsSubScreen(
                                 modifier = Modifier.weight(1f),
                             )
                             StepperChipCard(
-                                label = "Periods / Day",
+                                label = "Periods / Day".localized(),
                                 valueText = "$periodsPerDay",
                                 accent = bookAccent.primary,
                                 isDark = isDark,
@@ -1772,7 +1772,7 @@ private fun ScheduleSettingsSubScreen(
 
                     SocialInsetDivider(startIndent = 16.dp)
                     KlassNavigationRow(
-                        title = "Preview Period Timings",
+                        title = "Preview Period Timings".localized(),
                         subtitle = "View calculated start and end times for all $periodsPerDay periods",
                         icon = LayerGroupIcon,
                         accent = genAccent.primary,
@@ -1787,7 +1787,7 @@ private fun ScheduleSettingsSubScreen(
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Active Semesters (Sun–Thu)",
+                        title = "Active Semesters (Sun–Thu)".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = bookAccent.primary,
                     )
@@ -1823,7 +1823,7 @@ private fun ScheduleSettingsSubScreen(
                 periodsPerDay = periodsPerDay,
             )
             MinimalFullScreenSheet(
-                title = "Period Timings Preview",
+                title = "Period Timings Preview".localized(),
                 subtitle = "$periodDuration min per period • $periodsPerDay periods/day",
                 levelLabel = "Schedule Settings • Level 2",
                 icon = ClockIcon,
@@ -1880,7 +1880,7 @@ private fun ConflictsSubScreen(
     val successAccent = KlassFeaturePalette.success(isDark)
 
     MinimalFullScreenSheet(
-        title = "Detected Conflicts",
+        title = "Detected Conflicts".localized(),
         subtitle = "${conflicts.size} remaining",
         levelLabel = "Routine Conflicts • Level 1",
         icon = WarningIcon,
@@ -1899,8 +1899,8 @@ private fun ConflictsSubScreen(
             ) {
                 KlassEmptyState(
                     icon = CheckIcon,
-                    title = "All Conflicts Resolved!",
-                    subtitle = "Your routine has zero scheduling overlaps.",
+                    title = "All Conflicts Resolved!".localized(),
+                    subtitle = "Your routine has zero scheduling overlaps.".localized(),
                     accent = successAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -1962,7 +1962,7 @@ private fun ConflictsSubScreen(
                                 }
                                 KlassHeaderIconButton(
                                     icon = PlusIcon,
-                                    contentDescription = "Assign slot manually",
+                                    contentDescription = "Assign slot manually".localized(),
                                     isDark = isDark,
                                     containerColor = conflictAccent.softTint,
                                     iconTint = conflictAccent.primary,

@@ -269,7 +269,7 @@ fun BooksLibraryScreen(
                         Box {
                             KlassHeaderIconButton(
                                 icon = FilterIcon,
-                                contentDescription = "Filter books",
+                                contentDescription = "Filter books".localized(),
                                 isDark = isDark,
                                 containerColor = if (hasActiveFilter) booksAccent.softTint else cs.surfaceContainerHigh,
                                 iconTint = if (hasActiveFilter) booksAccent.primary else cs.onSurfaceVariant,
@@ -293,7 +293,7 @@ fun BooksLibraryScreen(
 
                         KlassHeaderIconButton(
                             icon = RefreshIcon,
-                            contentDescription = "Refresh library",
+                            contentDescription = "Refresh library".localized(),
                             isDark = isDark,
                             iconTint = booksAccent.primary,
                             isLoading = isLoading,
@@ -453,7 +453,7 @@ fun BooksLibraryScreen(
             ) {
                 Icon(
                     imageVector = PlusIcon,
-                    contentDescription = "Add book",
+                    contentDescription = "Add book".localized(),
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -482,9 +482,9 @@ fun BooksLibraryScreen(
                             books = RoleConfig.fetchLibraryBooks()
                             showFormScreen = false
                             editingBook = null
-                            showToast("Book saved successfully!")
+                            showToast("Book saved successfully!".localized())
                         } else {
-                            showToast("Failed to save book. Please try again.")
+                            showToast("Failed to save book. Please try again.".localized())
                         }
                         onComplete()
                     }
@@ -498,7 +498,7 @@ fun BooksLibraryScreen(
             zIndex = 75f,
         ) {
             MinimalFullScreenSheet(
-                title = "Filter Books",
+                title = "Filter Books".localized(),
                 subtitle = "${filteredBooks.size} matching books",
                 levelLabel = "বই লাইব্রেরি • ফিল্টার",
                 icon = FilterIcon,
@@ -509,7 +509,7 @@ fun BooksLibraryScreen(
                 headerActions = {
                     if (hasActiveFilter) {
                         KlassTonalButton(
-                            text = "Reset",
+                            text = "Reset".localized(),
                             icon = CloseIcon,
                             accent = KlassFeaturePalette.error(isDark).primary,
                             isDark = isDark,
@@ -541,7 +541,7 @@ fun BooksLibraryScreen(
                 ) {
                     SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                         GoogleSectionHeader(
-                            title = "Department",
+                            title = "Department".localized(),
                             hindSiliguri = hindSiliguri,
                             accent = booksAccent.primary,
                         )
@@ -551,7 +551,7 @@ fun BooksLibraryScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             MinimalIconChip(
-                                label = "All",
+                                label = "All".localized(),
                                 selected = selectedDept == null,
                                 accent = booksAccent.primary,
                                 isDark = isDark,
@@ -578,7 +578,7 @@ fun BooksLibraryScreen(
 
                     SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                         GoogleSectionHeader(
-                            title = "Semester",
+                            title = "Semester".localized(),
                             hindSiliguri = hindSiliguri,
                             accent = KlassFeaturePalette.routine(isDark).primary,
                         )
@@ -588,7 +588,7 @@ fun BooksLibraryScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             MinimalIconChip(
-                                label = "All",
+                                label = "All".localized(),
                                 selected = selectedSem == null,
                                 accent = KlassFeaturePalette.routine(isDark).primary,
                                 isDark = isDark,
@@ -643,8 +643,8 @@ fun BooksLibraryScreen(
 
     bookToDelete?.let { target ->
         KlassConfirmDialog(
-            title = "Delete Book",
-            message = "Permanently remove \"${target.title}\" (${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}) from the curriculum library?",
+            title = "Delete Book".localized(),
+            message = "Permanently remove \".localized()${target.title}\" (${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}) from the curriculum library?",
             icon = TrashCanIcon,
             accent = KlassFeaturePalette.error(isDark).primary,
             isDark = isDark,
@@ -663,9 +663,9 @@ fun BooksLibraryScreen(
                         if (result.isSuccess) {
                             books = books.filterNot { it.id == target.id }
                             bookToDelete = null
-                            showToast("Book deleted!")
+                            showToast("Book deleted!".localized())
                         } else {
-                            showToast("Could not delete book. Try again.")
+                            showToast("Could not delete book. Try again.".localized())
                         }
                     }
                 }
@@ -707,13 +707,13 @@ private fun BookDetailFullSubScreen(
                     ) {
                         Icon(
                             imageVector = TrashCanIcon,
-                            contentDescription = "Delete Book",
+                            contentDescription = "Delete Book".localized(),
                             tint = KlassFeaturePalette.error(isDark).primary,
                             modifier = Modifier.size(20.dp),
                         )
                     }
                     HeaderSavePillButton(
-                        text = "Edit",
+                        text = "Edit".localized(),
                         accent = booksAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -732,7 +732,7 @@ private fun BookDetailFullSubScreen(
                 Spacer(modifier = Modifier.height(10.dp))
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     KlassDetailFieldRow(
-                        label = "Theory Classes / Week",
+                        label = "Theory Classes / Week".localized(),
                         value = "${book.theoryClassesPerWeek} periods",
                         icon = ClockIcon,
                         accent = KlassFeaturePalette.teachers(isDark).primary,
@@ -741,7 +741,7 @@ private fun BookDetailFullSubScreen(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     KlassDetailFieldRow(
-                        label = "Practical Lab / Week",
+                        label = "Practical Lab / Week".localized(),
                         value = "${book.practicalClassesPerWeek} periods",
                         icon = LayerGroupIcon,
                         accent = KlassFeaturePalette.classrooms(isDark).primary,
@@ -750,7 +750,7 @@ private fun BookDetailFullSubScreen(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     KlassDetailFieldRow(
-                        label = "Subject Credit",
+                        label = "Subject Credit".localized(),
                         value = "$creditClean Credits",
                         icon = AwardIcon,
                         accent = KlassFeaturePalette.ai(isDark).primary,
@@ -918,7 +918,7 @@ private fun LibraryBookCard(
                     ) {
                         Icon(
                             imageVector = MoreVertIcon,
-                            contentDescription = "Book actions",
+                            contentDescription = "Book actions".localized(),
                             tint = cs.onSurfaceVariant,
                             modifier = Modifier.size(20.dp),
                         )
@@ -930,7 +930,7 @@ private fun LibraryBookCard(
                     containerColor = cs.surfaceContainerLow,
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit", fontSize = 15.5.sp, fontFamily = hindSiliguri) },
+                        text = { Text("Edit".localized(), fontSize = 15.5.sp, fontFamily = hindSiliguri) },
                         leadingIcon = {
                             Icon(
                                 imageVector = EditIcon,
@@ -946,7 +946,7 @@ private fun LibraryBookCard(
                         modifier = Modifier.testTag(editTestTag),
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", fontSize = 15.5.sp, color = cs.error, fontFamily = hindSiliguri) },
+                        text = { Text("Delete".localized(), fontSize = 15.5.sp, color = cs.error, fontFamily = hindSiliguri) },
                         leadingIcon = {
                             Icon(
                                 imageVector = TrashCanIcon,
@@ -1014,7 +1014,7 @@ private fun FullScreenBookFormScreen(
     val booksAccent = KlassFeaturePalette.books(isDark)
     MinimalFullScreenSheet(
         title = if (initialBook == null) "Add Book" else "Edit Book",
-        subtitle = "BTEB Curriculum Catalog",
+        subtitle = "BTEB Curriculum Catalog".localized(),
         levelLabel = if (initialBook == null) "বই লাইব্রেরি • নতুন বই" else "বই লাইব্রেরি • এডিট",
         icon = BookIcon,
         accent = booksAccent.primary,
@@ -1038,7 +1038,7 @@ private fun FullScreenBookFormScreen(
                     val cleanTitle = title.trim()
                     val cleanCode = subjectCode.trim()
                     if (cleanTitle.isBlank() || cleanCode.isBlank()) {
-                        showToast("Please enter book title and subject code.")
+                        showToast("Please enter book title and subject code.".localized())
                         return@HeaderSavePillButton
                     }
 
@@ -1055,7 +1055,7 @@ private fun FullScreenBookFormScreen(
                         }
                     }
                     if (orderedDeptSemMap.isEmpty()) {
-                        showToast("Select at least one department and semester.")
+                        showToast("Select at least one department and semester.".localized())
                         return@HeaderSavePillButton
                     }
 
@@ -1066,7 +1066,7 @@ private fun FullScreenBookFormScreen(
                         .filter { it.isDigit() }
                         .toIntOrNull() ?: 0
                     if (theoryVal + practicalVal <= 0) {
-                        showToast("Enter at least 1 weekly theory or practical class.")
+                        showToast("Enter at least 1 weekly theory or practical class.".localized())
                         return@HeaderSavePillButton
                     }
                     val cleanCredit = AppStrings.convertBengaliDigitsToAscii(creditText.trim())
@@ -1095,7 +1095,7 @@ private fun FullScreenBookFormScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            GoogleSectionHeader(title = "Subject Details", hindSiliguri = hindSiliguri)
+            GoogleSectionHeader(title = "Subject Details".localized(), hindSiliguri = hindSiliguri)
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val twoCol = maxWidth >= 560.dp
@@ -1105,19 +1105,19 @@ private fun FullScreenBookFormScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         MinimalBookTextField(
-                            label = "Book Title *",
+                            label = "Book Title *".localized(),
                             value = title,
                             onValueChange = { title = it },
-                            placeholder = "Enter subject title",
+                            placeholder = "Enter subject title".localized(),
                             hindSiliguri = hindSiliguri,
                             testTag = "book_title_input",
                             modifier = Modifier.weight(1.4f),
                         )
                         MinimalBookTextField(
-                            label = "Subject Code *",
+                            label = "Subject Code *".localized(),
                             value = subjectCode,
                             onValueChange = { subjectCode = it },
-                            placeholder = "e.g. 25911",
+                            placeholder = "e.g. 25911".localized(),
                             hindSiliguri = hindSiliguri,
                             keyboardType = KeyboardType.Number,
                             testTag = "book_code_input",
@@ -1127,18 +1127,18 @@ private fun FullScreenBookFormScreen(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         MinimalBookTextField(
-                            label = "Book Title *",
+                            label = "Book Title *".localized(),
                             value = title,
                             onValueChange = { title = it },
-                            placeholder = "Enter subject title",
+                            placeholder = "Enter subject title".localized(),
                             hindSiliguri = hindSiliguri,
                             testTag = "book_title_input",
                         )
                         MinimalBookTextField(
-                            label = "Subject Code *",
+                            label = "Subject Code *".localized(),
                             value = subjectCode,
                             onValueChange = { subjectCode = it },
-                            placeholder = "e.g. 25911",
+                            placeholder = "e.g. 25911".localized(),
                             hindSiliguri = hindSiliguri,
                             keyboardType = KeyboardType.Number,
                             testTag = "book_code_input",
@@ -1152,30 +1152,30 @@ private fun FullScreenBookFormScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 MinimalBookTextField(
-                    label = "Theory / Wk",
+                    label = "Theory / Wk".localized(),
                     value = theoryText,
                     onValueChange = { theoryText = it },
-                    placeholder = "3",
+                    placeholder = "3".localized(),
                     hindSiliguri = hindSiliguri,
                     keyboardType = KeyboardType.Number,
                     testTag = "book_theory_input",
                     modifier = Modifier.weight(1f),
                 )
                 MinimalBookTextField(
-                    label = "Practical / Wk",
+                    label = "Practical / Wk".localized(),
                     value = practicalText,
                     onValueChange = { practicalText = it },
-                    placeholder = "3",
+                    placeholder = "3".localized(),
                     hindSiliguri = hindSiliguri,
                     keyboardType = KeyboardType.Number,
                     testTag = "book_practical_input",
                     modifier = Modifier.weight(1f),
                 )
                 MinimalBookTextField(
-                    label = "Credits",
+                    label = "Credits".localized(),
                     value = creditText,
                     onValueChange = { creditText = it },
-                    placeholder = "3.5",
+                    placeholder = "3.5".localized(),
                     hindSiliguri = hindSiliguri,
                     keyboardType = KeyboardType.Decimal,
                     testTag = "book_credit_input",
@@ -1185,7 +1185,7 @@ private fun FullScreenBookFormScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 GoogleSectionHeader(
-                    title = "Departments & Semesters",
+                    title = "Departments & Semesters".localized(),
                     hindSiliguri = hindSiliguri,
                     accent = booksAccent.primary,
                 )
@@ -1301,7 +1301,7 @@ private fun FullScreenBookFormScreen(
                                 ) {
                                     val allSelected = selectedSems.size == librarySemesters.size
                                     MinimalSemesterChip(
-                                        label = "All",
+                                        label = "All".localized(),
                                         selected = allSelected,
                                         hindSiliguri = hindSiliguri,
                                         testTag = "book_dept_${dept.shortCode}_all_sem",

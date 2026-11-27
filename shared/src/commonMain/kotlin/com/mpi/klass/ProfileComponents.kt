@@ -1026,7 +1026,7 @@ internal fun ProfileStepEditorSubScreen(
                 ) {
                     Icon(
                         imageVector = BackArrowIcon,
-                        contentDescription = "Back",
+                        contentDescription = "Back".localized(),
                         tint = cs.onSurface,
                         modifier = Modifier.size(22.dp),
                     )

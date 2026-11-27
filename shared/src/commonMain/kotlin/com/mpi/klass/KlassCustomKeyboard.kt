@@ -382,7 +382,7 @@ internal fun KlassCustomKeyboard(
 
                         KeyboardIconKey(
                             icon = BackArrowIcon,
-                            contentDescription = "মুছুন",
+                            contentDescription = "মুছুন".localized(),
                             bg = actionKeyBg,
                             tint = keyTextColor,
                             borderSubtle = borderSubtle,
@@ -426,7 +426,7 @@ internal fun KlassCustomKeyboard(
                         }
                         KeyboardIconKey(
                             icon = BackArrowIcon,
-                            contentDescription = "মুছুন",
+                            contentDescription = "মুছুন".localized(),
                             bg = actionKeyBg,
                             tint = keyTextColor,
                             borderSubtle = borderSubtle,
@@ -477,7 +477,7 @@ internal fun KlassCustomKeyboard(
                         }
                         KeyboardIconKey(
                             icon = BackArrowIcon,
-                            contentDescription = "মুছুন",
+                            contentDescription = "মুছুন".localized(),
                             bg = actionKeyBg,
                             tint = keyTextColor,
                             borderSubtle = borderSubtle,
@@ -524,7 +524,7 @@ internal fun KlassCustomKeyboard(
                         }
                         KeyboardIconKey(
                             icon = BackArrowIcon,
-                            contentDescription = "মুছুন",
+                            contentDescription = "মুছুন".localized(),
                             bg = actionKeyBg,
                             tint = keyTextColor,
                             borderSubtle = borderSubtle,
@@ -587,7 +587,7 @@ internal fun KlassCustomKeyboard(
                 )
 
                 KeyboardActionKey(
-                    label = ".",
+                    label = ".".localized(),
                     bg = actionKeyBg,
                     contentColor = keyTextColor,
                     borderSubtle = borderSubtle,

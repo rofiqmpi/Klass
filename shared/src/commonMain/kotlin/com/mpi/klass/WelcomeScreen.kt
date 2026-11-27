@@ -259,7 +259,7 @@ fun WelcomeScreen(
         // Fullscreen Background Image
         Image(
             painter = painterResource(backgroundImage),
-            contentDescription = "Welcome Background",
+            contentDescription = "Welcome Background".localized(),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds,
         )
@@ -305,7 +305,7 @@ fun WelcomeScreen(
                 // Foreground Circular Image
                 Image(
                     painter = painterResource(Res.drawable.splash),
-                    contentDescription = "App Logo",
+                    contentDescription = "App Logo".localized(),
                     modifier = Modifier
                         .size(72.dp)
                         .clip(CircleShape),
@@ -764,7 +764,7 @@ fun WelcomeScreen(
                         ) {
                             Icon(
                                 imageVector = PaletteIcon,
-                                contentDescription = "Theme",
+                                contentDescription = "Theme".localized(),
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(18.dp),
                             )
@@ -1350,7 +1350,7 @@ fun WelcomeScreen(
                         ) {
                             Image(
                                 painter = painterResource(Res.drawable.policy),
-                                contentDescription = "Policy Illustration",
+                                contentDescription = "Policy Illustration".localized(),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(150.dp)

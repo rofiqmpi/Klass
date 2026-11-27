@@ -300,7 +300,7 @@ fun HomeRoutineHeader(
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                 TelegramAnimatedIcon(
                                     icon = DownloadIcon,
-                                    contentDescription = "Download Routine PDF",
+                                    contentDescription = "Download Routine PDF".localized(),
                                     tint = routineAccent.primary,
                                     size = 15.dp,
                                     interactionSource = dlInteraction,
@@ -555,12 +555,12 @@ fun HomeRoutineHeader(
                                     ) {
                                         Icon(
                                             imageVector = RefreshIcon,
-                                            contentDescription = "Reset to saved profile",
+                                            contentDescription = "Reset to saved profile".localized(),
                                             tint = notiAccent.primary,
                                             modifier = Modifier.size(12.dp),
                                         )
                                         Text(
-                                            text = "Reset",
+                                            text = "Reset".localized(),
                                             fontSize = 11.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             fontFamily = hindSiliguri,
@@ -571,7 +571,7 @@ fun HomeRoutineHeader(
                                 }
                             } else {
                                 Text(
-                                    text = "Temporary preview",
+                                    text = "Temporary preview".localized(),
                                     fontSize = 11.sp,
                                     fontFamily = hindSiliguri,
                                     color = subTextColor,
@@ -596,7 +596,7 @@ fun HomeRoutineHeader(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
-                                        text = "Done",
+                                        text = "Done".localized(),
                                         fontSize = 11.5.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = hindSiliguri,
@@ -678,7 +678,7 @@ fun HomeRoutineHeader(
                         ) {
                             TelegramAnimatedIcon(
                                 icon = SparkleIcon,
-                                contentDescription = "Zed AI",
+                                contentDescription = "Zed AI".localized(),
                                 tint = aiAccent.primary,
                                 size = 19.dp,
                                 interactionSource = aiInteraction,
@@ -737,7 +737,7 @@ fun HomeRoutineHeader(
                     ) {
                         TelegramAnimatedIcon(
                             icon = NotificationIcon,
-                            contentDescription = "Notifications",
+                            contentDescription = "Notifications".localized(),
                             tint = notiAccent.primary,
                             size = 19.dp,
                             interactionSource = notiInteraction,
@@ -810,7 +810,7 @@ private fun HomeProfileAvatarSlot(
             if (imageRequest != null) {
                 AsyncImage(
                     model = imageRequest,
-                    contentDescription = "Profile Photo",
+                    contentDescription = "Profile Photo".localized(),
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(CircleShape),

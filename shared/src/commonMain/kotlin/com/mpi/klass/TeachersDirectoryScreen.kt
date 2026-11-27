@@ -182,7 +182,7 @@ fun TeachersDirectoryScreen(
 
                         KlassHeaderIconButton(
                             icon = RefreshIcon,
-                            contentDescription = "Refresh teachers",
+                            contentDescription = "Refresh teachers".localized(),
                             isDark = isDark,
                             iconTint = teachersAccent.primary,
                             isLoading = isLoading,
@@ -238,7 +238,7 @@ fun TeachersDirectoryScreen(
                                     } else {
                                         "No matching teachers found"
                                     },
-                                    subtitle = "Signed-in teachers appear here automatically.",
+                                    subtitle = "Signed-in teachers appear here automatically.".localized(),
                                     accent = teachersAccent.primary,
                                     isDark = isDark,
                                     hindSiliguri = hindSiliguri,
@@ -331,7 +331,7 @@ fun TeachersDirectoryScreen(
     teacherToDelete?.let { target ->
         val displayTarget = target.name.ifBlank { target.email.substringBefore("@") }
         KlassConfirmDialog(
-            title = "Remove Teacher",
+            title = "Remove Teacher".localized(),
             message = "Permanently remove $displayTarget (${target.email}) from the database?",
             icon = TrashCanIcon,
             accent = KlassFeaturePalette.error(isDark).primary,
@@ -351,9 +351,9 @@ fun TeachersDirectoryScreen(
                         if (result.isSuccess) {
                             teachers = teachers.filterNot { it.email.equals(target.email, ignoreCase = true) }
                             teacherToDelete = null
-                            showToast("Teacher removed from database!")
+                            showToast("Teacher removed from database!".localized())
                         } else {
-                            showToast("Failed to remove teacher. Try again.")
+                            showToast("Failed to remove teacher. Try again.".localized())
                         }
                     }
                 }
@@ -488,7 +488,7 @@ private fun MessengerTeacherChatCard(
                 ) {
                     com.mpi.klass.theme.TelegramAnimatedIcon(
                         icon = TrashCanIcon,
-                        contentDescription = "Remove teacher",
+                        contentDescription = "Remove teacher".localized(),
                         tint = KlassFeaturePalette.error(isDark).primary.copy(alpha = 0.85f),
                         size = 19.dp,
                     )
@@ -530,49 +530,49 @@ private fun FullScreenTeacherDetailScreen(
     val fields = remember(teacher, isDark) {
         listOf(
             TeacherDetailField(
-                label = "Department",
+                label = "Department".localized(),
                 value = teacher.department.ifBlank { emptyText },
                 icon = GraduationCapIcon,
                 accent = deptAcc.primary,
             ),
             TeacherDetailField(
-                label = "Shift",
+                label = "Shift".localized(),
                 value = if (teacher.shift.isNotBlank()) RoutineRules.normalizeShift(teacher.shift) else emptyText,
                 icon = ClockIcon,
                 accent = KlassFeaturePalette.routine(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Phone Number",
+                label = "Phone Number".localized(),
                 value = teacher.phone.ifBlank { emptyText },
                 icon = PhoneSolidIcon,
                 accent = KlassFeaturePalette.classrooms(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Email Address",
+                label = "Email Address".localized(),
                 value = contactEmail.ifBlank { emptyText },
                 icon = EnvelopeSolidIcon,
                 accent = teachersAccent.primary,
             ),
             TeacherDetailField(
-                label = "Blood Group",
+                label = "Blood Group".localized(),
                 value = teacher.bloodGroup.ifBlank { emptyText },
                 icon = DropletIcon,
                 accent = KlassFeaturePalette.blood(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Gender",
+                label = "Gender".localized(),
                 value = teacher.gender.ifBlank { emptyText },
                 icon = VenusMarsIcon,
                 accent = KlassFeaturePalette.appearance(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Present Address",
+                label = "Present Address".localized(),
                 value = teacher.address.ifBlank { emptyText },
                 icon = LocationDotIcon,
                 accent = KlassFeaturePalette.books(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Permanent Address",
+                label = "Permanent Address".localized(),
                 value = teacher.permanentAddress.ifBlank { emptyText },
                 icon = LocationDotIcon,
                 accent = KlassFeaturePalette.books(isDark).primary,
@@ -593,8 +593,8 @@ private fun FullScreenTeacherDetailScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
-            title = "Teacher Profile",
-            subtitle = "Faculty Directory",
+            title = "Teacher Profile".localized(),
+            subtitle = "Faculty Directory".localized(),
             levelLabel = "শিক্ষক তালিকা • প্রোফাইল",
             icon = GraduationCapIcon,
             accent = deptAcc.primary,
@@ -606,7 +606,7 @@ private fun FullScreenTeacherDetailScreen(
             headerActions = {
                 if (canEdit) {
                     HeaderSavePillButton(
-                        text = "Remove",
+                        text = "Remove".localized(),
                         accent = KlassFeaturePalette.error(isDark).primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -692,7 +692,7 @@ private fun FullScreenTeacherDetailScreen(
                     ) {
                         if (teacher.phone.isNotBlank()) {
                             KlassTonalButton(
-                                text = "Call",
+                                text = "Call".localized(),
                                 icon = PhoneSolidIcon,
                                 accent = KlassFeaturePalette.classrooms(isDark).primary,
                                 isDark = isDark,
@@ -702,7 +702,7 @@ private fun FullScreenTeacherDetailScreen(
                         }
                         if (contactEmail.isNotBlank()) {
                             KlassTonalButton(
-                                text = "Email",
+                                text = "Email".localized(),
                                 icon = EnvelopeSolidIcon,
                                 accent = teachersAccent.primary,
                                 isDark = isDark,
@@ -711,7 +711,7 @@ private fun FullScreenTeacherDetailScreen(
                             )
                         }
                         KlassTonalButton(
-                            text = "Subjects",
+                            text = "Subjects".localized(),
                             icon = BookIcon,
                             accent = KlassFeaturePalette.teaching(isDark).primary,
                             isDark = isDark,
@@ -725,7 +725,7 @@ private fun FullScreenTeacherDetailScreen(
 
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "Contact & Academic Info",
+                        title = "Contact & Academic Info".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = deptAcc.primary,
                     )
@@ -802,7 +802,7 @@ private fun FullScreenTeacherDetailScreen(
             zIndex = 90f,
         ) {
             MinimalFullScreenSheet(
-                title = "Assigned Subjects",
+                title = "Assigned Subjects".localized(),
                 subtitle = teacher.name.ifBlank { teacher.email.substringBefore("@") },
                 levelLabel = "শিক্ষক তালিকা • বিষয়সমূহ",
                 icon = BookIcon,
@@ -824,8 +824,8 @@ private fun FullScreenTeacherDetailScreen(
                         ) {
                             KlassEmptyState(
                                 icon = BookIcon,
-                                title = "No Subjects Configured",
-                                subtitle = "This teacher has not saved preferred semester subjects yet.",
+                                title = "No Subjects Configured".localized(),
+                                subtitle = "This teacher has not saved preferred semester subjects yet.".localized(),
                                 accent = KlassFeaturePalette.teaching(isDark).primary,
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,

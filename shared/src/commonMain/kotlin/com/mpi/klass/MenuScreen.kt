@@ -127,8 +127,8 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "routine_manager",
-                        title = "Zed engine",
-                        subtitle = "Generate, edit & publish schedules",
+                        title = "Zed engine".localized(),
+                        subtitle = "Generate, edit & publish schedules".localized(),
                         icon = CalendarDaysIcon,
                         accent = KlassFeaturePalette.routine(isDark),
                         badgeText = "Engine",
@@ -139,8 +139,8 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "teacher_prefs",
-                        title = "Teaching Subjects",
-                        subtitle = "Department, shift & subject choices",
+                        title = "Teaching Subjects".localized(),
+                        subtitle = "Department, shift & subject choices".localized(),
                         icon = GraduationCapIcon,
                         accent = KlassFeaturePalette.teaching(isDark),
                         badgeText = "Setup",
@@ -151,8 +151,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "books",
-                    title = "Books library",
-                    subtitle = "Subject syllabus, codes & credits",
+                    title = "Books library".localized(),
+                    subtitle = "Subject syllabus, codes & credits".localized(),
                     icon = BookIcon,
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onBooksClick,
@@ -162,8 +162,8 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "teachers",
-                        title = "Teachers",
-                        subtitle = "Faculty members & teaching subjects",
+                        title = "Teachers".localized(),
+                        subtitle = "Faculty members & teaching subjects".localized(),
                         icon = GraduationCapIcon,
                         accent = KlassFeaturePalette.teachers(isDark),
                         onClick = onTeachersClick,
@@ -173,8 +173,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "classrooms",
-                    title = "Classrooms",
-                    subtitle = "Room schedule & live availability",
+                    title = "Classrooms".localized(),
+                    subtitle = "Room schedule & live availability".localized(),
                     icon = DoorOpenIcon,
                     accent = KlassFeaturePalette.classrooms(isDark),
                     onClick = onClassroomClick,
@@ -189,8 +189,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "notices",
-                    title = "Notifications",
-                    subtitle = "Class reminders & campus updates",
+                    title = "Notifications".localized(),
+                    subtitle = "Class reminders & campus updates".localized(),
                     icon = NotificationIcon,
                     accent = KlassFeaturePalette.notifications(isDark),
                     onClick = onNoticeClick,
@@ -199,8 +199,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "blood_finder",
-                    title = "Blood finder",
-                    subtitle = "Verified campus donor directory",
+                    title = "Blood finder".localized(),
+                    subtitle = "Verified campus donor directory".localized(),
                     icon = DropletIcon,
                     accent = KlassFeaturePalette.blood(isDark),
                     badgeText = "SOS",
@@ -210,8 +210,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "ai_assistant",
-                    title = "Zed ai",
-                    subtitle = "Smart campus knowledge & A2UI actions",
+                    title = "Zed ai".localized(),
+                    subtitle = "Smart campus knowledge & A2UI actions".localized(),
                     icon = SparkleIcon,
                     accent = KlassFeaturePalette.ai(isDark),
                     badgeText = "ZED",
@@ -221,8 +221,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "profile",
-                    title = "Profile",
-                    subtitle = "Academic info & profile overview",
+                    title = "Profile".localized(),
+                    subtitle = "Academic info & profile overview".localized(),
                     icon = PersonIcon,
                     accent = KlassFeaturePalette.profile(isDark),
                     onClick = onProfileClick,
@@ -238,16 +238,16 @@ fun MenuScreen(
             listOf(
                 MenuTileSpec(
                     id = "admin_signin_control",
-                    title = "Sign-in Controls",
-                    subtitle = "Role sign-in switches & access rules",
+                    title = "Sign-in Controls".localized(),
+                    subtitle = "Role sign-in switches & access rules".localized(),
                     icon = ShieldIcon,
                     accent = KlassFeaturePalette.admin(isDark),
                     onClick = onSignInControlClick,
                 ),
                 MenuTileSpec(
                     id = "admin_approvals",
-                    title = "Admin Approvals",
-                    subtitle = "Review pending admin requests",
+                    title = "Admin Approvals".localized(),
+                    subtitle = "Review pending admin requests".localized(),
                     icon = CrownIcon,
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onAdminApprovalsClick,
@@ -281,7 +281,7 @@ fun MenuScreen(
                 }
 
                 GoogleSectionHeader(
-                    title = "Academic & Schedule",
+                    title = "Academic & Schedule".localized(),
                     accent = KlassFeaturePalette.routine(isDark).primary,
                     hindSiliguri = hindSiliguri,
                 )
@@ -296,7 +296,7 @@ fun MenuScreen(
 
                 SocialSectionDividerBand(isDark = isDark, height = 6.dp)
                 GoogleSectionHeader(
-                    title = "Campus & Tools",
+                    title = "Campus & Tools".localized(),
                     accent = KlassFeaturePalette.ai(isDark).primary,
                     hindSiliguri = hindSiliguri,
                 )
@@ -312,7 +312,7 @@ fun MenuScreen(
                 if (adminTiles.isNotEmpty()) {
                     SocialSectionDividerBand(isDark = isDark, height = 6.dp)
                     GoogleSectionHeader(
-                        title = "Administration",
+                        title = "Administration".localized(),
                         accent = KlassFeaturePalette.admin(isDark).primary,
                         hindSiliguri = hindSiliguri,
                     )
@@ -328,7 +328,7 @@ fun MenuScreen(
 
                 SocialSectionDividerBand(isDark = isDark, height = 6.dp)
                 GoogleSectionHeader(
-                    title = "Preferences",
+                    title = "Preferences".localized(),
                     accent = KlassFeaturePalette.appearance(isDark).primary,
                     hindSiliguri = hindSiliguri,
                 )
@@ -336,8 +336,8 @@ fun MenuScreen(
                     SocialMenuRow(
                         tile = MenuTileSpec(
                             id = "appearance",
-                            title = "Appearance",
-                            subtitle = "Theme mode & color preview",
+                            title = "Appearance".localized(),
+                            subtitle = "Theme mode & color preview".localized(),
                             icon = PaletteIcon,
                             accent = KlassFeaturePalette.appearance(isDark),
                             badgeText = themeLabel,
@@ -350,8 +350,8 @@ fun MenuScreen(
                     SocialMenuRow(
                         tile = MenuTileSpec(
                             id = "language",
-                            title = "Language",
-                            subtitle = "Switch between Bengali & English",
+                            title = "Language".localized(),
+                            subtitle = "Switch between Bengali & English".localized(),
                             icon = LanguageGlobeIcon,
                             accent = KlassFeaturePalette.teaching(isDark),
                             badgeText = currentLanguage.displayName,
@@ -400,7 +400,7 @@ fun MenuScreen(
                     } else {
                         KlassNavigationRow(
                             title = "সাইন ইন করুন".localized(),
-                            subtitle = "Sign in to access your routine & campus connections",
+                            subtitle = "Sign in to access your routine & campus connections".localized(),
                             icon = LoginIcon,
                             accent = KlassFeaturePalette.profile(isDark).primary,
                             isDark = isDark,
@@ -456,7 +456,7 @@ fun AppearanceSubScreen(
     }
 
     MinimalFullScreenSheet(
-        title = "Appearance",
+        title = "Appearance".localized(),
         subtitle = "Active: ${currentThemeMode.name.lowercase().replaceFirstChar { it.uppercase() }}",
         levelLabel = "Menu › Preferences",
         icon = PaletteIcon,
@@ -473,7 +473,7 @@ fun AppearanceSubScreen(
         ) {
             Spacer(modifier = Modifier.height(10.dp))
             GoogleSectionHeader(
-                title = "Select Theme Mode",
+                title = "Select Theme Mode".localized(),
                 accent = appearanceAccent.primary,
                 hindSiliguri = hindSiliguri,
             )
@@ -571,7 +571,7 @@ fun LanguageSubScreen(
     }
 
     MinimalFullScreenSheet(
-        title = "Language",
+        title = "Language".localized(),
         subtitle = "Active: ${currentLanguage.displayName}",
         levelLabel = "Menu › Preferences",
         icon = LanguageGlobeIcon,
@@ -588,7 +588,7 @@ fun LanguageSubScreen(
         ) {
             Spacer(modifier = Modifier.height(10.dp))
             GoogleSectionHeader(
-                title = "Select App Language",
+                title = "Select App Language".localized(),
                 accent = langAccent.primary,
                 hindSiliguri = hindSiliguri,
             )
@@ -691,8 +691,8 @@ fun SignInControlSubScreen(
     }
 
     MinimalFullScreenSheet(
-        title = "Sign-in Controls",
-        subtitle = "Role access switches",
+        title = "Sign-in Controls".localized(),
+        subtitle = "Role access switches".localized(),
         levelLabel = "Menu › Admin",
         icon = ShieldIcon,
         accent = adminAccent.primary,
@@ -715,14 +715,14 @@ fun SignInControlSubScreen(
             ) {
                 Spacer(modifier = Modifier.height(10.dp))
                 GoogleSectionHeader(
-                    title = "Role Switches",
+                    title = "Role Switches".localized(),
                     accent = adminAccent.primary,
                     hindSiliguri = hindSiliguri,
                 )
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     SignInToggleRow(
-                        title = "Admin Sign-in",
-                        subtitle = "Requires approved admin account",
+                        title = "Admin Sign-in".localized(),
+                        subtitle = "Requires approved admin account".localized(),
                         icon = CrownIcon,
                         accent = adminAccent.primary,
                         isDark = isDark,
@@ -733,8 +733,8 @@ fun SignInControlSubScreen(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     SignInToggleRow(
-                        title = "Teacher Sign-in",
-                        subtitle = "Faculty routine & preference setup",
+                        title = "Teacher Sign-in".localized(),
+                        subtitle = "Faculty routine & preference setup".localized(),
                         icon = GraduationCapIcon,
                         accent = KlassFeaturePalette.teaching(isDark).primary,
                         isDark = isDark,
@@ -745,8 +745,8 @@ fun SignInControlSubScreen(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     SignInToggleRow(
-                        title = "Student Sign-in",
-                        subtitle = "Personal class routine & push alerts",
+                        title = "Student Sign-in".localized(),
+                        subtitle = "Personal class routine & push alerts".localized(),
                         icon = PersonIcon,
                         accent = KlassFeaturePalette.routine(isDark).primary,
                         isDark = isDark,
@@ -875,7 +875,7 @@ fun AdminApprovalsSubScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         MinimalFullScreenSheet(
-            title = "Admin Approvals",
+            title = "Admin Approvals".localized(),
             subtitle = "${pendingRequests.size} pending request(s)",
             levelLabel = "Menu › Admin",
             icon = CrownIcon,
@@ -887,7 +887,7 @@ fun AdminApprovalsSubScreen(
             headerActions = {
                 KlassHeaderIconButton(
                     icon = RefreshIcon,
-                    contentDescription = "Refresh",
+                    contentDescription = "Refresh".localized(),
                     isDark = isDark,
                     visualSize = 38.dp,
                     isLoading = isLoading,
@@ -912,8 +912,8 @@ fun AdminApprovalsSubScreen(
                     ) {
                         KlassEmptyState(
                             icon = CrownIcon,
-                            title = "No Pending Requests",
-                            subtitle = "All admin verification requests have been reviewed.",
+                            title = "No Pending Requests".localized(),
+                            subtitle = "All admin verification requests have been reviewed.".localized(),
                             accent = booksAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
@@ -930,7 +930,7 @@ fun AdminApprovalsSubScreen(
                     ) {
                         Spacer(modifier = Modifier.height(10.dp))
                         GoogleSectionHeader(
-                            title = "Tap applicant to inspect & decide",
+                            title = "Tap applicant to inspect & decide".localized(),
                             accent = booksAccent.primary,
                             hindSiliguri = hindSiliguri,
                         )
@@ -1002,7 +1002,7 @@ fun AdminApprovalsSubScreen(
                         Spacer(modifier = Modifier.height(10.dp))
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassDetailFieldRow(
-                                label = "Applicant Email",
+                                label = "Applicant Email".localized(),
                                 value = activeItem.email,
                                 icon = ShieldIcon,
                                 accent = booksAccent.primary,
@@ -1011,7 +1011,7 @@ fun AdminApprovalsSubScreen(
                             )
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
-                                label = "Permissions Granted on Approval",
+                                label = "Permissions Granted on Approval".localized(),
                                 value = "Zed engine, Books library, Teachers & Sign-in Controls",
                                 icon = InfoCircleIcon,
                                 accent = successAccent.primary,
@@ -1098,7 +1098,7 @@ fun AppUpdateManagerSubScreen(
     }
 
     MinimalFullScreenSheet(
-        title = "App Updates",
+        title = "App Updates".localized(),
         subtitle = KlassRuntimeConfig.installedVersionName.ifBlank { null }?.let { "Installed: v$it" }
             ?: "Firebase remote update feed",
         levelLabel = "Menu › Admin",
@@ -1110,7 +1110,7 @@ fun AppUpdateManagerSubScreen(
         closeTestTag = "app_update_manager_back_button",
         headerActions = {
             HeaderSavePillButton(
-                text = "Publish",
+                text = "Publish".localized(),
                 accent = updateAccent.primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
@@ -1135,14 +1135,14 @@ fun AppUpdateManagerSubScreen(
             ) {
                 Spacer(modifier = Modifier.height(10.dp))
                 GoogleSectionHeader(
-                    title = "Private Repo Safe Update Channel",
+                    title = "Private Repo Safe Update Channel".localized(),
                     accent = updateAccent.primary,
                     hindSiliguri = hindSiliguri,
                 )
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     SignInToggleRow(
-                        title = "Enable In-App Update",
-                        subtitle = "Prompt users automatically when a newer version is set",
+                        title = "Enable In-App Update".localized(),
+                        subtitle = "Prompt users automatically when a newer version is set".localized(),
                         icon = DownloadIcon,
                         accent = updateAccent.primary,
                         isDark = isDark,
@@ -1153,8 +1153,8 @@ fun AppUpdateManagerSubScreen(
                     )
                     SocialInsetDivider(startIndent = 72.dp)
                     SignInToggleRow(
-                        title = "Force Mandatory Update",
-                        subtitle = "Hide 'Later' button until user updates",
+                        title = "Force Mandatory Update".localized(),
+                        subtitle = "Hide 'Later' button until user updates".localized(),
                         icon = ShieldIcon,
                         accent = KlassFeaturePalette.admin(isDark).primary,
                         isDark = isDark,
@@ -1167,7 +1167,7 @@ fun AppUpdateManagerSubScreen(
 
                 SocialSectionDividerBand(isDark = isDark, height = 6.dp)
                 GoogleSectionHeader(
-                    title = "Release Details (Firestore)",
+                    title = "Release Details (Firestore)".localized(),
                     accent = updateAccent.primary,
                     hindSiliguri = hindSiliguri,
                 )
@@ -1181,7 +1181,7 @@ fun AppUpdateManagerSubScreen(
                         OutlinedTextField(
                             value = latestVersion,
                             onValueChange = { latestVersion = it },
-                            label = { Text("Latest Version (e.g. 1.0.12)", fontFamily = hindSiliguri) },
+                            label = { Text("Latest Version (e.g. 1.0.12)".localized(), fontFamily = hindSiliguri) },
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1196,8 +1196,8 @@ fun AppUpdateManagerSubScreen(
                         OutlinedTextField(
                             value = apkUrl,
                             onValueChange = { apkUrl = it },
-                            label = { Text("Public APK URL (Public Releases Repo / Drive)", fontFamily = hindSiliguri) },
-                            placeholder = { Text("https://github.com/user/Klass-Releases/releases/download/v1.0.12/Klass-release.apk", fontSize = 12.sp) },
+                            label = { Text("Public APK URL (Public Releases Repo / Drive)".localized(), fontFamily = hindSiliguri) },
+                            placeholder = { Text("https://github.com/user/Klass-Releases/releases/download/v1.0.12/Klass-release.apk".localized(), fontSize = 12.sp) },
                             maxLines = 3,
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1210,7 +1210,7 @@ fun AppUpdateManagerSubScreen(
                         )
 
                         Text(
-                            text = "নোট: প্রাইভেট GitHub রিপোর লিংক ইউজারদের ফোনে কাজ করে না। কোড প্রাইভেট রেখেই একটি পাবলিক শুধু-রিলিজ রিপো (যেমন Klass-Releases) অথবা Google Drive ('Anyone with link')-এ APK দিয়ে লিংকটি এখানে দিন।",
+                            text = "নোট: প্রাইভেট GitHub রিপোর লিংক ইউজারদের ফোনে কাজ করে না। কোড প্রাইভেট রেখেই একটি পাবলিক শুধু-রিলিজ রিপো (যেমন Klass-Releases) অথবা Google Drive ('Anyone with link')-এ APK দিয়ে লিংকটি এখানে দিন।".localized(),
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
                             fontFamily = hindSiliguri,
@@ -1220,7 +1220,7 @@ fun AppUpdateManagerSubScreen(
                         OutlinedTextField(
                             value = notes,
                             onValueChange = { notes = it },
-                            label = { Text("What's New (Optional)", fontFamily = hindSiliguri) },
+                            label = { Text("What's New (Optional)".localized(), fontFamily = hindSiliguri) },
                             maxLines = 4,
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1237,7 +1237,7 @@ fun AppUpdateManagerSubScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             KlassTonalButton(
-                                text = "Test Update Check",
+                                text = "Test Update Check".localized(),
                                 accent = KlassFeaturePalette.routine(isDark).primary,
                                 isDark = isDark,
                                 hindSiliguri = hindSiliguri,

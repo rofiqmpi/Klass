@@ -210,11 +210,11 @@ fun TeacherPreferencesScreen(
 
     fun savePrefs() {
         if (cleanEmail.isBlank()) {
-            showToast("Sign in required to save preferences.")
+            showToast("Sign in required to save preferences.".localized())
             return
         }
         if (totalSelectedCount == 0) {
-            showToast("Select at least one teaching subject before saving.")
+            showToast("Select at least one teaching subject before saving.".localized())
             return
         }
         scope.launch {
@@ -235,10 +235,10 @@ fun TeacherPreferencesScreen(
                 )
                 val res = saveTeacherSchedulingPrefInFirestore(pref)
                 if (res.isSuccess) {
-                    showToast("Teaching preferences saved!")
+                    showToast("Teaching preferences saved!".localized())
                     onSaved(pref)
                 } else {
-                    showToast("Could not sync to cloud; check network.")
+                    showToast("Could not sync to cloud; check network.".localized())
                 }
             } finally {
                 isSaving = false
@@ -328,7 +328,7 @@ fun TeacherPreferencesScreen(
                                         modifier = mod,
                                     ) {
                                         GoogleSectionHeader(
-                                            title = "Home Department & Shift",
+                                            title = "Home Department & Shift".localized(),
                                             hindSiliguri = hindSiliguri,
                                             accent = deptColor.primary,
                                         )
@@ -388,7 +388,7 @@ fun TeacherPreferencesScreen(
                                         modifier = mod,
                                     ) {
                                         GoogleSectionHeader(
-                                            title = "Preferred Class Hours",
+                                            title = "Preferred Class Hours".localized(),
                                             hindSiliguri = hindSiliguri,
                                             accent = teachingAccent.primary,
                                         )
@@ -469,7 +469,7 @@ fun TeacherPreferencesScreen(
                                 accentTint = teachingAccent.primary,
                             ) {
                                 GoogleSectionHeader(
-                                    title = "Teaching Subjects (All Departments)",
+                                    title = "Teaching Subjects (All Departments)".localized(),
                                     hindSiliguri = hindSiliguri,
                                     accent = teachingAccent.primary,
                                 )
@@ -481,7 +481,7 @@ fun TeacherPreferencesScreen(
                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
                                     Text(
-                                        text = "Pick subjects sequentially by Department → Semester → Subject across CST, CT, ET, MT, PT, ENT, and EMT.",
+                                        text = "Pick subjects sequentially by Department → Semester → Subject across CST, CT, ET, MT, PT, ENT, and EMT.".localized(),
                                         fontSize = 13.5.sp,
                                         fontFamily = hindSiliguri,
                                         color = cs.onSurfaceVariant,
@@ -615,7 +615,7 @@ private fun DepartmentPickerStepScreen(
     }
 
     MinimalFullScreenSheet(
-        title = "Step 1: Department",
+        title = "Step 1: Department".localized(),
         subtitle = "$totalSelected subject(s) picked so far",
         levelLabel = "Teaching Setup • 1 of 3",
         icon = GraduationCapIcon,
@@ -625,7 +625,7 @@ private fun DepartmentPickerStepScreen(
         onDismiss = onDismiss,
         headerActions = {
             HeaderSavePillButton(
-                text = "Done",
+                text = "Done".localized(),
                 accent = teachingAccent.primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
@@ -640,7 +640,7 @@ private fun DepartmentPickerStepScreen(
             item {
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     GoogleSectionHeader(
-                        title = "All Departments (Select Any)",
+                        title = "All Departments (Select Any)".localized(),
                         hindSiliguri = hindSiliguri,
                         accent = teachingAccent.primary,
                     )
@@ -688,7 +688,7 @@ private fun SemesterPickerStepScreen(
 
     MinimalFullScreenSheet(
         title = "Step 2: $department Semester",
-        subtitle = "Pick a semester to select subjects",
+        subtitle = "Pick a semester to select subjects".localized(),
         levelLabel = "Teaching Setup • 2 of 3",
         icon = LayerGroupIcon,
         accent = deptAccent.primary,
@@ -697,7 +697,7 @@ private fun SemesterPickerStepScreen(
         onDismiss = onBackToDepts,
         headerActions = {
             HeaderSavePillButton(
-                text = "Finish",
+                text = "Finish".localized(),
                 accent = KlassFeaturePalette.teaching(isDark).primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
@@ -800,7 +800,7 @@ private fun SubjectChecklistStepScreen(
             headerActions = {
                 if (semBooks.isNotEmpty()) {
                     KlassTonalButton(
-                        text = "All",
+                        text = "All".localized(),
                         icon = CheckIcon,
                         accent = dayAccent.primary,
                         isDark = isDark,
@@ -811,7 +811,7 @@ private fun SubjectChecklistStepScreen(
                 }
                 if (selectedVisibleCount > 0) {
                     KlassTonalButton(
-                        text = "Clear",
+                        text = "Clear".localized(),
                         icon = CloseIcon,
                         accent = KlassFeaturePalette.error(isDark).primary,
                         isDark = isDark,
@@ -821,7 +821,7 @@ private fun SubjectChecklistStepScreen(
                     )
                 }
                 HeaderSavePillButton(
-                    text = "Done",
+                    text = "Done".localized(),
                     accent = teachingAccent.primary,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -853,8 +853,8 @@ private fun SubjectChecklistStepScreen(
                 ) {
                     KlassEmptyState(
                         icon = BookIcon,
-                        title = "No Subjects Match",
-                        subtitle = "Go back to pick another semester or department.",
+                        title = "No Subjects Match".localized(),
+                        subtitle = "Go back to pick another semester or department.".localized(),
                         accent = dayAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -914,7 +914,7 @@ private fun SubjectChecklistStepScreen(
                                         ) {
                                             Icon(
                                                 imageVector = InfoCircleIcon,
-                                                contentDescription = "Subject details",
+                                                contentDescription = "Subject details".localized(),
                                                 tint = dayAccent.primary,
                                                 modifier = Modifier.size(20.dp),
                                             )

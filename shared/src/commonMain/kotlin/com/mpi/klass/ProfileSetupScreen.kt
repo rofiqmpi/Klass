@@ -229,7 +229,7 @@ fun ProfileSetupScreen(
             AnimatedContent(
                 targetState = stepIndex,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                label = "profile_setup_step",
+                label = "profile_setup_step".localized(),
             ) { visibleIndex ->
                 val visibleStep = steps[visibleIndex]
                 val visMeta = profileFieldMeta(visibleStep.field, role, isDark)

@@ -166,7 +166,7 @@ fun BloodFinderScreen(
 
                             KlassHeaderIconButton(
                                 icon = RefreshIcon,
-                                contentDescription = "Refresh blood donors",
+                                contentDescription = "Refresh blood donors".localized(),
                                 isDark = isDark,
                                 containerColor = bloodAccent.softTint,
                                 iconTint = bloodAccent.primary,
@@ -420,20 +420,20 @@ private fun DonorDetailSubScreen(
                 IconButton(
                     onClick = {
                         clipboard.setText(AnnotatedString(donor.phone))
-                        showToast("Phone number copied!")
+                        showToast("Phone number copied!".localized())
                     },
                     modifier = Modifier.size(48.dp),
                 ) {
                     com.mpi.klass.theme.TelegramAnimatedIcon(
                         icon = CopyIcon,
-                        contentDescription = "Copy Phone",
+                        contentDescription = "Copy Phone".localized(),
                         tint = bloodAccent.primary,
                         size = 20.dp,
                     )
                 }
             }
             HeaderSavePillButton(
-                text = "Call",
+                text = "Call".localized(),
                 accent = callAccent.primary,
                 isDark = isDark,
                 hindSiliguri = hindSiliguri,
@@ -451,7 +451,7 @@ private fun DonorDetailSubScreen(
         ) {
             SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                 KlassDetailFieldRow(
-                    label = "Blood Group",
+                    label = "Blood Group".localized(),
                     value = donor.bloodGroup,
                     icon = DropletIcon,
                     accent = bloodAccent.primary,
@@ -461,7 +461,7 @@ private fun DonorDetailSubScreen(
                 if (donor.roleLabel.isNotBlank()) {
                     SocialInsetDivider(startIndent = 68.dp)
                     KlassDetailFieldRow(
-                        label = "Role",
+                        label = "Role".localized(),
                         value = donor.roleLabel,
                         icon = PersonIcon,
                         accent = KlassFeaturePalette.profile(isDark).primary,
@@ -472,7 +472,7 @@ private fun DonorDetailSubScreen(
                 if (donor.department.isNotBlank()) {
                     SocialInsetDivider(startIndent = 68.dp)
                     KlassDetailFieldRow(
-                        label = "Department",
+                        label = "Department".localized(),
                         value = donor.department,
                         icon = GraduationCapIcon,
                         accent = deptAccent.primary,
@@ -483,7 +483,7 @@ private fun DonorDetailSubScreen(
                 if (donor.phone.isNotBlank()) {
                     SocialInsetDivider(startIndent = 68.dp)
                     KlassDetailFieldRow(
-                        label = "Phone (Tap to Copy)",
+                        label = "Phone (Tap to Copy)".localized(),
                         value = donor.phone,
                         icon = PhoneSolidIcon,
                         accent = callAccent.primary,
@@ -491,12 +491,12 @@ private fun DonorDetailSubScreen(
                         hindSiliguri = hindSiliguri,
                         onClick = {
                             clipboard.setText(AnnotatedString(donor.phone))
-                            showToast("Phone number copied!")
+                            showToast("Phone number copied!".localized())
                         },
                         trailingContent = {
                             com.mpi.klass.theme.TelegramAnimatedIcon(
                                 icon = CopyIcon,
-                                contentDescription = "Copy phone",
+                                contentDescription = "Copy phone".localized(),
                                 tint = callAccent.primary,
                                 size = 18.dp,
                             )
@@ -506,7 +506,7 @@ private fun DonorDetailSubScreen(
                 if (donor.address.isNotBlank()) {
                     SocialInsetDivider(startIndent = 68.dp)
                     KlassDetailFieldRow(
-                        label = "Present Address (Tap to Copy)",
+                        label = "Present Address (Tap to Copy)".localized(),
                         value = donor.address,
                         icon = LocationDotIcon,
                         accent = KlassFeaturePalette.books(isDark).primary,
@@ -514,7 +514,7 @@ private fun DonorDetailSubScreen(
                         hindSiliguri = hindSiliguri,
                         onClick = {
                             clipboard.setText(AnnotatedString(donor.address))
-                            showToast("Address copied!")
+                            showToast("Address copied!".localized())
                         },
                     )
                 }

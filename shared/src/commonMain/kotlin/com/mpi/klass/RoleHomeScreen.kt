@@ -201,7 +201,7 @@ fun RoleHomeScreen(
             currentRole == UserRole.TEACHER &&
             teacherPref?.schedulingSetupComplete != true
         if (mustLockTeacherPrefs) {
-            showToast("Please select your teaching subjects and tap Save first.")
+            showToast("Please select your teaching subjects and tap Save first.".localized())
             return
         }
         if (tabBackStack.size > 1) {
@@ -573,7 +573,7 @@ fun RoleHomeScreen(
                                         isDownloading = isDownloadingRoutine,
                                         onDownloadClick = {
                                             if (displayedEntries.isEmpty()) {
-                                                showToast("No classes to download")
+                                                showToast("No classes to download".localized())
                                             } else if (!isDownloadingRoutine) {
                                                 isDownloadingRoutine = true
                                                 val label = headerBadgeText.ifBlank {
@@ -610,7 +610,7 @@ fun RoleHomeScreen(
                                     .rainbowScreenBackground(isDark),
                             ) {
                                 GoogleTopAppBar(
-                                    title = "Menu",
+                                    title = "Menu".localized(),
                                     hindSiliguri = hindSiliguri,
                                     navigationIcon = null,
                                     actions = {
@@ -791,7 +791,7 @@ fun RoleHomeScreen(
                                             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                                 TelegramAnimatedIcon(
                                                     icon = BackArrowIcon,
-                                                    contentDescription = "Back",
+                                                    contentDescription = "Back".localized(),
                                                     tint = barIconTint,
                                                     size = 20.dp,
                                                 )
@@ -839,7 +839,7 @@ fun RoleHomeScreen(
                                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                                     TelegramAnimatedIcon(
                                                         icon = SparkleIcon,
-                                                        contentDescription = "Zed AI",
+                                                        contentDescription = "Zed AI".localized(),
                                                         tint = barIconTint,
                                                         size = 18.dp,
                                                     )
@@ -861,7 +861,7 @@ fun RoleHomeScreen(
                                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                                         TelegramAnimatedIcon(
                                                             icon = NotificationIcon,
-                                                            contentDescription = "Notifications",
+                                                            contentDescription = "Notifications".localized(),
                                                             tint = barIconTint,
                                                             size = 18.dp,
                                                         )
@@ -896,7 +896,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isNotificationsSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Notifications",
+                                    title = "Notifications".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -933,7 +933,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isTeachersSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Teachers",
+                                    title = "Teachers".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -964,7 +964,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Books library",
+                                    title = "Books library".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -998,7 +998,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Classrooms",
+                                    title = "Classrooms".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -1032,7 +1032,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isRoutineSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Zed engine",
+                                    title = "Zed engine".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -1042,7 +1042,7 @@ fun RoleHomeScreen(
                                         ) {
                                             KlassHeaderIconButton(
                                                 icon = CalendarDaysIcon,
-                                                contentDescription = "Routine Explorer",
+                                                contentDescription = "Routine Explorer".localized(),
                                                 isDark = isDark,
                                                 containerColor = explorerAccent.softTint,
                                                 iconTint = explorerAccent.primary,
@@ -1055,7 +1055,7 @@ fun RoleHomeScreen(
                                             Box {
                                                 KlassHeaderIconButton(
                                                     icon = SwapIcon,
-                                                    contentDescription = "Edit Requests",
+                                                    contentDescription = "Edit Requests".localized(),
                                                     isDark = isDark,
                                                     containerColor = reqAccent.softTint,
                                                     iconTint = reqAccent.primary,
@@ -1113,7 +1113,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isTeacherPrefsSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Teaching Subjects",
+                                    title = "Teaching Subjects".localized(),
                                     hindSiliguri = hindSiliguri,
                                     navigationIcon = if (mustCompleteTeacherSetup) null else BackArrowIcon,
                                     onNavigationClick = if (mustCompleteTeacherSetup) null else ({ goBack() }),
@@ -1157,7 +1157,7 @@ fun RoleHomeScreen(
                         ) {
                             AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
                                 GoogleTopAppBar(
-                                    title = "Blood finder",
+                                    title = "Blood finder".localized(),
                                     hindSiliguri = hindSiliguri,
                                     onNavigationClick = { goBack() },
                                     actions = {
@@ -1379,31 +1379,31 @@ private fun SlotInspectionDialog(
         } ?: "Room ${entry.roomNumber} (${entry.shift})"
         listOf(
             SlotMetaField(
-                label = "Schedule",
+                label = "Schedule".localized(),
                 value = "${entry.day}, Period ${entry.periodIndex + 1} (${entry.startTime} – ${entry.endTime})",
                 icon = ClockIcon,
                 accent = slotAccent.primary,
             ),
             SlotMetaField(
-                label = "Department & Batch",
+                label = "Department & Batch".localized(),
                 value = "${entry.department} • ${RoutineRules.semesterDisplayLabel(entry.semester)} • ${entry.group}",
                 icon = GraduationCapIcon,
                 accent = KlassFeaturePalette.teaching(isDark).primary,
             ),
             SlotMetaField(
-                label = "Classroom / Lab",
+                label = "Classroom / Lab".localized(),
                 value = roomDetail,
                 icon = DoorOpenIcon,
                 accent = roomAccent.primary,
             ),
             SlotMetaField(
-                label = "Instructor",
+                label = "Instructor".localized(),
                 value = entry.teacherName.ifBlank { entry.teacherEmail.ifBlank { "Assigned Faculty" } },
                 icon = PersonIcon,
                 accent = teacherAccent.primary,
             ),
             SlotMetaField(
-                label = "Subject Code & Format",
+                label = "Subject Code & Format".localized(),
                 value = "${entry.subjectCode} • ${if (entry.isPractical) "Practical / Lab" else "Theory"}",
                 icon = BookIcon,
                 accent = booksAccent.primary,
@@ -1441,10 +1441,10 @@ private fun SlotInspectionDialog(
                 )
                 val res = submitRoutineEditRequestInFirestore(req)
                 if (res.isSuccess) {
-                    showToast("Request submitted for Admin approval!")
+                    showToast("Request submitted for Admin approval!".localized())
                     onDismiss()
                 } else {
-                    showToast("Could not submit request.")
+                    showToast("Could not submit request.".localized())
                 }
             } finally {
                 isSubmitting = false
@@ -1468,7 +1468,7 @@ private fun SlotInspectionDialog(
             headerActions = {
                 if (role == UserRole.TEACHER) {
                     HeaderSavePillButton(
-                        text = "Request",
+                        text = "Request".localized(),
                         accent = slotAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -1476,7 +1476,7 @@ private fun SlotInspectionDialog(
                     )
                 } else if (role == UserRole.ADMIN) {
                     HeaderSavePillButton(
-                        text = "Edit Engine",
+                        text = "Edit Engine".localized(),
                         accent = slotAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -1492,7 +1492,7 @@ private fun SlotInspectionDialog(
             ) {
                 Spacer(modifier = Modifier.height(10.dp))
                 GoogleSectionHeader(
-                    title = "Class Metadata",
+                    title = "Class Metadata".localized(),
                     accent = slotAccent.primary,
                     hindSiliguri = hindSiliguri,
                 )
@@ -1518,8 +1518,8 @@ private fun SlotInspectionDialog(
         // Level 2B: Teacher Edit Request — Step 1: Select Day, Period & Room
         KlassSubScreenHost(visible = subStep == 2, zIndex = 92f) {
             MinimalFullScreenSheet(
-                title = "Request Slot Change",
-                subtitle = "Step 1: Choose preferred slot & room",
+                title = "Request Slot Change".localized(),
+                subtitle = "Step 1: Choose preferred slot & room".localized(),
                 levelLabel = "Routine › Slot › Request Edit",
                 icon = EditIcon,
                 accent = slotAccent.primary,
@@ -1528,7 +1528,7 @@ private fun SlotInspectionDialog(
                 onDismiss = { subStep = 0 },
                 headerActions = {
                     HeaderSavePillButton(
-                        text = "Next",
+                        text = "Next".localized(),
                         accent = slotAccent.primary,
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
@@ -1552,14 +1552,14 @@ private fun SlotInspectionDialog(
                     }
 
                     GoogleSectionHeader(
-                        title = "New Slot Preferences",
+                        title = "New Slot Preferences".localized(),
                         accent = slotAccent.primary,
                         hindSiliguri = hindSiliguri,
                     )
                     SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                         KlassNavigationRow(
-                            title = "Requested Day",
-                            subtitle = "Working day (Sunday – Thursday)",
+                            title = "Requested Day".localized(),
+                            subtitle = "Working day (Sunday – Thursday)".localized(),
                             icon = CalendarDaysIcon,
                             accent = slotAccent.primary,
                             isDark = isDark,
@@ -1569,8 +1569,8 @@ private fun SlotInspectionDialog(
                         )
                         SocialInsetDivider(startIndent = 72.dp)
                         KlassNavigationRow(
-                            title = "Requested Period",
-                            subtitle = "Period slot index",
+                            title = "Requested Period".localized(),
+                            subtitle = "Period slot index".localized(),
                             icon = ClockIcon,
                             accent = booksAccent.primary,
                             isDark = isDark,
@@ -1581,8 +1581,8 @@ private fun SlotInspectionDialog(
                         if (classrooms.isNotEmpty()) {
                             SocialInsetDivider(startIndent = 72.dp)
                             KlassNavigationRow(
-                                title = "Requested Classroom / Lab",
-                                subtitle = "Preferred room for this class",
+                                title = "Requested Classroom / Lab".localized(),
+                                subtitle = "Preferred room for this class".localized(),
                                 icon = DoorOpenIcon,
                                 accent = roomAccent.primary,
                                 isDark = isDark,
@@ -1600,8 +1600,8 @@ private fun SlotInspectionDialog(
         KlassSubScreenHost(visible = subStep == 2 && activePickerKind != null, zIndex = 95f) {
             when (activePickerKind) {
                 "DAY" -> KlassSelectionPickerSubScreen(
-                    title = "Select Day",
-                    subtitle = "Choose target working day",
+                    title = "Select Day".localized(),
+                    subtitle = "Choose target working day".localized(),
                     levelLabel = "Routine › Request › Day",
                     icon = CalendarDaysIcon,
                     accent = slotAccent.primary,
@@ -1614,8 +1614,8 @@ private fun SlotInspectionDialog(
                     onDismiss = { activePickerKind = null },
                 )
                 "PERIOD" -> KlassSelectionPickerSubScreen(
-                    title = "Select Period",
-                    subtitle = "Choose target class period",
+                    title = "Select Period".localized(),
+                    subtitle = "Choose target class period".localized(),
                     levelLabel = "Routine › Request › Period",
                     icon = ClockIcon,
                     accent = booksAccent.primary,
@@ -1628,7 +1628,7 @@ private fun SlotInspectionDialog(
                     onDismiss = { activePickerKind = null },
                 )
                 "ROOM" -> KlassSelectionPickerSubScreen(
-                    title = "Select Room",
+                    title = "Select Room".localized(),
                     subtitle = "${classrooms.size} rooms available",
                     levelLabel = "Routine › Request › Room",
                     icon = DoorOpenIcon,
@@ -1648,8 +1648,8 @@ private fun SlotInspectionDialog(
         // Level 3B: Confirm & Reason Sub-Sub-Sub-Screen
         KlassSubScreenHost(visible = subStep == 3, zIndex = 94f) {
             MinimalFullScreenSheet(
-                title = "Confirm Request",
-                subtitle = "Step 2: Review change & add reason",
+                title = "Confirm Request".localized(),
+                subtitle = "Step 2: Review change & add reason".localized(),
                 levelLabel = "Routine › Slot › Edit › Confirm",
                 icon = CheckIcon,
                 accent = successAccent.primary,
@@ -1678,7 +1678,7 @@ private fun SlotInspectionDialog(
                 ) {
                     SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                         KlassDetailFieldRow(
-                            label = "From Slot",
+                            label = "From Slot".localized(),
                             value = "${entry.day} P${entry.periodIndex + 1} • Room ${entry.roomNumber}",
                             icon = ClockIcon,
                             accent = booksAccent.primary,
@@ -1687,7 +1687,7 @@ private fun SlotInspectionDialog(
                         )
                         SocialInsetDivider(startIndent = 68.dp)
                         KlassDetailFieldRow(
-                            label = "To Slot",
+                            label = "To Slot".localized(),
                             value = "$reqDay P${reqPeriod + 1} • Room ${reqRoom.ifBlank { entry.roomNumber }}",
                             icon = CheckIcon,
                             accent = successAccent.primary,
@@ -1701,8 +1701,8 @@ private fun SlotInspectionDialog(
                         onValueChange = { reqReason = it },
                         minLines = 3,
                         maxLines = 6,
-                        label = { Text("Reason for Change", fontFamily = hindSiliguri) },
-                        placeholder = { Text("Write a clear note for the Admin...", fontFamily = hindSiliguri) },
+                        label = { Text("Reason for Change".localized(), fontFamily = hindSiliguri) },
+                        placeholder = { Text("Write a clear note for the Admin...".localized(), fontFamily = hindSiliguri) },
                         textStyle = TextStyle(
                             fontSize = 16.sp,
                             fontFamily = hindSiliguri,

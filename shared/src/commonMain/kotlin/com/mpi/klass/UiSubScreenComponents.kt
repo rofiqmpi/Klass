@@ -555,7 +555,7 @@ internal fun <T> KlassSelectionPickerSubScreen(
                 MinimalSearchBar(
                     query = query,
                     onQueryChange = { query = it },
-                    placeholder = "খুঁজুন...",
+                    placeholder = "খুঁজুন...".localized(),
                     accent = accent,
                     isDark = isDark,
                     hindSiliguri = hindSiliguri,
@@ -635,7 +635,7 @@ internal fun <T> KlassSelectionPickerSubScreen(
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = CheckIcon,
-                                        contentDescription = "Selected",
+                                        contentDescription = "Selected".localized(),
                                         tint = Color.White,
                                         modifier = Modifier.size(15.dp),
                                     )
@@ -715,12 +715,12 @@ internal fun KlassFilterBadgeBar(
             ) {
                 Icon(
                     imageVector = CloseIcon,
-                    contentDescription = "Clear filters",
+                    contentDescription = "Clear filters".localized(),
                     tint = cs.error,
                     modifier = Modifier.size(13.dp),
                 )
                 Text(
-                    text = "রিসেট",
+                    text = "রিসেট".localized(),
                     color = cs.error,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold,

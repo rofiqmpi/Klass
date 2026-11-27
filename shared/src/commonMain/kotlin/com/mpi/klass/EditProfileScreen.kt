@@ -403,7 +403,7 @@ fun EditProfileContent(
                     ) {
                         TelegramAnimatedIcon(
                             icon = BackArrowIcon,
-                            contentDescription = "Back",
+                            contentDescription = "Back".localized(),
                             tint = cs.onSurface,
                             size = 22.dp,
                         )
@@ -617,7 +617,7 @@ fun EditProfileContent(
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                     Icon(
                                         imageVector = CameraIcon,
-                                        contentDescription = "Change photo",
+                                        contentDescription = "Change photo".localized(),
                                         tint = camIconTint,
                                         modifier = Modifier.size(17.dp),
                                     )
@@ -1171,7 +1171,7 @@ fun EditProfileContent(
         activePrivacyPicker?.let { req ->
             KlassSelectionPickerSubScreen(
                 title = "${req.fieldLabel} • ${"গোপনীয়তা".localized()}",
-                subtitle = "Who can see this on your profile?",
+                subtitle = "Who can see this on your profile?".localized(),
                 levelLabel = "গোপনীয়তা".localized(),
                 icon = ShieldIcon,
                 accent = profileAccent.primary,

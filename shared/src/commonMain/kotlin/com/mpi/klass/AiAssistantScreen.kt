@@ -205,8 +205,8 @@ fun AiAssistantScreen(
                 sourceBadge = "Zed AI",
                 blocks = listOf(
                     ZedA2UiBlock.HeaderBanner(
-                        title = "Zed AI Assistant",
-                        subtitle = "Campus Knowledge + General Gemini AI • A2UI",
+                        title = "Zed AI Assistant".localized(),
+                        subtitle = "Campus Knowledge + General Gemini AI • A2UI".localized(),
                         domain = "GENERAL",
                     )
                 ),
@@ -337,7 +337,7 @@ fun AiAssistantScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             GoogleTopAppBar(
-                title = "Zed ai",
+                title = "Zed ai".localized(),
                 hindSiliguri = hindSiliguri,
                 onNavigationClick = onBack,
                 navigationTestTag = "ai_back_button",
@@ -354,8 +354,8 @@ fun AiAssistantScreen(
                                         sourceBadge = "Zed AI",
                                         blocks = listOf(
                                             ZedA2UiBlock.HeaderBanner(
-                                                title = "Zed AI Assistant",
-                                                subtitle = "Ready for your query",
+                                                title = "Zed AI Assistant".localized(),
+                                                subtitle = "Ready for your query".localized(),
                                                 domain = "GENERAL",
                                             )
                                         ),
@@ -367,7 +367,7 @@ fun AiAssistantScreen(
                         modifier = Modifier.testTag("ai_clear_chat_button"),
                     ) {
                         Text(
-                            text = "New",
+                            text = "New".localized(),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             fontFamily = hindSiliguri,
@@ -465,7 +465,7 @@ fun AiAssistantScreen(
                             ) {
                                 if (inputText.isEmpty()) {
                                     Text(
-                                        text = "যেকোনো প্রশ্ন লিখুন...",
+                                        text = "যেকোনো প্রশ্ন লিখুন...".localized(),
                                         fontSize = 15.sp,
                                         fontFamily = hindSiliguri,
                                         color = cs.onSurfaceVariant,
@@ -523,7 +523,7 @@ fun AiAssistantScreen(
                                 ) {
                                     com.mpi.klass.theme.TelegramAnimatedIcon(
                                         icon = SendIcon,
-                                        contentDescription = "Send to Zed",
+                                        contentDescription = "Send to Zed".localized(),
                                         tint = if (canSend) Color.White else aiAccent.primary.copy(alpha = 0.55f),
                                         size = 18.dp,
                                     )
@@ -544,7 +544,7 @@ private fun ZedTypingIndicatorBubble(
 ) {
     val cs = MaterialTheme.colorScheme
     val aiAccent = KlassFeaturePalette.ai(isDark)
-    val transition = rememberInfiniteTransition(label = "ZedTypingDots")
+    val transition = rememberInfiniteTransition(label = "ZedTypingDots".localized())
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 3f,
@@ -552,7 +552,7 @@ private fun ZedTypingIndicatorBubble(
             animation = tween(durationMillis = 900),
             repeatMode = RepeatMode.Restart,
         ),
-        label = "TypingDotPhase",
+        label = "TypingDotPhase".localized(),
     )
 
     var elapsedSeconds by remember { mutableIntStateOf(0) }
@@ -579,7 +579,7 @@ private fun ZedTypingIndicatorBubble(
         ) {
             com.mpi.klass.theme.TelegramAnimatedIcon(
                 icon = SparkleIcon,
-                contentDescription = "Zed typing",
+                contentDescription = "Zed typing".localized(),
                 tint = Color.White,
                 size = 15.dp,
             )
@@ -651,7 +651,7 @@ private fun ChatMessageBubble(
             ) {
                 com.mpi.klass.theme.TelegramAnimatedIcon(
                     icon = SparkleIcon,
-                    contentDescription = "Zed",
+                    contentDescription = "Zed".localized(),
                     tint = Color.White,
                     size = 15.dp,
                 )
@@ -719,7 +719,7 @@ private fun ChatMessageBubble(
                                             modifier = Modifier.size(11.dp),
                                         )
                                         Text(
-                                            text = "Learned",
+                                            text = "Learned".localized(),
                                             fontSize = 10.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             fontFamily = hindSiliguri,

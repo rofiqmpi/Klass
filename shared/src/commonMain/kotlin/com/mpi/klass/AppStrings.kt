@@ -884,6 +884,8 @@ object AppStrings {
         "শুধু আমি" to "Only me",
         "কানেকশন তৈরি করুন" to "Connect with classmates & teachers",
     )
+    private val staticBengaliDict: Map<String, String> =
+        staticEnglishDict.entries.associate { (bengali, english) -> english.lowercase() to bengali }
 
     fun preloadCacheSync() {
         if (!cacheLoaded) {
@@ -921,11 +923,33 @@ object AppStrings {
                     !staticEnglishDict.containsKey(k) && !existingKeys.contains(k)
                 }
                 if (missing.isNotEmpty()) {
-                    val fetched = fetchOnlineTranslations(missing)
+                    val fetched = fetchOnlineTranslations(missing, AppLanguage.BENGALI)
                     if (fetched.isNotEmpty()) {
                         saveCachedTranslations(fetched)
                         withContext(Dispatchers.Main) {
                             dynamicDict.putAll(fetched)
+                        }
+                    }
+                }
+
+                // Pre-fetch reverse translations for hardcoded English UI strings.
+                val englishEntries = withContext(Dispatchers.Main) {
+                    staticEnglishDict.values
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .filter {
+                            !staticBengaliDict.containsKey(it.lowercase()) &&
+                                dynamicDict["en:$it"].isNullOrBlank()
+                        }
+                }
+                if (englishEntries.isNotEmpty()) {
+                    val fetched = fetchOnlineTranslations(englishEntries, AppLanguage.ENGLISH)
+                    if (fetched.isNotEmpty()) {
+                        val reverseEntries = fetched.mapKeys { "en:${it.key}" }
+                        saveCachedTranslations(reverseEntries)
+                        withContext(Dispatchers.Main) {
+                            dynamicDict.putAll(reverseEntries)
                         }
                     }
                 }
@@ -937,24 +961,32 @@ object AppStrings {
         }
     }
 
-    private fun scheduleDynamicTranslation(text: String) {
+    private fun scheduleDynamicTranslation(text: String, sourceLanguage: AppLanguage) {
         val key = text.trim()
-        if (key.isBlank() || !containsBengali(key)) return
+        if (key.isBlank()) return
+        if (sourceLanguage == AppLanguage.BENGALI && !containsBengali(key)) return
+        if (sourceLanguage == AppLanguage.ENGLISH && containsBengali(key)) return
+        val cacheKey = if (sourceLanguage == AppLanguage.ENGLISH) "en:$key" else key
         synchronized(pendingTranslations) {
-            if (!pendingTranslations.add(key)) return
+            if (!pendingTranslations.add(cacheKey)) return
         }
         moduleScope.launch {
             try {
-                val fetched = fetchOnlineTranslations(listOf(key))
+                val fetched = fetchOnlineTranslations(listOf(key), sourceLanguage)
                 if (fetched.isNotEmpty()) {
-                    saveCachedTranslations(fetched)
+                    val entries = if (sourceLanguage == AppLanguage.ENGLISH) {
+                        fetched.mapKeys { "en:${it.key}" }
+                    } else {
+                        fetched
+                    }
+                    saveCachedTranslations(entries)
                     withContext(Dispatchers.Main) {
-                        dynamicDict.putAll(fetched)
+                        dynamicDict.putAll(entries)
                     }
                 }
             } finally {
                 synchronized(pendingTranslations) {
-                    pendingTranslations.remove(key)
+                    pendingTranslations.remove(cacheKey)
                 }
             }
         }
@@ -1008,13 +1040,21 @@ object AppStrings {
     fun cancel(lang: AppLanguage): String = translate("বাতিল", lang)
 
     /**
-     * Translates any Bengali string cleanly to English (instant offline dictionary first, dynamic cache fallback).
+     * Translates UI strings in either direction, using the offline dictionary before online fallbacks.
      */
     fun translate(text: String, lang: AppLanguage): String {
-        if (lang == AppLanguage.BENGALI || text.isBlank()) return text
+        if (text.isBlank()) return text
         if (!cacheLoaded) preloadCacheSync()
 
         val trimmed = text.trim()
+        if (lang == AppLanguage.BENGALI) {
+            if (containsBengali(trimmed)) return text
+            staticBengaliDict[trimmed.lowercase()]?.let { return it }
+            dynamicDict["en:$trimmed"]?.let { return it }
+            scheduleDynamicTranslation(trimmed, AppLanguage.ENGLISH)
+            return text
+        }
+
         staticEnglishDict[trimmed]?.let { return convertBengaliDigitsToAscii(it) }
 
         val cached = dynamicDict[trimmed]
@@ -1043,18 +1083,33 @@ object AppStrings {
         }
 
         // Queue dynamic online translation for any unseen Bengali text; Compose recomposes automatically when ready
-        scheduleDynamicTranslation(trimmed)
+        scheduleDynamicTranslation(trimmed, AppLanguage.BENGALI)
         return convertBengaliDigitsToAscii(text)
     }
 
     suspend fun translateWithAiModel(text: String, lang: AppLanguage): String {
-        if (lang == AppLanguage.BENGALI || text.isBlank()) return text
+        if (text.isBlank()) return text
         if (!cacheLoaded) preloadCacheSync()
         val trimmed = text.trim()
+        if (lang == AppLanguage.BENGALI) {
+            if (containsBengali(trimmed)) return text
+            staticBengaliDict[trimmed.lowercase()]?.let { return it }
+            dynamicDict["en:$trimmed"]?.let { return it }
+            val fetched = fetchOnlineTranslations(listOf(trimmed), AppLanguage.ENGLISH)
+            if (fetched.isNotEmpty()) {
+                val entries = fetched.mapKeys { "en:${it.key}" }
+                saveCachedTranslations(entries)
+                withContext(Dispatchers.Main) {
+                    dynamicDict.putAll(entries)
+                }
+                return entries["en:$trimmed"] ?: text
+            }
+            return text
+        }
         staticEnglishDict[trimmed]?.let { return convertBengaliDigitsToAscii(it) }
         dynamicDict[trimmed]?.let { return convertBengaliDigitsToAscii(it) }
 
-        val fetched = fetchOnlineTranslations(listOf(trimmed))
+        val fetched = fetchOnlineTranslations(listOf(trimmed), AppLanguage.BENGALI)
         if (fetched.isNotEmpty()) {
             saveCachedTranslations(fetched)
             withContext(Dispatchers.Main) {

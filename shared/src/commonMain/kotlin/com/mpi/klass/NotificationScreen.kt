@@ -136,12 +136,12 @@ fun NotificationScreen(
         permissionGranted = granted
         if (granted) {
             sendInstantTestPushNotification(
-                title = "Push Notifications Enabled",
+                title = "Push Notifications Enabled".localized(),
                 body = "You will automatically receive alerts before every scheduled class.",
             )
-            showToast("Class push notifications enabled")
+            showToast("Class push notifications enabled".localized())
         } else {
-            showToast("Please enable notification permission in Settings for class alerts.")
+            showToast("Please enable notification permission in Settings for class alerts.".localized())
         }
     }
 
@@ -208,7 +208,7 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_complete_profile",
-                        title = "Complete your academic profile",
+                        title = "Complete your academic profile".localized(),
                         body = "Add Department, Shift & Semester in Profile to unlock your personal class routine.",
                         metaLabel = "Action needed • Tap to open Profile",
                         icon = PersonIcon,
@@ -223,7 +223,7 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_teacher_prefs",
-                        title = "Select your teaching subjects",
+                        title = "Select your teaching subjects".localized(),
                         body = "Choose your subjects and preferred periods to match your assigned classes.",
                         metaLabel = "Setup required • Tap to open Teaching Subjects",
                         icon = BookIcon,
@@ -238,7 +238,7 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_admin_publish",
-                        title = "No live routine published yet",
+                        title = "No live routine published yet".localized(),
                         body = "Open Zed engine to generate, review conflicts, and publish the timetable.",
                         metaLabel = "Admin task • Tap to open Zed engine",
                         icon = CalendarDaysIcon,
@@ -253,7 +253,7 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_enable_push",
-                        title = "Allow class push notifications",
+                        title = "Allow class push notifications".localized(),
                         body = "Turn on notifications so you automatically receive reminders before every class.",
                         metaLabel = "Permission • Tap to allow",
                         icon = NotificationIcon,
@@ -268,7 +268,7 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_guest_signin",
-                        title = "Sign in with your MPI account",
+                        title = "Sign in with your MPI account".localized(),
                         body = "Log in as a Student or Teacher to get personalized automatic class alerts.",
                         metaLabel = "Guest mode • Tap to sign in",
                         icon = PersonIcon,
@@ -334,13 +334,13 @@ fun NotificationScreen(
                             ) {
                                 Image(
                                     painter = painterResource(Res.drawable.notiscreen),
-                                    contentDescription = "Notifications Empty State",
+                                    contentDescription = "Notifications Empty State".localized(),
                                     modifier = Modifier.size(128.dp),
                                     contentScale = ContentScale.Fit,
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Text(
-                                    text = "No Notifications Yet",
+                                    text = "No Notifications Yet".localized(),
                                     fontSize = 19.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = hindSiliguri,
@@ -349,7 +349,7 @@ fun NotificationScreen(
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Automatic class alerts and important updates will show up here.",
+                                    text = "Automatic class alerts and important updates will show up here.".localized(),
                                     fontSize = 14.5.sp,
                                     fontFamily = hindSiliguri,
                                     color = cs.onSurfaceVariant,
@@ -456,10 +456,10 @@ fun NotificationScreen(
                             onClick = {
                                 if (isCurrentlySeen) {
                                     NotificationSeenStore.markUnseen(alert.id)
-                                    showToast("Marked as unread")
+                                    showToast("Marked as unread".localized())
                                 } else {
                                     NotificationSeenStore.markSeen(alert.id)
-                                    showToast("Marked as seen")
+                                    showToast("Marked as seen".localized())
                                 }
                             },
                             shape = CircleShape,
@@ -484,7 +484,7 @@ fun NotificationScreen(
                             }
                         }
                         HeaderSavePillButton(
-                            text = "Preview",
+                            text = "Preview".localized(),
                             accent = alertAccent.primary,
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
@@ -493,7 +493,7 @@ fun NotificationScreen(
                                     title = alert.triggerTitle,
                                     body = alert.triggerBody,
                                 )
-                                showToast("Preview notification sent!")
+                                showToast("Preview notification sent!".localized())
                             },
                         )
                     },
@@ -507,7 +507,7 @@ fun NotificationScreen(
                     ) {
                         SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                             KlassDetailFieldRow(
-                                label = "Subject",
+                                label = "Subject".localized(),
                                 value = "${alert.subjectTitle} (${alert.subjectCode})",
                                 icon = BookIcon,
                                 accent = alertAccent.primary,
@@ -516,7 +516,7 @@ fun NotificationScreen(
                             )
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
-                                label = "Class Time & Day",
+                                label = "Class Time & Day".localized(),
                                 value = "${alert.day} • ${alert.classTimeRange.ifBlank { alert.triggerTimeLabel }}",
                                 icon = ClockIcon,
                                 accent = notiAccent.primary,
@@ -525,7 +525,7 @@ fun NotificationScreen(
                             )
                             SocialInsetDivider(startIndent = 68.dp)
                             KlassDetailFieldRow(
-                                label = "Classroom",
+                                label = "Classroom".localized(),
                                 value = "Room ${alert.roomNumber}",
                                 icon = DoorOpenIcon,
                                 accent = KlassFeaturePalette.classrooms(isDark).primary,
@@ -535,7 +535,7 @@ fun NotificationScreen(
                             if (alert.metaSubtitle.isNotBlank()) {
                                 SocialInsetDivider(startIndent = 68.dp)
                                 KlassDetailFieldRow(
-                                    label = "Details",
+                                    label = "Details".localized(),
                                     value = alert.metaSubtitle,
                                     icon = SparkleIcon,
                                     accent = KlassFeaturePalette.ai(isDark).primary,
