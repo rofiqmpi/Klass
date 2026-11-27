@@ -1371,7 +1371,8 @@ private fun SlotInspectionDialog(
         classrooms.firstOrNull { it.roomNumber.equals(entry.roomNumber, true) }
     }
 
-    val metaFields = remember(entry, matchedRoom, isDark) {
+    val currentLang = LocalAppLanguage.current
+    val metaFields = remember(entry, matchedRoom, isDark, currentLang) {
         val roomDetail = matchedRoom?.let {
             val nearList = it.effectiveNearestDepartments()
             val zonePart = if (nearList.isNotEmpty()) " • Near ${nearList.joinToString(", ")}" else ""
@@ -1379,31 +1380,31 @@ private fun SlotInspectionDialog(
         } ?: "Room ${entry.roomNumber} (${entry.shift})"
         listOf(
             SlotMetaField(
-                label = "Schedule".localized(),
+                label = "Schedule".localized(currentLang),
                 value = "${entry.day}, Period ${entry.periodIndex + 1} (${entry.startTime} – ${entry.endTime})",
                 icon = ClockIcon,
                 accent = slotAccent.primary,
             ),
             SlotMetaField(
-                label = "Department & Batch".localized(),
+                label = "Department & Batch".localized(currentLang),
                 value = "${entry.department} • ${RoutineRules.semesterDisplayLabel(entry.semester)} • ${entry.group}",
                 icon = GraduationCapIcon,
                 accent = KlassFeaturePalette.teaching(isDark).primary,
             ),
             SlotMetaField(
-                label = "Classroom / Lab".localized(),
+                label = "Classroom / Lab".localized(currentLang),
                 value = roomDetail,
                 icon = DoorOpenIcon,
                 accent = roomAccent.primary,
             ),
             SlotMetaField(
-                label = "Instructor".localized(),
+                label = "Instructor".localized(currentLang),
                 value = entry.teacherName.ifBlank { entry.teacherEmail.ifBlank { "Assigned Faculty" } },
                 icon = PersonIcon,
                 accent = teacherAccent.primary,
             ),
             SlotMetaField(
-                label = "Subject Code & Format".localized(),
+                label = "Subject Code & Format".localized(currentLang),
                 value = "${entry.subjectCode} • ${if (entry.isPractical) "Practical / Lab" else "Theory"}",
                 icon = BookIcon,
                 accent = booksAccent.primary,

@@ -1,6 +1,5 @@
 package com.mpi.klass
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -19,6 +18,8 @@ val LocalAppLanguage = compositionLocalOf { AppLanguage.BENGALI }
 object AppStrings {
     private val moduleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
+    var currentLanguage by mutableStateOf(AppLanguage.BENGALI)
+        private set
 
     // Reactive Compose state dictionary populated dynamically from cache + online module (0 hardcoded English)
     private val dynamicDict = mutableStateMapOf<String, String>()
@@ -26,6 +27,10 @@ object AppStrings {
     private var cacheLoaded = false
     var isSyncingOnline by mutableStateOf(false)
         private set
+
+    fun setCurrentLanguage(language: AppLanguage) {
+        currentLanguage = language
+    }
 
     // Master list of Bengali source strings used across the app for first-open online dictionary pre-fetching
     private val appBengaliCatalog = listOf(
@@ -1126,8 +1131,4 @@ object AppStrings {
  */
 fun String.localized(lang: AppLanguage): String = AppStrings.translate(this, lang)
 
-@Composable
-fun String.localized(): String {
-    val lang = LocalAppLanguage.current
-    return AppStrings.translate(this, lang)
-}
+fun String.localized(): String = AppStrings.translate(this, AppStrings.currentLanguage)

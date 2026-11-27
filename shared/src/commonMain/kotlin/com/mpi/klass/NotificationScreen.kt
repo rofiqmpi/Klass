@@ -109,6 +109,7 @@ fun NotificationScreen(
     onFullScreenOverlayChange: (Boolean) -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
+    val currentLang = LocalAppLanguage.current
     val notiAccent = KlassFeaturePalette.notifications(isDark)
     val routineAccent = KlassFeaturePalette.routine(isDark)
     val profileAccent = KlassFeaturePalette.profile(isDark)
@@ -199,6 +200,7 @@ fun NotificationScreen(
         permissionGranted,
         isDark,
         email,
+        currentLang,
     ) {
         buildList {
 
@@ -208,9 +210,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_complete_profile",
-                        title = "Complete your academic profile".localized(),
-                        body = "Add Department, Shift & Semester in Profile to unlock your personal class routine.",
-                        metaLabel = "Action needed • Tap to open Profile",
+                        title = "Complete your academic profile".localized(currentLang),
+                        body = "Add Department, Shift & Semester in Profile to unlock your personal class routine.".localized(currentLang),
+                        metaLabel = "Action needed • Tap to open Profile".localized(currentLang),
                         icon = PersonIcon,
                         badgeIcon = CalendarDaysIcon,
                         accent = profileAccent.primary,
@@ -223,9 +225,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_teacher_prefs",
-                        title = "Select your teaching subjects".localized(),
-                        body = "Choose your subjects and preferred periods to match your assigned classes.",
-                        metaLabel = "Setup required • Tap to open Teaching Subjects",
+                        title = "Select your teaching subjects".localized(currentLang),
+                        body = "Choose your subjects and preferred periods to match your assigned classes.".localized(currentLang),
+                        metaLabel = "Setup required • Tap to open Teaching Subjects".localized(currentLang),
                         icon = BookIcon,
                         badgeIcon = ClockIcon,
                         accent = routineAccent.primary,
@@ -238,9 +240,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_admin_publish",
-                        title = "No live routine published yet".localized(),
-                        body = "Open Zed engine to generate, review conflicts, and publish the timetable.",
-                        metaLabel = "Admin task • Tap to open Zed engine",
+                        title = "No live routine published yet".localized(currentLang),
+                        body = "Open Zed engine to generate, review conflicts, and publish the timetable.".localized(currentLang),
+                        metaLabel = "Admin task • Tap to open Zed engine".localized(currentLang),
                         icon = CalendarDaysIcon,
                         badgeIcon = SparkleIcon,
                         accent = adminAccent.primary,
@@ -253,9 +255,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_enable_push",
-                        title = "Allow class push notifications".localized(),
-                        body = "Turn on notifications so you automatically receive reminders before every class.",
-                        metaLabel = "Permission • Tap to allow",
+                        title = "Allow class push notifications".localized(currentLang),
+                        body = "Turn on notifications so you automatically receive reminders before every class.".localized(currentLang),
+                        metaLabel = "Permission • Tap to allow".localized(currentLang),
                         icon = NotificationIcon,
                         badgeIcon = ClockIcon,
                         accent = errorAccent.primary,
@@ -268,9 +270,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_guest_signin",
-                        title = "Sign in with your MPI account".localized(),
-                        body = "Log in as a Student or Teacher to get personalized automatic class alerts.",
-                        metaLabel = "Guest mode • Tap to sign in",
+                        title = "Sign in with your MPI account".localized(currentLang),
+                        body = "Log in as a Student or Teacher to get personalized automatic class alerts.".localized(currentLang),
+                        metaLabel = "Guest mode • Tap to sign in".localized(currentLang),
                         icon = PersonIcon,
                         badgeIcon = NotificationIcon,
                         accent = aiAccent.primary,

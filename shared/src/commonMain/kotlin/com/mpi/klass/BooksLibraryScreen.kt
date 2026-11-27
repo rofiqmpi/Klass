@@ -644,7 +644,7 @@ fun BooksLibraryScreen(
     bookToDelete?.let { target ->
         KlassConfirmDialog(
             title = "Delete Book".localized(),
-            message = "Permanently remove \".localized()${target.title}\" (${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}) from the curriculum library?",
+            message = "Permanently remove \"${target.title}\" (${AppStrings.convertBengaliDigitsToAscii(target.subjectCode)}) from the curriculum library?".localized(),
             icon = TrashCanIcon,
             accent = KlassFeaturePalette.error(isDark).primary,
             isDark = isDark,
@@ -689,7 +689,7 @@ private fun BookDetailFullSubScreen(
     val cleanCode = AppStrings.convertBengaliDigitsToAscii(book.subjectCode)
     val creditClean = AppStrings.convertBengaliDigitsToAscii(book.credit.ifBlank { "0" })
         MinimalFullScreenSheet(
-            title = book.title,
+            title = book.title.localized(),
             subtitle = if (cleanCode.isNotBlank()) "Subject Code $cleanCode" else "BTEB Curriculum Book",
             levelLabel = "বই লাইব্রেরি • বিস্তারিত",
             icon = BookIcon,
@@ -873,7 +873,7 @@ private fun LibraryBookCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = book.title,
+                        text = book.title.localized(),
                         color = cs.onSurface,
                         fontSize = 17.sp,
                         fontFamily = hindSiliguri,

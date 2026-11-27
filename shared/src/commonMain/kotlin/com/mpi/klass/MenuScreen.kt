@@ -121,14 +121,15 @@ fun MenuScreen(
     onSignInClick: () -> Unit = {},
     topContentPadding: Dp = 0.dp,
 ) {
-    val academicTiles = remember(role, isDark) {
+    val currentLang = LocalAppLanguage.current
+    val academicTiles = remember(role, isDark, currentLang) {
         buildList {
             if (role == UserRole.ADMIN) {
                 add(
                     MenuTileSpec(
                         id = "routine_manager",
-                        title = "Zed engine".localized(),
-                        subtitle = "Generate, edit & publish schedules".localized(),
+                        title = "Zed engine".localized(currentLang),
+                        subtitle = "Generate, edit & publish schedules".localized(currentLang),
                         icon = CalendarDaysIcon,
                         accent = KlassFeaturePalette.routine(isDark),
                         badgeText = "Engine",
@@ -139,8 +140,8 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "teacher_prefs",
-                        title = "Teaching Subjects".localized(),
-                        subtitle = "Department, shift & subject choices".localized(),
+                        title = "Teaching Subjects".localized(currentLang),
+                        subtitle = "Department, shift & subject choices".localized(currentLang),
                         icon = GraduationCapIcon,
                         accent = KlassFeaturePalette.teaching(isDark),
                         badgeText = "Setup",
@@ -151,8 +152,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "books",
-                    title = "Books library".localized(),
-                    subtitle = "Subject syllabus, codes & credits".localized(),
+                    title = "Books library".localized(currentLang),
+                    subtitle = "Subject syllabus, codes & credits".localized(currentLang),
                     icon = BookIcon,
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onBooksClick,
@@ -162,8 +163,8 @@ fun MenuScreen(
                 add(
                     MenuTileSpec(
                         id = "teachers",
-                        title = "Teachers".localized(),
-                        subtitle = "Faculty members & teaching subjects".localized(),
+                        title = "Teachers".localized(currentLang),
+                        subtitle = "Faculty members & teaching subjects".localized(currentLang),
                         icon = GraduationCapIcon,
                         accent = KlassFeaturePalette.teachers(isDark),
                         onClick = onTeachersClick,
@@ -173,8 +174,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "classrooms",
-                    title = "Classrooms".localized(),
-                    subtitle = "Room schedule & live availability".localized(),
+                    title = "Classrooms".localized(currentLang),
+                    subtitle = "Room schedule & live availability".localized(currentLang),
                     icon = DoorOpenIcon,
                     accent = KlassFeaturePalette.classrooms(isDark),
                     onClick = onClassroomClick,
@@ -183,14 +184,13 @@ fun MenuScreen(
         }
     }
 
-    val currentLang = LocalAppLanguage.current
     val campusServicesTiles = remember(isDark, role, currentLang) {
         buildList {
             add(
                 MenuTileSpec(
                     id = "notices",
-                    title = "Notifications".localized(),
-                    subtitle = "Class reminders & campus updates".localized(),
+                    title = "Notifications".localized(currentLang),
+                    subtitle = "Class reminders & campus updates".localized(currentLang),
                     icon = NotificationIcon,
                     accent = KlassFeaturePalette.notifications(isDark),
                     onClick = onNoticeClick,
@@ -199,8 +199,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "blood_finder",
-                    title = "Blood finder".localized(),
-                    subtitle = "Verified campus donor directory".localized(),
+                    title = "Blood finder".localized(currentLang),
+                    subtitle = "Verified campus donor directory".localized(currentLang),
                     icon = DropletIcon,
                     accent = KlassFeaturePalette.blood(isDark),
                     badgeText = "SOS",
@@ -210,8 +210,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "ai_assistant",
-                    title = "Zed ai".localized(),
-                    subtitle = "Smart campus knowledge & A2UI actions".localized(),
+                    title = "Zed ai".localized(currentLang),
+                    subtitle = "Smart campus knowledge & A2UI actions".localized(currentLang),
                     icon = SparkleIcon,
                     accent = KlassFeaturePalette.ai(isDark),
                     badgeText = "ZED",
@@ -221,8 +221,8 @@ fun MenuScreen(
             add(
                 MenuTileSpec(
                     id = "profile",
-                    title = "Profile".localized(),
-                    subtitle = "Academic info & profile overview".localized(),
+                    title = "Profile".localized(currentLang),
+                    subtitle = "Academic info & profile overview".localized(currentLang),
                     icon = PersonIcon,
                     accent = KlassFeaturePalette.profile(isDark),
                     onClick = onProfileClick,
@@ -231,23 +231,23 @@ fun MenuScreen(
         }
     }
 
-    val adminTiles = remember(role, isDark) {
+    val adminTiles = remember(role, isDark, currentLang) {
         if (role != UserRole.ADMIN) {
             emptyList()
         } else {
             listOf(
                 MenuTileSpec(
                     id = "admin_signin_control",
-                    title = "Sign-in Controls".localized(),
-                    subtitle = "Role sign-in switches & access rules".localized(),
+                    title = "Sign-in Controls".localized(currentLang),
+                    subtitle = "Role sign-in switches & access rules".localized(currentLang),
                     icon = ShieldIcon,
                     accent = KlassFeaturePalette.admin(isDark),
                     onClick = onSignInControlClick,
                 ),
                 MenuTileSpec(
                     id = "admin_approvals",
-                    title = "Admin Approvals".localized(),
-                    subtitle = "Review pending admin requests".localized(),
+                    title = "Admin Approvals".localized(currentLang),
+                    subtitle = "Review pending admin requests".localized(currentLang),
                     icon = CrownIcon,
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onAdminApprovalsClick,

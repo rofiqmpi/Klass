@@ -515,6 +515,7 @@ private fun FullScreenTeacherDetailScreen(
     onDeleteClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val currentLang = LocalAppLanguage.current
     val clipboard = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val teachersAccent = KlassFeaturePalette.teachers(isDark)
@@ -527,52 +528,52 @@ private fun FullScreenTeacherDetailScreen(
     var isLoadingPref by remember(teacher.email) { mutableStateOf(false) }
 
     val contactEmail = teacher.contactEmail.ifBlank { teacher.email }
-    val fields = remember(teacher, isDark) {
+    val fields = remember(teacher, isDark, currentLang) {
         listOf(
             TeacherDetailField(
-                label = "Department".localized(),
+                label = "Department".localized(currentLang),
                 value = teacher.department.ifBlank { emptyText },
                 icon = GraduationCapIcon,
                 accent = deptAcc.primary,
             ),
             TeacherDetailField(
-                label = "Shift".localized(),
+                label = "Shift".localized(currentLang),
                 value = if (teacher.shift.isNotBlank()) RoutineRules.normalizeShift(teacher.shift) else emptyText,
                 icon = ClockIcon,
                 accent = KlassFeaturePalette.routine(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Phone Number".localized(),
+                label = "Phone Number".localized(currentLang),
                 value = teacher.phone.ifBlank { emptyText },
                 icon = PhoneSolidIcon,
                 accent = KlassFeaturePalette.classrooms(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Email Address".localized(),
+                label = "Email Address".localized(currentLang),
                 value = contactEmail.ifBlank { emptyText },
                 icon = EnvelopeSolidIcon,
                 accent = teachersAccent.primary,
             ),
             TeacherDetailField(
-                label = "Blood Group".localized(),
+                label = "Blood Group".localized(currentLang),
                 value = teacher.bloodGroup.ifBlank { emptyText },
                 icon = DropletIcon,
                 accent = KlassFeaturePalette.blood(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Gender".localized(),
+                label = "Gender".localized(currentLang),
                 value = teacher.gender.ifBlank { emptyText },
                 icon = VenusMarsIcon,
                 accent = KlassFeaturePalette.appearance(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Present Address".localized(),
+                label = "Present Address".localized(currentLang),
                 value = teacher.address.ifBlank { emptyText },
                 icon = LocationDotIcon,
                 accent = KlassFeaturePalette.books(isDark).primary,
             ),
             TeacherDetailField(
-                label = "Permanent Address".localized(),
+                label = "Permanent Address".localized(currentLang),
                 value = teacher.permanentAddress.ifBlank { emptyText },
                 icon = LocationDotIcon,
                 accent = KlassFeaturePalette.books(isDark).primary,
