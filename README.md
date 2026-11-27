@@ -55,16 +55,20 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
 
 ## Android releases and updates
 
-The `Android APKs and GitHub Release` workflow automatically builds APKs on every push to `master` and uploads them to the run as the `klass-android-apks` artifact. It publishes a GitHub Release for `vMAJOR.MINOR.PATCH` tags or a manually started workflow. Configure these repository Actions secrets:
+The `Android APKs and GitHub Release` workflow runs **automatically on every push to `master`** (as well as tags and manual triggers). It automatically queries the target public release repository for the latest version, computes the next incremental semantic version and `versionCode`, builds and signs the release APK, publishes the GitHub Release (`Klass-release.apk` + `update.json`) to your public release repository, and updates Firestore `config/app_update` **without requiring any manual Admin Panel intervention**.
+
+Configure these repository Actions secrets:
 
 - `GOOGLE_SERVICES_JSON`: the complete Firebase `google-services.json`.
 - `ANDROID_KEYSTORE_BASE64`: base64-encoded, persistent release keystore.
 - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
-- Optional runtime secrets (injected into `.env` before Gradle builds and exposed cleanly via `BuildConfig` → `KlassRuntimeConfig`):
-  - `GEMINI_API_KEY`: optional fallback Gemini API key (recommended to restrict in Google Cloud Console by Android package `com.klass.mpi` + SHA-1 fingerprint).
-  - `RECAPTCHA_SITE_KEY`: Firebase App Check reCAPTCHA Enterprise site key for your Firebase project (blank skips mismatched default site keys on external Firebase projects).
-  - `FIRESTORE_DATABASE_ID`: optional Firestore named database ID (automatically falls back to `(default)` if omitted or unreachable).
-  - `APP_UPDATE_URL`: optional public JSON release feed URL (`{"versionCode":..., "tag":"v...", "apkUrl":"...", "notes":"..."}`).
+- `PUBLIC_RELEASE_REPO`: Owner/Repository name of your public release repo (e.g., `rofiqmpi/Klass-Releases`).
+- `PUBLIC_RELEASE_TOKEN`: GitHub Personal Access Token with repo write permissions to publish releases to `PUBLIC_RELEASE_REPO`.
+- Optional runtime secrets:
+  - `GEMINI_API_KEY`: optional fallback Gemini API key.
+  - `RECAPTCHA_SITE_KEY`: Firebase App Check reCAPTCHA Enterprise site key.
+  - `FIRESTORE_DATABASE_ID`: optional Firestore named database ID.
+  - `APP_UPDATE_URL`: optional public JSON release feed URL.
 
 Keep the same release keystore in `ANDROID_KEYSTORE_BASE64` for every build. The current signed `Klass-release.apk` certificate fingerprints are:
 
@@ -74,7 +78,8 @@ Keep the same release keystore in `ANDROID_KEYSTORE_BASE64` for every build. The
 Add both fingerprints to the Android app in Firebase Console under Project settings → Your apps → SHA certificate fingerprints.
 
 ### In-App Update System
-No third-party updater SDK (such as Play In-App Updates, Firebase App Distribution, or Sparkle/AppCenter) is wired into the app. Instead, release builds use a built-in `HttpURLConnection` checker that resolves updates in 3 tiers without embedding any GitHub access token:
+No third-party updater SDK is wired into the app. Instead, release builds use a built-in `HttpURLConnection` checker that resolves updates in 3 tiers automatically:
 1. Custom public feed URL configured via the `APP_UPDATE_URL` secret (`KlassRuntimeConfig.appUpdateUrl`).
-2. Public Firestore `config/app_update` document (`versionCode` / `latestVersionCode`, `tag` / `versionName`, `apkUrl` / `downloadUrl`, `notes`).
-3. Public GitHub Releases API (`releases/latest`) expecting an asset named `Klass-release.apk` (anonymous calls only succeed when the repository releases are public).
+2. Public Firestore `config/app_update` document automatically synced on GitHub Actions push.
+3. Public GitHub Releases API (`releases/latest`) on `PUBLIC_RELEASE_REPO` expecting an asset named `Klass-release.apk`.
+

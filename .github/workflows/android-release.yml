@@ -65,16 +65,38 @@ jobs:
             echo "::error::Configure ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD repository secrets."
             exit 1
           fi
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "$GITHUB_REF_TYPE" = "tag" ]; then
             version="${GITHUB_REF_NAME#v}"
           elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             version="${INPUT_VERSION#v}"
           else
-            version="1.0.${GITHUB_RUN_NUMBER}"
+            target_repo="${PUBLIC_RELEASE_REPO:-$GITHUB_REPOSITORY}"
+            api_url="https://api.github.com/repos/${target_repo}/releases/latest"
+            latest_version="1.0.0"
+            if response=$(curl -s -H "Authorization: token ${PUBLIC_RELEASE_TOKEN:-${GITHUB_TOKEN:-}}" "$api_url" 2>/dev/null); then
+              tag_name=$(echo "$response" | grep -o '"tag_name": *"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "")
+              if [ -n "$tag_name" ]; then
+                latest_version="${tag_name#v}"
+              fi
+            fi
+            IFS='.' read -r major minor patch <<< "$latest_version"
+            major="${major:-1}"
+            minor="${minor:-0}"
+            patch="${patch:-0}"
+            next_patch=$((patch + 1))
+            if [ "$next_patch" -le "$GITHUB_RUN_NUMBER" ]; then
+              next_patch="$GITHUB_RUN_NUMBER"
+            fi
+            version="${major}.${minor}.${next_patch}"
           fi
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Version must use the MAJOR.MINOR.PATCH format."
             exit 1
+          fi
+          IFS='.' read -r v_major v_minor v_patch <<< "$version"
+          calc_code=$((v_major * 10000 + v_minor * 100 + v_patch))
+          if [ "$calc_code" -lt "$GITHUB_RUN_NUMBER" ]; then
+            calc_code="$GITHUB_RUN_NUMBER"
           fi
           resolved_update_url="${APP_UPDATE_URL:-}"
           if [ -z "$resolved_update_url" ] && [ -n "${PUBLIC_RELEASE_REPO:-}" ]; then
@@ -88,7 +110,7 @@ jobs:
           [ -n "${FIRESTORE_DATABASE_ID:-}" ] && printf 'FIRESTORE_DATABASE_ID=%s\n' "$FIRESTORE_DATABASE_ID" >> .env
           [ -n "$resolved_update_url" ] && printf 'APP_UPDATE_URL=%s\n' "$resolved_update_url" >> .env
           echo "name=$version" >> "$GITHUB_OUTPUT"
-          echo "code=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "code=$calc_code" >> "$GITHUB_OUTPUT"
 
       - name: Build debug and signed release APKs
         env:
@@ -123,7 +145,6 @@ jobs:
 
       - name: Publish Release APK (Public Release Channel)
         id: release
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PUBLIC_RELEASE_REPO: ${{ secrets.PUBLIC_RELEASE_REPO }}
