@@ -55,7 +55,7 @@ import kotlinx.coroutines.withContext
 
 private const val AUTH_TAG = "KlassAuth"
 private const val UPDATE_TAG = "KlassUpdate"
-private const val LATEST_RELEASE_URL = "https://api.github.com/repos/rofiqmpi/Klass/releases/latest"
+private const val LATEST_RELEASE_URL = "https://api.github.com/repos/rofiqmpi/Klass-Releases/releases/latest"
 
 class MainActivity : ComponentActivity() {
 
@@ -138,12 +138,14 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
-        checkForReleaseUpdate(manual = false)
+        if (!BuildConfig.DEBUG) {
+            checkForReleaseUpdate(manual = false)
+        }
     }
 
     override fun onStart() {
         super.onStart()
-        val shouldAutoCheck = !BuildConfig.DEBUG || BuildConfig.VERSION_NAME != "1.0"
+        val shouldAutoCheck = !BuildConfig.DEBUG
         val now = System.currentTimeMillis()
         if (shouldAutoCheck &&
             updateUiState is InAppUpdateUiState.Hidden &&

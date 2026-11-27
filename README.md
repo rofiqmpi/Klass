@@ -55,7 +55,7 @@ Mymensingh Polytechnic Institute student, faculty, and academic operations appli
 
 ## Android releases and updates
 
-The `Android APKs and GitHub Release` workflow runs **automatically on every push to `master`** (as well as tags and manual triggers). It automatically queries the target public release repository for the latest version, computes the next incremental semantic version and `versionCode`, builds and signs the release APK, publishes the GitHub Release (`Klass-release.apk` + `update.json`) to your public release repository, and updates Firestore `config/app_update` **without requiring any manual Admin Panel intervention**.
+The `Android APKs and GitHub Release` workflow runs **automatically on every push to `master`** (as well as tags and manual triggers). It automatically queries the target public release repository (`rofiqmpi/Klass-Releases` by default) for the latest version, computes the next incremental semantic version and `versionCode`, builds and signs the release APK, publishes the GitHub Release (`Klass-release.apk` + `update.json`) to that repository, and updates Firestore `config/app_update` **without requiring any manual Admin Panel intervention**.
 
 Configure these repository Actions secrets:
 
@@ -78,8 +78,10 @@ Keep the same release keystore in `ANDROID_KEYSTORE_BASE64` for every build. The
 Add both fingerprints to the Android app in Firebase Console under Project settings → Your apps → SHA certificate fingerprints.
 
 ### In-App Update System
-No third-party updater SDK is wired into the app. Instead, release builds use a built-in `HttpURLConnection` checker that resolves updates in 3 tiers automatically:
+Release builds use a built-in `HttpURLConnection` checker that automatically checks for newer versions at launch and when the app returns to the foreground:
 1. Custom public feed URL configured via the `APP_UPDATE_URL` secret (`KlassRuntimeConfig.appUpdateUrl`).
 2. Public Firestore `config/app_update` document automatically synced on GitHub Actions push.
-3. Public GitHub Releases API (`releases/latest`) on `PUBLIC_RELEASE_REPO` expecting an asset named `Klass-release.apk`.
+3. Public GitHub Releases API (`releases/latest`) on `PUBLIC_RELEASE_REPO` (defaults to `rofiqmpi/Klass-Releases`) expecting an asset named `Klass-release.apk`.
+
+Users are prompted inside the app when a newer release is available. Android still requires the user to confirm installation in the system package installer.
 

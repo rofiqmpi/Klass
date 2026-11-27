@@ -656,7 +656,6 @@ fun RoleHomeScreen(
                                         onAppearanceClick = { navigateTo("appearance") },
                                         onSignInControlClick = { navigateTo("admin_signin_control") },
                                         onAdminApprovalsClick = { navigateTo("admin_approvals") },
-                                        onAppUpdateManagerClick = { navigateTo("admin_app_update") },
                                         onSignOutClick = {
                                             clearUserSession()
                                             onSignOut()
@@ -1210,13 +1209,6 @@ fun RoleHomeScreen(
                     }
                     "admin_approvals" -> {
                         AdminApprovalsSubScreen(
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            onBack = { goBack() },
-                        )
-                    }
-                    "admin_app_update" -> {
-                        AppUpdateManagerSubScreen(
                             isDark = isDark,
                             hindSiliguri = hindSiliguri,
                             onBack = { goBack() },

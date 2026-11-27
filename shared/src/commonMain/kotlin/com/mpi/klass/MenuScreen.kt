@@ -116,7 +116,6 @@ fun MenuScreen(
     onAppearanceClick: () -> Unit = {},
     onSignInControlClick: () -> Unit = {},
     onAdminApprovalsClick: () -> Unit = {},
-    onAppUpdateManagerClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
     onDeleteAccountClick: () -> Unit = {},
     onSignInClick: () -> Unit = {},
@@ -253,14 +252,6 @@ fun MenuScreen(
                     accent = KlassFeaturePalette.books(isDark),
                     onClick = onAdminApprovalsClick,
                 ),
-                MenuTileSpec(
-                    id = "admin_app_update",
-                    title = "App Updates",
-                    subtitle = "Publish APK link & auto-update notice",
-                    icon = DownloadIcon,
-                    accent = KlassFeaturePalette.success(isDark),
-                    onClick = onAppUpdateManagerClick,
-                ),
             )
         }
     }
@@ -369,22 +360,6 @@ fun MenuScreen(
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                     )
-                    if (KlassRuntimeConfig.onManualCheckForUpdate != null) {
-                        SocialInsetDivider(startIndent = 72.dp)
-                        SocialMenuRow(
-                            tile = MenuTileSpec(
-                                id = "check_app_update",
-                                title = "অ্যাপ আপডেট চেক".localized(),
-                                subtitle = "সর্বশেষ ভার্সন যাচাই ও ইন-অ্যাপ ডাউনলোড".localized(),
-                                icon = RefreshIcon,
-                                accent = KlassFeaturePalette.success(isDark),
-                                badgeText = KlassRuntimeConfig.installedVersionName.ifBlank { null }?.let { "v$it" },
-                                onClick = { KlassRuntimeConfig.onManualCheckForUpdate?.invoke() },
-                            ),
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                        )
-                    }
                 }
 
                 SocialSectionDividerBand(isDark = isDark, height = 6.dp)

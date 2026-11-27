@@ -633,6 +633,10 @@ class SharedLogicAndroidHostTest {
             KlassUpdateUtils.normalizeUpdateFeedUrl("https://github.com/rofiqmpi/Klass"),
         )
         assertEquals(
+            "https://api.github.com/repos/rofiqmpi/Klass-Releases/releases/latest",
+            KlassUpdateUtils.normalizeUpdateFeedUrl("https://github.com/rofiqmpi/Klass-Releases/releases/latest"),
+        )
+        assertEquals(
             "https://raw.githubusercontent.com/rofiqmpi/Klass/master/update.json",
             KlassUpdateUtils.normalizeUpdateFeedUrl("https://github.com/rofiqmpi/Klass/blob/master/update.json"),
         )
