@@ -129,3 +129,12 @@ test("Admin routine publish & book catalog security bounds enforced", async () =
   await assertFails(studentDb.collection("routines").doc("master_6m_published").set({ status: "PUBLISHED" }));
   await assertSucceeds(adminDb.collection("routines").doc("master_6m_published").set({ status: "PUBLISHED" }));
 });
+
+test("Config creation is admin-only except the books seed marker", async () => {
+  const adminDb = getDb(testEnv.authenticatedContext("admin_uid", { email: ADMIN_EMAIL }));
+  const studentDb = getDb(testEnv.authenticatedContext("stu_uid", { email: USER_EMAIL }));
+
+  await assertFails(studentDb.collection("config").doc("random_config").set({ x: 1 }));
+  await assertSucceeds(studentDb.collection("config").doc("books_seed_v1").set({ seeded: true }));
+  await assertSucceeds(adminDb.collection("config").doc("campus_map").set({ x: 1 }));
+});
