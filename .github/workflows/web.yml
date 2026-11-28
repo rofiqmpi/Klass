@@ -1,0 +1,52 @@
+name: Web (Kotlin/Wasm)
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: web-pages
+  cancel-in-progress: true
+
+jobs:
+  build-web:
+    name: Build web app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build Kotlin/Wasm distribution
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :shared:wasmJsBrowserDistribution -PenableWeb=true
+      - name: Prepare Pages artifact
+        run: |
+          dist="$(find shared/build/dist/wasmJs/productionExecutable -maxdepth 0 -type d | head -n 1)"
+          test -n "$dist" && test -f "$dist/index.html"
+          touch "$dist/.nojekyll"
+          echo "PAGES_DIR=$dist" >> "$GITHUB_ENV"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.PAGES_DIR }}
+
+  deploy-web:
+    name: Deploy to GitHub Pages
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

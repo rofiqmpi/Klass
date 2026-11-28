@@ -1,3 +1,5 @@
+@file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,7 +9,22 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// Web (Kotlin/Wasm) is opt-in so the Android build is never affected: ./gradlew :shared:wasmJsBrowserDistribution -PenableWeb=true
+val enableWeb = providers.gradleProperty("enableWeb").orNull == "true"
+
 kotlin {
+    if (enableWeb) {
+        wasmJs {
+            outputModuleName.set("klass")
+            browser {
+                commonWebpackConfig {
+                    outputFileName = "klass.js"
+                }
+            }
+            binaries.executable()
+        }
+    }
+
     android {
        namespace = "com.mpi.klass.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -69,7 +86,7 @@ dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }
 
-configurations.all {
+if (!enableWeb) configurations.all {
     resolutionStrategy.dependencySubstitution {
         substitute(module("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel"))
             .using(module("androidx.lifecycle:lifecycle-viewmodel:${libs.versions.androidx.lifecycle.get()}"))
