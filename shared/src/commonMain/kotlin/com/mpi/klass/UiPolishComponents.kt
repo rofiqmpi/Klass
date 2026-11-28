@@ -109,6 +109,16 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 /**
+ * True for every screen except Welcome/login and the Home tab: switches shared primitives to a flat,
+ * minimal rendering (solid background, no glass, no borders, quieter headers).
+ */
+internal val LocalKlassMinimal = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Solid screen background used by minimal screens. */
+@Composable
+internal fun Modifier.flatScreenBackground(): Modifier = this.background(MaterialTheme.colorScheme.background)
+
+/**
  * Smooth, luminous full-bleed rainbow aurora canvas for all screens.
  */
 internal fun Modifier.rainbowScreenBackground(
@@ -208,7 +218,10 @@ internal fun SocialSurfaceBlock(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val baseBg = if (isDark) {
+    val minimal = LocalKlassMinimal.current
+    val baseBg = if (minimal) {
+        Color.Transparent
+    } else if (isDark) {
         cs.surfaceContainerLow.copy(alpha = 0.62f)
     } else {
         Color.White.copy(alpha = 0.68f)
@@ -330,6 +343,7 @@ internal fun GoogleTopAppBar(
 ) {
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
+    val minimal = LocalKlassMinimal.current
     val fadeTopColor = if (containerColor != Color.Transparent) {
         containerColor.copy(alpha = 0.88f)
     } else {
@@ -338,14 +352,20 @@ internal fun GoogleTopAppBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        fadeTopColor,
-                        fadeTopColor.copy(alpha = 0.35f),
-                        Color.Transparent,
+            .then(
+                if (minimal) {
+                    Modifier.background(cs.background)
+                } else {
+                    Modifier.background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                fadeTopColor,
+                                fadeTopColor.copy(alpha = 0.35f),
+                                Color.Transparent,
+                            )
+                        )
                     )
-                )
+                }
             ),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -378,9 +398,9 @@ internal fun GoogleTopAppBar(
                 Text(
                     text = title,
                     color = cs.onSurface,
-                    fontSize = 22.sp,
+                    fontSize = if (minimal) 20.sp else 22.sp,
                     fontFamily = hindSiliguri,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = if (minimal) FontWeight.SemiBold else FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
@@ -420,7 +440,9 @@ internal fun HeaderAiNotificationActions(
 ) {
     val aiAccent = KlassFeaturePalette.ai(isDark)
     val notiAccent = KlassFeaturePalette.notifications(isDark)
-    val baseBg = if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
+    val minimal = LocalKlassMinimal.current
+    val quietTint = MaterialTheme.colorScheme.onSurfaceVariant
+    val baseBg = if (minimal) Color.Transparent else if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
     val dotHaloColor = if (isDark) Color(0xFF0F172A) else Color.White
 
     Row(
@@ -445,7 +467,7 @@ internal fun HeaderAiNotificationActions(
                 interactionSource = aiInteraction,
                 shape = CircleShape,
                 color = baseBg,
-                border = BorderStroke(1.dp, aiAccent.borderTint),
+                border = if (minimal) null else BorderStroke(1.dp, aiAccent.borderTint),
                 shadowElevation = 0.dp,
                 modifier = Modifier
                     .minimumInteractiveComponentSize()
@@ -459,13 +481,13 @@ internal fun HeaderAiNotificationActions(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(aiAccent.softTint),
+                        .background(if (minimal) Color.Transparent else aiAccent.softTint),
                     contentAlignment = Alignment.Center,
                 ) {
                     TelegramAnimatedIcon(
                         icon = SparkleIcon,
                         contentDescription = "Zed AI".localized(),
-                        tint = aiAccent.primary,
+                        tint = if (minimal) quietTint else aiAccent.primary,
                         size = 19.dp,
                         interactionSource = aiInteraction,
                         triggerKey = aiTrigger,
@@ -493,7 +515,7 @@ internal fun HeaderAiNotificationActions(
                     interactionSource = notiInteraction,
                     shape = CircleShape,
                     color = baseBg,
-                    border = BorderStroke(1.dp, notiAccent.borderTint),
+                    border = if (minimal) null else BorderStroke(1.dp, notiAccent.borderTint),
                     shadowElevation = 0.dp,
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
@@ -507,13 +529,13 @@ internal fun HeaderAiNotificationActions(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(notiAccent.softTint),
+                            .background(if (minimal) Color.Transparent else notiAccent.softTint),
                         contentAlignment = Alignment.Center,
                     ) {
                         TelegramAnimatedIcon(
                             icon = NotificationIcon,
                             contentDescription = "Notifications".localized(),
-                            tint = notiAccent.primary,
+                            tint = if (minimal) quietTint else notiAccent.primary,
                             size = 19.dp,
                             interactionSource = notiInteraction,
                             triggerKey = notiTrigger,
@@ -550,6 +572,7 @@ internal fun GoogleSectionHeader(
     modifier: Modifier = Modifier,
     accent: Color = MaterialTheme.colorScheme.primary,
 ) {
+    val minimal = LocalKlassMinimal.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -557,18 +580,20 @@ internal fun GoogleSectionHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(width = 4.dp, height = 16.dp)
-                .clip(CircleShape)
-                .background(accent),
-        )
+        if (!minimal) {
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 16.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+            )
+        }
         Text(
             text = title,
-            color = accent,
-            fontSize = 15.5.sp,
+            color = if (minimal) MaterialTheme.colorScheme.onSurfaceVariant else accent,
+            fontSize = if (minimal) 13.sp else 15.5.sp,
             fontFamily = hindSiliguri,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (minimal) FontWeight.SemiBold else FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -735,6 +760,7 @@ internal fun KlassPrimaryButton(
 
     val safeHeight = height.coerceAtLeast(48.dp)
     val shape = RoundedCornerShape(cornerRadius)
+    val minimal = LocalKlassMinimal.current
 
     Surface(
         onClick = {
@@ -745,7 +771,7 @@ internal fun KlassPrimaryButton(
         interactionSource = interactionSource,
         shape = shape,
         color = fgColor,
-        border = BorderStroke(0.75.dp, borderTint),
+        border = if (minimal) null else BorderStroke(0.75.dp, borderTint),
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,
         modifier = modifier
@@ -1073,12 +1099,15 @@ internal fun KlassHeaderIconButton(
     } else {
         iconTint
     }
+    val minimal = LocalKlassMinimal.current
     val resolvedContainer = when {
+        minimal && containerColor == Color.Unspecified -> Color.Transparent
         containerColor != Color.Unspecified -> containerColor
         iconTint != Color.Unspecified -> iconTint.copy(alpha = if (isDark) 0.18f else 0.11f)
         else -> if (isDark) Color(0xFF151F32).copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
     }
     val resolvedBorder = when {
+        minimal && borderColor == Color.Unspecified -> Color.Transparent
         borderColor != Color.Unspecified -> borderColor
         iconTint != Color.Unspecified -> iconTint.copy(alpha = if (isDark) 0.34f else 0.26f)
         else -> cs.outlineVariant.copy(alpha = if (isDark) 0.45f else 0.55f)
@@ -1412,11 +1441,15 @@ internal fun MinimalFullScreenSheet(
     val cs = MaterialTheme.colorScheme
     val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
     val topHeaderFade = if (isDark) cs.surface.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.82f)
+    val minimal = LocalKlassMinimal.current
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .rainbowScreenBackground(isDark, resolvedAccent),
+            .then(
+                if (minimal) Modifier.background(cs.background)
+                else Modifier.rainbowScreenBackground(isDark, resolvedAccent)
+            ),
     ) {
         Column(
             modifier = Modifier
@@ -1426,14 +1459,20 @@ internal fun MinimalFullScreenSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                topHeaderFade,
-                                topHeaderFade.copy(alpha = 0.48f),
-                                Color.Transparent,
+                    .then(
+                        if (minimal) {
+                            Modifier.background(cs.background)
+                        } else {
+                            Modifier.background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        topHeaderFade,
+                                        topHeaderFade.copy(alpha = 0.48f),
+                                        Color.Transparent,
+                                    )
+                                )
                             )
-                        )
+                        }
                     ),
             ) {
                 Row(
@@ -1461,8 +1500,8 @@ internal fun MinimalFullScreenSheet(
 
                     Surface(
                         shape = CircleShape,
-                        color = resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
-                        border = BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.38f)),
+                        color = if (minimal) Color.Transparent else resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
+                        border = if (minimal) null else BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.38f)),
                         modifier = Modifier.size(36.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

@@ -560,7 +560,10 @@ fun App(
                         }
 
                         is AppScreen.ProfileSetup -> {
-                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                            CompositionLocalProvider(
+                                LocalAppLanguage provides AppLanguage.ENGLISH,
+                                LocalKlassMinimal provides true,
+                            ) {
                                 ProfileSetupScreen(
                                     role = screen.role,
                                     initialProfile = screen.profile,

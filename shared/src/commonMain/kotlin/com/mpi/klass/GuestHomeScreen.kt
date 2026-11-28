@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -351,10 +352,11 @@ fun GuestHomeScreen(
                         }
 
                         else -> {
-                            Column(
+                            CompositionLocalProvider(LocalKlassMinimal provides true) {
+Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .rainbowScreenBackground(isDark),
+                                    .flatScreenBackground(),
                             ) {
                                 GoogleTopAppBar(
                                     title = "Menu".localized(),
@@ -400,6 +402,7 @@ fun GuestHomeScreen(
                                     )
                                 }
                             }
+}
                         }
                     }
                 }
@@ -423,12 +426,13 @@ fun GuestHomeScreen(
                     .zIndex(20f),
                 label = "GuestOverlayTabTransition",
             ) { tab ->
-                when (tab) {
+                CompositionLocalProvider(LocalKlassMinimal provides true) {
+when (tab) {
                     "profile" -> {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isProfileSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -477,7 +481,7 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isNotificationsSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -513,7 +517,7 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -547,7 +551,7 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -578,7 +582,7 @@ fun GuestHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -621,7 +625,7 @@ fun GuestHomeScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AiAssistantScreen(
                                 isDark = isDark,
@@ -653,6 +657,7 @@ fun GuestHomeScreen(
                         }
                     }
                 }
+}
             }
     }
 }

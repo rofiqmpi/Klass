@@ -45,6 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -601,10 +602,11 @@ fun RoleHomeScreen(
                         }
 
                         else -> {
-                            Column(
+                            CompositionLocalProvider(LocalKlassMinimal provides true) {
+Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .rainbowScreenBackground(isDark),
+                                    .flatScreenBackground(),
                             ) {
                                 GoogleTopAppBar(
                                     title = "Menu".localized(),
@@ -659,6 +661,7 @@ fun RoleHomeScreen(
                                     )
                                 }
                             }
+}
                         }
                     }
                 }
@@ -683,14 +686,15 @@ fun RoleHomeScreen(
                     .zIndex(20f),
                 label = "RoleOverlayTabTransition",
             ) { tab ->
-                when (tab) {
+                CompositionLocalProvider(LocalKlassMinimal provides true) {
+when (tab) {
                     "profile" -> {
                         val hasUnread = NotificationSeenStore.hasUnread()
                         val cs = MaterialTheme.colorScheme
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             ProfileScreen(
                                 userName = currentUserName,
@@ -887,7 +891,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isNotificationsSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -924,7 +928,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isTeachersSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -955,7 +959,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isBooksSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -989,7 +993,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isClassroomSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -1023,7 +1027,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isRoutineSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -1104,7 +1108,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isTeacherPrefsSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -1148,7 +1152,7 @@ fun RoleHomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AnimatedVisibility(visible = !isBloodFinderSubOverlayOpen) {
                                 GoogleTopAppBar(
@@ -1203,7 +1207,7 @@ fun RoleHomeScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .rainbowScreenBackground(isDark),
+                                .flatScreenBackground(),
                         ) {
                             AiAssistantScreen(
                                 isDark = isDark,
@@ -1240,6 +1244,7 @@ fun RoleHomeScreen(
                         }
                     }
                 }
+}
             }
             // Slot Inspection / Teacher Edit Request Dialog (inside root Box)
             val slot = inspectedEntry
