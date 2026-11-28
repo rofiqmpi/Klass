@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - ".github/workflows/web.yml"
+      - "shared/src/wasmJsMain/**"
+      - "docs/**"
+      - "**.md"
     tags:
       - "v*"
   workflow_dispatch:

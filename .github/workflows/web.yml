@@ -29,7 +29,25 @@ jobs:
       - name: Build Kotlin/Wasm distribution
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :shared:wasmJsBrowserDistribution -PenableWeb=true
+          set -o pipefail
+          ./gradlew --no-daemon --console=plain :shared:wasmJsBrowserDistribution -PenableWeb=true 2>&1 | tee build.log
+      - name: Report build errors
+        if: failure()
+        run: |
+          {
+            echo '### Web build errors'
+            echo '```'
+            grep -E '^e: |What went wrong|Could not (resolve|find)|FAILURE' -A2 build.log | head -150
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          msg="$(grep -E '^e: |What went wrong|Could not (resolve|find)' -A2 build.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+          echo "::error title=Web build errors::${msg:0:60000}"
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-log
+          path: build.log
       - name: Prepare Pages artifact
         run: |
           dist="$(find shared/build/dist/wasmJs/productionExecutable -maxdepth 0 -type d | head -n 1)"
