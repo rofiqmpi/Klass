@@ -36,7 +36,8 @@ service cloud.firestore {
     // Config collection: public sign-in switches, dictionary, & app update feed read; admin-only mutation
     match /config/{configId} {
       allow read: if configId in ['signin_control', 'language_dictionary', 'app_update'] || isAuthenticated();
-      allow create: if isApprovedAdmin() || (isAuthenticated() && !(configId in ['signin_control', 'app_update']));
+      // Non-admins may only create the one-time book seed marker; every other config doc is admin-only.
+      allow create: if isApprovedAdmin() || (isAuthenticated() && configId == 'books_seed_v1');
       allow update, delete: if isApprovedAdmin();
     }
 
