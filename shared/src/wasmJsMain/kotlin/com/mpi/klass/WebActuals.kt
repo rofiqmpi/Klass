@@ -1,11 +1,19 @@
+@file:OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+
 package com.mpi.klass
 
-// Web (Kotlin/Wasm) platform layer.
-// Real implementations: session, time and storage helpers (browser localStorage).
-// Firebase-backed data functions return empty results or Result.failure(WebBackendUnavailable)
-// until the web backend (Firestore REST / Firebase JS) is connected.
-
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+
+@JsFun("(tel) => { try { window.open('tel:' + tel, '_self'); } catch (e) {} }")
+private external fun jsOpenTel(tel: String)
+
+private const val ONLINE_DICT_CACHE_KEY = "klass_online_dict_bn_to_en_json"
+private const val NOTIF_PREFS_KEY = "klass_notif_prefs_json"
+private const val NOTIF_SEEN_IDS_KEY = "klass_notif_seen_ids_json"
 
 @Composable
 actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
@@ -16,6 +24,7 @@ actual fun isGestureNavigation(): Boolean = false
 actual fun getDisplayBottomCornerRadiusDp(): Float = 0f
 
 actual fun saveAppLanguage(language: AppLanguage) {
+    jsStorageSet("klass_app_language", AppLanguage.ENGLISH.name)
 }
 
 actual fun loadAppLanguage(): AppLanguage = AppLanguage.ENGLISH
@@ -23,49 +32,164 @@ actual fun loadAppLanguage(): AppLanguage = AppLanguage.ENGLISH
 @Composable
 actual fun rememberLocationPermissionLauncher(onLocationFetched: (String) -> Unit): () -> Unit = { }
 
-actual suspend fun isNetworkAvailable(): Boolean = true
+actual suspend fun isNetworkAvailable(): Boolean = jsIsOnline()
 
-actual fun loadCachedTranslations(): Map<String, String> = emptyMap()
+// ─── Online Translation Dictionary ───────────────────────────────────────────
 
-actual fun saveCachedTranslations(entries: Map<String, String>) {
+actual fun loadCachedTranslations(): Map<String, String> {
+    val raw = jsStorageGet(ONLINE_DICT_CACHE_KEY) ?: return emptyMap()
+    val obj = WebJson.parseObj(raw) ?: return emptyMap()
+    val result = LinkedHashMap<String, String>(obj.entries.size)
+    for ((k, v) in obj.entries) {
+        val cleanVal = v.asStr().trim()
+        if (k.isNotBlank() && cleanVal.isNotBlank()) {
+            result[k] = cleanVal
+        }
+    }
+    return result
 }
 
-actual suspend fun fetchOnlineDictionaryFromCloud(): Map<String, String> = emptyMap()
+actual fun saveCachedTranslations(entries: Map<String, String>) {
+    if (entries.isEmpty()) return
+    val existing = loadCachedTranslations().toMutableMap()
+    for ((k, v) in entries) {
+        if (k.isNotBlank() && v.isNotBlank()) {
+            existing[k] = v
+        }
+    }
+    val json = jObj {
+        existing.forEach { (k, v) -> put(k, v) }
+    }
+    jsStorageSet(ONLINE_DICT_CACHE_KEY, WebJson.stringify(json))
+}
 
-actual suspend fun fetchOnlineTranslations(texts: List<String>, sourceLanguage: AppLanguage): Map<String, String> = emptyMap()
+actual suspend fun fetchOnlineDictionaryFromCloud(): Map<String, String> {
+    val doc = WebFirebaseBridge.getDoc("config", "language_dictionary", tryAllDbs = true)
+        ?: return emptyMap()
+    val result = LinkedHashMap<String, String>()
+    doc.optObj("en")?.entries?.forEach { (k, v) ->
+        val cleanK = k.trim()
+        val cleanV = v.asStr().trim()
+        if (cleanK.isNotBlank() && cleanV.isNotBlank()) {
+            result[cleanK] = cleanV
+        }
+    }
+    for ((k, v) in doc.entries) {
+        if (k != "en" && v is JValue.JStr && k.isNotBlank() && v.value.isNotBlank()) {
+            result[k.trim()] = v.value.trim()
+        }
+    }
+    return result
+}
+
+actual suspend fun fetchOnlineTranslations(
+    texts: List<String>,
+    sourceLanguage: AppLanguage,
+): Map<String, String> {
+    val distinct = texts.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+    if (distinct.isEmpty() || !jsIsOnline()) return emptyMap()
+
+    val sl = if (sourceLanguage == AppLanguage.BENGALI) "bn" else "en"
+    val tl = if (sourceLanguage == AppLanguage.BENGALI) "en" else "bn"
+    val result = LinkedHashMap<String, String>(distinct.size)
+    for (item in distinct.take(24)) {
+        val translated = WebFirebaseBridge.translate(item, sl, tl)?.trim()
+        if (!translated.isNullOrBlank()) {
+            result[item] = translated
+        }
+    }
+    return result
+}
+
+// ─── Device / Browser Helpers ────────────────────────────────────────────────
 
 actual fun openPhoneDialer(phone: String) {
+    val cleaned = phone.trim()
+    if (cleaned.isNotBlank()) jsOpenTel(cleaned)
 }
 
 actual fun getTodayWorkingDayName(): String = dayNameFromJs()
 
 @Composable
-actual fun rememberPhotoPickerLauncher(onPhotoPicked: (String) -> Unit): () -> Unit = { }
+actual fun rememberPhotoPickerLauncher(onPhotoPicked: (String) -> Unit): () -> Unit {
+    val currentOnPicked by rememberUpdatedState(onPhotoPicked)
+    return {
+        jsPickImageDataUri { dataUri ->
+            if (dataUri.isNotBlank()) {
+                currentOnPicked(dataUri)
+            }
+        }
+    }
+}
 
-actual fun resolveProfileImageModel(photoUrl: String?): Any? = null
+private val decodedWebAvatarCache = LinkedHashMap<String, ByteArray>()
+
+@OptIn(ExperimentalEncodingApi::class)
+actual fun resolveProfileImageModel(photoUrl: String?): Any? {
+    if (photoUrl.isNullOrBlank()) return null
+    if (photoUrl.startsWith("data:image", ignoreCase = true) && photoUrl.contains("base64,", ignoreCase = true)) {
+        decodedWebAvatarCache[photoUrl]?.let { return it }
+        return try {
+            val base64Part = photoUrl.substringAfter("base64,").filterNot { it.isWhitespace() }
+            val decoded = Base64.decode(base64Part)
+            if (decodedWebAvatarCache.size > 24) {
+                decodedWebAvatarCache.remove(decodedWebAvatarCache.keys.first())
+            }
+            decodedWebAvatarCache[photoUrl] = decoded
+            decoded
+        } catch (_: Throwable) {
+            null
+        }
+    }
+    return photoUrl
+}
 
 @Composable
 actual fun rememberDatePickerLauncher(initialDate: String, onDatePicked: (String) -> Unit): () -> Unit = { }
+
+// ─── Notifications & Local Preferences ───────────────────────────────────────
 
 actual fun hasNotificationPermission(): Boolean = false
 
 @Composable
 actual fun rememberNotificationPermissionLauncher(onResult: (Boolean) -> Unit): () -> Unit = { }
 
-actual fun getNotificationPrefs(): NotificationPrefs = NotificationPrefs()
-
-actual fun saveNotificationPrefs(prefs: NotificationPrefs) {
+actual fun getNotificationPrefs(): NotificationPrefs {
+    val obj = WebJson.parseObj(jsStorageGet(NOTIF_PREFS_KEY)) ?: return NotificationPrefs()
+    return NotificationPrefs(
+        enabled = obj.optBool("enabled", true),
+        reminderMinutesBefore = obj.optInt("reminderMinutesBefore", 10),
+        notifyAtClassStart = obj.optBool("notifyAtClassStart", true),
+    )
 }
 
-actual fun getSeenNotificationIds(): Set<String> = emptySet()
+actual fun saveNotificationPrefs(prefs: NotificationPrefs) {
+    jsStorageSet(
+        NOTIF_PREFS_KEY,
+        WebJson.stringify(
+            jObj {
+                put("enabled", prefs.enabled)
+                put("reminderMinutesBefore", prefs.reminderMinutesBefore)
+                put("notifyAtClassStart", prefs.notifyAtClassStart)
+            }
+        )
+    )
+}
+
+actual fun getSeenNotificationIds(): Set<String> {
+    val arr = WebJson.parseArr(jsStorageGet(NOTIF_SEEN_IDS_KEY)) ?: return emptySet()
+    return arr.items.mapNotNull { it.asStr().trim().takeIf { id -> id.isNotBlank() } }.toSet()
+}
 
 actual fun saveSeenNotificationIds(ids: Set<String>) {
+    jsStorageSet(NOTIF_SEEN_IDS_KEY, WebJson.stringify(jStrArr(ids)))
 }
 
 actual fun sendWelcomePushNotification(userName: String, roleLabel: String) {
 }
 
 actual fun sendInstantTestPushNotification(title: String, body: String) {
+    jsShowToast("$title: $body")
 }
 
 actual fun syncAutomaticClassPushNotifications(
@@ -78,148 +202,45 @@ actual fun syncAutomaticClassPushNotifications(
 actual fun cancelAllClassPushNotifications() {
 }
 
-actual fun saveLocalProfile(
-    email: String,
-    name: String,
-    photoUrl: String?,
-    provider: String,
-    category: String,
-) {
-}
-
-actual fun fetchLocalProfile(email: String): UserProfile? = null
-
-actual fun fetchLocalStudentProfile(email: String): StudentProfile? = null
-
-actual fun deleteLocalProfile(email: String) {
-}
-
-actual fun updateLocalCategory(email: String, category: String) {
-}
-
-actual suspend fun setOrUpdateLoginPassword(
-    email: String,
-    newPassword: String,
-    currentPassword: String?,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun checkHasLoginPassword(email: String): Boolean = false
-
-actual suspend fun signInWithEmailAndPasswordAccount(email: String, password: String): EmailPasswordLoginResult = EmailPasswordLoginResult.Error(ErrorImageType.entries.first(), "Sign-in is not available on the web version yet.")
-
-actual suspend fun checkIsAuthorizedAdminEmail(email: String): Boolean = false
-
-actual suspend fun saveAdminInFirestore(
-    email: String,
-    name: String,
-    photoUrl: String?,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun saveTeacherInFirestore(
-    email: String,
-    name: String,
-    photoUrl: String?,
-    provider: String,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun saveStudentInFirestore(
-    email: String,
-    name: String,
-    photoUrl: String?,
-    provider: String,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun saveStudentProfileDataInFirestore(profile: StudentProfile): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchStudentProfileDataFromFirestore(email: String): StudentProfile? = null
-
-actual suspend fun updateStudentAddressInFirestore(email: String, address: String): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun saveUserInFirestore(
-    email: String,
-    name: String,
-    photoUrl: String?,
-    provider: String,
-    category: String,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchUserFromFirestore(email: String): UserProfile? = null
-
-actual suspend fun deleteUserFromFirestore(email: String, role: String): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchSignInControlFromFirestore(): SignInControlConfig = SignInControlConfig()
-
-actual suspend fun saveSignInControlInFirestore(config: SignInControlConfig): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchAppUpdateConfigFromFirestore(): AppUpdateConfig = AppUpdateConfig(enabled = false)
-
-actual suspend fun saveAppUpdateConfigInFirestore(config: AppUpdateConfig): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun getAdminStatusFromFirestore(email: String): AdminStatus = AdminStatus.NOT_REQUESTED
-
-actual suspend fun submitAdminRequestToFirestore(
-    email: String,
-    name: String,
-    photoUrl: String?,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchPendingAdminRequestsFromFirestore(): List<AdminRequestItem> = emptyList()
-
-actual suspend fun updateAdminRequestStatusInFirestore(email: String, newStatus: String): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchLoggedInTeachersFromFirestore(): List<TeacherDirectoryItem> = emptyList()
-
-actual suspend fun deleteTeacherFromDatabaseInFirestore(email: String): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchLibraryBooksFromFirestore(): List<LibraryBook> = emptyList()
-
-actual suspend fun saveLibraryBookInFirestore(book: LibraryBook): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun deleteLibraryBookFromFirestore(bookId: String): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun seedBtebLibraryBooksInFirestore(forceReseed: Boolean): Result<Int> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun resolveRegisteredRoleFromFirestore(email: String): UserRole? = null
+// ─── Routine Export on Web ───────────────────────────────────────────────────
 
 actual suspend fun downloadRoutinePdf(
     label: String,
     shift: String,
     config: RoutineConfig,
     entries: List<RoutineEntry>,
-): Result<String> = Result.failure(WebBackendUnavailable)
+): Result<String> {
+    if (entries.isEmpty()) return Result.failure(Exception("No classes to export"))
+    val safeName = label.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "routine" }
+    val title = "MPI Klass Routine - $label ($shift)"
+    val rowsHtml = buildString {
+        append("<h2>").append(title).append("</h2>")
+        append("<table><thead><tr><th>Day</th><th>Period</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th></tr></thead><tbody>")
+        entries.sortedWith(compareBy<RoutineEntry> { RoutineRules.dayOrderIndex(it.day) }.thenBy { it.periodIndex })
+            .forEach { e ->
+                append("<tr>")
+                append("<td>").append(e.day).append("</td>")
+                append("<td>P").append(e.periodIndex + 1).append("</td>")
+                append("<td>").append(e.startTime).append(" - ").append(e.endTime).append("</td>")
+                append("<td>").append(e.subjectTitle).append(" (").append(e.subjectCode).append(")</td>")
+                append("<td>").append(e.teacherName.ifBlank { e.teacherEmail }).append("</td>")
+                append("<td>").append(e.roomNumber).append("</td>")
+                append("</tr>")
+            }
+        append("</tbody></table>")
+    }
+    val ok = jsDownloadHtmlRoutine("MPI_Klass_${safeName}.html", title, rowsHtml)
+    return if (ok) {
+        Result.success("Downloaded MPI_Klass_${safeName}.html")
+    } else {
+        Result.failure(Exception("Could not trigger browser download"))
+    }
+}
 
-actual suspend fun saveTeacherSchedulingPrefInFirestore(pref: TeacherSchedulingPref): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchTeacherSchedulingPrefFromFirestore(email: String): TeacherSchedulingPref? = null
-
-actual suspend fun fetchAllTeacherSchedulingPrefsFromFirestore(): List<TeacherSchedulingPref> = emptyList()
-
-actual suspend fun fetchClassroomsFromFirestore(): List<ClassroomItem> = emptyList()
-
-actual suspend fun saveClassroomInFirestore(room: ClassroomItem): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun deleteClassroomFromFirestore(roomId: String): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun deleteAllClassroomsFromFirestore(): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun saveRoutinePlanInFirestore(plan: RoutinePlan): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchRoutinePlanFromFirestore(docId: String): RoutinePlan? = null
-
-actual suspend fun submitRoutineEditRequestInFirestore(request: RoutineEditRequest): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchRoutineEditRequestsFromFirestore(): List<RoutineEditRequest> = emptyList()
-
-actual suspend fun resolveRoutineEditRequestInFirestore(
-    requestId: String,
-    newStatus: EditRequestStatus,
-    adminNote: String,
-): Result<Unit> = Result.failure(WebBackendUnavailable)
-
-actual suspend fun fetchBloodDonorsFromFirestore(): List<BloodDonorItem> = emptyList()
+// ─── Session, Toast, Time & Zed AI ───────────────────────────────────────────
 
 actual fun showToast(message: String) {
-    jsLog(message)
+    jsShowToast(message)
 }
 
 actual fun getCurrentTimeMillis(): Long = jsNowMillis().toLong()
@@ -256,12 +277,12 @@ actual suspend fun askZedWithGemini(
     todayEnglishDay: String,
     history: List<AiChatMessage>,
     onPartialText: (String) -> Unit,
-): ZedReply = ZedReply(answerText = "Zed AI is not available on the web version yet.", sourceBadge = "Web")
+): ZedReply = ZedAiEngine.evaluate(
+    query = prompt,
+    snapshot = snapshot,
+    todayEnglishDay = todayEnglishDay,
+)
 
 actual fun currentDayNameEnglish(): String = dayNameFromJs()
 
 actual fun currentYearMonthDay(): Triple<Int, Int, Int> = Triple(jsYear(), jsMonth(), jsDayOfMonth())
-
-actual suspend fun fetchZedKnowledgeFromFirestore(): List<ZedKnowledgeEntry> = emptyList()
-
-actual suspend fun saveZedKnowledgeInFirestore(entry: ZedKnowledgeEntry): Result<Unit> = Result.failure(WebBackendUnavailable)

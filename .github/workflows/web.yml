@@ -27,6 +27,68 @@ jobs:
           distribution: zulu
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Configure Firebase Web runtime
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          FIRESTORE_DATABASE_ID: ${{ secrets.FIRESTORE_DATABASE_ID }}
+          FIREBASE_WEB_CONFIG: ${{ secrets.FIREBASE_WEB_CONFIG }}
+          FIREBASE_WEB_APP_ID: ${{ secrets.FIREBASE_WEB_APP_ID }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+
+          out_path = pathlib.Path("shared/src/wasmJsMain/resources/firebase-config.js")
+          web_cfg_raw = os.environ.get("FIREBASE_WEB_CONFIG", "").strip()
+          gs_raw = os.environ.get("GOOGLE_SERVICES_JSON", "").strip()
+          db_id = os.environ.get("FIRESTORE_DATABASE_ID", "").strip()
+          web_app_id = os.environ.get("FIREBASE_WEB_APP_ID", "").strip()
+
+          if not web_cfg_raw and not gs_raw and not db_id and not web_app_id:
+              print("Using checked-in firebase-config.js defaults.")
+              raise SystemExit(0)
+
+          cfg = {
+              "apiKey": "AIzaSyBpMzS2jU_vylEcW1_S4XA4EqX7h36F8cQ",
+              "authDomain": "gen-lang-client-0286475017.firebaseapp.com",
+              "projectId": "gen-lang-client-0286475017",
+              "storageBucket": "gen-lang-client-0286475017.firebasestorage.app",
+              "messagingSenderId": "269911028282",
+              "appId": "1:269911028282:web:klassmpi",
+              "databaseId": "ai-studio-android-klass-8e28a555-75a6-4902-af9c-0b216450601b",
+          }
+
+          if gs_raw:
+              gs = json.loads(gs_raw)
+              pinfo = gs.get("project_info", {})
+              project_id = pinfo.get("project_id") or cfg["projectId"]
+              cfg["projectId"] = project_id
+              cfg["authDomain"] = f"{project_id}.firebaseapp.com"
+              cfg["storageBucket"] = pinfo.get("storage_bucket") or f"{project_id}.firebasestorage.app"
+              if pinfo.get("project_number"):
+                  cfg["messagingSenderId"] = str(pinfo["project_number"])
+              clients = gs.get("client") or []
+              if clients:
+                  api_keys = clients[0].get("api_key") or []
+                  if api_keys and api_keys[0].get("current_key"):
+                      cfg["apiKey"] = api_keys[0]["current_key"]
+                  mobile_id = (clients[0].get("client_info") or {}).get("mobilesdk_app_id")
+                  if mobile_id and not web_app_id:
+                      cfg["appId"] = mobile_id
+
+          if web_cfg_raw:
+              cfg.update(json.loads(web_cfg_raw))
+          if web_app_id:
+              cfg["appId"] = web_app_id
+          if db_id:
+              cfg["databaseId"] = db_id
+
+          out_path.write_text(
+              "// Generated during GitHub Actions build\n"
+              f"window.__KLASS_FIREBASE_CONFIG__ = {json.dumps(cfg, indent=2)};\n",
+              encoding="utf-8",
+          )
+          print(f"Configured Firebase Web runtime for project={cfg['projectId']} database={cfg['databaseId']}")
+          PY
       - name: Build Kotlin/Wasm distribution
         run: |
           chmod +x gradlew
