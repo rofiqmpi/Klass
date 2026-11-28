@@ -294,7 +294,7 @@ fun AiAssistantScreen(
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                val detail = t.localizedMessage?.takeIf { it.isNotBlank() } ?: t::class.simpleName ?: "Unknown error"
+                val detail = t.message?.takeIf { it.isNotBlank() } ?: t::class.simpleName ?: "Unknown error"
                 val isBn = ZedAiEngine.prefersBengali(trimmed)
                 val errMsg = if (isBn) {
                     "Zed AI রেসপন্স করতে পারেনি: $detail"

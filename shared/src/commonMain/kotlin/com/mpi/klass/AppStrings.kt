@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 val LocalAppLanguage = compositionLocalOf { AppLanguage.BENGALI }
 
 object AppStrings {
-    private val moduleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val moduleScope = CoroutineScope(SupervisorJob() + IoDispatcher)
     private val syncMutex = Mutex()
     var currentLanguage by mutableStateOf(AppLanguage.BENGALI)
         private set
@@ -981,9 +981,8 @@ object AppStrings {
         if (sourceLanguage == AppLanguage.BENGALI && !containsBengali(key)) return
         if (sourceLanguage == AppLanguage.ENGLISH && containsBengali(key)) return
         val cacheKey = if (sourceLanguage == AppLanguage.ENGLISH) "en:$key" else key
-        synchronized(pendingTranslations) {
-            if (!pendingTranslations.add(cacheKey)) return
-        }
+        val added = klassSynchronized(pendingTranslations) { pendingTranslations.add(cacheKey) }
+        if (!added) return
         moduleScope.launch {
             try {
                 val fetched = fetchOnlineTranslations(listOf(key), sourceLanguage)
@@ -999,9 +998,7 @@ object AppStrings {
                     }
                 }
             } finally {
-                synchronized(pendingTranslations) {
-                    pendingTranslations.remove(cacheKey)
-                }
+                klassSynchronized(pendingTranslations) { pendingTranslations.remove(cacheKey) }
             }
         }
     }

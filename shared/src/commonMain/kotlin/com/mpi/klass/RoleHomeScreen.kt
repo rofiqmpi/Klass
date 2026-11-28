@@ -135,7 +135,7 @@ fun RoleHomeScreen(
     val autoLocationSyncLauncher = rememberLocationPermissionLauncher { realAddress ->
         if (realAddress.isNotBlank() && email.isNotBlank() && currentRole == UserRole.STUDENT) {
             studentProfile = studentProfile?.copy(address = realAddress)
-            CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+            CoroutineScope(IoDispatcher + NonCancellable).launch {
                 RoleConfig.saveStudentAddress(email.trim().lowercase(), realAddress)
             }
         }
@@ -241,7 +241,7 @@ fun RoleHomeScreen(
             if (currentRole == UserRole.STUDENT && loadedStudentProfile?.address.isNullOrBlank()) {
                 autoLocationSyncLauncher()
             }
-            CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+            CoroutineScope(IoDispatcher + NonCancellable).launch {
                 RoleConfig.seedBtebLibraryBooks(forceReseed = false)
             }
         }
@@ -732,7 +732,7 @@ when (tab) {
                                                 photoUrl = newPhotoUrl,
                                             )
                                         )
-                                        CoroutineScope(Dispatchers.IO + NonCancellable).launch {
+                                        CoroutineScope(IoDispatcher + NonCancellable).launch {
                                             if (currentRole == UserRole.ADMIN) {
                                                 RoleConfig.saveAdminEmail(sessionEmail, newName, newPhotoUrl)
                                             }
