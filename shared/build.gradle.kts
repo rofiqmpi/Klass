@@ -66,8 +66,14 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
+            if (enableWeb) {
+                // Android-only androidx artifacts do not resolve for wasmJs; use the JetBrains multiplatform builds.
+                implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
+                implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
+            } else {
+                implementation(libs.androidx.lifecycle.viewmodelCompose)
+                implementation(libs.androidx.lifecycle.runtimeCompose)
+            }
             implementation(libs.kotlinx.datetime)
             implementation(libs.coil.compose)
             implementation(libs.compottie)
