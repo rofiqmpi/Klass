@@ -34,6 +34,7 @@ private const val KEY_SEEN_NOTIFICATION_IDS = "seen_notification_ids"
 
 const val CHANNEL_WELCOME = "klass_welcome_channel"
 const val CHANNEL_CLASS_ALERTS = "klass_class_alerts_channel"
+const val CHANNEL_ANNOUNCEMENTS = "klass_announcements_channel"
 
 private const val EXTRA_ALARM_ID = "alarm_id"
 private const val EXTRA_REQUEST_CODE = "request_code"
@@ -50,24 +51,32 @@ fun ensurePushNotificationChannels(context: Context) {
 
         val welcomeChannel = NotificationChannel(
             CHANNEL_WELCOME,
-            "Welcome & Sign-In Alerts",
-            NotificationManager.IMPORTANCE_HIGH,
+            "Account",
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Instant push notification when you sign in to MPI Klass."
-            enableVibration(true)
+            description = "Sign-in confirmations."
         }
 
         val classChannel = NotificationChannel(
             CHANNEL_CLASS_ALERTS,
-            "Automatic Class Reminders",
+            "Class reminders",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "Automatic scheduled push alerts before and at the start of every class."
+            description = "Reminders before and at the start of your classes."
             enableVibration(true)
+        }
+
+        val announcementChannel = NotificationChannel(
+            CHANNEL_ANNOUNCEMENTS,
+            "Announcements",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "Updates and notices from your institute."
         }
 
         manager.createNotificationChannel(welcomeChannel)
         manager.createNotificationChannel(classChannel)
+        manager.createNotificationChannel(announcementChannel)
     }
 }
 
@@ -188,8 +197,8 @@ class ClassAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return
         val requestCode = intent.getIntExtra(EXTRA_REQUEST_CODE, alarmId.hashCode())
-        val title = intent.getStringExtra(EXTRA_TITLE) ?: "Class Reminder"
-        val body = intent.getStringExtra(EXTRA_BODY) ?: "Your scheduled class is coming up."
+        val title = intent.getStringExtra(EXTRA_TITLE) ?: "Class reminder"
+        val body = intent.getStringExtra(EXTRA_BODY) ?: "You have a class coming up."
         val triggerAtMillis = intent.getLongExtra(EXTRA_NEXT_TRIGGER, System.currentTimeMillis())
         val channelId = intent.getStringExtra(EXTRA_CHANNEL_ID) ?: CHANNEL_CLASS_ALERTS
 
@@ -353,8 +362,8 @@ actual fun sendWelcomePushNotification(userName: String, roleLabel: String) {
     val ctx = getAppContext() ?: return
     val cleanName = userName.trim().ifBlank { "Member" }
     val cleanRole = roleLabel.trim().ifBlank { "User" }
-    val title = "Welcome to MPI Klass, $cleanName!"
-    val body = "Signed in as $cleanRole • Automatic push reminders for your classes are active."
+    val title = "MPI Klass"
+    val body = "Signed in as $cleanName ($cleanRole)"
     postSystemNotification(
         context = ctx,
         notificationId = 900_001,
@@ -463,8 +472,8 @@ actual fun syncAutomaticClassPushNotifications(
                     triggerTimeLabel = "${entry.day.take(3)} • ${PushScheduleMath.format12Hour(trigH, trigM)}",
                     roomNumber = roomLabel,
                     metaSubtitle = meta,
-                    triggerTitle = "Class in ${prefs.reminderMinutesBefore} min • ${entry.subjectTitle}",
-                    triggerBody = "Period ${entry.periodIndex + 1} ($timeRange) • Room $roomLabel • $meta",
+                    triggerTitle = "${entry.subjectTitle} in ${prefs.reminderMinutesBefore} min",
+                    triggerBody = "Room $roomLabel · $timeRange\n$meta",
                     nextTriggerMillis = triggerMillis,
                     isPreClassReminder = true,
                 )
@@ -494,8 +503,8 @@ actual fun syncAutomaticClassPushNotifications(
                     triggerTimeLabel = "${entry.day.take(3)} • ${PushScheduleMath.format12Hour(startH, startM)}",
                     roomNumber = roomLabel,
                     metaSubtitle = meta,
-                    triggerTitle = "Class Starting Now • ${entry.subjectTitle}",
-                    triggerBody = "Room $roomLabel • $timeRange • $meta",
+                    triggerTitle = "${entry.subjectTitle} is starting",
+                    triggerBody = "Room $roomLabel · $timeRange\n$meta",
                     nextTriggerMillis = triggerMillis,
                     isPreClassReminder = false,
                 )

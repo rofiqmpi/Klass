@@ -17,14 +17,14 @@ class KlassMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(remoteMessage)
         val title = remoteMessage.notification?.title
             ?: remoteMessage.data["title"]
-            ?: "MPI Klass Notification"
+            ?: "MPI Klass"
         val body = remoteMessage.notification?.body
             ?: remoteMessage.data["body"]
             ?: remoteMessage.data["message"]
-            ?: "You have a new update."
+            ?: "You have a new notification."
 
         val notificationId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
-        val channelId = CHANNEL_WELCOME
+        val channelId = CHANNEL_ANNOUNCEMENTS
 
         postSystemNotification(
             context = applicationContext,

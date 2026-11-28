@@ -137,12 +137,12 @@ fun NotificationScreen(
         permissionGranted = granted
         if (granted) {
             sendInstantTestPushNotification(
-                title = "Push Notifications Enabled".localized(),
-                body = "You will automatically receive alerts before every scheduled class.",
+                title = "Notifications on".localized(),
+                body = "You will get a reminder before each class.",
             )
-            showToast("Class push notifications enabled".localized())
+            showToast("Notifications enabled".localized())
         } else {
-            showToast("Please enable notification permission in Settings for class alerts.".localized())
+            showToast("Allow notifications in Settings to get class reminders.".localized())
         }
     }
 
@@ -210,9 +210,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_complete_profile",
-                        title = "Complete your academic profile".localized(currentLang),
-                        body = "Add Department, Shift & Semester in Profile to unlock your personal class routine.".localized(currentLang),
-                        metaLabel = "Action needed • Tap to open Profile".localized(currentLang),
+                        title = "Complete your profile".localized(currentLang),
+                        body = "Add your department, shift and semester to see your class routine.".localized(currentLang),
+                        metaLabel = "Open Profile".localized(currentLang),
                         icon = PersonIcon,
                         badgeIcon = CalendarDaysIcon,
                         accent = profileAccent.primary,
@@ -225,9 +225,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_teacher_prefs",
-                        title = "Select your teaching subjects".localized(currentLang),
-                        body = "Choose your subjects and preferred periods to match your assigned classes.".localized(currentLang),
-                        metaLabel = "Setup required • Tap to open Teaching Subjects".localized(currentLang),
+                        title = "Set your teaching subjects".localized(currentLang),
+                        body = "Select your subjects so your assigned classes appear in your routine.".localized(currentLang),
+                        metaLabel = "Open Teaching Subjects".localized(currentLang),
                         icon = BookIcon,
                         badgeIcon = ClockIcon,
                         accent = routineAccent.primary,
@@ -240,9 +240,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_admin_publish",
-                        title = "No live routine published yet".localized(currentLang),
-                        body = "Open Zed engine to generate, review conflicts, and publish the timetable.".localized(currentLang),
-                        metaLabel = "Admin task • Tap to open Zed engine".localized(currentLang),
+                        title = "No routine published".localized(currentLang),
+                        body = "Generate and publish the class routine from the routine manager.".localized(currentLang),
+                        metaLabel = "Open Routine Manager".localized(currentLang),
                         icon = CalendarDaysIcon,
                         badgeIcon = SparkleIcon,
                         accent = adminAccent.primary,
@@ -255,9 +255,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_enable_push",
-                        title = "Allow class push notifications".localized(currentLang),
-                        body = "Turn on notifications so you automatically receive reminders before every class.".localized(currentLang),
-                        metaLabel = "Permission • Tap to allow".localized(currentLang),
+                        title = "Turn on notifications".localized(currentLang),
+                        body = "Allow notifications to get a reminder before each class.".localized(currentLang),
+                        metaLabel = "Allow".localized(currentLang),
                         icon = NotificationIcon,
                         badgeIcon = ClockIcon,
                         accent = errorAccent.primary,
@@ -270,9 +270,9 @@ fun NotificationScreen(
                 add(
                     ActionNotificationItem(
                         id = "action_guest_signin",
-                        title = "Sign in with your MPI account".localized(currentLang),
-                        body = "Log in as a Student or Teacher to get personalized automatic class alerts.".localized(currentLang),
-                        metaLabel = "Guest mode • Tap to sign in".localized(currentLang),
+                        title = "Sign in".localized(currentLang),
+                        body = "Sign in with your MPI account to get reminders for your classes.".localized(currentLang),
+                        metaLabel = "Sign in".localized(currentLang),
                         icon = PersonIcon,
                         badgeIcon = NotificationIcon,
                         accent = aiAccent.primary,
@@ -342,7 +342,7 @@ fun NotificationScreen(
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Text(
-                                    text = "No Notifications Yet".localized(),
+                                    text = "No notifications".localized(),
                                     fontSize = 19.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = hindSiliguri,
@@ -351,7 +351,7 @@ fun NotificationScreen(
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Automatic class alerts and important updates will show up here.".localized(),
+                                    text = "Class reminders and updates will appear here.".localized(),
                                     fontSize = 14.5.sp,
                                     fontFamily = hindSiliguri,
                                     color = cs.onSurfaceVariant,
@@ -446,7 +446,7 @@ fun NotificationScreen(
                 MinimalFullScreenSheet(
                     title = alert.subjectTitle,
                     subtitle = "${alert.day} • Period ${alert.periodIndex + 1}",
-                    levelLabel = if (isCurrentlySeen) "Seen Notification" else "Unread Notification",
+                    levelLabel = if (isCurrentlySeen) "Read" else "Unread",
                     icon = if (alert.isPreClassReminder) ClockIcon else NotificationIcon,
                     accent = alertAccent.primary,
                     isDark = isDark,
@@ -461,7 +461,7 @@ fun NotificationScreen(
                                     showToast("Marked as unread".localized())
                                 } else {
                                     NotificationSeenStore.markSeen(alert.id)
-                                    showToast("Marked as seen".localized())
+                                    showToast("Marked as read".localized())
                                 }
                             },
                             shape = CircleShape,
@@ -477,7 +477,7 @@ fun NotificationScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = if (isCurrentlySeen) "Mark Unread" else "Mark Seen",
+                                    text = if (isCurrentlySeen) "Mark as unread" else "Mark as read",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     fontFamily = hindSiliguri,
@@ -495,7 +495,7 @@ fun NotificationScreen(
                                     title = alert.triggerTitle,
                                     body = alert.triggerBody,
                                 )
-                                showToast("Preview notification sent!".localized())
+                                showToast("Preview sent".localized())
                             },
                         )
                     },
