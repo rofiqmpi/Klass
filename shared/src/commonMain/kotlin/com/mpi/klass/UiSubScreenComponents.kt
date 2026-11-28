@@ -330,7 +330,8 @@ internal fun KlassEmptyState(
 
     MinimalCardSurface(
         isDark = isDark,
-        borderColor = resolvedAccent.copy(alpha = if (isDark) 0.36f else 0.24f),
+        borderColor = null,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = modifier,
     ) {
         Column(
@@ -342,8 +343,7 @@ internal fun KlassEmptyState(
         ) {
             Surface(
                 shape = CircleShape,
-                color = resolvedAccent.copy(alpha = if (isDark) 0.22f else 0.13f),
-                border = BorderStroke(1.dp, resolvedAccent.copy(alpha = 0.35f)),
+                color = resolvedAccent.copy(alpha = if (isDark) 0.16f else 0.10f),
                 modifier = Modifier.size(62.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

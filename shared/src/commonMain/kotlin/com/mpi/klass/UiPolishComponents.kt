@@ -158,7 +158,7 @@ internal fun MinimalBackdrop(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .rainbowScreenBackground(isDark, focusAccent),
+            .background(MaterialTheme.colorScheme.background),
         content = content,
     )
 }
@@ -279,12 +279,8 @@ internal fun MinimalCardSurface(
     isDark: Boolean,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(16.dp),
-    borderColor: Color? = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-    containerColor: Color = if (isDark) {
-        MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.74f)
-    } else {
-        Color.White.copy(alpha = 0.80f)
-    },
+    borderColor: Color? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
     onClick: (() -> Unit)? = null,
     testTag: String? = null,
     content: @Composable BoxScope.() -> Unit,
@@ -827,8 +823,7 @@ internal fun KlassTonalButton(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        color = resolvedAccent.copy(alpha = if (isDark) 0.20f else 0.12f),
-        border = BorderStroke(1.dp, resolvedAccent.copy(alpha = if (isDark) 0.45f else 0.30f)),
+        color = resolvedAccent.copy(alpha = if (isDark) 0.16f else 0.10f),
         shadowElevation = 0.dp,
         modifier = modifier
             .minimumInteractiveComponentSize()
@@ -1161,11 +1156,7 @@ internal fun MinimalSearchBar(
     var isFocused by remember { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
     val pillBg by animateColorAsState(
-        targetValue = if (isDark) {
-            cs.surfaceContainerLow.copy(alpha = if (isFocused) 0.92f else 0.74f)
-        } else {
-            Color.White.copy(alpha = if (isFocused) 0.98f else 0.84f)
-        },
+        targetValue = if (isFocused) cs.surfaceContainerHighest else cs.surfaceContainerHigh,
         animationSpec = tween(150),
         label = "SearchPillBg",
     )
@@ -1173,10 +1164,7 @@ internal fun MinimalSearchBar(
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = pillBg,
-        border = BorderStroke(
-            width = if (isFocused) 1.4.dp else 0.75.dp,
-            color = if (isFocused) accent else accent.copy(alpha = 0.30f),
-        ),
+        border = if (isFocused) BorderStroke(1.dp, accent) else null,
         shadowElevation = 0.dp,
         modifier = modifier.height(48.dp),
     ) {
@@ -1262,7 +1250,7 @@ internal fun MinimalIconChip(
     val cs = MaterialTheme.colorScheme
     val resolvedAccent = if (accent == Color.Unspecified) cs.primary else accent
     val selectedFg = if (resolvedAccent.luminance() > 0.52f) Color(0xFF0B1120) else Color.White
-    val unselectedBg = if (isDark) cs.surfaceContainerLow.copy(alpha = 0.74f) else Color.White.copy(alpha = 0.84f)
+    val unselectedBg = cs.surfaceContainerHigh
     val containerColor by animateColorAsState(
         targetValue = if (selected) resolvedAccent else unselectedBg,
         animationSpec = tween(180),
@@ -1278,7 +1266,6 @@ internal fun MinimalIconChip(
         onClick = onClick,
         shape = CircleShape,
         color = containerColor,
-        border = if (!selected) BorderStroke(0.75.dp, resolvedAccent.copy(alpha = 0.28f)) else null,
         modifier = modifier
             .height(40.dp)
             .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
