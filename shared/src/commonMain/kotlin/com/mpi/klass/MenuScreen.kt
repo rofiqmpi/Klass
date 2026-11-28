@@ -960,7 +960,7 @@ fun AppUpdateManagerSubScreen(
                     showToast("অ্যাপ আপডেট কনফিগ সফলভাবে সেভ হয়েছে!".localized(currentLang))
                 } else {
                     showToast(
-                        res.exceptionOrNull()?.localizedMessage
+                        res.exceptionOrNull()?.message
                             ?: "Firestore-এ সেভ করা যায়নি।".localized(currentLang),
                     )
                 }

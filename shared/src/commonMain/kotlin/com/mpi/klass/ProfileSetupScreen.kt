@@ -410,7 +410,7 @@ fun ProfileSetupScreen(
                                 if (result.isSuccess) {
                                     onComplete(completedProfile)
                                 } else {
-                                    errorMessage = result.exceptionOrNull()?.localizedMessage
+                                    errorMessage = result.exceptionOrNull()?.message
                                         ?: "প্রোফাইল সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।"
                                 }
                             }

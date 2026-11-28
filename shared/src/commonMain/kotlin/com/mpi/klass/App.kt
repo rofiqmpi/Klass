@@ -425,7 +425,7 @@ fun App(
 
                         val saveResult = RoleConfig.saveUserProfile(cleanEmail, finalName, finalPhoto, "google", actualRole.name)
                         if (saveResult.isFailure && isNetworkAvailable()) {
-                            val errMsg = saveResult.exceptionOrNull()?.localizedMessage.orEmpty()
+                            val errMsg = saveResult.exceptionOrNull()?.message.orEmpty()
                             if (errMsg.contains("PERMISSION_DENIED", ignoreCase = true) ||
                                 errMsg.contains("NOT_FOUND", ignoreCase = true)
                             ) {
