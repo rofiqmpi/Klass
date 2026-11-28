@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
 
         initThemeContext(this)
         AppStrings.preloadCacheSync()
-        applyAppLocale(this, loadAppLanguage())
+        applyAppLocale(this, AppLanguage.ENGLISH)
         installSplashScreen()
         enableEdgeToEdge()
 
@@ -256,7 +256,7 @@ class MainActivity : ComponentActivity() {
                     null,
                     null,
                     null,
-                    e.localizedMessage ?: "Firebase সাইন-ইন ব্যর্থ হয়েছে".localized(loadAppLanguage()),
+                    e.localizedMessage ?: "Firebase সাইন-ইন ব্যর্থ হয়েছে".localized(AppLanguage.BENGALI),
                 )
             }
         }
@@ -415,9 +415,8 @@ class MainActivity : ComponentActivity() {
         if (isCheckingUpdate) return
         isCheckingUpdate = true
         lastAutoUpdateCheckAtMillis = System.currentTimeMillis()
-        val isBn = loadAppLanguage() == AppLanguage.BENGALI
         if (manual) {
-            showToast(if (isBn) "আপডেট যাচাই করা হচ্ছে..." else "Checking for updates...")
+            showToast("Checking for updates...")
         }
         lifecycleScope.launch {
             try {
@@ -450,26 +449,14 @@ class MainActivity : ComponentActivity() {
                 val installedVersion = currentInstalledVersionName()
                 if (release == null) {
                     if (manual) {
-                        showToast(
-                            if (isBn) {
-                                "কোন রিলিজ বা আপডেট ফিড পাওয়া যায়নি। গিটহাবে প্রথম রিলিজ পুশ করুন অথবা অ্যাডমিন প্যানেল থেকে লিংক দিন।"
-                            } else {
-                                "No release or update feed found. Push your first release to GitHub or configure update feed in Admin Panel."
-                            },
-                        )
+                        showToast("No release or update feed found.")
                     }
                     return@launch
                 }
 
                 if (KlassUpdateUtils.compareSemanticVersions(release.version, installedVersion) <= 0) {
                     if (manual) {
-                        showToast(
-                            if (isBn) {
-                                "আপনার অ্যাপটি সর্বশেষ ভার্সনে (v$installedVersion) আছে।"
-                            } else {
-                                "You are already on the latest version (v$installedVersion)."
-                            },
-                        )
+                        showToast("You are already on the latest version (v$installedVersion).")
                     }
                     return@launch
                 }
@@ -525,7 +512,6 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val isBn = loadAppLanguage() == AppLanguage.BENGALI
         updateDownloadJob?.cancel()
         updateUiState = InAppUpdateUiState.Downloading(
             release = release,
@@ -567,13 +553,7 @@ class MainActivity : ComponentActivity() {
                         val responseCode = connection.responseCode
                         if (responseCode !in 200..299) {
                             if (responseCode == 401 || responseCode == 403 || responseCode == 404) {
-                                error(
-                                    if (isBn) {
-                                        "ডাউনলোড লিংক অ্যাক্সেস করা যাচ্ছে না (HTTP $responseCode)। প্রাইভেট GitHub রিপোজিটরির লিংক কাজ করে না—পাবলিক রিলিজ লিংক ব্যবহার করুন।"
-                                    } else {
-                                        "Update APK unreachable (HTTP $responseCode). Private GitHub repo links require a public release URL."
-                                    },
-                                )
+                                error("Update APK unreachable (HTTP $responseCode). Public release URL required.")
                             }
                             error("HTTP $responseCode")
                         }
@@ -617,13 +597,7 @@ class MainActivity : ComponentActivity() {
                         }
                         if (!isValidApkFile(tmpFile)) {
                             tmpFile.delete()
-                            error(
-                                if (isBn) {
-                                    "সঠিক APK ফাইল পাওয়া যায়নি (লিংকটি সরাসরি APK ডাউনলোড করছে না)।"
-                                } else {
-                                    "Invalid APK payload (the link did not return a direct APK binary)."
-                                },
-                            )
+                            error("Invalid APK payload (the link did not return a direct APK binary).")
                         }
                         if (cachedApk.exists()) cachedApk.delete()
                         if (!tmpFile.renameTo(cachedApk)) {
@@ -647,7 +621,7 @@ class MainActivity : ComponentActivity() {
                 updateUiState = InAppUpdateUiState.Error(
                     release = release,
                     message = e.localizedMessage?.takeIf { it.isNotBlank() }
-                        ?: if (isBn) "ইন্টারনেট বা ডাউনলোড লিংক পরীক্ষা করে আবার চেষ্টা করুন।" else "Check your internet or download URL and try again.",
+                        ?: "Check your internet or download URL and try again.",
                 )
             }
         }

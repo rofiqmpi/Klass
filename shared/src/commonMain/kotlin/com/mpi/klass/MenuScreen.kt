@@ -67,7 +67,6 @@ import com.mpi.klass.theme.FeatureAccent
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
-import com.mpi.klass.theme.LanguageGlobeIcon
 import com.mpi.klass.theme.LightModeIcon
 import com.mpi.klass.theme.LocationDotIcon
 import com.mpi.klass.theme.LoginIcon
@@ -102,8 +101,6 @@ fun MenuScreen(
     role: UserRole? = null,
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
-    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
-    onLanguageClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onAiClick: () -> Unit = {},
     onNoticeClick: () -> Unit = {},
@@ -336,8 +333,8 @@ fun MenuScreen(
                     SocialMenuRow(
                         tile = MenuTileSpec(
                             id = "appearance",
-                            title = "থিম ও প্রদর্শন".localized(),
-                            subtitle = "Theme mode & color preview".localized(),
+                            title = "Appearance",
+                            subtitle = "Theme mode & color preview",
                             icon = PaletteIcon,
                             accent = KlassFeaturePalette.appearance(isDark),
                             badgeText = themeLabel,
@@ -346,25 +343,11 @@ fun MenuScreen(
                         isDark = isDark,
                         hindSiliguri = hindSiliguri,
                     )
-                    SocialInsetDivider(startIndent = 72.dp)
-                    SocialMenuRow(
-                        tile = MenuTileSpec(
-                            id = "language",
-                            title = "Language".localized(),
-                            subtitle = "Switch between Bengali & English".localized(),
-                            icon = LanguageGlobeIcon,
-                            accent = KlassFeaturePalette.teaching(isDark),
-                            badgeText = currentLanguage.displayName,
-                            onClick = onLanguageClick,
-                        ),
-                        isDark = isDark,
-                        hindSiliguri = hindSiliguri,
-                    )
                 }
 
                 SocialSectionDividerBand(isDark = isDark, height = 6.dp)
                 GoogleSectionHeader(
-                    title = "অ্যাকাউন্ট".localized(),
+                    title = "Account",
                     accent = if (role != null) {
                         KlassFeaturePalette.notifications(isDark).primary
                     } else {
@@ -375,8 +358,8 @@ fun MenuScreen(
                 SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
                     if (role != null) {
                         KlassNavigationRow(
-                            title = "লগআউট করুন".localized(),
-                            subtitle = "বর্তমান অ্যাকাউন্ট থেকে বের হন".localized(),
+                            title = "Sign Out",
+                            subtitle = "Sign out of your current account",
                             icon = LogoutIcon,
                             accent = KlassFeaturePalette.notifications(isDark).primary,
                             isDark = isDark,
@@ -387,8 +370,8 @@ fun MenuScreen(
                         )
                         SocialInsetDivider(startIndent = 72.dp)
                         KlassNavigationRow(
-                            title = "ডিলিট একাউন্ট".localized(),
-                            subtitle = "সকল তথ্য স্থায়ীভাবে মুছে ফেলুন".localized(),
+                            title = "Delete Account",
+                            subtitle = "Permanently remove all account data",
                             icon = TrashCanIcon,
                             accent = KlassFeaturePalette.error(isDark).primary,
                             isDark = isDark,
@@ -399,8 +382,8 @@ fun MenuScreen(
                         )
                     } else {
                         KlassNavigationRow(
-                            title = "সাইন ইন করুন".localized(),
-                            subtitle = "Sign in to access your routine & campus connections".localized(),
+                            title = "Sign In",
+                            subtitle = "Sign in to access your routine & campus connections",
                             icon = LoginIcon,
                             accent = KlassFeaturePalette.profile(isDark).primary,
                             isDark = isDark,
@@ -448,22 +431,22 @@ fun AppearanceSubScreen(
     val currentLang = LocalAppLanguage.current
     val appearanceAccent = KlassFeaturePalette.appearance(isDark)
 
-    val options = remember(isDark, currentLang) {
+    val options = remember(isDark) {
         listOf(
-            Triple(ThemeMode.LIGHT, "লাইট মোড".localized(currentLang) to "পরিষ্কার ও উজ্জ্বল রঙের থিম".localized(currentLang), LightModeIcon to KlassFeaturePalette.books(isDark)),
-            Triple(ThemeMode.DARK, "ডার্ক মোড".localized(currentLang) to "কম আলোতে আরামদায়ক গাঢ় থিম".localized(currentLang), DarkModeIcon to KlassFeaturePalette.profile(isDark)),
-            Triple(ThemeMode.DEFAULT, "সিস্টেম ডিফল্ট".localized(currentLang) to "ডিভাইসের থিম সেটিং অনুসরণ করুন".localized(currentLang), AutoModeIcon to KlassFeaturePalette.teaching(isDark)),
+            Triple(ThemeMode.LIGHT, "Light Mode" to "Clean and bright color theme", LightModeIcon to KlassFeaturePalette.books(isDark)),
+            Triple(ThemeMode.DARK, "Dark Mode" to "Comfortable dark theme for low light", DarkModeIcon to KlassFeaturePalette.profile(isDark)),
+            Triple(ThemeMode.DEFAULT, "System Default" to "Follow your device theme setting", AutoModeIcon to KlassFeaturePalette.teaching(isDark)),
         )
     }
-    val activeThemeName = currentThemeMode.getDisplayName()
+    val activeThemeName = when (currentThemeMode) {
+        ThemeMode.LIGHT -> "Light"
+        ThemeMode.DARK -> "Dark"
+        ThemeMode.DEFAULT -> "System"
+    }
 
     MinimalFullScreenSheet(
-        title = "থিম ও প্রদর্শন".localized(currentLang),
-        subtitle = if (currentLang == AppLanguage.BENGALI) {
-            "বর্তমান: $activeThemeName"
-        } else {
-            "Active: ${activeThemeName.localized(currentLang)}"
-        },
+        title = "Appearance",
+        subtitle = "Active: $activeThemeName",
         levelLabel = "Menu › Preferences",
         icon = PaletteIcon,
         accent = appearanceAccent.primary,
@@ -479,7 +462,7 @@ fun AppearanceSubScreen(
         ) {
             Spacer(modifier = Modifier.height(10.dp))
             GoogleSectionHeader(
-                title = "থিম নির্বাচন করুন".localized(currentLang),
+                title = "Select Theme Mode",
                 accent = appearanceAccent.primary,
                 hindSiliguri = hindSiliguri,
             )
@@ -510,124 +493,6 @@ fun AppearanceSubScreen(
                                 Box(contentAlignment = Alignment.Center) {
                                     TelegramAnimatedIcon(
                                         icon = icon,
-                                        contentDescription = label,
-                                        tint = optionAccent.primary,
-                                        size = 20.dp,
-                                        triggerKey = if (isSelected) 1 else 0,
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = label,
-                                    fontSize = 16.5.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                                    fontFamily = hindSiliguri,
-                                    color = if (isSelected) optionAccent.primary else cs.onSurface,
-                                )
-                                Text(
-                                    text = desc,
-                                    fontSize = 13.sp,
-                                    fontFamily = hindSiliguri,
-                                    color = cs.onSurfaceVariant,
-                                )
-                            }
-                            RadioButton(
-                                selected = isSelected,
-                                onClick = null,
-                                colors = RadioButtonDefaults.colors(selectedColor = optionAccent.primary),
-                            )
-                        }
-                    }
-                    if (idx < options.lastIndex) {
-                        SocialInsetDivider(startIndent = 72.dp)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-@Composable
-fun LanguageSubScreen(
-    isDark: Boolean,
-    hindSiliguri: FontFamily,
-    currentLanguage: AppLanguage,
-    onLanguageChange: (AppLanguage) -> Unit,
-    onBack: () -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    val langAccent = KlassFeaturePalette.teaching(isDark)
-
-    val options = remember(isDark, currentLanguage) {
-        listOf(
-            Triple(
-                AppLanguage.BENGALI,
-                "বাংলা" to "অ্যাপের সব লেখা বাংলায় দেখুন".localized(currentLanguage),
-                KlassFeaturePalette.books(isDark),
-            ),
-            Triple(
-                AppLanguage.ENGLISH,
-                "English" to "View the entire app in English".localized(currentLanguage),
-                KlassFeaturePalette.routine(isDark),
-            ),
-        )
-    }
-
-    MinimalFullScreenSheet(
-        title = "ভাষা".localized(currentLanguage),
-        subtitle = if (currentLanguage == AppLanguage.BENGALI) {
-            "বর্তমান: বাংলা"
-        } else {
-            "Active: English"
-        },
-        levelLabel = "Menu › Preferences",
-        icon = LanguageGlobeIcon,
-        accent = langAccent.primary,
-        isDark = isDark,
-        hindSiliguri = hindSiliguri,
-        onDismiss = onBack,
-        closeTestTag = "language_back_button",
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-        ) {
-            Spacer(modifier = Modifier.height(10.dp))
-            GoogleSectionHeader(
-                title = "অ্যাপের ভাষা নির্বাচন করুন".localized(currentLanguage),
-                accent = langAccent.primary,
-                hindSiliguri = hindSiliguri,
-            )
-            SocialSurfaceBlock(isDark = isDark, showTopHairline = true, showBottomHairline = true) {
-                options.forEachIndexed { idx, (lang, texts, optionAccent) ->
-                    val (label, desc) = texts
-                    val isSelected = currentLanguage == lang
-                    Surface(
-                        onClick = { onLanguageChange(lang) },
-                        color = if (isSelected) optionAccent.softTint else Color.Transparent,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("language_mode_${lang.name.lowercase()}"),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = optionAccent.softTint,
-                                border = BorderStroke(0.75.dp, optionAccent.borderTint),
-                                modifier = Modifier.size(42.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    TelegramAnimatedIcon(
-                                        icon = LanguageGlobeIcon,
                                         contentDescription = label,
                                         tint = optionAccent.primary,
                                         size = 20.dp,

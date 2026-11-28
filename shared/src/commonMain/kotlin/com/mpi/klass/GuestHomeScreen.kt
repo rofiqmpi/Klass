@@ -62,8 +62,6 @@ import kotlinx.coroutines.launch
 fun GuestHomeScreen(
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
-    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
-    onLanguageChange: (AppLanguage) -> Unit = {},
     onSwitchToLogin: () -> Unit = {},
     onCloseApp: () -> Unit = {},
     onBackToWelcome: () -> Unit = {},
@@ -381,8 +379,6 @@ fun GuestHomeScreen(
                                         role = null,
                                         currentThemeMode = currentThemeMode,
                                         onThemeModeChange = onThemeModeChange,
-                                        currentLanguage = currentLanguage,
-                                        onLanguageClick = { navigateTo("language") },
                                         onProfileClick = { navigateTo("profile") },
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
@@ -618,15 +614,6 @@ fun GuestHomeScreen(
                             hindSiliguri = hindSiliguri,
                             currentThemeMode = currentThemeMode,
                             onThemeModeChange = onThemeModeChange,
-                            onBack = { goBack() },
-                        )
-                    }
-                    "language" -> {
-                        LanguageSubScreen(
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            currentLanguage = currentLanguage,
-                            onLanguageChange = onLanguageChange,
                             onBack = { goBack() },
                         )
                     }

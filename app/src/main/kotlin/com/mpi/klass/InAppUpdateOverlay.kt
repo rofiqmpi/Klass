@@ -111,8 +111,6 @@ internal fun InAppUpdateOverlay(
         ThemeMode.LIGHT -> false
         ThemeMode.DEFAULT -> isSystemInDarkTheme()
     }
-    val isBn = remember(visible) { loadAppLanguage() == AppLanguage.BENGALI }
-
     AppTheme(themeMode = themeMode) {
         val cs = MaterialTheme.colorScheme
         val font = FontFamily.Default
@@ -138,7 +136,7 @@ internal fun InAppUpdateOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.56f))
+                    .background(Color.Black.copy(alpha = 0.58f))
                     .statusBarsPadding()
                     .navigationBarsPadding()
                     .clickable(
@@ -146,17 +144,17 @@ internal fun InAppUpdateOverlay(
                         indication = null,
                     ) {
                     }
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(26.dp),
                     color = cardSurface,
                     border = BorderStroke(1.dp, cardBorder),
-                    shadowElevation = 18.dp,
+                    shadowElevation = 20.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .widthIn(max = 420.dp)
+                        .widthIn(max = 360.dp)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -167,7 +165,7 @@ internal fun InAppUpdateOverlay(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 18.dp, vertical = 18.dp),
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         val headerIcon = when (state) {
@@ -186,31 +184,31 @@ internal fun InAppUpdateOverlay(
                             shape = CircleShape,
                             color = headerAccent.copy(alpha = if (isDark) 0.22f else 0.12f),
                             border = BorderStroke(1.dp, headerAccent.copy(alpha = 0.35f)),
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(46.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = headerIcon,
                                     contentDescription = null,
                                     tint = headerAccent,
-                                    modifier = Modifier.size(22.dp),
+                                    modifier = Modifier.size(21.dp),
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         when (state) {
                             is InAppUpdateUiState.Available -> {
                                 Text(
-                                    text = if (isBn) "নতুন আপডেট পাওয়া গেছে" else "App Update Available",
+                                    text = "Update Available",
                                     color = cs.onSurface,
                                     fontFamily = font,
-                                    fontSize = 18.sp,
+                                    fontSize = 18.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
                                     shape = CircleShape,
                                     color = profileAccent.softTint,
@@ -220,33 +218,29 @@ internal fun InAppUpdateOverlay(
                                         text = "v${state.installedVersion}  →  ${state.release.version}",
                                         color = profileAccent.primary,
                                         fontFamily = font,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text(
-                                    text = if (isBn) {
-                                        "ব্রাউজারে না গিয়ে অ্যাপের ভেতরেই সরাসরি ডাউনলোড ও আপডেট সম্পন্ন হবে।"
-                                    } else {
-                                        "The update downloads directly inside the app interface without opening a browser."
-                                    },
+                                    text = "A newer version of Klass is ready. Update now to continue.",
                                     color = cs.onSurfaceVariant,
                                     fontFamily = font,
                                     fontSize = 13.sp,
-                                    lineHeight = 18.sp,
+                                    lineHeight = 18.5.sp,
                                     textAlign = TextAlign.Center,
                                 )
                                 if (state.release.notes.isNotBlank()) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Surface(
-                                        shape = RoundedCornerShape(16.dp),
+                                        shape = RoundedCornerShape(14.dp),
                                         color = cs.surfaceContainerLow.copy(alpha = if (isDark) 0.7f else 0.9f),
-                                        border = BorderStroke(0.75.dp, cs.outlineVariant.copy(alpha = 0.55f)),
+                                        border = BorderStroke(0.75.dp, cs.outlineVariant.copy(alpha = 0.5f)),
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(76.dp),
+                                            .height(68.dp),
                                     ) {
                                         Text(
                                             text = state.release.notes.take(400),
@@ -256,18 +250,18 @@ internal fun InAppUpdateOverlay(
                                             lineHeight = 17.sp,
                                             modifier = Modifier
                                                 .verticalScroll(rememberScrollState())
-                                                .padding(12.dp),
+                                                .padding(10.dp),
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 GradientActionButton(
-                                    label = if (isBn) "আপডেট করুন" else "Update now",
+                                    label = "Update Now",
                                     icon = DownloadIcon,
                                     colors = listOf(profileAccent.primary, routineAccent.primary),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(44.dp)
+                                        .height(46.dp)
                                         .testTag("in_app_update_confirm_button"),
                                     onClick = { onStartDownload(state.release) },
                                 )
@@ -275,34 +269,30 @@ internal fun InAppUpdateOverlay(
 
                             is InAppUpdateUiState.PermissionRequired -> {
                                 Text(
-                                    text = if (isBn) "ইনস্টল অনুমতি প্রয়োজন" else "Install Permission Needed",
+                                    text = "Install Permission Required",
                                     color = cs.onSurface,
                                     fontFamily = font,
-                                    fontSize = 19.5.sp,
+                                    fontSize = 18.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = if (isBn) {
-                                        "অ্যাপের ভেতর থেকে সরাসরি আপডেট ইনস্টল করতে একবার \"Allow from this source\" চালু করে ফিরে আসুন — ডাউনলোড নিজে থেকেই শুরু হবে।"
-                                    } else {
-                                        "Allow \"Install unknown apps\" once so Klass can update directly in-app. Download starts automatically when you return."
-                                    },
+                                    text = "Enable \"Allow from this source\" once so Klass can install updates directly.",
                                     color = cs.onSurfaceVariant,
                                     fontFamily = font,
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 19.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 GradientActionButton(
-                                    label = if (isBn) "অনুমতি দিন" else "Allow & update",
+                                    label = "Allow & Update",
                                     icon = ShieldIcon,
                                     colors = listOf(profileAccent.primary, routineAccent.primary),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(44.dp)
+                                        .height(46.dp)
                                         .testTag("in_app_update_permission_button"),
                                     onClick = onOpenInstallSettings,
                                 )
@@ -317,26 +307,22 @@ internal fun InAppUpdateOverlay(
                                 }
                                 val percent = fraction?.let { (it * 100f).toInt().coerceIn(0, 100) }
                                 Text(
-                                    text = if (isBn) "আপডেট ডাউনলোড হচ্ছে…" else "Downloading Update…",
+                                    text = "Downloading Update…",
                                     color = cs.onSurface,
                                     fontFamily = font,
-                                    fontSize = 19.5.sp,
+                                    fontSize = 18.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = if (isBn) {
-                                        "অ্যাপের ভেতরেই ডাউনলোড চলছে (${state.release.version})"
-                                    } else {
-                                        "Downloading inside app (${state.release.version})"
-                                    },
+                                    text = "Version ${state.release.version}",
                                     color = cs.onSurfaceVariant,
                                     fontFamily = font,
-                                    fontSize = 13.5.sp,
+                                    fontSize = 13.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(18.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 if (fraction != null) {
                                     LinearProgressIndicator(
                                         progress = { fraction },
@@ -344,7 +330,7 @@ internal fun InAppUpdateOverlay(
                                         trackColor = cs.surfaceVariant,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(8.dp)
+                                            .height(7.dp)
                                             .clip(CircleShape)
                                             .testTag("in_app_update_progress"),
                                     )
@@ -354,7 +340,7 @@ internal fun InAppUpdateOverlay(
                                         trackColor = cs.surfaceVariant,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(8.dp)
+                                            .height(7.dp)
                                             .clip(CircleShape)
                                             .testTag("in_app_update_progress"),
                                     )
@@ -372,14 +358,14 @@ internal fun InAppUpdateOverlay(
                                         },
                                         color = cs.onSurfaceVariant,
                                         fontFamily = font,
-                                        fontSize = 13.sp,
+                                        fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Medium,
                                     )
                                     Text(
                                         text = percent?.let { "$it%" } ?: "…",
                                         color = profileAccent.primary,
                                         fontFamily = font,
-                                        fontSize = 13.5.sp,
+                                        fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
                                 }
@@ -387,34 +373,30 @@ internal fun InAppUpdateOverlay(
 
                             is InAppUpdateUiState.ReadyToInstall -> {
                                 Text(
-                                    text = if (isBn) "আপডেট ইনস্টলের জন্য প্রস্তুত" else "Update Ready to Install",
+                                    text = "Ready to Install",
                                     color = cs.onSurface,
                                     fontFamily = font,
-                                    fontSize = 19.5.sp,
+                                    fontSize = 18.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = if (isBn) {
-                                        "নতুন ভার্সন (${state.release.version}) সফলভাবে ডাউনলোড হয়েছে। ইনস্টল করতে \"ইনস্টল করুন\" চাপুন।"
-                                    } else {
-                                        "Version ${state.release.version} is downloaded. Tap Install to finish updating."
-                                    },
+                                    text = "Version ${state.release.version} downloaded. Tap below to finish updating.",
                                     color = cs.onSurfaceVariant,
                                     fontFamily = font,
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
+                                    fontSize = 13.5.sp,
+                                    lineHeight = 19.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 GradientActionButton(
-                                    label = if (isBn) "ইনস্টল করুন" else "Install now",
+                                    label = "Install Now",
                                     icon = CheckIcon,
                                     colors = listOf(successAccent.primary, routineAccent.primary),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(44.dp)
+                                        .height(46.dp)
                                         .testTag("in_app_update_install_button"),
                                     onClick = { onInstallNow(state.release) },
                                 )
@@ -422,10 +404,10 @@ internal fun InAppUpdateOverlay(
 
                             is InAppUpdateUiState.Error -> {
                                 Text(
-                                    text = if (isBn) "আপডেট ডাউনলোড ব্যর্থ" else "Update Failed",
+                                    text = "Update Failed",
                                     color = cs.onSurface,
                                     fontFamily = font,
-                                    fontSize = 19.5.sp,
+                                    fontSize = 18.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center,
                                 )
@@ -434,18 +416,18 @@ internal fun InAppUpdateOverlay(
                                     text = state.message,
                                     color = cs.onSurfaceVariant,
                                     fontFamily = font,
-                                    fontSize = 13.5.sp,
-                                    lineHeight = 19.sp,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.5.sp,
                                     textAlign = TextAlign.Center,
                                 )
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                                 GradientActionButton(
-                                    label = if (isBn) "আবার চেষ্টা করুন" else "Try again",
+                                    label = "Try Again",
                                     icon = RefreshIcon,
                                     colors = listOf(profileAccent.primary, routineAccent.primary),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(44.dp)
+                                        .height(46.dp)
                                         .testTag("in_app_update_retry_button"),
                                     onClick = { onStartDownload(state.release) },
                                 )

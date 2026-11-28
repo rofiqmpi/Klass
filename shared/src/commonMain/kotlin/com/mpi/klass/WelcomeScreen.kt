@@ -88,7 +88,6 @@ import com.mpi.klass.theme.EyeOffIcon
 import com.mpi.klass.theme.GraduationCapIcon
 import com.mpi.klass.theme.HelpCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
-import com.mpi.klass.theme.LanguageGlobeIcon
 import com.mpi.klass.theme.LightModeIcon
 import com.mpi.klass.theme.LockIcon
 import com.mpi.klass.theme.LoginIcon
@@ -954,7 +953,7 @@ fun WelcomeScreen(
                     Triple(PersonIcon, Color(0xFFEC4899), "শিক্ষকবৃন্দের ডিরেক্টরি" to "ডিপার্টমেন্টের সম্মানিত শিক্ষকগণের তালিকা এবং প্রয়োজনীয় যোগাযোগের তথ্য।"),
                     Triple(ShieldIcon, Color(0xFF6366F1), "ক্লাউড প্রোফাইল ও অটো জিপিএস সিঙ্ক" to "গ্যালারি থেকে প্রোফাইল ছবি আপলোড, নাম ও রোল সংরক্ষণ, ব্লাড গ্রুপ (ডোনার তথ্য) এবং অবস্থান পরিবর্তন বা অনলাইনে আসলে অটো জিপিএস ঠিকানা সিঙ্ক।"),
                     Triple(AwardIcon, Color(0xFFD97706), "এডমিন কন্ট্রোল প্যানেল" to "নতুন এডমিন রিকোয়েস্ট অনুমোদন (Approve/Decline) এবং রোল-ভিত্তিক সাইন-ইন নিয়ন্ত্রণ ব্যবস্থা।"),
-                    Triple(PaletteIcon, Color(0xFF0EA5E9), "থিম ও দ্বিভাষিক সুবিধা (BN/EN)" to "লাইট, ডার্ক ও অটো সিস্টেম থিম এবং সম্পূর্ণ বাংলা ও ইংরেজি ভাষায় অ্যাপ ব্যবহারের সুবিধা।"),
+                    Triple(PaletteIcon, Color(0xFF0EA5E9), "স্মার্ট থিম সুবিধা" to "লাইট, ডার্ক ও সিস্টেম ডিফল্ট থিম ব্যবহারের সুবিধা।"),
                 )
             }
 
@@ -1080,61 +1079,6 @@ fun WelcomeScreen(
                                     textAlign = TextAlign.Center,
                                     lineHeight = 19.sp,
                                 )
-                            }
-                        }
-
-                        // Quick Language Toggle Row inside Support Screen
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = cardSurface,
-                            border = BorderStroke(1.dp, borderSubtle),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = LanguageGlobeIcon,
-                                        contentDescription = "ভাষা".localized(),
-                                        tint = supportAccent,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Text(
-                                        text = "ভাষা নির্বাচন করুন".localized(),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = hindSiliguri,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                }
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    listOf(AppLanguage.BENGALI to "BN", AppLanguage.ENGLISH to "EN").forEach { (lang, code) ->
-                                        val selected = lang == currentLanguage
-                                        Surface(
-                                            onClick = { onLanguageChange(lang) },
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = if (selected) supportAccent else supportAccent.copy(alpha = 0.12f),
-                                        ) {
-                                            Text(
-                                                text = code,
-                                                fontSize = 12.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                fontFamily = hindSiliguri,
-                                                color = if (selected) Color.White else supportAccent,
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         }
 

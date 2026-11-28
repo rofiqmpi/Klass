@@ -103,8 +103,6 @@ fun RoleHomeScreen(
     email: String = "",
     currentThemeMode: ThemeMode = ThemeMode.DEFAULT,
     onThemeModeChange: (ThemeMode) -> Unit = {},
-    currentLanguage: AppLanguage = AppLanguage.ENGLISH,
-    onLanguageChange: (AppLanguage) -> Unit = {},
     onSignOut: () -> Unit = {},
     onCloseApp: () -> Unit = {},
     onBackToWelcome: () -> Unit = {},
@@ -631,8 +629,6 @@ fun RoleHomeScreen(
                                         role = currentRole,
                                         currentThemeMode = currentThemeMode,
                                         onThemeModeChange = onThemeModeChange,
-                                        currentLanguage = currentLanguage,
-                                        onLanguageClick = { navigateTo("language") },
                                         onProfileClick = { navigateTo("profile") },
                                         onAiClick = { navigateTo("ai") },
                                         onNoticeClick = { navigateTo("notification") },
@@ -1186,15 +1182,6 @@ fun RoleHomeScreen(
                             hindSiliguri = hindSiliguri,
                             currentThemeMode = currentThemeMode,
                             onThemeModeChange = onThemeModeChange,
-                            onBack = { goBack() },
-                        )
-                    }
-                    "language" -> {
-                        LanguageSubScreen(
-                            isDark = isDark,
-                            hindSiliguri = hindSiliguri,
-                            currentLanguage = currentLanguage,
-                            onLanguageChange = onLanguageChange,
                             onBack = { goBack() },
                         )
                     }

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -77,6 +78,7 @@ import com.mpi.klass.theme.InfoCircleIcon
 import com.mpi.klass.theme.KlassFeaturePalette
 import com.mpi.klass.theme.ShieldIcon
 import com.mpi.klass.theme.ThemeMode
+import com.mpi.klass.theme.getHindSiliguriFontFamily
 import com.mpi.klass.theme.loadThemeMode
 import com.mpi.klass.theme.saveThemeMode
 import kotlin.math.PI
@@ -135,8 +137,6 @@ fun App(
     onCloseApp: () -> Unit = {},
 ) {
     var themeMode by remember { mutableStateOf(loadThemeMode()) }
-    var appLanguage by remember { mutableStateOf(loadAppLanguage()) }
-    SideEffect { AppStrings.updateLanguageState(appLanguage) }
     val systemInDark = isSystemInDarkTheme()
     val isDark = when (themeMode) {
         ThemeMode.LIGHT -> false
@@ -167,6 +167,8 @@ fun App(
             }
         )
     }
+    val activeLanguage = if (currentScreen is AppScreen.Welcome) AppLanguage.BENGALI else AppLanguage.ENGLISH
+    SideEffect { AppStrings.updateLanguageState(activeLanguage) }
     var activeErrorType by remember { mutableStateOf<ErrorImageType?>(null) }
     var lastErrorType by remember { mutableStateOf(ErrorImageType.GENERAL_ERROR) }
     var lastErrorDetail by remember { mutableStateOf<String?>(null) }
@@ -174,6 +176,7 @@ fun App(
 
     val coroutineScope = rememberCoroutineScope()
     val hindSiliguri = FontFamily.Default
+    val welcomeBengaliFont = getHindSiliguriFontFamily()
 
     var pendingWelcomePush by remember { mutableStateOf<Pair<String, String>?>(null) }
     val requestNotificationPermission = rememberNotificationPermissionLauncher { granted ->
@@ -521,7 +524,7 @@ fun App(
     }
 
     AppTheme(themeMode = themeMode) {
-        CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
+        CompositionLocalProvider(LocalAppLanguage provides activeLanguage) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
@@ -535,91 +538,79 @@ fun App(
                 ) { screen ->
                     when (screen) {
                         AppScreen.Welcome -> {
-                            WelcomeScreen(
-                                currentThemeMode = themeMode,
-                                onThemeModeChange = { newMode ->
-                                    themeMode = newMode
-                                    saveThemeMode(newMode)
-                                },
-                                currentLanguage = appLanguage,
-                                onLanguageChange = { newLanguage ->
-                                    appLanguage = newLanguage
-                                    AppStrings.updateLanguageState(newLanguage)
-                                    saveAppLanguage(newLanguage)
-                                    coroutineScope.launch {
-                                        AppStrings.initializeOnlineDictionary()
-                                    }
-                                },
-                                onGuestClick = { launchGuestMode() },
-                                onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
-                                onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
-                                onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
-                                onEmailPasswordLogin = { emailInput, passwordInput ->
-                                    launchEmailPasswordLogin(emailInput, passwordInput)
-                                },
-                                onCloseApp = onCloseApp,
-                            )
-                        }
-
-                        is AppScreen.ProfileSetup -> {
-                            ProfileSetupScreen(
-                                role = screen.role,
-                                initialProfile = screen.profile,
-                                hindSiliguri = hindSiliguri,
-                                isDark = isDark,
-                                onSave = { updatedProfile ->
-                                    val provider = RoleConfig.fetchUserProfile(screen.email)
-                                        ?.provider?.ifBlank { "google" } ?: "google"
-                                    val userResult = RoleConfig.saveUserProfile(
-                                        email = screen.email,
-                                        name = updatedProfile.name,
-                                        photoUrl = updatedProfile.photoUrl,
-                                        provider = provider,
-                                        category = screen.role.name,
-                                    )
-                                    if (userResult.isFailure) {
-                                        userResult
-                                    } else {
-                                        RoleConfig.saveStudentProfile(updatedProfile)
-                                    }
-                                },
-                                onComplete = { completedProfile ->
-                                    saveUserSession(
-                                        UserSession(
-                                            role = screen.role.name,
-                                            email = screen.email,
-                                            name = completedProfile.name,
-                                            photoUrl = completedProfile.photoUrl,
-                                        )
-                                    )
-                                    currentScreen = AppScreen.RoleHome(
-                                        role = screen.role,
-                                        email = screen.email,
-                                        name = completedProfile.name,
-                                        photoUrl = completedProfile.photoUrl,
-                                        initialTab = if (screen.role == UserRole.TEACHER) "teacher_prefs" else "home",
-                                        showPasswordSetupOnEntry = screen.showPasswordSetupOnEntry,
-                                    )
-                                },
-                            )
-                        }
-
-                        AppScreen.GuestHome -> {
-                            CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
-                                GuestHomeScreen(
+                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.BENGALI) {
+                                WelcomeScreen(
                                     currentThemeMode = themeMode,
                                     onThemeModeChange = { newMode ->
                                         themeMode = newMode
                                         saveThemeMode(newMode)
                                     },
-                                    currentLanguage = appLanguage,
-                                    onLanguageChange = { newLanguage ->
-                                        appLanguage = newLanguage
-                                        AppStrings.updateLanguageState(newLanguage)
-                                        saveAppLanguage(newLanguage)
-                                        coroutineScope.launch {
-                                            AppStrings.initializeOnlineDictionary()
+                                    currentLanguage = AppLanguage.BENGALI,
+                                    onLanguageChange = {},
+                                    onGuestClick = { launchGuestMode() },
+                                    onStudentClick = { launchRoleSignIn(UserRole.STUDENT) },
+                                    onTeacherClick = { launchRoleSignIn(UserRole.TEACHER) },
+                                    onAdminClick = { launchRoleSignIn(UserRole.ADMIN) },
+                                    onEmailPasswordLogin = { emailInput, passwordInput ->
+                                        launchEmailPasswordLogin(emailInput, passwordInput)
+                                    },
+                                    onCloseApp = onCloseApp,
+                                )
+                            }
+                        }
+
+                        is AppScreen.ProfileSetup -> {
+                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                                ProfileSetupScreen(
+                                    role = screen.role,
+                                    initialProfile = screen.profile,
+                                    hindSiliguri = hindSiliguri,
+                                    isDark = isDark,
+                                    onSave = { updatedProfile ->
+                                        val provider = RoleConfig.fetchUserProfile(screen.email)
+                                            ?.provider?.ifBlank { "google" } ?: "google"
+                                        val userResult = RoleConfig.saveUserProfile(
+                                            email = screen.email,
+                                            name = updatedProfile.name,
+                                            photoUrl = updatedProfile.photoUrl,
+                                            provider = provider,
+                                            category = screen.role.name,
+                                        )
+                                        if (userResult.isFailure) {
+                                            userResult
+                                        } else {
+                                            RoleConfig.saveStudentProfile(updatedProfile)
                                         }
+                                    },
+                                    onComplete = { completedProfile ->
+                                        saveUserSession(
+                                            UserSession(
+                                                role = screen.role.name,
+                                                email = screen.email,
+                                                name = completedProfile.name,
+                                                photoUrl = completedProfile.photoUrl,
+                                            )
+                                        )
+                                        currentScreen = AppScreen.RoleHome(
+                                            role = screen.role,
+                                            email = screen.email,
+                                            name = completedProfile.name,
+                                            photoUrl = completedProfile.photoUrl,
+                                            initialTab = if (screen.role == UserRole.TEACHER) "teacher_prefs" else "home",
+                                            showPasswordSetupOnEntry = screen.showPasswordSetupOnEntry,
+                                        )
+                                    },
+                                )
+                            }
+                        }
+
+                        AppScreen.GuestHome -> {
+                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
+                                GuestHomeScreen(
+                                    currentThemeMode = themeMode,
+                                    onThemeModeChange = { newMode ->
+                                        themeMode = newMode
+                                        saveThemeMode(newMode)
                                     },
                                     onSwitchToLogin = { signOutAndReturnToWelcome() },
                                     onCloseApp = onCloseApp,
@@ -629,7 +620,7 @@ fun App(
                         }
 
                         is AppScreen.RoleHome -> {
-                            CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
+                            CompositionLocalProvider(LocalAppLanguage provides AppLanguage.ENGLISH) {
                                 RoleHomeScreen(
                                     role = screen.role,
                                     userName = screen.name,
@@ -639,15 +630,6 @@ fun App(
                                     onThemeModeChange = { newMode ->
                                         themeMode = newMode
                                         saveThemeMode(newMode)
-                                    },
-                                    currentLanguage = appLanguage,
-                                    onLanguageChange = { newLanguage ->
-                                        appLanguage = newLanguage
-                                        AppStrings.updateLanguageState(newLanguage)
-                                        saveAppLanguage(newLanguage)
-                                        coroutineScope.launch {
-                                            AppStrings.initializeOnlineDictionary()
-                                        }
                                     },
                                     onSignOut = { signOutAndReturnToWelcome() },
                                     onCloseApp = onCloseApp,
@@ -717,11 +699,12 @@ fun App(
                     ),
                     modifier = Modifier.zIndex(100f),
                 ) {
-                    CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
+                    CompositionLocalProvider(LocalAppLanguage provides activeLanguage) {
                         ErrorImagePopup(
                             errorType = activeErrorType ?: lastErrorType,
                             errorDetail = lastErrorDetail,
                             isDark = isDark,
+                            fontFamily = if (currentScreen is AppScreen.Welcome) welcomeBengaliFont else hindSiliguri,
                             onDismiss = {
                                 activeErrorType = null
                                 lastErrorDetail = null
@@ -733,7 +716,7 @@ fun App(
                 // Designed Floating Toast Overlay
                 AppToastHost(
                     isDark = isDark,
-                    hindSiliguri = hindSiliguri,
+                    hindSiliguri = if (currentScreen is AppScreen.Welcome) welcomeBengaliFont else hindSiliguri,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .zIndex(120f),
@@ -834,6 +817,7 @@ fun ErrorImagePopup(
     errorType: ErrorImageType,
     errorDetail: String? = null,
     isDark: Boolean,
+    fontFamily: FontFamily = FontFamily.Default,
     onDismiss: () -> Unit,
 ) {
     val drawableRes = when (errorType) {
@@ -861,7 +845,11 @@ fun ErrorImagePopup(
     val description = when (errorType) {
         ErrorImageType.NO_INTERNET -> "আপনার ডিভাইসে সক্রিয় ইন্টারনেট সংযোগ পাওয়া যায়নি। অ্যাপটির সমস্ত সুবিধা পেতে ইন্টারনেট কানেকশন প্রয়োজন।"
         ErrorImageType.GENERAL_ERROR -> if (!errorDetail.isNullOrBlank()) {
-            "সাইন-ইন সম্পন্ন করা সম্ভব হয়নি: $errorDetail"
+            if (LocalAppLanguage.current == AppLanguage.BENGALI) {
+                "সাইন-ইন সম্পন্ন করা সম্ভব হয়নি: $errorDetail"
+            } else {
+                "Could not complete sign-in: $errorDetail"
+            }
         } else {
             "আপনার অনুরোধটি সম্পূর্ণ করা সম্ভব হয়নি। প্রবেশকৃত জিমেইল অ্যাকাউন্টে সমস্যা থাকতে পারে অথবা নেটওয়ার্ক ও সার্ভার সংযোগে বিলম্ব হচ্ছে।"
         }
@@ -918,14 +906,14 @@ fun ErrorImagePopup(
             if (isDark) Color(0xFF38BDF8) else Color(0xFF0284C7)
     }
 
-    val cardBgColor = if (isDark) Color(0xFF151F32) else Color.White
-    val borderColor = titleColor.copy(alpha = if (isDark) 0.45f else 0.30f)
-    val stepsBgColor = titleColor.copy(alpha = if (isDark) 0.12f else 0.06f)
-    val stepsBorderColor = titleColor.copy(alpha = if (isDark) 0.30f else 0.20f)
+    val cardBgColor = if (isDark) Color(0xFF131D31) else Color.White
+    val borderColor = titleColor.copy(alpha = if (isDark) 0.35f else 0.22f)
+    val stepsBgColor = titleColor.copy(alpha = if (isDark) 0.10f else 0.05f)
+    val stepsBorderColor = titleColor.copy(alpha = if (isDark) 0.22f else 0.14f)
 
     val textColorPrimary = if (isDark) Color(0xFFF8FAFC) else Color(0xFF0F172A)
     val textColorSecondary = if (isDark) Color(0xFFCBD5E1) else Color(0xFF475569)
-    val fontBengali = FontFamily.Default
+    val fontBengali = fontFamily
 
     AppBackHandler(enabled = true) { onDismiss() }
 
@@ -933,23 +921,24 @@ fun ErrorImagePopup(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(100f)
-            .background(Color.Black.copy(alpha = if (isDark) 0.64f else 0.46f))
+            .background(Color.Black.copy(alpha = if (isDark) 0.62f else 0.44f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onDismiss,
             )
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .padding(horizontal = 24.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            shape = RoundedCornerShape(26.dp),
+            shape = RoundedCornerShape(24.dp),
             color = cardBgColor,
             border = BorderStroke(1.dp, borderColor),
-            shadowElevation = 0.dp,
+            shadowElevation = 14.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 580.dp)
+                .widthIn(max = 380.dp)
+                .heightIn(max = 520.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -963,53 +952,33 @@ fun ErrorImagePopup(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = titleColor.copy(alpha = if (isDark) 0.22f else 0.12f),
-                        border = BorderStroke(0.75.dp, titleColor.copy(alpha = 0.35f)),
-                        modifier = Modifier.size(36.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = ShieldIcon,
-                                contentDescription = null,
-                                tint = titleColor,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Image(
+                        painter = painterResource(drawableRes),
+                        contentDescription = "Error Illustration".localized(),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .height(92.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
                     androidx.compose.material3.IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
-                            .size(40.dp)
+                            .align(Alignment.TopEnd)
+                            .size(36.dp)
                             .testTag("error_screen_close_button"),
                     ) {
                         Icon(
                             imageVector = CloseIcon,
                             contentDescription = "Close".localized(),
                             tint = textColorSecondary,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
-
-                Image(
-                    painter = painterResource(drawableRes),
-                    contentDescription = "Error Illustration".localized(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(126.dp)
-                        .clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Fit,
-                )
 
                 Text(
                     text = title.localized(),
